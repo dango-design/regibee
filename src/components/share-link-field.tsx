@@ -121,7 +121,7 @@ export function ShareLinkField({
       )}
 
       {replaced && (
-        <p role="status" className="text-sm text-success-primary">
+        <p role="status" className="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-800">
           {replacedMessage}
         </p>
       )}
