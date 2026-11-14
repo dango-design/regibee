@@ -521,8 +521,15 @@ const BABY_DEFAULT_CATEGORIES = [
   "Gifts & Extras",
 ];
 
-function slugFor(title: string) {
-  // The same shape as the website's generateSlug (src/lib/actions/registry.ts).
+// A new list's link. Anyone with it can open the list, so its random part
+// has to be hard to guess, and the app has no strong random source. The
+// database makes it (new_registry_slug, the same shape as the website's
+// generateRegistrySlug in src/lib/registry-create.ts). The fallback is only
+// for a database without that function yet
+// (supabase/migrations/20261114100553_list_links.sql).
+async function slugFor(title: string) {
+  const { data, error } = await supabase.rpc("new_registry_slug", { p_title: title });
+  if (!error && typeof data === "string" && data) return data;
   return (
     title
       .toLowerCase()
@@ -565,7 +572,7 @@ export function useCreateRegistry() {
         .insert({
           owner_id: userId,
           title: input.title.trim(),
-          slug: slugFor(input.title.trim() || "registry"),
+          slug: await slugFor(input.title.trim() || "registry"),
           event_date: input.eventDate,
           is_public: input.isPublic,
           listed_on_profile: false,

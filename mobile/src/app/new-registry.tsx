@@ -10,6 +10,7 @@ import { formatEventDate } from "@/lib/format";
 import { EVENT_TYPES } from "@/lib/occasion";
 import { spacing, useTheme } from "@/lib/theme";
 import type { EventType, RegistryType } from "@/lib/types";
+import { LIST_ACCESS } from "@shared/list-access";
 
 function toYmd(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -124,8 +125,8 @@ export default function NewRegistryScreen() {
           <Divider inset={52} />
           <SwitchRow
             icon="public"
-            label="Public"
-            description="Public registries can show up in search engines. Anyone with the link can always open it."
+            label={LIST_ACCESS.public.label}
+            description={isPublic ? LIST_ACCESS.public.description : LIST_ACCESS.link.description}
             value={isPublic}
             onValueChange={setIsPublic}
           />

@@ -7,6 +7,7 @@ import { formatDollars, plural, relativeDay, timeAgo } from "@/lib/format";
 import { occasionLabel } from "@/lib/occasion";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import type { RegistrySummary } from "@/lib/types";
+import { LIST_ACCESS } from "@shared/list-access";
 
 export function RegistryCard({ registry, onPress }: { registry: RegistrySummary; onPress: () => void }) {
   const theme = useTheme();
@@ -40,7 +41,7 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
             <Pill label={occasionLabel(registry)} tone="accent" />
             {when ? <Pill label={when} tone="tint" icon="calendar" /> : null}
             {registry.role === "manager" ? <Pill label="Shared with you" icon="people" /> : null}
-            {!registry.is_public ? <Pill label="Private" icon="lock" /> : null}
+            {!registry.is_public ? <Pill label={LIST_ACCESS.link.short} icon="link" /> : null}
           </View>
         </View>
         <Icon name="chevronRight" size={16} color={theme.textTertiary} />

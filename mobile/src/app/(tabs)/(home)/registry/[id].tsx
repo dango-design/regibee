@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { formatReservedUntil, isHeldUntilBought, isOpenReservation } from "@shared/gifts";
+import { listAccess } from "@shared/list-access";
 
 import { Icon } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
@@ -328,7 +329,7 @@ function RegistryHeader({
         <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
           <Pill label={occasionLabel(r)} tone="accent" />
           {r.event_date ? <Pill label={`${formatEventDate(r.event_date)}${when ? ` · ${when}` : ""}`} tone="tint" icon="calendar" /> : null}
-          <Pill label={r.is_public ? "Public" : "Private"} icon={r.is_public ? "public" : "lock"} />
+          <Pill label={listAccess(r.is_public).short} icon={r.is_public ? "public" : "link"} />
         </View>
       </View>
 

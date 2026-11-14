@@ -21,6 +21,7 @@ import {
   updateZipCode,
   inviteManagerByEmail,
   generateInviteLink,
+  replaceRegistryLink,
   removeManager,
   revokeInvite,
   listManagers,
@@ -28,6 +29,8 @@ import {
 } from "@/lib/actions/registry";
 import { CategoryManager } from "@/components/category-manager";
 import { ProfileListingField } from "@/components/profile-listing-field";
+import { ListAccessField } from "@/components/list-access-field";
+import { ShareLinkField } from "@/components/share-link-field";
 import { StoreRegistriesCard } from "@/components/store-registries-card";
 import { parseRetailerRegistries } from "@/lib/retailers";
 import type { PaymentMethods, PersonalEventType, RegistryType } from "@/lib/types";
@@ -103,7 +106,6 @@ export default function RegistrySettingsPage() {
   const [addressError, setAddressError] = useState("");
   const [addressSuccess, setAddressSuccess] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string; sort_order: number }[]>([]);
-  const [slugCopied, setSlugCopied] = useState(false);
   // Guests (anonymous sessions) have no profile page to list a registry on.
   const [hasProfile, setHasProfile] = useState(false);
   const [isPublicChoice, setIsPublicChoice] = useState(true);
@@ -449,32 +451,7 @@ export default function RegistrySettingsPage() {
               rows={3}
             />
 
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-secondary">Visibility</span>
-              <p className="text-xs text-tertiary">Anyone with the share link can open your registry either way. This controls search engines, and who sees it on your profile.</p>
-              <div className="flex items-center gap-4 max-sm:flex-col max-sm:items-stretch max-sm:gap-1">
-                <label className="flex items-center gap-2 max-sm:min-h-11">
-                  <input
-                    type="radio"
-                    name="isPublic"
-                    value="true"
-                    defaultChecked={registry.is_public}
-                    onChange={() => setIsPublicChoice(true)}
-                  />
-                  <span className="text-sm">Public — searchable by search engines</span>
-                </label>
-                <label className="flex items-center gap-2 max-sm:min-h-11">
-                  <input
-                    type="radio"
-                    name="isPublic"
-                    value="false"
-                    defaultChecked={!registry.is_public}
-                    onChange={() => setIsPublicChoice(false)}
-                  />
-                  <span className="text-sm">Private — hidden from search engines, and only followers you approve see it on your profile</span>
-                </label>
-              </div>
-            </div>
+            <ListAccessField isPublic={isPublicChoice} onChange={setIsPublicChoice} />
 
             {isOwner && hasProfile && (
               <ProfileListingField
@@ -485,33 +462,15 @@ export default function RegistrySettingsPage() {
               />
             )}
 
-            <div className="space-y-1">
-              <span className="text-sm font-medium text-secondary">Share URL</span>
-              <div className="flex items-center gap-4">
-                <p className="min-w-0 break-all text-sm text-tertiary font-mono">
-                  /r/{registry.slug}
-                </p>
-                <button
-                  type="button"
-                  aria-label="Copy share link"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/r/${registry.slug}`);
-                    setSlugCopied(true);
-                    setTimeout(() => setSlugCopied(false), 2000);
-                  }}
-                  className="shrink-0 text-tertiary hover:text-secondary transition-colors max-sm:-my-3 max-sm:inline-flex max-sm:min-h-11 max-sm:min-w-11 max-sm:items-center max-sm:justify-center"
-                >
-                  {slugCopied ? (
-                    <span className="inline-flex items-center gap-1 text-sm">
-                      <Check className="h-4 w-4" />
-                      Copied!
-                    </span>
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+            <ShareLinkField
+              path={`/r/${registry.slug}`}
+              onReplace={async () => {
+                const result = await replaceRegistryLink(registryId);
+                if ("error" in result) return result;
+                setRegistry((current) => (current ? { ...current, slug: result.slug } : current));
+                return { path: `/r/${result.slug}` };
+              }}
+            />
 
             {error && <p className="text-sm text-error-primary">{error}</p>}
 

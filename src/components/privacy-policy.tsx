@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 13, 2026",
+  effectiveDate: "November 14, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -172,9 +172,16 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 cash funds.
               </li>
               <li>
-                Anyone with a registry&apos;s link can open it. Public registries can also show up in search engines.
-                Private ones are hidden from search engines, and show on your profile only to people you&apos;ve let
-                follow you, or to people in a group you&apos;ve shared them with.
+                Anyone with a registry&apos;s link can open it. The link ends in a random code, so people find it
+                only if someone shares it with them. Public registries can also show up in search engines. Registries
+                set to &ldquo;Only people with the link&rdquo; are hidden from search engines, and show on your
+                profile only to people you&apos;ve let follow you, or to people in a group you&apos;ve shared them
+                with.
+              </li>
+              <li>
+                You can get a new link for a registry at any time, and the old one stops opening it. We keep the old
+                link so the emails guests got about their gifts still take them to those gifts. It doesn&apos;t open
+                the registry for anyone else.
               </li>
               <li>
                 Photos you upload for a registry or an item can be seen by anyone with the registry&apos;s link.

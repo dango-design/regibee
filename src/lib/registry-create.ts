@@ -20,16 +20,27 @@ export const BABY_DEFAULT_CATEGORIES = [
   "Gifts & Extras",
 ];
 
-/** A registry's share link slug: its title plus a few random letters. */
+// No l, o, 0 or 1, so a link is easy to read back. 32 characters, so each
+// random byte maps to one character with no bias.
+const LINK_CODE_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+
+/**
+ * A registry's share link slug: up to 50 characters of its title, then 12
+ * random characters (60 bits). Anyone with the link can open the list, so the
+ * random part is what keeps it to the people it was sent to. Mirrors
+ * new_registry_slug in supabase/migrations/20261114100553_list_links.sql,
+ * which the phone app uses.
+ */
 export function generateRegistrySlug(title: string): string {
-  return (
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") +
-    "-" +
-    Math.random().toString(36).substring(2, 8)
-  );
+  const titlePart = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50)
+    .replace(/^-+|-+$/g, "");
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  const code = Array.from(bytes, (b) => LINK_CODE_ALPHABET[b % 32]).join("");
+  return `${titlePart || "list"}-${code}`;
 }
 
 export interface NewRegistry {

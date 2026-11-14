@@ -14,7 +14,8 @@ import {
 } from "@/lib/email";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
-import { insertRegistry } from "@/lib/registry-create";
+import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
+import { canKeepOldLinks } from "@/lib/list-links";
 import { registryPhotoUrlPrefix } from "@/lib/registry-photos";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
 import {
@@ -289,6 +290,55 @@ export async function updateRegistry(registryId: string, formData: FormData) {
 
   revalidatePath(`/dashboard/registry/${registryId}`);
   return { success: true };
+}
+
+/**
+ * Gives a list a new share link. The old one stops opening the list, for
+ * everyone who has it. Guests' gift emails still lead to their gifts
+ * (src/lib/list-links.ts). Any manager can do it, like the other sharing
+ * settings.
+ */
+export async function replaceRegistryLink(
+  registryId: string,
+): Promise<{ slug: string } | { error: string }> {
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  // Without the old links table, guests' gift emails would stop working.
+  if (!(await canKeepOldLinks())) {
+    return { error: "Getting a new link isn't ready yet. Try again later." };
+  }
+
+  const { data: registry } = await supabaseAdmin
+    .from("registries")
+    .select("title")
+    .eq("id", registryId)
+    .single();
+  if (!registry) return { error: "We couldn't find this list." };
+
+  // The service role, because the database only lets the server change a
+  // link. It records the old one in the same update.
+  const slug = generateRegistrySlug(registry.title);
+  const { error } = await supabaseAdmin.from("registries").update({ slug }).eq("id", registryId);
+  if (error) {
+    console.error("[registry] Failed to replace a list's link:", error);
+    return { error: "We couldn't make a new link. Try again." };
+  }
+
+  // Gift exchange guests who added this list as their wish list keep its link
+  // on their RSVP, and their Secret Santa finds the list through it. Those
+  // people were given the list on purpose, so their copy gets the new link.
+  const { error: wishlistError } = await supabaseAdmin
+    .from("event_guests")
+    .update({ wishlist_url: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/r/${slug}` })
+    .eq("wishlist_registry_id", registryId);
+  if (wishlistError) {
+    console.error("[registry] Failed to update wish list links on RSVPs:", wishlistError);
+  }
+
+  revalidatePath(`/dashboard/registry/${registryId}`, "layout");
+  revalidatePath("/dashboard");
+  return { slug };
 }
 
 export async function deleteRegistry(registryId: string) {

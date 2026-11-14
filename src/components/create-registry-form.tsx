@@ -16,6 +16,7 @@ import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { createRegistry } from "@/lib/actions/registry";
+import { LIST_ACCESS, listAccess } from "@/lib/list-access";
 import { PERSONAL_EVENT_TYPE_OPTIONS, copyFor } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 import { cx } from "@/lib/utils/cx";
@@ -463,7 +464,7 @@ export function CreateRegistryForm({
 
   const occasion = PERSONAL_EVENT_TYPE_OPTIONS.find((option) => option.value === eventType);
   const privacySummary = [
-    isPublic ? "Public" : "Private",
+    listAccess(isPublic).short,
     canListOnProfile ? (isListed ? "on your profile" : "not on your profile") : null,
   ]
     .filter(Boolean)
@@ -617,21 +618,18 @@ export function CreateRegistryForm({
           </Section>
 
           <Section title="Who can see it" {...sectionProps("privacy")}>
-            <p className="mb-3 text-sm text-tertiary">
-              Anyone with your share link can open it either way.
-            </p>
             <div className="grid grid-cols-2 gap-2">
-              <ChoiceCard
-                selected={isPublic}
-                onClick={() => chooseVisibility(true)}
-                title="Public"
-                description="Search engines can list it."
-              />
               <ChoiceCard
                 selected={!isPublic}
                 onClick={() => chooseVisibility(false)}
-                title="Private"
-                description="Hidden from search engines. Only followers you approve see it on your profile."
+                title={LIST_ACCESS.link.label}
+                description={LIST_ACCESS.link.description}
+              />
+              <ChoiceCard
+                selected={isPublic}
+                onClick={() => chooseVisibility(true)}
+                title={LIST_ACCESS.public.label}
+                description={LIST_ACCESS.public.description}
               />
             </div>
             {canListOnProfile && (

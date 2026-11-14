@@ -41,6 +41,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The anon key ships in the browser, so anyone can use it. The table access rules (RLS) are the only thing protecting data the anon key can reach.
 - `SUPABASE_SERVICE_ROLE_KEY` skips every access rule. Use the service-role client only in server code, and filter by an id or slug the user is allowed to see. The public registry page (`src/app/r/[slug]/page.tsx`) works this way.
 
+## List links
+
+- Anyone with a list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
+- A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
+- Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
+
 ## Items on several lists
 
 - An item's home list is `registry_items.registry_id`. `registry_item_placements` puts it on more of the same owner's lists, each with its own category. Gifts belong to the item, so they show on every list it's on.
