@@ -15,7 +15,7 @@ export function ProfileListingField({
 }) {
   let hint = isPublic
     ? "Anyone with your profile link can see this registry."
-    : "It's private, so only followers you approve can see it on your profile.";
+    : "Only followers you approve see it on your profile. Everyone else needs the link.";
   if (isSelected && hasShippingAddress) {
     hint += " Anyone who reserves a gift can see your shipping address.";
   }

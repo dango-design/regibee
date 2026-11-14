@@ -1,6 +1,6 @@
 import { cache } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { Gift } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -8,7 +8,8 @@ import { readEventGuestCookie, type EventGuestContext } from "@/lib/event-guest-
 import { eventIncludesRegistry, getGiftExchange } from "@/lib/events-server";
 import { exchangeKind } from "@/lib/events";
 import { isUuid } from "@/lib/extension";
-import { verifyBuyerLink } from "@/lib/buyer-link";
+import { buildBuyerRegistryUrl, verifyBuyerLink } from "@/lib/buyer-link";
+import { listForOldLink } from "@/lib/list-links";
 import type { PaymentMethods, RegistrySettings } from "@/lib/types";
 import type { Metadata } from "next";
 import { ScrollToTop } from "@/components/scroll-to-top";
@@ -312,6 +313,21 @@ export default async function PublicRegistryPage({
   ]);
 
   if (!registry) {
+    // The list may have a new link (src/lib/list-links.ts). A guest's signed
+    // link from their gift emails still leads to it. Anyone else with the old
+    // link sees the not-found page.
+    if (buyerEmail && sig) {
+      const moved = await listForOldLink(slug);
+      let signed = false;
+      try {
+        signed = Boolean(moved) && verifyBuyerLink(buyerEmail, slug, sig);
+      } catch {
+        // A signature of the wrong length.
+      }
+      if (moved && signed) {
+        redirect(buildBuyerRegistryUrl({ siteUrl: "", slug: moved.slug, buyerEmail }));
+      }
+    }
     notFound();
   }
 

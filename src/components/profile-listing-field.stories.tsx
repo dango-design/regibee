@@ -19,7 +19,7 @@ export const ListedWithShippingAddress: Story = {
   args: { hasShippingAddress: true },
 };
 
-// Private registries only show to approved followers.
+// A link-only list only shows to approved followers.
 export const Private: Story = {
   args: { isPublic: false },
 };
