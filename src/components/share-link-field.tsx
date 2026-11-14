@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,18 +26,19 @@ export function ShareLinkField({
   startConfirming?: boolean;
 }) {
   const [currentPath, setCurrentPath] = useState(path);
-  // The site's address is only known in the browser. Until then, the path.
-  const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(startConfirming);
   const [replacing, setReplacing] = useState(false);
   const [replaced, setReplaced] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setOrigin(window.location.origin), []);
+  // The site's address, like regibee.com. Not the page's own address: in
+  // Storybook that's a host that changes with every Chromatic build, which
+  // would change the snapshot every time. Without it, the field shows the path.
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
 
   const copy = async () => {
-    await navigator.clipboard.writeText(`${window.location.origin}${currentPath}`);
+    await navigator.clipboard.writeText(`${siteUrl || window.location.origin}${currentPath}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -61,7 +62,7 @@ export function ShareLinkField({
       <span className="text-sm font-medium text-secondary">Share link</span>
       <div className="flex items-center gap-4">
         <p className="min-w-0 break-all font-mono text-sm text-tertiary">
-          {origin.replace(/^https?:\/\//, "")}
+          {siteUrl.replace(/^https?:\/\//, "")}
           {currentPath}
         </p>
         <button
