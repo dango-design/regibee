@@ -146,6 +146,8 @@ export function AddItemDialog({
   const isOpen = useRef(open);
   // The link last read, so leaving the field doesn't read the same link again.
   const lastReadUrl = useRef<string | null>(null);
+  // The link the picture choices came from.
+  const picturesFrom = useRef<string | null>(null);
 
   // Reading the clipboard needs a secure page and a browser that allows it.
   // Only the open dialog asks, so this never runs during server rendering.
@@ -239,6 +241,19 @@ export function AddItemDialog({
     if (!options.fromTap && url === lastReadUrl.current) return;
     lastReadUrl.current = url;
 
+    // Pictures from another link show another product, so clear them, and
+    // the chosen image if it's one of them. A photo the owner uploaded stays.
+    let currentImage = imageUrl;
+    if (picturesFrom.current && picturesFrom.current !== url) {
+      if (imageCandidates.includes(imageUrl)) {
+        setImageUrl("");
+        currentImage = "";
+      }
+      setImageCandidates([]);
+      setBrokenCandidates(new Set());
+      picturesFrom.current = null;
+    }
+
     const run = ++readNumber.current;
     const stillCurrent = () => run === readNumber.current;
     setScraping(true);
@@ -293,7 +308,8 @@ export function AddItemDialog({
       if (candidates.length > 0) {
         setImageCandidates(candidates);
         setBrokenCandidates(new Set());
-        if (!imageUrl) {
+        picturesFrom.current = url;
+        if (!currentImage) {
           setImageUrl(candidates[0]);
           filled.push(candidates.length > 1 ? `image (${candidates.length} options)` : "image");
         }
@@ -343,6 +359,7 @@ export function AddItemDialog({
   const resetForm = () => {
     readNumber.current++;
     lastReadUrl.current = null;
+    picturesFrom.current = null;
     setScraping(false);
     setScrapeStatus("");
     setScrapeIsError(false);
