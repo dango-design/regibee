@@ -303,8 +303,8 @@ test("a wedding from the New button starts with plus-one, meal and diet question
   }).toPass();
   await page.getByLabel("Your names").fill("Alex & Sam");
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByRole("button", { name: /Decide later/ }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  // Gifts are optional: skipping makes the event with nothing about gifts.
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
   await page.getByRole("button", { name: "Make the event" }).click();
   await page.waitForURL(/\/dashboard\/events\/[0-9a-f-]{36}$/);
   const eventId = page.url().split("/dashboard/events/")[1];

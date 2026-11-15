@@ -49,6 +49,28 @@ export const GiftsForAParty: Story = {
   },
 };
 
+/**
+ * Gifts are optional. With nothing picked the button says Skip, and clicking
+ * a picked card again unpicks it. Skipping makes the event with nothing
+ * about gifts.
+ */
+export const SkipGifts: Story = {
+  args: {
+    initial: { step: "gifts", occasion: "wedding", audience: "us", name: "Alex & Sam" },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const registry = canvas.getByRole("button", { name: /Make your wedding registry/ });
+    await userEvent.click(registry);
+    await expect(canvas.getByRole("button", { name: "Next" })).toBeVisible();
+    await userEvent.click(registry);
+    await expect(registry).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(canvas.getByRole("button", { name: "Skip" }));
+    await expect(canvas.getByRole("heading", { name: "Name your event" })).toBeVisible();
+    await expect(canvas.getByText("Nothing about gifts yet. You can set that up from the event any time.")).toBeVisible();
+  },
+};
+
 /** Your own birthday, when you already have lists: pick one instead of pasting its link. */
 export const UseAListYouHave: Story = {
   args: {

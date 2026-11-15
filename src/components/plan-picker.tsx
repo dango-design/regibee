@@ -187,6 +187,8 @@ export function PlanPicker({
   const mealTrain = state.occasion === "meal_train";
   const nameLabel = state.audience ? nameLabelFor(state.audience) : null;
   const withEvent = state.gifts ? planNeedsEvent(state.gifts) || state.invitation : true;
+  // The gifts step is optional. With nothing picked, its button skips it.
+  const giftsPicked = Boolean(state.gifts && state.gifts !== "later");
 
   const update = (changes: Partial<PlanPickerState>) => {
     setError("");
@@ -240,8 +242,8 @@ export function PlanPicker({
   };
 
   const afterGifts = () => {
-    if (!state.gifts) {
-      setError("Choose how gifts work.");
+    if (!giftsPicked) {
+      goTo("name", { gifts: "later" });
       return;
     }
     if (state.gifts === "link" && !state.linkUrl.trim() && !pickedList) {
@@ -254,6 +256,9 @@ export function PlanPicker({
     }
     goTo("name");
   };
+
+  /** Picks a gift plan, or unpicks it when it's already picked. */
+  const pick = (plan: GiftPlan) => update({ gifts: state.gifts === plan ? null : plan });
 
   const back = () => {
     const order: Step[] = ["what", "who", "gifts", "name"];
@@ -316,6 +321,7 @@ export function PlanPicker({
       summary.push("Everyone gives everyone: guests link their wish lists when they RSVP, and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
+    if (state.gifts === "later") summary.push("Nothing about gifts yet. You can set that up from the event any time.");
     // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
     const startsSheet = Boolean(occasion.defaults && "signup" in occasion.defaults);
     if (state.gifts === "signup" || startsSheet) {
@@ -458,9 +464,14 @@ export function PlanPicker({
 
       {state.step === "gifts" && occasion && (
         <section aria-labelledby="plan-gifts" className="flex flex-col gap-4">
-          <h2 id="plan-gifts" className="text-xl font-semibold">
-            How do gifts work?
-          </h2>
+          <div>
+            <h2 id="plan-gifts" className="text-xl font-semibold">
+              How do gifts work?
+            </h2>
+            <p className="mt-1 text-sm text-tertiary">
+              Optional. Skip it and set up gifts from the event later.
+            </p>
+          </div>
           {/* Gift lists first, large. Everything else after them, smaller. */}
           <div className={cx("grid gap-2", giftRows.main.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
             {giftRows.main.map((plan) => {
@@ -469,7 +480,7 @@ export function PlanPicker({
                 <Choice
                   key={plan}
                   selected={state.gifts === plan}
-                  onClick={() => update({ gifts: plan })}
+                  onClick={() => pick(plan)}
                   label={label}
                   hint={hint}
                   icon={PLAN_ICONS[plan]}
@@ -536,7 +547,7 @@ export function PlanPicker({
                       key={plan}
                       compact
                       selected={state.gifts === plan}
-                      onClick={() => update({ gifts: plan })}
+                      onClick={() => pick(plan)}
                       label={label}
                       hint={hint}
                     />
@@ -604,7 +615,7 @@ export function PlanPicker({
             </span>
           </Button>
           {state.step === "who" && <Button onClick={afterWho}>Next</Button>}
-          {state.step === "gifts" && <Button onClick={afterGifts}>Next</Button>}
+          {state.step === "gifts" && <Button onClick={afterGifts}>{giftsPicked ? "Next" : "Skip"}</Button>}
           {state.step === "name" && (
             <Button onClick={make} disabled={saving || !state.title.trim()}>
               <span className="inline-flex items-center gap-1.5">
