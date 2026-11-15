@@ -20,7 +20,7 @@ export interface EventsOverviewProps {
 }
 
 /**
- * The New button: "What are you planning?" (/dashboard/new). The demo has no
+ * The New button: "Start something new" (/dashboard/new). The demo has no
  * picker, so with a base path it opens the demo's event form.
  */
 export function NewEventButton({ basePath = "" }: { basePath?: string }) {
