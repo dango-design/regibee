@@ -15,6 +15,7 @@ import {
   reservationsHiddenFrom,
 } from "@shared/gifts";
 import { parseRetailerRegistries, type RetailerRegistry } from "@shared/retailers";
+import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 
 import { useSession } from "@/lib/auth";
 import { demo, isDemo } from "@/lib/demo";
@@ -39,7 +40,7 @@ export const keys = {
 };
 
 const REGISTRY_FIELDS =
-  "id, owner_id, title, slug, event_date, is_public, description, photo_url, registry_type, event_type, honoree_names, settings, created_at";
+  "id, owner_id, title, slug, event_date, is_public, is_private, description, photo_url, registry_type, event_type, honoree_names, settings, created_at";
 
 // The items are the ones whose registry_id is this registry. The link is named
 // because registry_item_placements also joins registries and items, and
@@ -545,7 +546,7 @@ export interface NewRegistryInput {
   registryType: RegistryType;
   eventType: EventType | null;
   eventDate: string | null;
-  isPublic: boolean;
+  visibility: ListVisibility;
 }
 
 export function useCreateRegistry() {
@@ -560,7 +561,7 @@ export function useCreateRegistry() {
             registry_type: input.registryType,
             event_type: input.registryType === "personal" ? input.eventType : null,
             event_date: input.eventDate,
-            is_public: input.isPublic,
+            ...visibilityColumns(input.visibility),
           },
           input.registryType === "baby" ? BABY_DEFAULT_CATEGORIES : []
         );
@@ -574,7 +575,7 @@ export function useCreateRegistry() {
           title: input.title.trim(),
           slug: await slugFor(input.title.trim() || "registry"),
           event_date: input.eventDate,
-          is_public: input.isPublic,
+          ...visibilityColumns(input.visibility),
           listed_on_profile: false,
           registry_type: input.registryType,
           event_type: input.registryType === "personal" ? input.eventType : null,

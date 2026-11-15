@@ -186,8 +186,8 @@ test("a baby registry on its own asks nothing about an event, and its party prom
   // A click before the page's scripts load does nothing, so wait until the
   // form answers one.
   await expect(async () => {
-    await page.getByRole("button", { name: /Who can see it/ }).click();
-    await expect(page.getByRole("button", { name: /Who can see it/, expanded: true })).toBeVisible({ timeout: 1000 });
+    await page.getByRole("button", { name: /Who can open it/ }).click();
+    await expect(page.getByRole("button", { name: /Who can open it/, expanded: true })).toBeVisible({ timeout: 1000 });
   }).toPass();
   await page.getByRole("button", { name: /Name and date/ }).click();
   await page.getByLabel("Registry name").fill("Maya's Baby Registry");

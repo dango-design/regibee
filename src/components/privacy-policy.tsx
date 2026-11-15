@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 14, 2026",
+  effectiveDate: "November 15, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -172,11 +172,16 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 cash funds.
               </li>
               <li>
-                Anyone with a registry&apos;s link can open it. The link ends in a random code, so people find it
-                only if someone shares it with them. Public registries can also show up in search engines. Registries
-                set to &ldquo;Only people with the link&rdquo; are hidden from search engines, and show on your
-                profile only to people you&apos;ve let follow you, or to people in a group you&apos;ve shared them
-                with.
+                You choose who can open each registry. New registries start as &ldquo;Anyone with the link&rdquo;:
+                the link ends in a random code, so people find it only if someone shares it with them. These are
+                hidden from search engines, and show on your profile only to people you&apos;ve let follow you, or to
+                people in a group you&apos;ve shared them with. Public registries open for anyone with the link, can
+                show up in search engines, and show on your profile to anyone who opens it.
+              </li>
+              <li>
+                Private registries open only for you and your co-managers. Their link doesn&apos;t work for anyone
+                else, guests&apos; gift emails included. They don&apos;t show on your profile, and making a registry
+                private takes it off any event or group you&apos;ve shared it with.
               </li>
               <li>
                 You can get a new link for a registry at any time, and the old one stops opening it. We keep the old

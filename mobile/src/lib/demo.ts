@@ -206,7 +206,7 @@ export const demo = {
       );
     }
   },
-  createRegistry(input: { title: string; registry_type: Registry["registry_type"]; event_type: Registry["event_type"]; event_date: string | null; is_public: boolean }, categoryNames: string[]) {
+  createRegistry(input: { title: string; registry_type: Registry["registry_type"]; event_type: Registry["event_type"]; event_date: string | null; is_public: boolean; is_private: boolean }, categoryNames: string[]) {
     const id = newId("registry");
     const registry: Registry = {
       id,
@@ -215,6 +215,7 @@ export const demo = {
       slug: id,
       event_date: input.event_date,
       is_public: input.is_public,
+      is_private: input.is_private,
       description: null,
       photo_url: null,
       registry_type: input.registry_type,

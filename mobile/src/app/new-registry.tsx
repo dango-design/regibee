@@ -4,13 +4,13 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button, Chip, Divider, Field, IconButton, Section, SwitchRow, Text } from "@/components/ui";
+import { Button, Chip, Field, IconButton, Section, SwitchRow, Text } from "@/components/ui";
 import { errorMessage, useCreateRegistry } from "@/lib/data";
 import { formatEventDate } from "@/lib/format";
 import { EVENT_TYPES } from "@/lib/occasion";
 import { spacing, useTheme } from "@/lib/theme";
 import type { EventType, RegistryType } from "@/lib/types";
-import { LIST_ACCESS } from "@shared/list-access";
+import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@shared/list-access";
 
 function toYmd(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -26,7 +26,7 @@ export default function NewRegistryScreen() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
@@ -41,7 +41,7 @@ export default function NewRegistryScreen() {
         registryType,
         eventType: registryType === "personal" ? eventType : null,
         eventDate: date ? toYmd(date) : null,
-        isPublic,
+        visibility,
       },
       {
         onSuccess: ({ id }) => {
@@ -122,15 +122,26 @@ export default function NewRegistryScreen() {
               />
             </View>
           ) : null}
-          <Divider inset={52} />
-          <SwitchRow
-            icon="public"
-            label={LIST_ACCESS.public.label}
-            description={isPublic ? LIST_ACCESS.public.description : LIST_ACCESS.link.description}
-            value={isPublic}
-            onValueChange={setIsPublic}
-          />
         </Section>
+
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+            Who can open it?
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {LIST_VISIBILITIES.map((value) => (
+              <Chip
+                key={value}
+                label={LIST_ACCESS[value].label}
+                selected={visibility === value}
+                onPress={() => setVisibility(value)}
+              />
+            ))}
+          </View>
+          <Text variant="footnote" tone="tertiary">
+            {LIST_ACCESS[visibility].description}
+          </Text>
+        </View>
       </ScrollView>
       <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (

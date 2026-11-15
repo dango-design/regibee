@@ -15,7 +15,7 @@ import {
 } from "react-native";
 
 import { formatReservedUntil, isHeldUntilBought, isOpenReservation } from "@shared/gifts";
-import { listAccess } from "@shared/list-access";
+import { LIST_ACCESS, listAccess, listVisibility } from "@shared/list-access";
 
 import { Icon } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
@@ -112,7 +112,16 @@ export default function RegistryScreen() {
   const r = data.registry;
   const shareUrl = registryShareUrl(r.slug);
 
+  const visibility = listVisibility(r);
+
   function shareRegistry() {
+    if (visibility === "private") {
+      Alert.alert(
+        "This list is private",
+        `${LIST_ACCESS.private.description} To share it, change who can open it in the list's settings on the website.`
+      );
+      return;
+    }
     Share.share(
       Platform.OS === "ios" ? { url: shareUrl, message: r.title } : { message: `${r.title}\n${shareUrl}`, title: r.title }
     );
@@ -329,7 +338,7 @@ function RegistryHeader({
         <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
           <Pill label={occasionLabel(r)} tone="accent" />
           {r.event_date ? <Pill label={`${formatEventDate(r.event_date)}${when ? ` · ${when}` : ""}`} tone="tint" icon="calendar" /> : null}
-          <Pill label={listAccess(r.is_public).short} icon={r.is_public ? "public" : "link"} />
+          <Pill label={listAccess(listVisibility(r)).short} icon={listVisibility(r) === "private" ? "lock" : listVisibility(r) === "public" ? "public" : "link"} />
         </View>
       </View>
 

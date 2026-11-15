@@ -16,6 +16,7 @@ import { saveProfile, setRegistryListed } from "@/lib/actions/profile";
 import { saveGiftProfile } from "@/lib/actions/gift-profile";
 import type { GiftProfile } from "@/lib/gift-profile";
 import { occasionLabel } from "@/lib/registry-copy";
+import { LIST_ACCESS, listVisibility } from "@/lib/list-access";
 import { profilePath } from "@/lib/profile-link";
 import type { FollowPerson, PersonSummary } from "@/lib/follows";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
@@ -24,6 +25,7 @@ export interface AccountRegistry {
   id: string;
   title: string;
   is_public: boolean;
+  is_private?: boolean;
   listed_on_profile: boolean;
   has_shipping_address: boolean;
   registry_type: RegistryType;
@@ -53,9 +55,20 @@ function RegistryListingRow({
     setSaving(false);
   };
 
-  let hint = registry.is_public
-    ? `${occasionLabel(registry.registry_type, registry.event_type)} · Public`
-    : "Private: only followers you approve see it";
+  const visibility = listVisibility(registry);
+  if (visibility === "private") {
+    return (
+      <div className="text-sm">
+        <p className="font-medium text-secondary">{registry.title}</p>
+        <p className="text-tertiary">Private, so it can&apos;t show on your profile</p>
+      </div>
+    );
+  }
+
+  let hint =
+    visibility === "public"
+      ? `${occasionLabel(registry.registry_type, registry.event_type)} · ${LIST_ACCESS.public.short}: anyone who opens your profile sees it`
+      : `${LIST_ACCESS.link.short}: only followers you approve see it`;
   if (listed && registry.has_shipping_address) {
     hint += ". Anyone who reserves a gift can see your shipping address.";
   }

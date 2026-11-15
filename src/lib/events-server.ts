@@ -25,7 +25,12 @@ export async function getManageableRegistries(userId: string): Promise<{ id: str
     .eq("user_id", userId);
   const ids = (managed || []).map((m) => m.registry_id as string);
 
-  const query = supabaseAdmin.from("registries").select("id, title").order("created_at", { ascending: false });
+  // Private lists can't be added to an event.
+  const query = supabaseAdmin
+    .from("registries")
+    .select("id, title")
+    .eq("is_private", false)
+    .order("created_at", { ascending: false });
   const { data } = ids.length > 0
     ? await query.or(`owner_id.eq.${userId},id.in.(${ids.join(",")})`)
     : await query.eq("owner_id", userId);
@@ -290,17 +295,20 @@ export async function getEventRegistries(eventId: string, { withItems = false } 
 /**
  * Finds a registry from its share link (https://regibee.com/r/<slug>), a
  * path (/r/<slug>), or the slug alone. Anyone with the link can see a
- * registry, so anyone with the link can link it to an event.
+ * registry, so anyone with the link can link it to an event. Private lists
+ * aren't found.
  */
 export async function resolveRegistryLink(
   input: string,
 ): Promise<{ id: string; slug: string; title: string; honoree: string | null } | null> {
   const slug = registrySlugFromLink(input);
   if (!slug) return null;
+  // A private list's link doesn't work for anyone else, here too.
   const { data } = await supabaseAdmin
     .from("registries")
     .select("id, slug, title, honoree_names, parent_names")
     .eq("slug", slug)
+    .eq("is_private", false)
     .maybeSingle();
   if (!data) return null;
   return {

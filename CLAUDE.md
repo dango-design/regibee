@@ -43,7 +43,9 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 ## List links
 
-- Anyone with a list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
+- A list is private, link-only or public (`src/lib/list-access.ts`). The database keeps this as `is_private` and `is_public`; both can't be set. New lists start link-only.
+- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wish lists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
+- Anyone with a link-only or public list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
 - A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
 - Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
 

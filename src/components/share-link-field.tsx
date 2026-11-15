@@ -59,7 +59,7 @@ export function ShareLinkField({
 
   return (
     <div className="space-y-2">
-      <span className="text-sm font-medium text-secondary">Share link</span>
+      <span className="text-sm font-medium text-secondary">Link</span>
       <div className="flex items-center gap-4">
         <p className="min-w-0 break-all font-mono text-sm text-tertiary">
           {siteUrl.replace(/^https?:\/\//, "")}
@@ -107,17 +107,19 @@ export function ShareLinkField({
           </div>
         </div>
       ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setConfirming(true);
-            setReplaced(false);
-          }}
-        >
-          Get a new link
-        </Button>
+        <p className="text-xs text-tertiary">
+          Sent it to someone by mistake?{" "}
+          <button
+            type="button"
+            className="font-medium text-brand-600 hover:underline max-sm:min-h-11"
+            onClick={() => {
+              setConfirming(true);
+              setReplaced(false);
+            }}
+          >
+            Get a new link
+          </button>
+        </p>
       )}
 
       {replaced && (
