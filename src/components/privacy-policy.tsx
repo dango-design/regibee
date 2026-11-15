@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 14, 2026",
+  effectiveDate: "November 15, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -248,6 +248,14 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               profile, even if the registry is private.
             </P>
 
+            <H3>Your gift ideas</H3>
+            <P>
+              If you save gift ideas for other people, we keep what you save: the name you give the person, such as
+              &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note. Only you can see them.
+              They aren&apos;t on any registry and have no link, we never show them to the person or anyone else, and
+              we don&apos;t email anyone about them.
+            </P>
+
             <H3>Following and blocking</H3>
             <P>
               We keep who you follow, who follows you, follow requests and who you&apos;ve blocked. When you search
@@ -362,7 +370,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">The page you&apos;re on, when you ask.</strong> It reads
                 a product page only when you click its toolbar button, use its &ldquo;Add to Regibee&rdquo; menu item
-                or press its shortcut.
+                or press its shortcut. You can add the product to a registry or save it as a gift idea, which only you
+                can see.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Links you paste on regibee.com.</strong> When you paste
@@ -372,8 +381,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             </List>
             <P>
               It doesn&apos;t read any other pages or your browsing history. In your browser it keeps its own Regibee
-              session, your name and email address, your list of registries, and which store items you&apos;ve
-              already seen. Disconnecting the extension removes them, and removing it from Chrome removes
+              session, your name and email address, your list of registries, the names of the people you&apos;ve
+              saved gift ideas for, and which store items you&apos;ve already seen. Disconnecting the extension removes them, and removing it from Chrome removes
               everything it kept.
             </P>
           </Section>
@@ -503,7 +512,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <List>
               <li>
                 <strong className="font-semibold text-primary">See and change.</strong> Edit your registries, items,
-                funds and events wherever you see them on your dashboard. Change your name and how people can find
+                funds, events and gift ideas wherever you see them on your dashboard. Change your name and how people can find
                 you on your{" "}
                 <Link href="/dashboard/account" className={linkClass}>
                   Account page
@@ -511,13 +520,13 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 .
               </li>
               <li>
-                <strong className="font-semibold text-primary">Delete.</strong> Delete items, registries and events
-                whenever you like. Delete your whole account on your{" "}
+                <strong className="font-semibold text-primary">Delete.</strong> Delete items, registries, events and
+                gift ideas whenever you like. Delete your whole account on your{" "}
                 <Link href="/dashboard/account" className={linkClass}>
                   Account page
                 </Link>
                 , or on the Account tab in the app. That deletes your sign-in and profile, your follows, follow
-                requests and blocks, your groups, and the events you made with their guest lists and RSVPs. It signs you out of
+                requests and blocks, your groups, your gift ideas, and the events you made with their guest lists and RSVPs. It signs you out of
                 the website, the app and the extension.
               </li>
               <li>

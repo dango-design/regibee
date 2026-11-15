@@ -47,6 +47,27 @@ export interface ExtensionRegistry {
 export interface MeResponse {
   user: { name: string; email: string | null };
   registries: ExtensionRegistry[];
+  /**
+   * The people the owner saved gift ideas for, most recent first, for the
+   * popup to offer. Missing from older servers.
+   */
+  ideaRecipients?: string[];
+}
+
+/** A gift idea saved from a product page. Checked on the server by parseGiftIdea (src/lib/gift-ideas.ts). */
+export interface IdeaRequest {
+  idea: {
+    recipient: string;
+    title: string;
+    url: string;
+    imageUrl: string | null;
+    price: number | null;
+    notes: string | null;
+  };
+}
+
+export interface IdeaResponse {
+  added: { id: string; title: string; recipient: string };
 }
 
 export interface CheckRequest {

@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/viewer";
 import { findSharedLink } from "@/lib/shared-link";
-import { SharePicker, addSharedLinkHref, type ShareRegistry } from "@/components/share-picker";
+import { SharePicker, type ShareRegistry } from "@/components/share-picker";
 
 export const metadata: Metadata = {
   title: "Add to Regibee",
@@ -18,8 +18,10 @@ function first(value: string | string[] | undefined): string | undefined {
 
 // Android opens this page when an owner shares a product to an installed
 // Regibee (the manifest's share_target, src/app/manifest.ts). It finds the
-// product link in what was shared, asks which registry when there's more than
-// one, and opens that registry's add item dialog with the link filled in.
+// product link in what was shared and asks where it goes: on one of their
+// registries, which opens that registry's add item dialog, or a gift idea for
+// someone else, which opens the Saved tab's Gift ideas view. Either way the
+// link is filled in.
 export default async function SharePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const sharedFields = { title: first(params.title), text: first(params.text), url: first(params.url) };
@@ -62,8 +64,6 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
     photoUrl: registry.photo_url ?? null,
     names: registry.honoree_names || null,
   }));
-
-  if (registries.length === 1) redirect(addSharedLinkHref(registries[0].id, shared));
 
   return <SharePicker shared={shared} registries={registries} />;
 }
