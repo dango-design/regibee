@@ -249,7 +249,7 @@ export function FollowButton({
     none: followsYou ? `${name} follows you. They approve every follower.` : `${name} approves every follower.`,
     pending: `Waiting for ${name} to approve.`,
     approved: followsYou
-      ? `You follow each other, so you can see each other's private registries.`
+      ? "You follow each other."
       : `You can see ${name}'s private registries.`,
   }[state];
 
