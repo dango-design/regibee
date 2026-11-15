@@ -60,11 +60,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: description || `You're invited to ${event.title}`,
     // Event pages can show a home address, so they're never in search results.
     robots: { index: false, follow: false },
-    // Links texted or posted to friends show the invitation picture.
+    // Links texted or posted to friends show the invitation picture, or
+    // Regibee's share image (src/app/opengraph-image.tsx) for an event without
+    // one. This openGraph replaces the site-wide one, so without that second
+    // choice the link would have no picture and Messenger would pick one off
+    // the page.
     openGraph: {
       title: event.title,
       description: description || undefined,
-      ...(event.image_url && { images: [{ url: event.image_url }] }),
+      images: [{ url: event.image_url || "/opengraph-image" }],
     },
   };
 }

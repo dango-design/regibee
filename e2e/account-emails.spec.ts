@@ -13,7 +13,7 @@ test("the password reset email is Regibee's, and its link sets a new password", 
   const account = await createAccount("Rita Reset");
 
   await page.goto("/forgot-password");
-  await waitForReact(page, "form");
+  await waitForReact(page.locator("form"));
   await page.getByRole("textbox", { name: "Email" }).fill(account.email);
   await page.getByRole("button", { name: "Send reset link" }).click();
 
@@ -25,7 +25,7 @@ test("the password reset email is Regibee's, and its link sets a new password", 
 
   await page.goto(link);
   await page.waitForURL(/\/reset-password/);
-  await waitForReact(page, "form");
+  await waitForReact(page.locator("form"));
   const newPassword = `pw-${randomUUID()}`;
   const passwords = page.locator('input[type="password"]');
   await passwords.nth(0).fill(newPassword);

@@ -54,7 +54,7 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
   const account = await createAccount("Casey Comanager");
   await page.getByRole("link", { name: "Sign In" }).click();
   await page.waitForURL(/\/login\?redirect=/);
-  await waitForReact(page, "form");
+  await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
   await page.getByRole("button", { name: "Sign In" }).click();

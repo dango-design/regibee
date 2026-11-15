@@ -14,6 +14,7 @@ import {
   signIn,
   SITE_URL,
   uniqueEmail,
+  waitForReact,
 } from "./fixtures";
 import { emailsTo, linkIn, waitForEmail } from "./mailbox";
 
@@ -95,6 +96,7 @@ test("a wishlist added to a gift exchange hides reservations from its owner only
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
   const hideBox = page.getByRole("checkbox", { name: "Hide what's been reserved from me" });
   await expect(hideBox).toBeChecked();
+  await waitForReact(hideBox);
   await hideBox.click({ force: true });
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: "Saved!" })).toBeVisible();
