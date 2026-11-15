@@ -6,7 +6,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
-import { createAccount, createWishlist, db, signIn } from "./fixtures";
+import { createAccount, createWishlist, db, signIn, waitForReact } from "./fixtures";
 import { localSupabase } from "./local-supabase";
 
 function anonClient(): SupabaseClient {
@@ -114,6 +114,7 @@ test("unmarking already bought keeps guests' gifts counted (#119)", async ({ pag
   // The list has one item, so these are its buttons.
   const markBought = page.getByRole("button", { name: /Mark as (bought by parent|already bought)/ }).first();
   const unmark = page.getByRole("button", { name: "Mark as unpurchased" }).first();
+  await waitForReact(markBought);
   await markBought.click();
   await expect(unmark).toBeVisible();
   expect(await countOf(item.id)).toBe(2);

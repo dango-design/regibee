@@ -5,7 +5,7 @@
 // back, and two people who follow each other show as Mutual.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createWishlist, CRON_SECRET, db } from "./fixtures";
+import { createAccount, createWishlist, CRON_SECRET, db, waitForReact } from "./fixtures";
 import { emailsTo, linkIn, waitForEmail } from "./mailbox";
 import { addDays, formatBirthday } from "../src/lib/gift-profile";
 import { profilePath } from "../src/lib/profile-link";
@@ -55,6 +55,7 @@ async function runBirthdayJob(page: Page) {
 
 async function signInAs(page: Page, account: { email: string; password: string }) {
   await page.goto("/login");
+  await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
   await page.getByRole("button", { name: "Sign In" }).click();
@@ -219,6 +220,7 @@ test("a list kept for a child has its own gift profile, and followers see the ch
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
   const form = page.locator("#gift-profile");
   await expect(form.getByText("About Toto")).toBeVisible();
+  await waitForReact(form);
   const birthday = birthdayIn(3);
   await form.getByLabel("Toto's birthday: month").selectOption(String(birthday.month));
   await form.getByLabel("Toto's birthday: day").selectOption(String(birthday.day));
