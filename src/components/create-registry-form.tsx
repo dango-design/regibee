@@ -257,8 +257,10 @@ function ChoiceCard({
           : "border-secondary hover:border-primary",
       )}
     >
-      <span className="flex items-center gap-2 font-medium text-primary">
-        {icon}
+      {/* The icon sits beside the title's first line, so a title that wraps,
+          like "Anyone with the link", doesn't pull it down between lines. */}
+      <span className="flex items-start gap-2 font-medium text-primary">
+        {icon && <span className="flex h-[1lh] shrink-0 items-center">{icon}</span>}
         {title}
       </span>
       <span className="mt-1 block text-xs text-tertiary">{description}</span>
