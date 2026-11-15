@@ -1,5 +1,5 @@
-// "What are you planning?" (issue #103): the one New button. Each plan goes
-// through the picker the way a person would, and checks what it made.
+// "Start something new" (issue #103): the one New button. Each plan goes
+// through the page the way a person would, and checks what it made.
 
 import { expect, test, type Page } from "@playwright/test";
 import { createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail } from "./fixtures";
@@ -8,7 +8,7 @@ import { linkIn, waitForEmail } from "./mailbox";
 async function openPicker(page: Page) {
   await page.goto("/dashboard");
   await page.getByRole("link", { name: "New", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you planning?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Or plan an event" })).toBeVisible();
 }
 
 /**
@@ -18,7 +18,7 @@ async function openPicker(page: Page) {
 async function chooseOccasion(page: Page, label: string) {
   await expect(async () => {
     await page.getByRole("button", { name: label, exact: true }).click();
-    await expect(page.getByRole("heading", { name: "What are you planning?" })).toBeHidden({ timeout: 1000 });
+    await expect(page.getByRole("heading", { name: "Or plan an event" })).toBeHidden({ timeout: 1000 });
   }).toPass();
 }
 
@@ -160,7 +160,7 @@ test("asking the person it's for to make a list links it once they do", async ({
   await again.close();
 });
 
-test("a Secret Santa and a wishlist on its own", async ({ page }) => {
+test("a Secret Santa goes straight to its name", async ({ page }) => {
   const maya = await createAccount("Maya Owner");
   await signIn(page, maya);
 
@@ -172,19 +172,47 @@ test("a Secret Santa and a wishlist on its own", async ({ page }) => {
   const eventId = await eventIdFrom(page);
   const { data: exchange } = await db.from("gift_exchanges").select("event_id").eq("event_id", eventId).maybeSingle();
   expect(exchange?.event_id).toBe(eventId);
+});
 
-  // Just a wishlist: no event.
+test("a baby registry on its own asks nothing about an event, and its party prompt can be dismissed", async ({ page }) => {
+  const maya = await createAccount("Maya Owner");
+  await signIn(page, maya);
+
+  // The gift lists come first, and open the registry form with the type chosen.
   await openPicker(page);
+  await page.getByRole("link", { name: /Baby registry/ }).click();
+  await expect(page.getByRole("heading", { name: "Create Your Registry" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Registry type/ })).toContainText("Baby");
+  // A click before the page's scripts load does nothing, so wait until the
+  // form answers one.
   await expect(async () => {
-    await page.getByRole("button", { name: "Make just a wishlist" }).click();
-    await expect(page.getByLabel("List name")).toBeVisible({ timeout: 1000 });
+    await page.getByRole("button", { name: /Who can see it/ }).click();
+    await expect(page.getByRole("button", { name: /Who can see it/, expanded: true })).toBeVisible({ timeout: 1000 });
   }).toPass();
-  await expect(page.getByLabel("List name")).toHaveValue("Maya's Wishlist");
-  await page.getByRole("button", { name: "Make the list" }).click();
+  await page.getByRole("button", { name: /Name and date/ }).click();
+  await page.getByLabel("Registry name").fill("Maya's Baby Registry");
+  await page.getByRole("button", { name: "Create Registry" }).click();
   await page.waitForURL(/\/dashboard\/registry\/[0-9a-f-]{36}$/);
   const registryId = page.url().split("/dashboard/registry/")[1];
-  const { data: registry } = await db.from("registries").select("owner_id, registry_type, event_type").eq("id", registryId).single();
-  expect(registry).toEqual({ owner_id: maya.id, registry_type: "personal", event_type: "other" });
+  const { data: registry } = await db.from("registries").select("owner_id, registry_type, title").eq("id", registryId).single();
+  expect(registry).toEqual({ owner_id: maya.id, registry_type: "baby", title: "Maya's Baby Registry" });
   const { count } = await db.from("events").select("id", { count: "exact", head: true }).eq("owner_id", maya.id);
-  expect(count).toBe(1);
+  expect(count).toBe(0);
+
+  // The registry suggests a party, quietly, until someone dismisses it.
+  await expect(page.getByText("Planning a party?")).toBeVisible();
+  await expect(async () => {
+    await page.getByRole("button", { name: "Dismiss" }).click();
+    await expect(page.getByText("Planning a party?")).toBeHidden({ timeout: 1000 });
+  }).toPass();
+  // Planning one stays a click away, in the header.
+  const planLink = page.getByRole("link", { name: "Plan an event" });
+  await expect(planLink).toHaveAttribute("href", `/dashboard/events/new?registry=${registryId}`);
+
+  // It stays dismissed.
+  await page.reload();
+  await expect(planLink).toBeVisible();
+  await expect(page.getByText("Planning a party?")).toHaveCount(0);
+  const { data: saved } = await db.from("registries").select("settings").eq("id", registryId).single();
+  expect(saved?.settings).toMatchObject({ event_prompt_dismissed: true });
 });
