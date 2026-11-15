@@ -66,7 +66,9 @@ test("the owner gets a new link: the old one stops working, guests' gift emails 
   // The owner makes the list link only and turns its link off.
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
-  await page.getByRole("radio", { name: /Only people with the link/ }).check();
+  // The choices are cards: each radio button is hidden inside its label.
+  await page.locator("label", { hasText: "Anyone with the link" }).click();
+  await expect(page.getByRole("radio", { name: /Anyone with the link/ })).toBeChecked();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("button", { name: "Saved!" })).toBeVisible();
   await expect(page.getByText(`/r/${oldSlug}`)).toBeVisible();

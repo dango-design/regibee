@@ -92,6 +92,14 @@ const getRegistry = cache(async (slug: string) => {
   return data;
 });
 
+// A private list opens only for its owner and co-managers. Everyone else gets
+// the not-found page, even with its link or a gift email's signed link.
+async function hiddenFromViewer(registry: { id: string; is_private: boolean }) {
+  if (!registry.is_private) return false;
+  const viewer = await getViewer();
+  return !(viewer && (await canManageRegistry(viewer.id, registry.id)));
+}
+
 // Who shared the registry and how the viewer relates to them. The owner stays
 // hidden from a viewer they've blocked.
 async function loadOwner(listedOnProfile: boolean, ownerId: string) {
@@ -282,7 +290,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const registry = await getRegistry(slug);
 
-  if (!registry) return { title: "Registry Not Found" };
+  if (!registry || (await hiddenFromViewer(registry))) return { title: "Registry Not Found" };
 
   return {
     title: `${registry.title} | Regibee`,
@@ -330,6 +338,7 @@ export default async function PublicRegistryPage({
     }
     notFound();
   }
+  if (await hiddenFromViewer(registry)) notFound();
 
   // Only registries the owner chose to show on their profile say who owns them,
   // so unlisted ones never point to a profile. The owner lookups don't depend

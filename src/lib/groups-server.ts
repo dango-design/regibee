@@ -128,6 +128,7 @@ export async function listRegistriesSharedWithViewer(viewer: {
     .from("registries")
     .select(`${LISTED_REGISTRY_COLUMNS}, id, owner_id`)
     .in("id", [...new Set(shares.map((s) => s.registry_id as string))])
+    .eq("is_private", false)
     .neq("owner_id", viewer.id);
   type Row = ListedRegistry & { id: string; owner_id: string };
   const rows = (registries || []) as Row[];

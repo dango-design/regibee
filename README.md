@@ -47,7 +47,7 @@ A gift registry app built with Next.js, Supabase, and Tailwind CSS. It started a
 ### Privacy
 
 - **Anyone with the link can open it** - A registry's link (`/r/<title>-<code>`) opens it for anyone, with no account, so guests never need to sign up. New links end in 12 random characters, so they can't be guessed. Links made before November 2026 end in 6, and getting a new link gives them 12.
-- **Only people with the link, or public** - "Only people with the link" keeps a registry out of search engines, and on your profile only followers you approved see it. "Public" lets search engines list it too.
+- **Private, anyone with the link, or public** - "Private" opens only for you and your co-managers. "Anyone with the link", the default, keeps a registry out of search engines, and on your profile only followers you approved see it. "Public" lets search engines list it too.
 - **Get a new link** - On a registry's Settings page, any manager can turn its link off and get a new one, for when a link went further than it should. Guests' gift emails still lead to their gifts (`src/lib/list-links.ts`). Anyone else with the old link sees "This link doesn't open a list".
 
 ### Profiles and following

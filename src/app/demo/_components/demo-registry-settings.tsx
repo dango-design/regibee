@@ -14,6 +14,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { PhotoUploadButton } from "@/components/photo-upload-button";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { ListAccessField } from "@/components/list-access-field";
+import { listVisibility, type ListVisibility } from "@/lib/list-access";
 import { ShareLinkField } from "@/components/share-link-field";
 import { RegistryAvatar, monogramFor } from "@/components/registry-avatar";
 import { StoreRegistriesCard } from "@/components/store-registries-card";
@@ -64,7 +65,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [isPublic, setIsPublic] = useState(registry.is_public);
+  const [visibility, setVisibility] = useState<ListVisibility>(listVisibility(registry));
   const [listed, setListed] = useState(registry.listed_on_profile);
   const [categories, setCategories] = useState(registry.categories);
 
@@ -173,23 +174,29 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
               />
               <TextArea label="Welcome Message" name="description" defaultValue={registry.description || ""} rows={3} />
 
-              <ListAccessField isPublic={isPublic} onChange={setIsPublic} />
+              <div className="space-y-4 border-t border-secondary pt-4">
+                <h3 className="text-md font-semibold text-primary">Sharing</h3>
 
-              <ProfileListingField
-                isPublic={isPublic}
-                isSelected={listed}
-                onChange={setListed}
-                hasShippingAddress={Boolean(registry.settings.shipping_address)}
-              />
+                <ListAccessField visibility={visibility} onChange={setVisibility} />
 
-              <ShareLinkField
-                path={sharePath}
-                onReplace={async () => {
-                  await new Promise((r) => setTimeout(r, 500));
-                  return { path: sharePath };
-                }}
-                replacedMessage="In the demo, the link stays the same. On your own list, the old link stops working right away."
-              />
+                <ProfileListingField
+                  visibility={visibility}
+                  isSelected={listed}
+                  onChange={setListed}
+                  hasShippingAddress={Boolean(registry.settings.shipping_address)}
+                />
+
+                {visibility !== "private" && (
+                  <ShareLinkField
+                    path={sharePath}
+                    onReplace={async () => {
+                      await new Promise((r) => setTimeout(r, 500));
+                      return { path: sharePath };
+                    }}
+                    replacedMessage="In the demo, the link stays the same. On your own list, the old link stops working right away."
+                  />
+                )}
+              </div>
 
               <Button type="submit" disabled={general.saving}>
                 {general.label("Save changes")}

@@ -27,6 +27,8 @@ export interface Registry {
   slug: string;
   event_date: string | null;
   is_public: boolean;
+  /** Only the owner and co-managers can open it (src/lib/list-access.ts). */
+  is_private: boolean;
   listed_on_profile: boolean;
   description: string | null;
   photo_url: string | null;

@@ -16,6 +16,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
 import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
 import { canKeepOldLinks } from "@/lib/list-links";
+import { DEFAULT_LIST_VISIBILITY, parseListVisibility, visibilityColumns } from "@/lib/list-access";
 import { registryPhotoUrlPrefix } from "@/lib/registry-photos";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
 import {
@@ -194,8 +195,9 @@ export async function createRegistry(formData: FormData) {
   const title = formData.get("title") as string;
   const eventDate = formData.get("eventDate") as string;
   const description = formData.get("description") as string;
-  const isPublic = formData.get("isPublic") !== "false";
-  const listedOnProfile = formData.get("listedOnProfile") === "true";
+  const visibility = parseListVisibility(formData.get("visibility")) ?? DEFAULT_LIST_VISIBILITY;
+  // Private lists can't be on a profile.
+  const listedOnProfile = visibility !== "private" && formData.get("listedOnProfile") === "true";
   const zipCode = formData.get("zipCode") as string;
   const taxEnabled = formData.get("taxEnabled") === "true";
   const venmo = formData.get("venmo") as string;
@@ -235,7 +237,7 @@ export async function createRegistry(formData: FormData) {
     eventType,
     eventDate,
     description,
-    isPublic,
+    visibility,
     listedOnProfile,
     settings,
   });
@@ -261,13 +263,17 @@ export async function updateRegistry(registryId: string, formData: FormData) {
   const honoreeNames = honoreeNamesRaw.trim();
   const eventDate = formData.get("eventDate") as string;
   const description = formData.get("description") as string;
-  const isPublic = formData.get("isPublic") === "true";
+  const visibility = parseListVisibility(formData.get("visibility"));
+  if (!visibility) return { error: "Choose who can open this list." };
 
   // A listed registry appears under its owner's name, so only the owner can
-  // change this. Private ones stay listed, but only approved followers see them.
+  // list it. Link-only ones stay listed, but only approved followers see them.
+  // Private ones come off the profile, whoever makes them private.
   const listedField = formData.get("listedOnProfile");
   const listing: { listed_on_profile?: boolean } = {};
-  if (role === "owner" && listedField !== null) {
+  if (visibility === "private") {
+    listing.listed_on_profile = false;
+  } else if (role === "owner" && listedField !== null) {
     listing.listed_on_profile = listedField === "true";
   }
 
@@ -279,7 +285,7 @@ export async function updateRegistry(registryId: string, formData: FormData) {
       parent_names: honoreeNames || null,
       event_date: eventDate || null,
       description: description || null,
-      is_public: isPublic,
+      ...visibilityColumns(visibility),
       ...listing,
     })
     .eq("id", registryId);

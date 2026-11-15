@@ -40,8 +40,22 @@ export const Guest: Story = {
   args: { canListOnProfile: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: /Who can see it/ }));
-    await expect(canvas.queryByRole("checkbox", { name: /Show on my profile/ })).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: /Who can open it/ }));
+    await expect(canvas.queryByRole("checkbox", { name: /profile|follow/ })).toBeNull();
+    await settle();
+  },
+};
+
+// New lists start as "Anyone with the link". Picking Private takes away the
+// profile choice, since private lists can't be on a profile.
+export const PrivateList: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Who can open it/ }));
+    await expect(canvas.getByRole("button", { name: /Anyone with the link/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(canvas.getByRole("checkbox", { name: /Show to people who follow me/ })).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: /^Private/ }));
+    await expect(canvas.getByText("Private lists don't show on your profile.")).toBeVisible();
     await settle();
   },
 };
@@ -91,9 +105,9 @@ export const AllStepsDone: Story = {
     fill(title, "Remi & Max's Baby Registry");
     await userEvent.keyboard("{Enter}");
 
-    await waitFor(() => isOpen(canvasElement, /Who can see it/));
+    await waitFor(() => isOpen(canvasElement, /Who can open it/));
     await userEvent.click(
-      within(region(canvasElement, /Who can see it/)).getByRole("button", { name: "Continue" }),
+      within(region(canvasElement, /Who can open it/)).getByRole("button", { name: "Continue" }),
     );
 
     await waitFor(() => isOpen(canvasElement, /Welcome message/));

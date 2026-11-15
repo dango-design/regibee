@@ -26,7 +26,7 @@ export default async function AccountPage() {
       .single(),
     supabase
       .from("registries")
-      .select("id, title, is_public, listed_on_profile, registry_type, event_type, settings")
+      .select("id, title, is_public, is_private, listed_on_profile, registry_type, event_type, settings")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false }),
     listFollows(user.id),
