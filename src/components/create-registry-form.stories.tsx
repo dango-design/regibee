@@ -81,6 +81,25 @@ export const NameStep: Story = {
   },
 };
 
+// "Baby registry" on the New page opens the form with Baby already chosen,
+// on the name.
+export const StartedAsBabyRegistry: Story = {
+  args: { startType: "baby" },
+  play: async ({ canvasElement }) => {
+    await isOpen(canvasElement, /Name and date/);
+    await expect(within(canvasElement).getByRole("button", { name: /Registry type/ })).toHaveTextContent("Baby");
+  },
+};
+
+// "Wishlist" on the New page opens on the occasions, with Personal chosen.
+export const StartedAsWishlist: Story = {
+  args: { startType: "personal" },
+  play: async ({ canvasElement }) => {
+    await isOpen(canvasElement, /Registry type/);
+    await expect(within(canvasElement).getByRole("button", { name: /^Personal/ })).toHaveAttribute("aria-pressed", "true");
+  },
+};
+
 // Pressing Create with no name opens the name section and shows the error.
 export const MissingName: Story = {
   play: async ({ canvasElement }) => {

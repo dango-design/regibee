@@ -1205,6 +1205,30 @@ export async function updateZipCode(
   return { success: true };
 }
 
+/**
+ * Hides the "Planning a party?" prompt on a registry's page, for everyone who
+ * manages it. The page then offers a smaller "Plan an event" button instead.
+ */
+export async function dismissEventPrompt(registryId: string): Promise<{ error: string | null }> {
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const supabase = await createClient();
+  const { data: registry } = await supabase
+    .from("registries")
+    .select("settings")
+    .eq("id", registryId)
+    .single();
+  if (!registry) return { error: "Registry not found" };
+
+  const settings = { ...((registry.settings as Record<string, unknown>) || {}), event_prompt_dismissed: true };
+  const { error } = await supabase.from("registries").update({ settings }).eq("id", registryId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/registry/${registryId}`);
+  return { error: null };
+}
+
 export async function toggleChecklistDismissed(
   registryId: string,
   itemName: string,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ClipboardList, Gift, Link2, Loader2, Mail, Shuffle, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Baby, Check, ClipboardList, Gift, Heart, Link2, Loader2, Mail, Shuffle, Users, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -120,6 +120,26 @@ function Choice({
   );
 }
 
+/**
+ * Gift lists that don't need an event. Each opens the registry form with its
+ * type already chosen, so making one never asks about a party.
+ */
+const LISTS_ON_THEIR_OWN: { label: string; hint: string; href: string; icon: LucideIcon }[] = [
+  { label: "Baby registry", hint: "For a new arrival", href: "/dashboard/registry/new?type=baby", icon: Baby },
+  {
+    label: "Wedding registry",
+    hint: "For the two of you",
+    href: "/dashboard/registry/new?type=personal&occasion=wedding",
+    icon: Heart,
+  },
+  {
+    label: "Wishlist",
+    hint: "Birthday, Christmas, a new home, or anything",
+    href: "/dashboard/registry/new?type=personal",
+    icon: Gift,
+  },
+];
+
 const PLAN_ICONS: Partial<Record<GiftPlan, LucideIcon>> = {
   new_list: Gift,
   link: Link2,
@@ -130,9 +150,12 @@ const PLAN_ICONS: Partial<Record<GiftPlan, LucideIcon>> = {
 };
 
 /**
- * "What are you planning?": the one New button's page. Three questions
- * (what, who it's for, how gifts work) and a name, then startPlan makes the
- * event, the gift list, or both, with the gift plan set up.
+ * The one New button's page. It starts with two kinds of thing to make:
+ *
+ * - A gift list on its own. These link to the registry form, with no event.
+ * - An event. Three questions (what, who it's for, how gifts work) and a
+ *   name, then startPlan makes the event, with a gift list if the host wants
+ *   one.
  */
 export function PlanPicker({
   myName = "",
@@ -241,10 +264,6 @@ export function PlanPicker({
     goTo(order[Math.max(index, 0)]);
   };
 
-  const justAList = () => {
-    goTo("name", { occasion: "other", audience: "me", name: state.name || myName, gifts: "new_list", invitation: false });
-  };
-
   const make = async () => {
     if (!state.occasion || !state.audience || !state.gifts) return;
     setSaving(true);
@@ -317,35 +336,75 @@ export function PlanPicker({
 
   return (
     <div className="flex flex-col gap-6">
-      <ol aria-label="Steps" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {STEPS.map((s, index) => (
-          <li
-            key={s.id}
-            aria-current={s.id === state.step ? "step" : undefined}
-            className={cx(
-              "flex items-center gap-1.5",
-              index === stepIndex ? "font-semibold text-primary" : index < stepIndex ? "text-secondary" : "text-tertiary",
-            )}
-          >
-            <span
-              aria-hidden="true"
+      {state.step !== "what" && (
+        <ol aria-label="Steps" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {STEPS.map((s, index) => (
+            <li
+              key={s.id}
+              aria-current={s.id === state.step ? "step" : undefined}
               className={cx(
-                "flex size-5 items-center justify-center rounded-full text-xs",
-                index <= stepIndex ? "bg-brand-600 text-white" : "border border-secondary",
+                "flex items-center gap-1.5",
+                index === stepIndex ? "font-semibold text-primary" : index < stepIndex ? "text-secondary" : "text-tertiary",
               )}
             >
-              {index < stepIndex ? <Check className="size-3" /> : index + 1}
-            </span>
-            {s.label}
-          </li>
-        ))}
-      </ol>
+              <span
+                aria-hidden="true"
+                className={cx(
+                  "flex size-5 items-center justify-center rounded-full text-xs",
+                  index <= stepIndex ? "bg-brand-600 text-white" : "border border-secondary",
+                )}
+              >
+                {index < stepIndex ? <Check className="size-3" /> : index + 1}
+              </span>
+              {s.label}
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {state.step === "what" && (
+        <section aria-labelledby="plan-list" className="flex flex-col gap-4">
+          <div>
+            <h2 id="plan-list" className="text-xl font-semibold">
+              Make a gift list
+            </h2>
+            <p className="mt-1 text-sm text-tertiary">
+              Just the list, ready to share. You don&apos;t need an event, and you can plan one later.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {LISTS_ON_THEIR_OWN.map(({ label, hint, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-start gap-3 rounded-xl border border-secondary px-4 py-3 transition outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-brand-600"
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"
+                >
+                  <Icon className="size-4" />
+                </span>
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-primary">{label}</span>
+                  <span className="text-sm text-tertiary">{hint}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {state.step === "what" && (
         <section aria-labelledby="plan-what" className="flex flex-col gap-4">
-          <h2 id="plan-what" className="text-xl font-semibold">
-            What are you planning?
-          </h2>
+          <div>
+            <h2 id="plan-what" className="text-xl font-semibold">
+              Or plan an event
+            </h2>
+            <p className="mt-1 text-sm text-tertiary">
+              Invitations and RSVPs, with a gift list if you want one.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {OCCASIONS.map((o) => {
               const theme = themeForTint(o.tint);
@@ -366,12 +425,6 @@ export function PlanPicker({
               );
             })}
           </div>
-          <p className="text-sm text-tertiary">
-            Only want a wishlist for yourself?{" "}
-            <button type="button" onClick={justAList} className="cursor-pointer font-medium text-brand-600 hover:underline">
-              Make just a wishlist
-            </button>
-          </p>
         </section>
       )}
 
@@ -564,15 +617,11 @@ export function PlanPicker({
       )}
 
       <p className="border-t border-secondary pt-4 text-sm text-tertiary">
-        Rather fill in everything yourself?{" "}
-        <Link href="/dashboard/registry/new" className="font-medium text-brand-600 hover:underline">
-          Make a registry
-        </Link>{" "}
-        or{" "}
+        Rather fill in every detail of an event yourself?{" "}
         <Link href="/dashboard/events/new" className="font-medium text-brand-600 hover:underline">
-          plan an event
-        </Link>{" "}
-        with the full form.
+          Use the full event form
+        </Link>
+        .
       </p>
     </div>
   );

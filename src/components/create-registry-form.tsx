@@ -272,15 +272,34 @@ export interface CreateRegistryFormProps {
    * "Show on my profile" choice is left out.
    */
   canListOnProfile?: boolean;
+  /**
+   * The registry type, already chosen on the New page. With one, the form
+   * opens on the name, or on the occasion for a personal list without one.
+   */
+  startType?: RegistryType;
+  /** A personal list's occasion, already chosen on the New page. */
+  startOccasion?: PersonalEventType;
   createAction?: (formData: FormData) => Promise<{ error?: string } | void>;
+}
+
+/** Which section opens first, and which count as visited already. */
+function startingNav(startType?: RegistryType, startOccasion?: PersonalEventType): NavState {
+  const typeIsSettled = startType === "baby" || (startType === "personal" && Boolean(startOccasion));
+  return typeIsSettled
+    ? { open: "details", visited: new Set<SectionId>(["type"]) }
+    : { open: "type", visited: new Set<SectionId>() };
 }
 
 export function CreateRegistryForm({
   canListOnProfile = true,
+  startType,
+  startOccasion,
   createAction = createRegistry,
 }: CreateRegistryFormProps) {
-  const [registryType, setRegistryType] = useState<RegistryType>("baby");
-  const [eventType, setEventType] = useState<PersonalEventType | "">("");
+  const [registryType, setRegistryType] = useState<RegistryType>(startType ?? "baby");
+  const [eventType, setEventType] = useState<PersonalEventType | "">(
+    startType === "personal" ? (startOccasion ?? "") : "",
+  );
   const [title, setTitle] = useState("");
   const [titleError, setTitleError] = useState(false);
   const [eventDate, setEventDate] = useState("");
@@ -294,7 +313,7 @@ export function CreateRegistryForm({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [nav, dispatch] = useReducer(navReducer, { open: "type", visited: new Set<SectionId>() });
+  const [nav, dispatch] = useReducer(navReducer, startingNav(startType, startOccasion));
 
   const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
   const titleRef = useRef<HTMLInputElement>(null);
@@ -554,7 +573,7 @@ export function CreateRegistryForm({
                 onClick={() => chooseRegistryType("baby")}
                 icon={<Baby className="h-4 w-4" />}
                 title="Baby"
-                description="Baby shower, expecting a new arrival"
+                description="Expecting or welcoming a new arrival"
               />
               <ChoiceCard
                 selected={registryType === "personal"}

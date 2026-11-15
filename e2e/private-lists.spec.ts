@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
-import { createAccount, createExchangeEvent, createWishlist, db, signIn } from "./fixtures";
+import { createAccount, createExchangeEvent, createWishlist, db, signIn, waitForReact } from "./fixtures";
 import { localSupabase } from "./local-supabase";
 
 test("a private list opens only for its owner and co-managers", async ({ page, browser }) => {
@@ -27,6 +27,7 @@ test("a private list opens only for its owner and co-managers", async ({ page, b
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
   await expect(page.getByRole("radio", { name: /^Public/ })).toBeChecked();
+  await waitForReact(page.getByRole("radio", { name: /^Private/ }));
   // The choices are cards: each radio button is hidden inside its label.
   await page.locator("label", { hasText: /^Private/ }).click();
   await expect(page.getByRole("radio", { name: /^Private/ })).toBeChecked();
@@ -86,7 +87,9 @@ test("new lists start as anyone with the link", async ({ page }) => {
   const owner = await createAccount("Nia Owner");
   await signIn(page, owner);
   await page.goto("/dashboard/registry/new");
-  await page.getByRole("button", { name: /^Baby/ }).click();
+  const baby = page.getByRole("button", { name: /^Baby/ });
+  await waitForReact(baby);
+  await baby.click();
   const title = `Nia's Baby Registry ${Date.now()}`;
   await page.getByLabel(/Registry name/).fill(title);
   await page.getByRole("button", { name: "Create Registry" }).click();

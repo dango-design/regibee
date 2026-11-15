@@ -15,6 +15,7 @@ import {
   SITE_URL,
   uniqueEmail,
   uniqueId,
+  waitForReact,
 } from "./fixtures";
 import { linkIn, waitForEmail } from "./mailbox";
 
@@ -67,8 +68,10 @@ test("the owner gets a new link: the old one stops working, guests' gift emails 
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
   // The choices are cards: each radio button is hidden inside its label.
+  const linkOnly = page.getByRole("radio", { name: /Anyone with the link/ });
+  await waitForReact(linkOnly);
   await page.locator("label", { hasText: "Anyone with the link" }).click();
-  await expect(page.getByRole("radio", { name: /Anyone with the link/ })).toBeChecked();
+  await expect(linkOnly).toBeChecked();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("button", { name: "Saved!" })).toBeVisible();
   await expect(page.getByText(`/r/${oldSlug}`)).toBeVisible();
@@ -131,7 +134,9 @@ test("a gift exchange guest's wish list link follows the list's new link", async
 
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
-  await page.getByRole("button", { name: "Get a new link" }).click();
+  const newLink = page.getByRole("button", { name: "Get a new link" });
+  await waitForReact(newLink);
+  await newLink.click();
   await page.getByRole("button", { name: "Turn off this link and get a new one" }).click();
   await expect(page.getByRole("status")).toContainText("The old link no longer works");
 

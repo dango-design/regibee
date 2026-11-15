@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { localSupabase } from "./local-supabase";
 
 export const SITE_URL = "http://localhost:3100";
@@ -97,9 +97,23 @@ export async function createAccount(fullName: string) {
   return { id: data.user.id, email, password, name: fullName };
 }
 
+/**
+ * Waits until React has taken over an element. Until then, a click on it does
+ * nothing, and text typed into it is cleared on React's next render. On
+ * GitHub's dev server React can still be starting after the page has loaded,
+ * so a click right after page.goto can be lost (issue #163). React tags each
+ * element it manages with a "__reactProps" key.
+ */
+export async function waitForReact(locator: Locator) {
+  await expect
+    .poll(() => locator.evaluate((element) => Object.keys(element).some((key) => key.startsWith("__reactProps"))))
+    .toBe(true);
+}
+
 /** Signs in from the login page. */
 export async function signIn(page: Page, account: { email: string; password: string }) {
   await page.goto("/login");
+  await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
   await page.getByRole("button", { name: "Sign In" }).click();

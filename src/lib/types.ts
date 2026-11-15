@@ -12,6 +12,8 @@ export interface RegistrySettings {
   shipping_address?: string;
   /** The owner's own registries at stores. Read with parseRetailerRegistries. */
   retailer_registries?: RetailerRegistry[];
+  /** True once a manager dismissed the "Planning a party?" prompt on the registry's page. */
+  event_prompt_dismissed?: boolean;
   [key: string]: unknown;
 }
 
