@@ -1,9 +1,23 @@
 // Messages between the popup, the content scripts and the background worker.
 
-import type { AddResponse, ExtensionRegistry, ExtensionSession, LinkResponse, ProductItem, StoreItem } from "@/lib/extension";
+import type {
+  AddResponse,
+  ExtensionRegistry,
+  ExtensionSession,
+  IdeaRequest,
+  LinkResponse,
+  ProductItem,
+  StoreItem,
+} from "@/lib/extension";
 import type { StoreId } from "@/lib/retailers";
 
 export type Mode = "ask" | "auto";
+
+/**
+ * What the product form saves: an item on one of the owner's registries, or
+ * a gift idea for someone else, which only the owner can see.
+ */
+export type ProductMode = "list" | "idea";
 
 export interface StoreCheck {
   at: number;
@@ -14,6 +28,8 @@ export interface PopupState {
   connected: boolean;
   user: { name: string; email: string | null } | null;
   mode: Mode;
+  /** The product form's last choice, so it opens the same way next time. */
+  productMode: ProductMode;
   registryId: string | null;
   lastChecked: Partial<Record<StoreId, StoreCheck>>;
 }
@@ -54,6 +70,8 @@ export type BackgroundRequest =
   // From the popup's "Add to Regibee" form on a product page.
   | { type: "check-url"; registryId: string; url: string }
   | { type: "add-product"; registryId: string; item: ProductItem }
+  | { type: "add-idea"; idea: IdeaRequest["idea"] }
+  | { type: "set-product-mode"; mode: ProductMode }
   // Swaps in a registry link for an item already on Regibee with a plain one.
   | { type: "link"; registryId: string; items: StoreItem[] }
   // From the store content script, once a registry page has loaded.
@@ -68,6 +86,8 @@ export interface RegistriesResult {
   user: { name: string; email: string | null };
   registries: ExtensionRegistry[];
   registryId: string | null;
+  /** The people the owner saved gift ideas for, most recent first. */
+  ideaRecipients: string[];
 }
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string; notConnected?: boolean };

@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { SharePicker } from "./share-picker";
 
 // /share on an Android phone, after an owner with two registries shared a
-// product from Amazon's app to Regibee.
+// product from Amazon's app to Regibee. It goes on a registry, or it's a gift
+// idea for someone else.
 const meta: Meta<typeof SharePicker> = {
   title: "Pages/Share",
   component: SharePicker,
@@ -36,5 +37,18 @@ export const Phone: Story = {
         names: null,
       },
     ],
+  },
+};
+
+/**
+ * Someone with no registry. They can still save it as a gift idea for
+ * someone else.
+ */
+export const NoRegistries: Story = {
+  name: "No registries",
+  globals: { viewport: { value: "mobile1" } },
+  args: {
+    shared: { url: "https://www.example.com/products/wool-scarf", title: "Wool scarf in forest green" },
+    registries: [],
   },
 };

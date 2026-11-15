@@ -2,16 +2,19 @@
 
 import type { ExtensionRegistry, ExtensionSession } from "@/lib/extension";
 import type { StoreId } from "@/lib/retailers";
-import type { Mode, StoreCheck } from "./messages";
+import type { Mode, ProductMode, StoreCheck } from "./messages";
 
 export interface Stored {
   session?: ExtensionSession;
   user?: { name: string; email: string | null };
   mode?: Mode;
+  productMode?: ProductMode;
   /** The Regibee registry new items go to. */
   registryId?: string;
   registries?: ExtensionRegistry[];
   registriesFetchedAt?: number;
+  /** The people the owner saved gift ideas for, most recent first. Fetched with the registries. */
+  ideaRecipients?: string[];
   lastChecked?: Partial<Record<StoreId, StoreCheck>>;
   /**
    * Item keys the owner has already seen, per registry: on Regibee at some
@@ -33,7 +36,15 @@ export async function save(values: Partial<Stored>): Promise<void> {
 
 /** Forgets the account: the session and everything read with it. */
 export async function clearAccount(): Promise<void> {
-  await chrome.storage.local.remove(["session", "user", "registryId", "registries", "registriesFetchedAt", "seen"]);
+  await chrome.storage.local.remove([
+    "session",
+    "user",
+    "registryId",
+    "registries",
+    "registriesFetchedAt",
+    "ideaRecipients",
+    "seen",
+  ]);
 }
 
 export async function markSeen(registryId: string, keys: string[]): Promise<void> {

@@ -3,8 +3,10 @@ import { authenticateExtension, managedRegistryIds } from "@/lib/extension-serve
 import { parseRetailerRegistries, plainLinksByStore, type StoreId } from "@/lib/retailers";
 import type { MeResponse } from "@/lib/extension";
 import { LINK_COLUMNS, loadItemsForLists, type LinkRow } from "@/lib/list-items";
+import { recentRecipients } from "@/lib/gift-ideas";
 
-// GET → who the extension is signed in as, and the registries they manage.
+// GET → who the extension is signed in as, the registries they manage, and
+// the people they've saved gift ideas for.
 export async function GET(request: Request) {
   const auth = await authenticateExtension(request);
   if (auth.response) return auth.response;
@@ -13,7 +15,8 @@ export async function GET(request: Request) {
   const ids = await managedRegistryIds(user.id);
   type CategoryRow = { id: string; registry_id: string; name: string };
   type ItemRow = { registry_id: string; external_url: string | null };
-  const [{ data: profile }, { data: registries }, { data: categories }, { data: items }] = await Promise.all([
+  type IdeaRow = { recipient: string; created_at: string };
+  const [{ data: profile }, { data: registries }, { data: categories }, { data: items }, { data: ideas }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).single(),
     ids.length > 0
       ? supabase
@@ -35,6 +38,14 @@ export async function GET(request: Request) {
       (byList) => ({ data: [...byList.values()].flat() as ItemRow[] }),
       () => ({ data: [] as ItemRow[] }),
     ),
+    // Runs as the user, so the access rules return only their own ideas.
+    supabase
+      .from("gift_ideas")
+      .select("recipient, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => ({ data: (data ?? []) as IdeaRow[] })),
   ]);
 
   const categoriesByRegistry = new Map<string, { id: string; name: string }[]>();
@@ -73,6 +84,7 @@ export async function GET(request: Request) {
         plainLinks: plainLinks(r.id as string, storeRegistries.map((s) => s.store)),
       };
     }),
+    ideaRecipients: recentRecipients(ideas.map((row) => ({ recipient: row.recipient, createdAt: row.created_at }))),
   };
   return NextResponse.json(body);
 }
