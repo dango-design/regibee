@@ -76,7 +76,11 @@ test("titles read naturally, with or without a name", () => {
 test("gift plans fit who it's for", () => {
   assert.deepEqual(giftPlansFor("someone"), ["link", "ask", "no_gifts", "later"]);
   assert.ok(giftPlansFor("child").includes("new_list"));
-  assert.deepEqual(giftPlansFor("everyone"), ["everyone", "exchange"]);
+  assert.deepEqual(giftPlansFor("everyone"), ["everyone", "exchange", "later"]);
+  // Skipping the gifts step works for everyone.
+  for (const audience of ["me", "us", "child", "someone", "everyone", "no_one"] as const) {
+    assert.ok(giftPlansFor(audience).includes("later"), `${audience} can't skip gifts`);
+  }
   // A party for no one in particular can still use wishlists: linked, or one per guest with a name draw.
   assert.deepEqual(giftPlansFor("no_one", occasionFor("christmas")), ["link", "exchange", "signup", "no_gifts", "later"]);
   // A potluck or meal train offers its sign-up sheet first.
@@ -93,12 +97,18 @@ test("gift lists come first, and every audience with gifts has one", () => {
     for (const audience of occasion.audiences) {
       const { main, other } = giftPlanRows(audience, occasion);
       assert.ok(main.some((plan) => plan !== "signup"), `${occasion.id} for ${audience} has no gift list`);
-      assert.deepEqual([...main, ...other].sort(), giftPlansFor(audience, occasion).sort());
+      // Every plan but "later", which is the Skip button.
+      assert.deepEqual(
+        [...main, ...other].sort(),
+        giftPlansFor(audience, occasion)
+          .filter((plan) => plan !== "later")
+          .sort(),
+      );
     }
   }
   assert.deepEqual(giftPlanRows("no_one", occasionFor("christmas")), {
     main: ["link", "exchange"],
-    other: ["signup", "no_gifts", "later"],
+    other: ["signup", "no_gifts"],
   });
   // A potluck's sheet stays up front with the lists.
   assert.deepEqual(giftPlanRows("no_one", occasionFor("potluck")).main, ["signup", "link", "exchange"]);
