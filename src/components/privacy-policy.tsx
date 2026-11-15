@@ -472,8 +472,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 <strong className="font-semibold text-primary">Vercel</strong> hosts the website and runs its server.
               </li>
               <li>
-                <strong className="font-semibold text-primary">Resend</strong> sends our notification emails and
-                records whether they&apos;re opened and clicked.
+                <strong className="font-semibold text-primary">Resend</strong> sends our emails, including the
+                ones that confirm your email address and reset your password, and records whether they&apos;re
+                opened and clicked.
               </li>
             </List>
             <P>

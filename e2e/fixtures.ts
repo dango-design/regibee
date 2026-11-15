@@ -97,6 +97,18 @@ export async function createAccount(fullName: string) {
   return { id: data.user.id, email, password, name: fullName };
 }
 
+/**
+ * A field typed into before React takes over the page is cleared on React's
+ * next render, and on a cold dev server that can take a few seconds. React
+ * tags each element it manages with a "__reactProps" key, so wait for that.
+ */
+export async function waitForReact(page: Page, selector: string) {
+  await page.waitForFunction((s) => {
+    const element = document.querySelector(s);
+    return !!element && Object.keys(element).some((key) => key.startsWith("__reactProps"));
+  }, selector);
+}
+
 /** Signs in from the login page. */
 export async function signIn(page: Page, account: { email: string; password: string }) {
   await page.goto("/login");

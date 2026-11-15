@@ -24,9 +24,8 @@ import {
   guestMessageHtml,
   eventChangedHtml,
   dayBeforeReminderHtml,
-  confirmSignupHtml,
-  resetPasswordHtml,
 } from "@/lib/email-templates";
+import { AUTH_EMAILS } from "@/lib/auth-email-templates";
 import { coHostInviteHtml, exchangeAssignmentHtml, listRequestHtml, registryLinkedHtml } from "@/lib/event-email-templates";
 import { sampleLinkedRegistries } from "@/lib/event-sample-data";
 
@@ -549,27 +548,26 @@ export const ExchangeAssignment: Story = {
   },
 };
 
-// ── Supabase Auth ────────────────────────────────────────────
+// ── Account emails ───────────────────────────────────────────
 
-export const AuthSignupProposed: Story = {
-  name: "Auth Signup (Proposed Branded)",
+// Supabase sends these itself, from the files `npm run auth-emails` writes.
+// The link is a sample of the one Supabase puts in.
+const sampleAuthLink =
+  "https://example.supabase.co/auth/v1/verify?token=pkce_0a1b2c3d4e5f&type=signup&redirect_to=https://regibee.com/auth/callback";
+
+export const AuthConfirmSignup: Story = {
   args: {
-    subject: "Confirm your Regibee account",
+    subject: AUTH_EMAILS.confirmation.subject,
     to: "max@example.com",
-    html: confirmSignupHtml({
-      confirmUrl: "https://placeholder.supabase.co/auth/v1/verify?token=abc",
-    }),
+    html: AUTH_EMAILS.confirmation.html(sampleAuthLink),
   },
 };
 
-export const AuthResetPasswordProposed: Story = {
-  name: "Auth Reset Password (Proposed Branded)",
+export const AuthResetPassword: Story = {
   args: {
-    subject: "Reset your Regibee password",
+    subject: AUTH_EMAILS.recovery.subject,
     to: "max@example.com",
-    html: resetPasswordHtml({
-      resetUrl: "https://placeholder.supabase.co/auth/v1/verify?token=abc",
-    }),
+    html: AUTH_EMAILS.recovery.html(sampleAuthLink.replace("type=signup", "type=recovery")),
   },
 };
 
