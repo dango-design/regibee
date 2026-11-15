@@ -7,13 +7,12 @@ import { ArrowLeft, CalendarDays, ExternalLink, Gift, ImagePlus, MapPin, Pencil 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CopyLinkButton } from "@/components/copy-link-button";
+import { EventActionsMenu } from "@/components/event-actions-menu";
 import { EventCoHosts, type CoHostActions } from "@/components/event-co-hosts";
 import { EventGuestManager, type GuestManagerActions } from "@/components/event-guest-manager";
 import { ExchangeManager, type ExchangeActions } from "@/components/exchange-manager";
 import { GuestMessages } from "@/components/guest-messages";
-import { PlanAgainButton } from "@/components/plan-again-button";
 import { SignupSheetManager, SignupSheetStarter, type SignupActions } from "@/components/signup-sheet-manager";
-import { DeleteEventButton } from "@/app/(protected)/dashboard/events/[eventId]/delete-event-button";
 import { addDays } from "@/lib/demo-data";
 import { DEMO_ME_ID, demoEvents, findDemoEvent, isDemoHost, type DemoEvent } from "@/lib/demo-events";
 import { DEMO_ME } from "@/lib/demo-people";
@@ -367,8 +366,10 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
           Events
         </Link>
 
-        <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
+        {/* On phones the buttons wrap under the title, so the "More actions" button
+            sits at the top right instead of on a line of its own. */}
+        <div className="relative mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="max-md:pr-12">
             <p className={cx("text-sm font-semibold tracking-wide uppercase", theme.text)}>
               {eventTypeLabel(event.event_type)}
             </p>
@@ -409,6 +410,15 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                 </span>
               </Link>
             </Button>
+            <div className="max-md:absolute max-md:top-0 max-md:right-0">
+              <EventActionsMenu
+                eventId={event.id}
+                isOwner={isOwner}
+                guestCount={guests.length}
+                planAction={async () => ({ error: DEMO_NOT_SAVED })}
+                deleteAction={async () => ({ error: DEMO_NOT_SAVED })}
+              />
+            </div>
           </div>
         </div>
 
@@ -532,16 +542,6 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
               viewerId={DEMO_ME_ID}
               actions={coHostActions}
             />
-
-            <PlanAgainButton eventId={event.id} planAction={async () => ({ error: DEMO_NOT_SAVED })} />
-
-            {isOwner && (
-              <DeleteEventButton
-                eventId={event.id}
-                guestCount={guests.length}
-                deleteAction={async () => ({ error: DEMO_NOT_SAVED })}
-              />
-            )}
           </aside>
         </div>
       </div>
