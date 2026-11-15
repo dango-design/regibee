@@ -175,7 +175,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
               <TextArea label="Welcome Message" name="description" defaultValue={registry.description || ""} rows={3} />
 
               <div className="space-y-4 border-t border-secondary pt-4">
-                <h3 className="text-md font-semibold text-primary">Sharing</h3>
+                <h2 className="font-sans text-md font-semibold tracking-normal text-primary">Sharing</h2>
 
                 <ListAccessField visibility={visibility} onChange={setVisibility} />
 
