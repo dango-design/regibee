@@ -12,11 +12,13 @@ const useLinkStatus: () => { pending: boolean } =
 
 // Guests (anonymous sessions from reserving a gift) only get My registries.
 // `inDemo: false` leaves a tab out of the demo (/demo), which has no page for it.
+// `hasViews: true` keeps the tab current on its pages below it, like Saved's
+// Gift ideas view at /dashboard/saved/ideas.
 const TABS = [
-  { href: "/dashboard", label: "My registries", accountOnly: false, inDemo: true },
-  { href: "/dashboard/saved", label: "Saved", accountOnly: true, inDemo: false },
-  { href: "/dashboard/events", label: "Events", accountOnly: true, inDemo: true },
-  { href: "/dashboard/following", label: "Following", accountOnly: true, inDemo: true },
+  { href: "/dashboard", label: "My registries", accountOnly: false, inDemo: true, hasViews: false },
+  { href: "/dashboard/saved", label: "Saved", accountOnly: true, inDemo: false, hasViews: true },
+  { href: "/dashboard/events", label: "Events", accountOnly: true, inDemo: true, hasViews: false },
+  { href: "/dashboard/following", label: "Following", accountOnly: true, inDemo: true, hasViews: false },
 ];
 
 /**
@@ -87,7 +89,8 @@ export function DashboardTabs({
             A phone narrower than 360px scrolls them sideways. */}
         <ul className="scrollbar-hide flex gap-3 border-b border-secondary max-sm:overflow-x-auto sm:gap-8">
           {tabs.map((tab) => {
-            const current = currentHref === tab.href;
+            const current =
+              currentHref === tab.href || (tab.hasViews && currentHref.startsWith(`${tab.href}/`));
             return (
               <li key={tab.href} className="flex max-sm:flex-auto">
                 <Link

@@ -36,7 +36,7 @@ Every email the site sends lands in Mailpit, a fake inbox that comes with local 
 npm run test:e2e
 ```
 
-The tests start their own website on http://localhost:3100. That server reads local Supabase's address and keys from `supabase status`, and sends email to Mailpit. The values in `.env.local` don't apply to it. It builds into `.next-e2e`, so it can run next to `npm run dev`.
+The tests start their own website on http://localhost:3100. That server reads local Supabase's address and keys from `supabase status`, and sends email to Mailpit. The values in `.env.local` don't apply to it. It builds into `.next-e2e`, so it can run next to `npm run dev`. If every page in a run comes back "404 This page could not be found" after merging main or switching branches, that build is stale: delete `.next-e2e` and run again.
 
 To run some files, name them:
 

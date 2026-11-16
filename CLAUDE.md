@@ -41,12 +41,27 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The anon key ships in the browser, so anyone can use it. The table access rules (RLS) are the only thing protecting data the anon key can reach.
 - `SUPABASE_SERVICE_ROLE_KEY` skips every access rule. Use the service-role client only in server code, and filter by an id or slug the user is allowed to see. The public registry page (`src/app/r/[slug]/page.tsx`) works this way.
 
+## List links
+
+- A list is private, link-only or public (`src/lib/list-access.ts`). The database keeps this as `is_private` and `is_public`; both can't be set. New lists start link-only.
+- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wish lists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
+- Anyone with a link-only or public list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
+- A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
+- Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
+
 ## Items on several lists
 
 - An item's home list is `registry_items.registry_id`. `registry_item_placements` puts it on more of the same owner's lists, each with its own category. Gifts belong to the item, so they show on every list it's on.
 - Only the server reads placements. To list a list's items, use `src/lib/list-items.ts`, not `registry_items` filtered by `registry_id`, or placed items go missing.
 - Taking an item off its home list moves it to the next list it's on. Only an item on no other list is deleted. A database trigger does this for direct deletes too, so the phone app and the extension follow the same rule.
+- Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
+
+## Gift ideas
+
+- A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it.
+- Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email or to co-managers. Don't put gift ideas on a registry or give them a link.
+- The table has access rules for the signed-in owner, so the website, the extension and the phone app can read and write it as that user. Prefer that over the service-role client. Checks and grouping are in `src/lib/gift-ideas.ts`, which has no imports.
 
 ## Visual tests (Chromatic)
 
@@ -77,7 +92,8 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 - The iPhone and Android app lives in `mobile/`. It's an Expo (React Native) app for registry owners. [mobile/README.md](mobile/README.md) covers what it does, running it and what's left before the app stores.
 - It signs in to the same Supabase project and reads and writes the tables directly, as the signed-in user, under the same access rules as the website. It only has the anon key. The one exception is deleting the account, which needs the service-role key: the app calls the website's `/api/account` (on `EXPO_PUBLIC_SITE_URL`, regibee.com by default) with its access token. Like the extension, that only works once the route is deployed there. `mobile/src/lib/data.ts` copies what the website's server actions in `src/lib/actions/registry.ts` do. When you change one, check the other.
-- It shares `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts` and `src/lib/account-deletion-summary.ts` with the website through the `@shared/*` path. Keep those files free of imports, or the app can't use them.
+- The app says and does what the website does. Use the website's words for the same thing, and its rules for what's shown. Do something differently only where a phone app can clearly do it better, such as the share sheet, native menus or haptics. When both show the same thing, put the logic in a shared file and call it from both, as `ownerItemStatus` in `src/lib/gifts.ts` does for an item's gift status.
+- It shares `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts`, `src/lib/account-deletion-summary.ts`, `src/lib/occasions.ts`, `src/lib/list-access.ts` and `src/lib/registry-copy.ts` with the website through the `@shared/*` path. Keep those files free of imports, or the app can't use them. The one exception is `registry-copy.ts`, which imports `occasions.ts`.
 - Its product reader is built from `extension/src/product-reader.ts`. After changing that file, run `npm run product-reader` in `mobile/`.
 - The root `tsconfig.json` leaves out `mobile/`. The app has its own checks.
 
@@ -107,7 +123,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - If you changed a flow the end-to-end tests cover, emails, `supabase/migrations` or `e2e/`, and Docker is running on this computer, run the test files that cover your change, such as `npm run test:e2e -- e2e/gift-funds.spec.ts`. Don't run the whole suite locally: the End-to-end tests check on the pull request runs every file. Without Docker, leave it all to that check.
 - Other sessions on this computer use the same local Supabase and the tests' port, 3100. If a run says the port is already used, another session's tests are running. Wait for them to finish, and don't stop that server. After adding a migration, run `npm run e2e:db` first, but only once the port is free, because it empties the database those runs use.
 - If you changed `extension/`, `src/lib/retailers.ts` or `src/lib/extension.ts`, also run `npm run extension:build` and `npm run test:extension`. The tests skip when this computer has no saved store pages. See "Tests" in [extension/README.md](extension/README.md).
-- If you changed `mobile/`, `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts`, `src/lib/account-deletion-summary.ts` or `extension/src/product-reader.ts`, also run `npm run lint` and `npm run check` in `mobile/`.
+- If you changed `mobile/`, `extension/src/product-reader.ts` or one of the files the app shares (listed under "Mobile app"), also run `npm run lint` and `npm run check` in `mobile/`.
 - `npm run lint` fails right now. `eslint.config.mjs` imports `eslint-plugin-storybook`, which isn't in `package.json`.
 
 ## After opening a pull request

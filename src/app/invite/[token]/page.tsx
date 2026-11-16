@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -33,6 +33,63 @@ export default async function InvitePage({
             </p>
             <Button asChild className="mt-6">
               <Link href="/login">Go to Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Guests who reserved a gift have an anonymous session. That isn't an
+  // account, so they count as signed out here and get the sign-in links.
+  const [user, { data: registry }] = await Promise.all([
+    getViewer(),
+    supabaseAdmin
+      .from("registries")
+      .select("title, parent_names")
+      .eq("id", invite.registry_id)
+      .single(),
+  ]);
+
+  const registryTitle = registry?.title || "a registry";
+  const ownerName = registry?.parent_names || "Someone";
+
+  // Someone who already manages the registry doesn't need the invite. The
+  // dashboard accepts emailed invites for the signed-in address, which uses
+  // up a one-use invite before the person clicks the link in the email. So
+  // check this before the expiry and use count.
+  const { data: membership } = user
+    ? await supabaseAdmin
+        .from("registry_managers")
+        .select("role")
+        .eq("registry_id", invite.registry_id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  if (membership) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center py-12">
+            <CheckCircle2 className="h-12 w-12 text-success-600 mb-4" aria-hidden="true" />
+            <h2 className="text-xl font-semibold mb-2">
+              {membership.role === "owner" ? "This Is Your Registry" : "You Already Help Manage This"}
+            </h2>
+            <p className="text-tertiary text-center">
+              {membership.role === "owner" ? (
+                <>
+                  <strong>{registryTitle}</strong> is yours, so there&apos;s nothing to accept.
+                </>
+              ) : (
+                <>
+                  You already help manage <strong>{registryTitle}</strong>, so there&apos;s nothing
+                  to accept.
+                </>
+              )}
+            </p>
+            <Button asChild className="mt-6">
+              <Link href={`/dashboard/registry/${invite.registry_id}`}>Open Registry</Link>
             </Button>
           </CardContent>
         </Card>
@@ -80,20 +137,6 @@ export default async function InvitePage({
     );
   }
 
-  // Get registry info
-  const { data: registry } = await supabaseAdmin
-    .from("registries")
-    .select("title, parent_names")
-    .eq("id", invite.registry_id)
-    .single();
-
-  const registryTitle = registry?.title || "a registry";
-  const ownerName = registry?.parent_names || "Someone";
-
-  // Guests who reserved a gift have an anonymous session. That isn't an
-  // account, so they count as signed out here and get the sign-in links.
-  const user = await getViewer();
-
   if (!user) {
     // Not logged in — show invite info with login/signup links
     const redirectUrl = `/invite/${token}`;
@@ -117,12 +160,12 @@ export default async function InvitePage({
             <div className="flex gap-3 justify-center mt-6">
               <Button asChild>
                 <Link href={`/login?redirect=${encodeURIComponent(redirectUrl)}`}>
-                  Sign In
+                  Sign in
                 </Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href={`/signup?redirect=${encodeURIComponent(redirectUrl)}`}>
-                  Create Account
+                  Create account
                 </Link>
               </Button>
             </div>

@@ -49,16 +49,14 @@ export async function setRegistryListed(registryId: string, listed: boolean) {
   const { user, supabase, error: authError } = await requireAccount();
   if (!user) return { error: authError };
 
-  const { data, error } = await supabase
-    .from("registries")
-    .update({ listed_on_profile: listed })
-    .eq("id", registryId)
-    .eq("owner_id", user.id)
-    .select("id");
+  // Private lists can't be on a profile. The database refuses it too.
+  let update = supabase.from("registries").update({ listed_on_profile: listed }).eq("id", registryId).eq("owner_id", user.id);
+  if (listed) update = update.eq("is_private", false);
+  const { data, error } = await update.select("id");
 
   if (error) return { error: error.message };
   if (!data || data.length === 0) {
-    return { error: "Only registries you own can be shown on your profile." };
+    return { error: "Only lists you own, and that aren't private, can be shown on your profile." };
   }
 
   revalidateProfilePages();

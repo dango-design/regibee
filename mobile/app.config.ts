@@ -17,6 +17,8 @@ const readProductInSafari = `
 const config: ExpoConfig = {
   name: "Regibee",
   slug: "regibee",
+  // The Expo project (EAS builds and updates) belongs to the team account.
+  owner: "deniseangos-team",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -74,6 +76,9 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
+  },
+  extra: {
+    eas: { projectId: "dbf89b9a-6e9b-4d3f-8e7c-56605aeff72c" },
   },
 };
 

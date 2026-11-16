@@ -54,8 +54,7 @@ test("deleting an account removes its own lists and guests' gifts, and hands a s
   expect(registries).toBe(0);
   const { count: items } = await db.from("registry_items").select("id", { count: "exact", head: true }).eq("id", item.id);
   expect(items).toBe(0);
-  // Deleting the item alone would leave the gift behind with the guest's
-  // name and email.
+  // The guest's gift goes too, with their name and email.
   const { count: gifts } = await db.from("purchases").select("id", { count: "exact", head: true }).eq("id", gift!.id);
   expect(gifts).toBe(0);
 

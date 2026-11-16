@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 13, 2026",
+  effectiveDate: "November 15, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -172,9 +172,21 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 cash funds.
               </li>
               <li>
-                Anyone with a registry&apos;s link can open it. Public registries can also show up in search engines.
-                Private ones are hidden from search engines, and show on your profile only to people you&apos;ve let
-                follow you, or to people in a group you&apos;ve shared them with.
+                You choose who can open each registry. New registries start as &ldquo;Anyone with the link&rdquo;:
+                the link ends in a random code, so people find it only if someone shares it with them. These are
+                hidden from search engines, and show on your profile only to people you&apos;ve let follow you, or to
+                people in a group you&apos;ve shared them with. Public registries open for anyone with the link, can
+                show up in search engines, and show on your profile to anyone who opens it.
+              </li>
+              <li>
+                Private registries open only for you and your co-managers. Their link doesn&apos;t work for anyone
+                else, guests&apos; gift emails included. They don&apos;t show on your profile, and making a registry
+                private takes it off any event or group you&apos;ve shared it with.
+              </li>
+              <li>
+                You can get a new link for a registry at any time, and the old one stops opening it. We keep the old
+                link so the emails guests got about their gifts still take them to those gifts. It doesn&apos;t open
+                the registry for anyone else.
               </li>
               <li>
                 Photos you upload for a registry or an item can be seen by anyone with the registry&apos;s link.
@@ -204,8 +216,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               For an event you add its details, which can include a date, a place and its address, a message, a gift
               note and an invitation picture, questions to ask when guests RSVP, a sign-up sheet, and a guest list
-              with names and email addresses. We keep a copy of the messages you email guests, so you can see what
-              you sent. You can link
+              with names and email addresses. We keep a copy of the messages you send guests, so you can see what
+              you sent, and show them on the event&apos;s page, with a line when its date, time or place changes, so
+              guests without email see them too. You can link
               registries to it, yours or anyone else&apos;s you have the link to, and we email a registry&apos;s
               owners when you link it. Guests opening the event&apos;s link see its details. Event pages are hidden
               from search engines.
@@ -238,6 +251,14 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               We match members to Regibee accounts by email address. When you share a registry with a group,
               members who have an account see it, with the group&apos;s name, on their Following page and your
               profile, even if the registry is private.
+            </P>
+
+            <H3>Your gift ideas</H3>
+            <P>
+              If you save gift ideas for other people, we keep what you save: the name you give the person, such as
+              &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note. Only you can see them.
+              They aren&apos;t on any registry and have no link, we never show them to the person or anyone else, and
+              we don&apos;t email anyone about them.
             </P>
 
             <H3>Following and blocking</H3>
@@ -354,7 +375,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">The page you&apos;re on, when you ask.</strong> It reads
                 a product page only when you click its toolbar button, use its &ldquo;Add to Regibee&rdquo; menu item
-                or press its shortcut.
+                or press its shortcut. You can add the product to a registry or save it as a gift idea, which only you
+                can see.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Links you paste on regibee.com.</strong> When you paste
@@ -364,8 +386,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             </List>
             <P>
               It doesn&apos;t read any other pages or your browsing history. In your browser it keeps its own Regibee
-              session, your name and email address, your list of registries, and which store items you&apos;ve
-              already seen. Disconnecting the extension removes them, and removing it from Chrome removes
+              session, your name and email address, your list of registries, the names of the people you&apos;ve
+              saved gift ideas for, and which store items you&apos;ve already seen. Disconnecting the extension removes them, and removing it from Chrome removes
               everything it kept.
             </P>
           </Section>
@@ -495,7 +517,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <List>
               <li>
                 <strong className="font-semibold text-primary">See and change.</strong> Edit your registries, items,
-                funds and events wherever you see them on your dashboard. Change your name and how people can find
+                funds, events and gift ideas wherever you see them on your dashboard. Change your name and how people can find
                 you on your{" "}
                 <Link href="/dashboard/account" className={linkClass}>
                   Account page
@@ -503,13 +525,13 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 .
               </li>
               <li>
-                <strong className="font-semibold text-primary">Delete.</strong> Delete items, registries and events
-                whenever you like. Delete your whole account on your{" "}
+                <strong className="font-semibold text-primary">Delete.</strong> Delete items, registries, events and
+                gift ideas whenever you like. Delete your whole account on your{" "}
                 <Link href="/dashboard/account" className={linkClass}>
                   Account page
                 </Link>
                 , or on the Account tab in the app. That deletes your sign-in and profile, your follows, follow
-                requests and blocks, your groups, and the events you made with their guest lists and RSVPs. It signs you out of
+                requests and blocks, your groups, your gift ideas, and the events you made with their guest lists and RSVPs. It signs you out of
                 the website, the app and the extension.
               </li>
               <li>
@@ -520,8 +542,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Gifts and RSVPs.</strong> These stay with the registry
-                or event they were for. They aren&apos;t tied to an account, even if you have one, because we only
-                have the name and email you typed. To have yours removed, ask the owner, or email us.
+                or event they were for, and a gift is deleted when the owner deletes the item or cash fund it was
+                for. They aren&apos;t tied to an account, even if you have one, because we only have the name and
+                email you typed. To have yours removed, ask the owner, or email us.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Anything else.</strong> Email us at <ContactEmail /> for
@@ -539,8 +562,10 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
           <Section id="keeping">
             <P>
               We keep your information until you delete it or your account. Gifts, suggestions and RSVPs stay with
-              the registry or event they were for until its owner deletes it. A group gift and the pledges on it stay
-              until the registry is deleted or the person who started it deletes their account. We keep a note of
+              the registry or event they were for until its owner deletes it. A gift goes sooner if the owner deletes
+              the item or cash fund it was for. A group gift and the pledges on it stay until the registry is deleted
+              or the person who started it deletes their account, and so does its reservation of the item, even if
+              the owner deletes the item. We keep a note of
               each birthday email we send for 60 days, so the same one is never sent twice. Deleted information can
               stay in our
               providers&apos; backups, and records of emails already sent can stay in our email service&apos;s logs,

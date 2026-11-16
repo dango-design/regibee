@@ -35,6 +35,16 @@ const registries: AccountRegistry[] = [
     registry_type: "personal",
     event_type: "christmas",
   },
+  {
+    id: "4",
+    title: "Ideas for Later",
+    is_public: false,
+    is_private: true,
+    listed_on_profile: false,
+    has_shipping_address: false,
+    registry_type: "personal",
+    event_type: null,
+  },
 ];
 
 const meta: Meta<typeof AccountSettings> = {

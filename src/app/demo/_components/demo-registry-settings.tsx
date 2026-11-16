@@ -13,6 +13,9 @@ import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { PhotoUploadButton } from "@/components/photo-upload-button";
 import { ProfileListingField } from "@/components/profile-listing-field";
+import { ListAccessField } from "@/components/list-access-field";
+import { listVisibility, type ListVisibility } from "@/lib/list-access";
+import { ShareLinkField } from "@/components/share-link-field";
 import { RegistryAvatar, monogramFor } from "@/components/registry-avatar";
 import { StoreRegistriesCard } from "@/components/store-registries-card";
 import { DEMO_ME } from "@/lib/demo-people";
@@ -62,9 +65,8 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [isPublic, setIsPublic] = useState(registry.is_public);
+  const [visibility, setVisibility] = useState<ListVisibility>(listVisibility(registry));
   const [listed, setListed] = useState(registry.listed_on_profile);
-  const [slugCopied, setSlugCopied] = useState(false);
   const [categories, setCategories] = useState(registry.categories);
 
   const [managers, setManagers] = useState<DemoManager[]>(registry.managers);
@@ -172,69 +174,28 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
               />
               <TextArea label="Welcome Message" name="description" defaultValue={registry.description || ""} rows={3} />
 
-              <div className="space-y-2">
-                <span className="text-sm font-medium text-secondary">Visibility</span>
-                <p className="text-xs text-tertiary">
-                  Anyone with the share link can open your registry either way. This controls search engines, and who
-                  sees it on your profile.
-                </p>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="isPublic"
-                      value="true"
-                      checked={isPublic}
-                      onChange={() => setIsPublic(true)}
-                    />
-                    <span className="text-sm">Public — searchable by search engines</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="isPublic"
-                      value="false"
-                      checked={!isPublic}
-                      onChange={() => setIsPublic(false)}
-                    />
-                    <span className="text-sm">
-                      Private — hidden from search engines, and only followers you approve see it on your profile
-                    </span>
-                  </label>
-                </div>
-              </div>
+              <div className="space-y-4 border-t border-secondary pt-4">
+                <h2 className="font-sans text-md font-semibold tracking-normal text-primary">Sharing</h2>
 
-              <ProfileListingField
-                isPublic={isPublic}
-                isSelected={listed}
-                onChange={setListed}
-                hasShippingAddress={Boolean(registry.settings.shipping_address)}
-              />
+                <ListAccessField visibility={visibility} onChange={setVisibility} />
 
-              <div className="space-y-1">
-                <span className="text-sm font-medium text-secondary">Share URL</span>
-                <div className="flex items-center gap-4">
-                  <p className="text-sm text-tertiary font-mono">{sharePath}</p>
-                  <button
-                    type="button"
-                    aria-label="Copy share link"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
-                      setSlugCopied(true);
-                      setTimeout(() => setSlugCopied(false), 2000);
+                <ProfileListingField
+                  visibility={visibility}
+                  isSelected={listed}
+                  onChange={setListed}
+                  hasShippingAddress={Boolean(registry.settings.shipping_address)}
+                />
+
+                {visibility !== "private" && (
+                  <ShareLinkField
+                    path={sharePath}
+                    onReplace={async () => {
+                      await new Promise((r) => setTimeout(r, 500));
+                      return { path: sharePath };
                     }}
-                    className="text-tertiary hover:text-secondary transition-colors"
-                  >
-                    {slugCopied ? (
-                      <span className="inline-flex items-center gap-1 text-sm">
-                        <Check className="h-4 w-4" />
-                        Copied!
-                      </span>
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
+                    replacedMessage="In the demo, the link stays the same. On your own list, the old link stops working right away."
+                  />
+                )}
               </div>
 
               <Button type="submit" disabled={general.saving}>

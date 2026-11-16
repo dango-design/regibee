@@ -10,13 +10,14 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
-import { Baby, Check, Gift } from "lucide-react";
+import { Baby, Check, Gift, Globe, Link2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { createRegistry } from "@/lib/actions/registry";
-import { PERSONAL_EVENT_TYPE_OPTIONS, copyFor } from "@/lib/registry-copy";
+import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@/lib/list-access";
+import { REGISTRY_OCCASION_CHOICES, copyFor } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 import { cx } from "@/lib/utils/cx";
 
@@ -25,6 +26,10 @@ import { cx } from "@/lib/utils/cx";
 // been to yet. Only the type and the name are required, so Create works as soon
 // as there is a name. Every field stays in the form while its section is closed,
 // so closed sections still submit their values.
+//
+// The phone app's new registry screen (mobile/src/app/new-registry.tsx) asks
+// the same things in the same words, with the same defaults. Change both
+// together.
 
 type SectionId = "type" | "details" | "privacy" | "welcome" | "payments";
 
@@ -224,6 +229,12 @@ function SectionFooter({
   );
 }
 
+const VISIBILITY_ICONS: Record<ListVisibility, typeof Lock> = {
+  private: Lock,
+  link: Link2,
+  public: Globe,
+};
+
 function ChoiceCard({
   selected,
   onClick,
@@ -250,8 +261,10 @@ function ChoiceCard({
           : "border-secondary hover:border-primary",
       )}
     >
-      <span className="flex items-center gap-2 font-medium text-primary">
-        {icon}
+      {/* The icon sits beside the title's first line, so a title that wraps,
+          like "Anyone with the link", doesn't pull it down between lines. */}
+      <span className="flex items-start gap-2 font-medium text-primary">
+        {icon && <span className="flex h-[1lh] shrink-0 items-center">{icon}</span>}
         {title}
       </span>
       <span className="mt-1 block text-xs text-tertiary">{description}</span>
@@ -265,19 +278,38 @@ export interface CreateRegistryFormProps {
    * "Show on my profile" choice is left out.
    */
   canListOnProfile?: boolean;
+  /**
+   * The registry type, already chosen on the New page. With one, the form
+   * opens on the name, or on the occasion for a personal list without one.
+   */
+  startType?: RegistryType;
+  /** A personal list's occasion, already chosen on the New page. */
+  startOccasion?: PersonalEventType;
   createAction?: (formData: FormData) => Promise<{ error?: string } | void>;
+}
+
+/** Which section opens first, and which count as visited already. */
+function startingNav(startType?: RegistryType, startOccasion?: PersonalEventType): NavState {
+  const typeIsSettled = startType === "baby" || (startType === "personal" && Boolean(startOccasion));
+  return typeIsSettled
+    ? { open: "details", visited: new Set<SectionId>(["type"]) }
+    : { open: "type", visited: new Set<SectionId>() };
 }
 
 export function CreateRegistryForm({
   canListOnProfile = true,
+  startType,
+  startOccasion,
   createAction = createRegistry,
 }: CreateRegistryFormProps) {
-  const [registryType, setRegistryType] = useState<RegistryType>("baby");
-  const [eventType, setEventType] = useState<PersonalEventType | "">("");
+  const [registryType, setRegistryType] = useState<RegistryType>(startType ?? "baby");
+  const [eventType, setEventType] = useState<PersonalEventType | null>(
+    startType === "personal" ? (startOccasion ?? null) : null,
+  );
   const [title, setTitle] = useState("");
   const [titleError, setTitleError] = useState(false);
   const [eventDate, setEventDate] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
   const [listedChoice, setListedChoice] = useState<boolean | null>(null);
   const [description, setDescription] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -287,7 +319,7 @@ export function CreateRegistryForm({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [nav, dispatch] = useReducer(navReducer, { open: "type", visited: new Set<SectionId>() });
+  const [nav, dispatch] = useReducer(navReducer, startingNav(startType, startOccasion));
 
   const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
   const titleRef = useRef<HTMLInputElement>(null);
@@ -302,7 +334,7 @@ export function CreateRegistryForm({
 
   const copy = copyFor({
     registryType,
-    eventType: registryType === "personal" && eventType ? eventType : null,
+    eventType: registryType === "personal" ? eventType : null,
   });
 
   const cancelAdvance = () => {
@@ -380,7 +412,7 @@ export function CreateRegistryForm({
     }
   };
 
-  const chooseOccasion = (value: PersonalEventType | "") => {
+  const chooseOccasion = (value: PersonalEventType | null) => {
     setEventType(value);
     advanceSoon("type");
   };
@@ -396,10 +428,11 @@ export function CreateRegistryForm({
     }
   };
 
-  const chooseVisibility = (value: boolean) => {
-    setIsPublic(value);
-    // Without a profile, visibility is the only choice in this section.
-    if (!canListOnProfile) advanceSoon("privacy");
+  const chooseVisibility = (value: ListVisibility) => {
+    setVisibility(value);
+    // Without a profile, or for a private list, which can't be on one,
+    // visibility is the only choice in this section.
+    if (!canListOnProfile || value === "private") advanceSoon("privacy");
   };
 
   // The zip code is the last field in the payments section, so a full zip
@@ -461,19 +494,16 @@ export function CreateRegistryForm({
     return nextUnvisited(id, visited) ? "Continue" : "Done";
   };
 
-  const occasion = PERSONAL_EVENT_TYPE_OPTIONS.find((option) => option.value === eventType);
+  const occasion = REGISTRY_OCCASION_CHOICES.find((option) => option.value === eventType);
   const privacySummary = [
-    isPublic ? "Public" : "Private",
-    canListOnProfile ? (isListed ? "on your profile" : "not on your profile") : null,
+    LIST_ACCESS[visibility].short,
+    canListOnProfile && visibility !== "private" ? (isListed ? "on your profile" : "not on your profile") : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
   const summaries: Record<SectionId, ReactNode> = {
-    type:
-      registryType === "baby"
-        ? "Baby"
-        : `Personal · ${occasion ? occasion.label : "No specific occasion"}`,
+    type: registryType === "baby" ? "A baby" : occasion?.label,
     details: sections.details.complete ? (
       [title.trim(), eventDate ? formatDate(eventDate) : null].filter(Boolean).join(" · ")
     ) : (
@@ -525,8 +555,8 @@ export function CreateRegistryForm({
         }}
       >
         <input type="hidden" name="registryType" value={registryType} />
-        {registryType === "personal" && <input type="hidden" name="eventType" value={eventType} />}
-        <input type="hidden" name="isPublic" value={isPublic ? "true" : "false"} />
+        {registryType === "personal" && <input type="hidden" name="eventType" value={eventType ?? ""} />}
+        <input type="hidden" name="visibility" value={visibility} />
         {/* The zip code is only used for tax estimates, so entering one turns them on. */}
         <input type="hidden" name="taxEnabled" value={hasZip ? "true" : "false"} />
 
@@ -534,57 +564,58 @@ export function CreateRegistryForm({
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/10">
             <Icon className="h-6 w-6 text-brand-600" />
           </div>
-          <h1 className="text-2xl font-medium text-primary">Create Your Registry</h1>
+          <h1 className="text-2xl font-medium text-primary">New registry</h1>
           <p className="text-xs text-tertiary">{copy.tagline}</p>
         </div>
 
         <div className="space-y-3">
-          <Section title="Registry type" {...sectionProps("type")}>
+          <Section title="What's it for?" {...sectionProps("type")}>
             <div className="grid grid-cols-2 gap-2">
               <ChoiceCard
                 selected={registryType === "baby"}
                 onClick={() => chooseRegistryType("baby")}
                 icon={<Baby className="h-4 w-4" />}
-                title="Baby"
-                description="Baby shower, expecting a new arrival"
+                title="A baby"
+                description="Expecting or welcoming a new arrival"
               />
               <ChoiceCard
                 selected={registryType === "personal"}
                 onClick={() => chooseRegistryType("personal")}
                 icon={<Gift className="h-4 w-4" />}
-                title="Personal"
+                title="Something else"
                 description="Birthday, Christmas, wedding, housewarming, more"
               />
             </div>
 
-            {registryType === "personal" && (
+            {registryType === "personal" ? (
               <div className="mt-4 space-y-2">
                 <p className="text-sm font-medium text-secondary">What&apos;s the occasion?</p>
                 <div className="flex flex-wrap gap-2">
-                  {[...PERSONAL_EVENT_TYPE_OPTIONS, { value: "" as const, label: "No specific occasion" }].map(
-                    (option) => {
-                      const selected = eventType === option.value;
-                      return (
-                        <button
-                          key={option.value || "none"}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => chooseOccasion(option.value)}
-                          className={cx(
-                            "cursor-pointer rounded-full border px-3 py-1.5 text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1 max-sm:min-h-11",
-                            selected
-                              ? "border-brand-600 bg-brand-600 text-white"
-                              : "border-secondary text-secondary hover:border-primary",
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    },
-                  )}
+                  {REGISTRY_OCCASION_CHOICES.map((option) => {
+                    const selected = eventType === option.value;
+                    return (
+                      <button
+                        key={option.value ?? "none"}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => chooseOccasion(option.value)}
+                        className={cx(
+                          "cursor-pointer rounded-full border px-3 py-1.5 text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1 max-sm:min-h-11",
+                          selected
+                            ? "border-brand-600 bg-brand-600 text-white"
+                            : "border-secondary text-secondary hover:border-primary",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-xs text-tertiary">Tunes labels and placeholders.</p>
               </div>
+            ) : (
+              <p className="mt-3 text-xs text-tertiary">
+                Baby registries start with 10 categories, like Nursery &amp; Sleep and Feeding.
+              </p>
             )}
           </Section>
 
@@ -602,7 +633,7 @@ export function CreateRegistryForm({
                   if (value.trim()) setTitleError(false);
                 }}
                 isInvalid={titleError}
-                hint={titleError ? "Add a name to continue." : undefined}
+                hint={titleError ? "Give your registry a name." : undefined}
               />
               <Input
                 label={`${copy.eventDateLabel} (optional)`}
@@ -616,28 +647,27 @@ export function CreateRegistryForm({
             <SectionFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
           </Section>
 
-          <Section title="Who can see it" {...sectionProps("privacy")}>
-            <p className="mb-3 text-sm text-tertiary">
-              Anyone with your share link can open it either way.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <ChoiceCard
-                selected={isPublic}
-                onClick={() => chooseVisibility(true)}
-                title="Public"
-                description="Search engines can list it."
-              />
-              <ChoiceCard
-                selected={!isPublic}
-                onClick={() => chooseVisibility(false)}
-                title="Private"
-                description="Hidden from search engines. Only followers you approve see it on your profile."
-              />
+          <Section title="Who can open it" {...sectionProps("privacy")}>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {LIST_VISIBILITIES.map((value) => {
+                const VisibilityIcon = VISIBILITY_ICONS[value];
+                return (
+                  <ChoiceCard
+                    key={value}
+                    selected={visibility === value}
+                    onClick={() => chooseVisibility(value)}
+                    icon={<VisibilityIcon className="h-4 w-4" />}
+                    title={LIST_ACCESS[value].label}
+                    description={LIST_ACCESS[value].who}
+                  />
+                );
+              })}
             </div>
+            <p className="mt-2 text-sm text-tertiary">{LIST_ACCESS[visibility].description}</p>
             {canListOnProfile && (
               <div className="mt-4">
                 <ProfileListingField
-                  isPublic={isPublic}
+                  visibility={visibility}
                   isSelected={isListed}
                   onChange={setListedChoice}
                 />
@@ -721,7 +751,7 @@ export function CreateRegistryForm({
         <div ref={createRef} className="mt-6 space-y-3">
           {error && <p className="text-sm text-error-primary">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating..." : "Create Registry"}
+            {loading ? "Creating..." : "Create registry"}
           </Button>
           <p className="text-center text-xs text-tertiary">
             Only the name is required. You can change all of this later in settings.

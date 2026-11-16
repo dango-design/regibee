@@ -78,6 +78,33 @@ interface AddItemDialogProps {
   onAdded?: (registryId: string) => void;
 }
 
+/**
+ * The store's name, or the site's address at a store Regibee doesn't know, as
+ * the app's storeLabel (mobile/src/lib/product.ts) words it.
+ */
+export function storeNameForLink(url: string): string {
+  const store = detectStore(url);
+  if (store) return store.name;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "this link";
+  }
+}
+
+/**
+ * What the add and edit item dialogs say after reading a link. The app's item
+ * editor (mobile/src/components/item-editor.tsx) says the same.
+ */
+export const readLinkMessages = {
+  filled: (store: string) => `Filled in from ${store}. Check it over.`,
+  nothingNew: (store: string) => `Nothing new to fill in from ${store}.`,
+  failed: (store: string, hasName: boolean) =>
+    hasName
+      ? `We couldn't read the details from ${store}. Your link and name are kept, so fill in the rest by hand.`
+      : `We couldn't read the details from ${store}. Your link is kept, so add the name and the rest by hand.`,
+};
+
 const currencySymbols: Record<string, string> = {
   USD: "$",
   EUR: "€",
@@ -139,6 +166,15 @@ export function AddItemDialog({
   const titleRef = useRef<HTMLInputElement>(null);
   const priceRef = useRef<HTMLInputElement>(null);
   const readSharedLink = useRef(false);
+  // Reading a link can take many seconds, and the owner may close the dialog
+  // meanwhile. Each read takes the next number. Closing the dialog moves the
+  // number on, so a read that finishes after that leaves the fresh form alone.
+  const readNumber = useRef(0);
+  const isOpen = useRef(open);
+  // The link last read, so leaving the field doesn't read the same link again.
+  const lastReadUrl = useRef<string | null>(null);
+  // The link the picture choices came from.
+  const picturesFrom = useRef<string | null>(null);
 
   // Reading the clipboard needs a secure page and a browser that allows it.
   // Only the open dialog asks, so this never runs during server rendering.
@@ -215,10 +251,12 @@ export function AddItemDialog({
    * Reads the link and fills in what the owner hasn't. `knownTitle` is a name
    * set in the same tap, before state has caught up. `fromTap` is true when the
    * owner tapped Paste or Fetch rather than leaving the field, so it's fine to
-   * move focus to what's left to fill in.
+   * move focus to what's left to fill in. Leaving the field reads the link only
+   * when it changed since the last read.
    */
   const handleScrape = async (rawUrl: string, options: { knownTitle?: string; fromTap?: boolean } = {}) => {
-    if (!rawUrl || scraping) return;
+    // Leaving the field calls this too, so it can run as the dialog closes.
+    if (!rawUrl || scraping || !isOpen.current) return;
     const url = normalizeUrl(rawUrl.trim());
     const currentTitle = options.knownTitle || title;
 
@@ -227,58 +265,77 @@ export function AddItemDialog({
     } catch {
       return;
     }
+    if (!options.fromTap && url === lastReadUrl.current) return;
+    lastReadUrl.current = url;
 
+    // Pictures from another link show another product, so clear them, and
+    // the chosen image if it's one of them. A photo the owner uploaded stays.
+    let currentImage = imageUrl;
+    if (picturesFrom.current && picturesFrom.current !== url) {
+      if (imageCandidates.includes(imageUrl)) {
+        setImageUrl("");
+        currentImage = "";
+      }
+      setImageCandidates([]);
+      setBrokenCandidates(new Set());
+      picturesFrom.current = null;
+    }
+
+    const run = ++readNumber.current;
+    const stillCurrent = () => run === readNumber.current;
     setScraping(true);
     setScrapeStatus("");
     setScrapeIsError(false);
 
     const result = await fetchProductDetails(url, {
-      onReadingWithExtension: () => setScrapeStatus("Reading the page in a background tab with the Regibee extension…"),
+      onReadingWithExtension: () => {
+        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab with the Regibee extension…");
+      },
     });
+    if (!stillCurrent()) return;
 
     if (result.error) {
       // Some stores, Amazon above all, block the server from reading their
       // pages. That's no dead end: keep the link and whatever the owner has,
       // take a name from the link when it has one, and let them finish.
-      const store = detectStore(url)?.name ?? "this link";
+      const store = storeNameForLink(url);
       const guessedTitle = currentTitle ? undefined : nameFromProductUrl(url);
       if (guessedTitle) setTitle(guessedTitle);
       setScrapeStatus(
         guessedTitle
           ? `We couldn't read the details from ${store}, so we took the name from the link. Check it and fill in the rest.`
-          : currentTitle
-            ? `We couldn't read the details from ${store}. Your link and name are kept, so fill in the rest by hand.`
-            : `We couldn't read the details from ${store}. Your link is kept, so add the name and the rest by hand.`,
+          : readLinkMessages.failed(store, Boolean(currentTitle)),
       );
       setScrapeIsError(true);
       if (options.fromTap) (currentTitle || guessedTitle ? priceRef : titleRef).current?.focus();
     } else {
-      let filled: string[] = [];
+      // The tax added to the price shows under the price field.
+      let filledAny = false;
       if (result.title && !currentTitle) {
         setTitle(result.title);
-        filled.push("title");
+        filledAny = true;
       }
       if (result.price && !price) {
         let finalPrice = parseFloat(result.price).toFixed(2);
-        let taxNote = "";
         if (parentPurchased && zipCode) {
           const taxResult = await estimateTax(zipCode, parseFloat(result.price));
+          if (!stillCurrent()) return;
           if (taxResult) {
-            taxNote = ` (incl. ~${(taxResult.taxRate * 100).toFixed(1)}% tax)`;
             setTaxInfo({ original: finalPrice, rate: taxResult.taxRate });
             finalPrice = taxResult.priceWithTax;
           }
         }
         setPrice(finalPrice);
-        filled.push("price" + taxNote);
+        filledAny = true;
       }
       const candidates = result.imageUrls ?? (result.imageUrl ? [result.imageUrl] : []);
       if (candidates.length > 0) {
         setImageCandidates(candidates);
         setBrokenCandidates(new Set());
-        if (!imageUrl) {
+        picturesFrom.current = url;
+        if (!currentImage) {
           setImageUrl(candidates[0]);
-          filled.push(candidates.length > 1 ? `image (${candidates.length} options)` : "image");
+          filledAny = true;
         }
       }
       const titleForCategory = result.title || currentTitle;
@@ -286,14 +343,11 @@ export function AddItemDialog({
         const inferred = inferCategory(titleForCategory);
         if (inferred) {
           setCategoryId(inferred);
-          filled.push("category");
+          filledAny = true;
         }
       }
-      if (filled.length > 0) {
-        setScrapeStatus(`Auto-filled ${filled.join(", ")}`);
-      } else {
-        setScrapeStatus("No new data found to fill");
-      }
+      const store = storeNameForLink(url);
+      setScrapeStatus(filledAny ? readLinkMessages.filled(store) : readLinkMessages.nothingNew(store));
     }
 
     setScraping(false);
@@ -321,8 +375,13 @@ export function AddItemDialog({
     handleScrape(shared.url, { knownTitle, fromTap: true });
   };
 
-  // Back to a clean form, so reopening the dialog starts fresh.
+  // Back to a clean form, so reopening the dialog starts fresh. A read still
+  // under way is dropped when it finishes.
   const resetForm = () => {
+    readNumber.current++;
+    lastReadUrl.current = null;
+    picturesFrom.current = null;
+    setScraping(false);
     setScrapeStatus("");
     setScrapeIsError(false);
     setParentPurchased(false);
@@ -341,6 +400,12 @@ export function AddItemDialog({
       setChosenListId(defaultRegistryId);
       setCategories(saveTo.find((list) => list.id === defaultRegistryId)?.categories ?? defaultCategories);
     }
+  };
+
+  const changeOpen = (next: boolean) => {
+    isOpen.current = next;
+    setOpen(next);
+    if (!next) resetForm();
   };
 
   /** Saving to another list: its categories replace the last list's. */
@@ -370,28 +435,27 @@ export function AddItemDialog({
       setError(result.error);
     } else {
       const savedTo = registryId;
-      resetForm();
-      setOpen(false);
+      changeOpen(false);
       onAdded?.(savedTo);
     }
     setLoading(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button>
             <span className="inline-flex items-center gap-1.5">
               <Plus className="h-4 w-4 shrink-0" />
-              Add Item
+              Add item
             </span>
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>{saveTo ? "Save an item" : "Add item to registry"}</DialogTitle>
+          <DialogTitle>{saveTo ? "Save an item" : "Add an item"}</DialogTitle>
           <DialogDescription>
             Add anything from any store, in two taps.
           </DialogDescription>
@@ -511,7 +575,7 @@ export function AddItemDialog({
 
           <Input
             ref={titleRef}
-            label="Item Name"
+            label="Item name"
             name="title"
             placeholder={isBaby ? "e.g., Convertible Crib" : "e.g., Wireless Headphones"}
             value={title}
@@ -525,7 +589,8 @@ export function AddItemDialog({
             name="isEssential"
             value="true"
             defaultSelected={defaultValues?.isEssential}
-            label="Mark as most wanted item"
+            label="Most wanted"
+            hint="Guests see it tagged Most wanted."
           />
 
           <div className="space-y-1.5">
@@ -593,7 +658,7 @@ export function AddItemDialog({
                   placeholder={
                     categories.length === 0
                       ? "No categories yet"
-                      : "Select a category"
+                      : "No category"
                   }
                   items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
                   isDisabled={categories.length === 0}
@@ -605,7 +670,7 @@ export function AddItemDialog({
                   onClick={() => setAddingCategory(true)}
                   className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:pr-3"
                 >
-                  + Create category
+                  + New category
                 </button>
               </>
             )}
@@ -731,7 +796,8 @@ export function AddItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Mark as open to used condition item"
+            label="Open to used"
+            hint="Guests may give one secondhand."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -752,9 +818,9 @@ export function AddItemDialog({
           )}
 
           <TextArea
-            label="Notes (optional)"
+            label="Note for guests (optional)"
             name="notes"
-            placeholder="Enter a description..."
+            placeholder="Size, color, or anything else that helps"
             rows={3}
           />
 
@@ -764,7 +830,7 @@ export function AddItemDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => changeOpen(false)}
             >
               Cancel
             </Button>

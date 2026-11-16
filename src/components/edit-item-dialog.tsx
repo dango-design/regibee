@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Loader2, ChevronDown, ExternalLink } from "lucide-react";
 import { Link01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import type { PersonalEventType, RegistryType } from "@/lib/types";
 import type { RetailerRegistry, StoreId } from "@/lib/retailers";
 import { StoreLinkNotice } from "@/components/store-link-notice";
 import { ItemImageField } from "@/components/item-image-field";
+import { readLinkMessages, storeNameForLink } from "@/components/add-item-dialog";
 import { uploadRegistryPhoto } from "@/lib/upload-registry-photo";
 
 interface Category {
@@ -147,6 +148,16 @@ export function EditItemDialog({
 
   const urlRef = useRef<HTMLInputElement>(null);
   const openUrl = openableLink(externalUrl);
+  // Reading a link can take many seconds, and the owner may close the dialog
+  // meanwhile. Each read takes the next number. Closing the dialog moves the
+  // number on, so a read that finishes after that leaves the form alone.
+  const readNumber = useRef(0);
+  const isOpen = useRef(open);
+  useEffect(() => {
+    isOpen.current = open;
+  }, [open]);
+  // The link last read, so leaving the field doesn't read the same link again.
+  const lastReadUrl = useRef<string | null>(null);
 
   const normalizeUrl = (url: string) => {
     if (!url) return url;
@@ -177,8 +188,14 @@ export function EditItemDialog({
     }
   };
 
-  const handleScrape = async (rawUrl: string) => {
-    if (!rawUrl || scraping) return;
+  /**
+   * Reads the link and fills in what's empty. `fromTap` is true for Fetch and
+   * Enter. Leaving the field reads the link only when it changed since the
+   * last read.
+   */
+  const handleScrape = async (rawUrl: string, options: { fromTap?: boolean } = {}) => {
+    // Leaving the field calls this too, so it can run as the dialog closes.
+    if (!rawUrl || scraping || !isOpen.current) return;
     const url = normalizeUrl(rawUrl);
 
     try {
@@ -186,47 +203,52 @@ export function EditItemDialog({
     } catch {
       return;
     }
+    if (!options.fromTap && url === lastReadUrl.current) return;
+    lastReadUrl.current = url;
 
+    const run = ++readNumber.current;
+    const stillCurrent = () => run === readNumber.current;
     setScraping(true);
     setScrapeStatus("");
     setScrapeIsError(false);
 
     const result = await fetchProductDetails(url, {
-      onReadingWithExtension: () => setScrapeStatus("Reading the page in a background tab with the Regibee extension…"),
+      onReadingWithExtension: () => {
+        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab with the Regibee extension…");
+      },
     });
+    if (!stillCurrent()) return;
 
+    const store = storeNameForLink(url);
     if (result.error) {
-      setScrapeStatus(result.error);
+      // Worded as the add dialog, which explains why: some stores block reading.
+      setScrapeStatus(readLinkMessages.failed(store, Boolean(title.trim())));
       setScrapeIsError(true);
     } else {
-      let filled: string[] = [];
+      // The tax added to the price shows under the price field.
+      let filledAny = false;
       if (result.title && !title) {
         setTitle(result.title);
-        filled.push("title");
+        filledAny = true;
       }
       if (result.price && !price) {
         let finalPrice = parseFloat(result.price).toFixed(2);
-        let taxNote = "";
         if (item.is_parent_purchased && zipCode) {
           const taxResult = await estimateTax(zipCode, parseFloat(result.price));
+          if (!stillCurrent()) return;
           if (taxResult) {
-            taxNote = ` (incl. ~${(taxResult.taxRate * 100).toFixed(1)}% tax)`;
             setTaxInfo({ original: finalPrice, rate: taxResult.taxRate });
             finalPrice = taxResult.priceWithTax;
           }
         }
         setPrice(finalPrice);
-        filled.push("price" + taxNote);
+        filledAny = true;
       }
       if (result.imageUrl && !imageUrl) {
         setImageUrl(result.imageUrl);
-        filled.push("image");
+        filledAny = true;
       }
-      if (filled.length > 0) {
-        setScrapeStatus(`Auto-filled ${filled.join(", ")}`);
-      } else {
-        setScrapeStatus("No new data found to fill");
-      }
+      setScrapeStatus(filledAny ? readLinkMessages.filled(store) : readLinkMessages.nothingNew(store));
     }
 
     setScraping(false);
@@ -252,9 +274,46 @@ export function EditItemDialog({
     if (parentPurchased !== item.is_parent_purchased) {
       await toggleParentPurchased(item.id, registryId, parentPurchased);
     }
-    onOpenChange(false);
+    closeAfterSaving();
     setScrapeStatus("");
     setLoading(false);
+  };
+
+  /** Stops listening to a read still under way. */
+  const dropRead = () => {
+    readNumber.current++;
+    lastReadUrl.current = null;
+    setScraping(false);
+  };
+
+  /** Closes after saving or deleting. The form already shows the saved item, so it stays as it is. */
+  const closeAfterSaving = () => {
+    isOpen.current = false;
+    dropRead();
+    onOpenChange(false);
+  };
+
+  // Back to the item as saved, so reopening the dialog starts fresh.
+  const changeOpen = (next: boolean) => {
+    isOpen.current = next;
+    onOpenChange(next);
+    if (next) return;
+    dropRead();
+    setScrapeStatus("");
+    setScrapeIsError(false);
+    setOpenToUsed(item.is_open_to_used);
+    setParentPurchased(item.is_parent_purchased);
+    setCurrency("USD");
+    setError("");
+    setTitle(item.title);
+    setPrice(item.price != null ? item.price.toFixed(2) : "");
+    setImageUrl(item.image_url || "");
+    setExternalUrl(item.external_url || "");
+    setTaxInfo(null);
+    setCategoryId(item.category_id ?? undefined);
+    setAddingCategory(false);
+    setNewCategoryName("");
+    setCategoryError("");
   };
 
   const onOtherLists = otherLists.length > 0;
@@ -268,16 +327,16 @@ export function EditItemDialog({
     if (result?.error) {
       setError(result.error);
     } else {
-      onOpenChange(false);
+      closeAfterSaving();
     }
     setDeleting(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setScrapeStatus(""); setScrapeIsError(false); setOpenToUsed(item.is_open_to_used); setParentPurchased(item.is_parent_purchased); setCurrency("USD"); setError(""); setTitle(item.title); setPrice(item.price != null ? item.price.toFixed(2) : ""); setImageUrl(item.image_url || ""); setExternalUrl(item.external_url || ""); setTaxInfo(null); setCategoryId(item.category_id ?? undefined); setAddingCategory(false); setNewCategoryName(""); setCategoryError(""); } }}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Edit item in registry</DialogTitle>
+          <DialogTitle>Edit item</DialogTitle>
           <DialogDescription>
             {onOtherLists
               ? `It's also on ${listNames(otherLists)}, so changes show there too. Its category is only for this list.`
@@ -286,12 +345,12 @@ export function EditItemDialog({
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Product URL</Label>
+            <Label>Product link</Label>
             <div className="flex items-center gap-2 sm:gap-4">
               <Input
                 ref={urlRef}
                 name="externalUrl"
-                placeholder="https://www.example.com"
+                placeholder="Paste a link from any store"
                 value={externalUrl}
                 onChange={setExternalUrl}
                 onBlur={(e) => handleScrape((e.target as HTMLInputElement).value)}
@@ -299,10 +358,10 @@ export function EditItemDialog({
                   // Enter reads the link instead of saving the form.
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    handleScrape(externalUrl);
+                    handleScrape(externalUrl, { fromTap: true });
                   }
                 }}
-                aria-label="Product URL"
+                aria-label="Product link"
                 inputMode="url"
                 autoComplete="off"
                 autoCorrect="off"
@@ -317,7 +376,7 @@ export function EditItemDialog({
                   size="icon-lg"
                   disabled={scraping}
                   onClick={() => {
-                    if (urlRef.current?.value) handleScrape(urlRef.current.value);
+                    if (urlRef.current?.value) handleScrape(urlRef.current.value, { fromTap: true });
                   }}
                   title="Fetch product details"
                 >
@@ -350,12 +409,12 @@ export function EditItemDialog({
               />
             )}
             {scrapeStatus && (
-              <p className={`text-xs ${scrapeIsError ? "text-error-primary" : "text-tertiary"}`}>{scrapeStatus}</p>
+              <p role="status" className={`text-xs ${scrapeIsError ? "text-warning-primary" : "text-tertiary"}`}>{scrapeStatus}</p>
             )}
           </div>
 
           <Input
-            label="Item Name"
+            label="Item name"
             name="title"
             placeholder={isBaby ? "e.g., Convertible Crib" : "e.g., Wireless Headphones"}
             value={title}
@@ -367,7 +426,8 @@ export function EditItemDialog({
             name="isEssential"
             value="true"
             defaultSelected={item.is_essential}
-            label="Mark as most wanted item"
+            label="Most wanted"
+            hint="Guests see it tagged Most wanted."
           />
 
           <div className="space-y-1.5">
@@ -435,7 +495,7 @@ export function EditItemDialog({
                   placeholder={
                     categories.length === 0
                       ? "No categories yet"
-                      : "Select a category"
+                      : "No category"
                   }
                   items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
                   isDisabled={categories.length === 0}
@@ -447,7 +507,7 @@ export function EditItemDialog({
                   onClick={() => setAddingCategory(true)}
                   className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:pr-3"
                 >
-                  + Create category
+                  + New category
                 </button>
               </>
             )}
@@ -525,7 +585,8 @@ export function EditItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Mark as open to used condition item"
+            label="Open to used"
+            hint="Guests may give one secondhand."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -546,9 +607,9 @@ export function EditItemDialog({
           )}
 
           <TextArea
-            label="Notes (optional)"
+            label="Note for guests (optional)"
             name="notes"
-            placeholder="Enter a description..."
+            placeholder="Size, color, or anything else that helps"
             defaultValue={item.notes || ""}
             rows={3}
           />
@@ -570,7 +631,7 @@ export function EditItemDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => changeOpen(false)}
             >
               Cancel
             </Button>

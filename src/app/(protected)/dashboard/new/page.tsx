@@ -5,11 +5,12 @@ import { getManageableRegistries } from "@/lib/events-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/viewer";
 
-export const metadata: Metadata = { title: "What are you planning? | Regibee" };
+export const metadata: Metadata = { title: "Start something new | Regibee" };
 
 /**
- * The one New button's page. It asks what you're planning, who it's for and
- * how gifts work, then makes the event, the list, or both.
+ * The one New button's page. A gift list on its own goes to the registry
+ * form. An event asks what you're planning, who it's for and how gifts work,
+ * then makes the event, with a list if you want one.
  */
 export default async function NewPlanPage() {
   const user = await getSessionUser();
@@ -27,7 +28,7 @@ export default async function NewPlanPage() {
     <div className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-3xl font-bold">Start something new</h1>
       <p className="mt-1 text-tertiary">
-        Three quick questions, and Regibee sets up the invitation, the gift list, or both.
+        A gift list on its own, or an event with invitations. You can add the other one later.
       </p>
       <div className="mt-6">
         <PlanPicker myName={firstName} myLists={myLists} />

@@ -102,6 +102,108 @@ export function maskGiverForOwner<T extends GiverLike & { buyer_email?: string |
   };
 }
 
+// ── An item's status on its owner's list ────────────────────────────────
+//
+// The website's item card (src/components/item-card.tsx) and the app's item
+// row (mobile/src/components/item-row.tsx) both show this, so the owner reads
+// the same words in both.
+
+interface OwnerItem {
+  quantity_needed: number;
+  quantity_fulfilled: number;
+  is_parent_purchased?: boolean | null;
+}
+
+type OwnerItemPurchase = PurchaseLike & GiverLike & { quantity?: number | null };
+
+export interface OwnerItemStatus {
+  /** The tag by the item's title. Null while the item still needs gifts. */
+  tag: { kind: "purchased-by-you" | "gifted" | "reserved"; label: string } | null;
+  /** "2 of 3 still needed", or "1 of 2 available to gift" once the owner bought it. */
+  quantity: string;
+}
+
+/**
+ * What an item's owner sees about its gifts. `purchases` are the item's gifts,
+ * cancelled ones included. A gift that's only reserved reads as reserved until
+ * the guest says they bought it.
+ */
+export function ownerItemStatus(item: OwnerItem, purchases: OwnerItemPurchase[] = []): OwnerItemStatus {
+  const active = purchases.filter((p) => p.status !== "cancelled");
+  const given = active.filter((p) => !isOpenReservation(p));
+  const needed = item.quantity_needed;
+
+  if (item.is_parent_purchased) {
+    // Guests can still pay toward an item the owner bought.
+    const covered = active.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    return {
+      tag: { kind: "purchased-by-you", label: "Purchased by you" },
+      quantity: `${needed - covered} of ${needed} available to gift`,
+    };
+  }
+
+  const quantity = `${needed - item.quantity_fulfilled} of ${needed} still needed`;
+  if (item.quantity_fulfilled < needed) return { tag: null, quantity };
+  if (active.length === 0) return { tag: { kind: "gifted", label: "Gifted" }, quantity };
+
+  const onlyReserved = given.length === 0;
+  const first = given[0] ?? active[0];
+  const others = active.length - 1;
+  const more = others > 0 ? ` + ${others} other${others > 1 ? "s" : ""}` : "";
+  return {
+    tag: {
+      kind: onlyReserved ? "reserved" : "gifted",
+      label: `${onlyReserved ? "Reserved" : "Gifted"} by ${giverNameForOwner(first)}${more}`,
+    },
+    quantity,
+  };
+}
+
+// ── A gift in its owner's gift activity ─────────────────────────────────
+//
+// The website's Gift Activity tab and dashboard cards, and the app's Gifts tab
+// and registry cards, word each gift the same way.
+
+type ActivityPurchase = PurchaseLike & { cash_fund_id?: string | null; quantity?: number | null };
+
+export interface GiftActivityTag {
+  kind: "gifted" | "reserved" | "covered" | "contribution" | "cancelled";
+  label: string;
+}
+
+/**
+ * The tag on a gift in the owner's list of gifts. `itemBoughtByOwner` is true
+ * when the gift is money toward an item the owner bought themselves.
+ */
+export function giftActivityTag(p: ActivityPurchase, itemBoughtByOwner = false): GiftActivityTag {
+  if (p.status === "cancelled") return { kind: "cancelled", label: "Cancelled" };
+  if (p.cash_fund_id) return { kind: "contribution", label: "Contribution" };
+  if (itemBoughtByOwner) return { kind: "covered", label: "Covered by guest" };
+  if (isOpenReservation(p)) return { kind: "reserved", label: "Reserved by guest" };
+  return { kind: "gifted", label: "Gifted by guest" };
+}
+
+/** What the gift was for: "2x Crib · until Nov 15", or the fund's name. */
+export function giftActivityFor(p: ActivityPurchase, title: string): string {
+  if (p.cash_fund_id) return title;
+  const count = (p.quantity ?? 1) > 1 ? `${p.quantity}x ` : "";
+  const until =
+    isOpenReservation(p) && !isHeldUntilBought(p)
+      ? ` · until ${formatReservedUntil(p.reserved_until!, "short")}`
+      : "";
+  return `${count}${title}${until}`;
+}
+
+/** "reserved an item" or "gifted an item", after the giver's name on a registry card. */
+export function giftActivityAction(p: PurchaseLike): string {
+  return isOpenReservation(p) ? "reserved an item" : "gifted an item";
+}
+
+/** "Nov 15, 2026", when the gift was made. */
+export function formatGiftDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 // ── Hiding what's been reserved from a list's owner ─────────────────────
 //
 // A list's owner can choose not to see what people reserved or pledged, so
@@ -165,6 +267,34 @@ export function itemAsUnreserved<T extends { quantity_fulfilled: number; is_pare
   item: T,
 ): T {
   return item.is_parent_purchased ? item : { ...item, quantity_fulfilled: 0 };
+}
+
+/**
+ * The notice an owner sees while what's been reserved is hidden from them. The
+ * website's ReservationsHiddenNotice and the app's registry screen show it.
+ * `next` is the next reveal, when the list is linked to an event.
+ */
+export function reservationsHiddenText(opts: {
+  revealedCount?: number;
+  next?: { date: string; eventTitle: string } | null;
+  turnedOnByExchange?: boolean;
+}): { title: string; revealed: string | null; next: string | null; why: string } {
+  const revealed = opts.revealedCount ?? 0;
+  return {
+    title: revealed > 0 ? "New reservations are hidden from you" : "What's been reserved is hidden from you",
+    revealed:
+      revealed > 0
+        ? `${revealed === 1 ? "1 gift from your last event is" : `${revealed} gifts from your last event are`} revealed below, with who gave ${revealed === 1 ? "it" : "them"}, for your thank-you notes.`
+        : null,
+    next: opts.next
+      ? `Gifts reserved before ${opts.next.eventTitle} are revealed on ${opts.next.date}, the day after.`
+      : null,
+    why: `${
+      opts.turnedOnByExchange
+        ? "Regibee hid it when you added this list to a gift exchange, so your gifts stay a surprise."
+        : "Your gifts stay a surprise."
+    } Guests still see what's taken, so nobody buys the same thing twice.`,
+  };
 }
 
 /** A cash fund as its owner sees it with reservations hidden: nothing pledged. */

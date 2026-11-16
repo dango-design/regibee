@@ -265,7 +265,7 @@ test("a potluck from the New button starts with a sign-up sheet the host can cha
   await page.getByRole("link", { name: "New", exact: true }).click();
   await expect(async () => {
     await page.getByRole("button", { name: "Potluck", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "What are you planning?" })).toBeHidden({ timeout: 1000 });
+    await expect(page.getByRole("heading", { name: "Or plan an event" })).toBeHidden({ timeout: 1000 });
   }).toPass();
   await page.getByRole("button", { name: /A sign-up sheet/ }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -301,7 +301,7 @@ test("a meal train from the New button starts with a week of dinners", async ({ 
   await page.getByRole("link", { name: "New", exact: true }).click();
   await expect(async () => {
     await page.getByRole("button", { name: "Meal train", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "What are you planning?" })).toBeHidden({ timeout: 1000 });
+    await expect(page.getByRole("heading", { name: "Or plan an event" })).toBeHidden({ timeout: 1000 });
   }).toPass();
   await page.getByLabel("Their name").fill("the Parks");
   await page.getByRole("button", { name: "Next", exact: true }).click();

@@ -12,23 +12,23 @@ test("someone signs up, confirms their email, and starts on an empty dashboard",
   const password = "a-new-password";
 
   await page.goto("/signup");
-  await waitForReact(page, "form");
-  await page.getByLabel("Full Name").fill("Sam Signup");
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Your name").fill("Sam Signup");
   // The "Let friends find me" box mentions email too.
   await page.getByRole("textbox", { name: /^Email/ }).fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create Account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Check your email")).toBeVisible();
-  await expect(page.getByText(`We sent a confirmation link to ${email}.`)).toBeVisible();
+  await expect(page.getByText(`We sent a link to ${email}. Open it to confirm your account`)).toBeVisible();
 
   // Until they confirm, the account can't sign in.
   const other = await page.context().browser()!.newContext();
   const otherPage = await other.newPage();
   await otherPage.goto("/login");
-  await waitForReact(otherPage, "form");
+  await waitForReact(otherPage.locator("form"));
   await otherPage.getByLabel("Email").fill(email);
   await otherPage.getByLabel("Password").fill(password);
-  await otherPage.getByRole("button", { name: "Sign In" }).click();
+  await otherPage.getByRole("button", { name: "Sign in" }).click();
   await expect(otherPage.getByText("Email not confirmed")).toBeVisible();
   await other.close();
 
@@ -55,17 +55,17 @@ test("someone who forgot their password sets a new one from the email", async ({
   const account = await createAccount("Fern Forgetful");
 
   await page.goto("/login");
-  await page.getByRole("link", { name: "Forgot password?" }).click();
+  await page.getByRole("link", { name: "Forgot your password?" }).click();
   await page.waitForURL(/\/forgot-password$/);
-  await waitForReact(page, "form");
+  await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByRole("button", { name: "Send reset link" }).click();
-  await expect(page.getByText(`We sent a password reset link to ${account.email}`)).toBeVisible();
+  await expect(page.getByText(`If there's an account for ${account.email}, we sent it a link to set a new password.`)).toBeVisible();
 
   const reset = await waitForEmail(account.email, /reset/i);
   await page.goto(linkIn(reset, /\/auth\/v1\/verify\?.*type=recovery/));
   await page.waitForURL(/\/reset-password$/);
-  await waitForReact(page, "form");
+  await waitForReact(page.locator("form"));
   await page.getByLabel("New password").fill("brand-new-password");
   await page.getByLabel("Confirm password").fill("brand-new-password");
   await page.getByRole("button", { name: "Update password" }).click();
@@ -80,14 +80,14 @@ test("someone who forgot their password sets a new one from the email", async ({
     ["brand-new-password", true],
   ] as const) {
     await freshPage.goto("/login");
-    await waitForReact(freshPage, "form");
+    await waitForReact(freshPage.locator("form"));
     await freshPage.getByLabel("Email").fill(account.email);
     await freshPage.getByLabel("Password").fill(password);
-    await freshPage.getByRole("button", { name: "Sign In" }).click();
+    await freshPage.getByRole("button", { name: "Sign in" }).click();
     if (works) {
       await freshPage.waitForURL(/\/dashboard$/);
     } else {
-      await expect(freshPage.getByText("Invalid login credentials")).toBeVisible();
+      await expect(freshPage.getByText("That email and password don't match.")).toBeVisible();
     }
   }
   await fresh.close();

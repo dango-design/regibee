@@ -6,15 +6,16 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import {
   fundAsRevealed,
+  giftActivityAction,
   giverNameForOwner,
   isGiftRevealed,
-  isOpenReservation,
   itemAsRevealed,
   itemAsUnreserved,
   maskGiverForOwner,
   reservationsHiddenFrom,
 } from "@shared/gifts";
 import { parseRetailerRegistries, type RetailerRegistry } from "@shared/retailers";
+import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 
 import { useSession } from "@/lib/auth";
 import { demo, isDemo } from "@/lib/demo";
@@ -39,7 +40,7 @@ export const keys = {
 };
 
 const REGISTRY_FIELDS =
-  "id, owner_id, title, slug, event_date, is_public, description, photo_url, registry_type, event_type, honoree_names, settings, created_at";
+  "id, owner_id, title, slug, event_date, is_public, is_private, description, photo_url, registry_type, event_type, honoree_names, settings, created_at";
 
 // The items are the ones whose registry_id is this registry. The link is named
 // because registry_item_placements also joins registries and items, and
@@ -89,7 +90,7 @@ function summarize(row: CardRow, role: "owner" | "manager", userId: string): Reg
     recentGifts: gifts
       .slice(0, 3)
       // A Secret Santa's gift shows as "Secret Santa", as on the website.
-      .map((g) => ({ id: g.id, buyer_name: giverNameForOwner(g), created_at: g.created_at, held: isOpenReservation(g) })),
+      .map((g) => ({ id: g.id, buyer_name: giverNameForOwner(g), action: giftActivityAction(g) })),
     reservationsHidden: hidden,
   };
 }
@@ -149,7 +150,7 @@ async function fetchRegistry(id: string, userId: string): Promise<RegistryDetail
     supabase
       .from("registry_items")
       .select(
-        "id, registry_id, category_id, title, external_url, image_url, price, quantity_needed, quantity_fulfilled, is_essential, is_parent_purchased, is_open_to_used, minimum_condition, notes, sort_order, created_at, purchases(id, status, reserved_until, buyer_name, quantity, created_at)"
+        "id, registry_id, category_id, title, external_url, image_url, price, quantity_needed, quantity_fulfilled, is_essential, is_parent_purchased, is_open_to_used, minimum_condition, notes, sort_order, created_at, purchases(id, status, reserved_until, buyer_name, quantity, created_at, hide_giver)"
       )
       .eq("registry_id", id)
       .order("sort_order")
@@ -165,7 +166,8 @@ async function fetchRegistry(id: string, userId: string): Promise<RegistryDetail
       .from("suggestions")
       .select("id", { count: "exact", head: true })
       .eq("registry_id", id)
-      .eq("status", "pending"),
+      // The website counts both (its Suggestions tab).
+      .in("status", ["pending", "offering"]),
   ]);
   if (registry.error) throw registry.error;
   if (categories.error) throw categories.error;
@@ -239,7 +241,7 @@ export function useRegistry(id: string | undefined) {
 }
 
 type GiftRow = Omit<Gift, "for_title" | "kind"> & {
-  registry_items?: { title: string } | null;
+  registry_items?: { title: string; price: number | null; is_parent_purchased: boolean | null } | null;
   cash_funds?: { title: string } | null;
 };
 
@@ -253,7 +255,7 @@ async function fetchGifts(registryId: string, userId: string): Promise<Gift[]> {
     supabase.from("registries").select("owner_id, settings").eq("id", registryId).single(),
     supabase
       .from("purchases")
-      .select(`${GIFT_FIELDS}, registry_items!registry_item_id!inner(title, registry_id)`)
+      .select(`${GIFT_FIELDS}, registry_items!registry_item_id!inner(title, registry_id, price, is_parent_purchased)`)
       .eq("registry_items.registry_id", registryId)
       .order("created_at", { ascending: false }),
     supabase
@@ -289,6 +291,8 @@ function toGift(row: GiftRow, kind: "item" | "fund"): Gift {
     hide_giver: Boolean(rest.hide_giver),
     kind,
     for_title: (kind === "item" ? registry_items?.title : cash_funds?.title) ?? "",
+    item_price: registry_items?.price ?? null,
+    item_bought_by_owner: Boolean(registry_items?.is_parent_purchased),
   });
 }
 
@@ -459,6 +463,8 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: async (item: Item) => {
       if (isDemo()) return demo.deleteItem(item.id);
+      // The database moves an item that's on another of the owner's lists
+      // instead, and deletes guests' gifts with one that goes, as the website does.
       const { error } = await supabase.from("registry_items").delete().eq("id", item.id);
       if (error) throw error;
     },
@@ -521,8 +527,15 @@ const BABY_DEFAULT_CATEGORIES = [
   "Gifts & Extras",
 ];
 
-function slugFor(title: string) {
-  // The same shape as the website's generateSlug (src/lib/actions/registry.ts).
+// A new list's link. Anyone with it can open the list, so its random part
+// has to be hard to guess, and the app has no strong random source. The
+// database makes it (new_registry_slug, the same shape as the website's
+// generateRegistrySlug in src/lib/registry-create.ts). The fallback is only
+// for a database without that function yet
+// (supabase/migrations/20261114100553_list_links.sql).
+async function slugFor(title: string) {
+  const { data, error } = await supabase.rpc("new_registry_slug", { p_title: title });
+  if (!error && typeof data === "string" && data) return data;
   return (
     title
       .toLowerCase()
@@ -538,7 +551,7 @@ export interface NewRegistryInput {
   registryType: RegistryType;
   eventType: EventType | null;
   eventDate: string | null;
-  isPublic: boolean;
+  visibility: ListVisibility;
 }
 
 export function useCreateRegistry() {
@@ -553,7 +566,7 @@ export function useCreateRegistry() {
             registry_type: input.registryType,
             event_type: input.registryType === "personal" ? input.eventType : null,
             event_date: input.eventDate,
-            is_public: input.isPublic,
+            ...visibilityColumns(input.visibility),
           },
           input.registryType === "baby" ? BABY_DEFAULT_CATEGORIES : []
         );
@@ -565,9 +578,9 @@ export function useCreateRegistry() {
         .insert({
           owner_id: userId,
           title: input.title.trim(),
-          slug: slugFor(input.title.trim() || "registry"),
+          slug: await slugFor(input.title.trim() || "registry"),
           event_date: input.eventDate,
-          is_public: input.isPublic,
+          ...visibilityColumns(input.visibility),
           listed_on_profile: false,
           registry_type: input.registryType,
           event_type: input.registryType === "personal" ? input.eventType : null,

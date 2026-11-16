@@ -34,6 +34,7 @@ const ICONS = {
   image: { ios: "photo", android: "image" },
   eye: { ios: "eye", android: "visibility" },
   eyeSlash: { ios: "eye.slash", android: "visibility_off" },
+  bookmark: { ios: "bookmark", android: "bookmark" },
 } as const satisfies Record<string, { ios: string; android: string }>;
 
 export type IconName = keyof typeof ICONS;

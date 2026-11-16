@@ -3,7 +3,7 @@
 // exchange inside it, and shares a private wishlist with it.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createExchangeEvent, createWishlist, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
+import { createAccount, createExchangeEvent, createWishlist, db, signIn, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
 import { waitForEmail } from "./mailbox";
 
 async function guestsOf(eventId: string) {
@@ -168,7 +168,9 @@ test("a private wishlist shared with a group shows to its members only", async (
   const rosePage = await roseContext.newPage();
   await signIn(rosePage, rose);
   await rosePage.goto(`/dashboard/registry/${registry.id}/settings`);
-  await rosePage.getByRole("checkbox", { name: /The Chens/ }).click({ force: true });
+  const familyBox = rosePage.getByRole("checkbox", { name: /The Chens/ });
+  await waitForReact(familyBox);
+  await familyBox.click({ force: true });
   await rosePage.getByRole("button", { name: "Save groups" }).click();
   await expect.poll(async () => (await db.from("registry_groups").select("group_id").eq("registry_id", registry.id)).data).toEqual([
     { group_id: family!.id },

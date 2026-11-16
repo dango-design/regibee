@@ -156,10 +156,11 @@ export async function setRegistryGroups(registryId: string, groupIds: string[]):
   if (authError || !user) return { error: authError ?? "You need an account to do this." };
   const { data: registry } = await supabaseAdmin
     .from("registries")
-    .select("id, owner_id")
+    .select("id, owner_id, is_private")
     .eq("id", registryId)
     .maybeSingle();
   if (!registry || registry.owner_id !== user.id) return { error: "Only the list's owner can share it with groups." };
+  if (registry.is_private && groupIds.length > 0) return { error: "Private lists can't be shared with groups." };
 
   const wanted = [...new Set(groupIds)];
   if (wanted.length > 0) {

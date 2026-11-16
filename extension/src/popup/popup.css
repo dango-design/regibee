@@ -195,3 +195,29 @@ input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
 .done h1 { margin: 0; font-size: 16px; font-weight: 600; }
 h1.title { margin: 0; font-size: 16px; font-weight: 600; }
 .warn { font-size: 12px; line-height: 1.45; color: var(--warning-text); }
+
+/* ── Gift ideas on the product form ── */
+.group { display: flex; flex-direction: column; gap: 10px; }
+.segmented {
+  flex-direction: row; gap: 2px; padding: 2px; border-radius: 10px;
+  background: var(--surface-muted); border: 1px solid var(--border);
+}
+.segment { flex: 1; position: relative; }
+.segment input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.segment span {
+  display: flex; align-items: center; justify-content: center; min-height: 32px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; color: var(--text-tertiary);
+}
+.segment input:checked + span { background: #ffffff; color: var(--text); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); border: 1px solid var(--border); }
+.segment input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 1px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip {
+  font: inherit; font-size: 12px; font-weight: 500; min-height: 28px; padding: 0 10px; border-radius: 9999px; cursor: pointer;
+  color: var(--text-secondary); background: var(--surface-muted); border: 1px solid var(--border-strong);
+}
+.chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+.private-note {
+  margin: 0; display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 1.45;
+  color: var(--text-secondary); background: var(--brand-tint); border-radius: 8px; padding: 8px 10px;
+}
+.private-note svg { flex: none; margin-top: 2px; color: var(--brand); }

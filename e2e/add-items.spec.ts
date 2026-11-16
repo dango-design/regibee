@@ -10,7 +10,7 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createRegistryWithItem, db, signIn } from "./fixtures";
+import { createRegistryWithItem, db, signIn, waitForReact } from "./fixtures";
 
 // A 1×1 PNG, the product's picture.
 const PICTURE = Buffer.from(
@@ -69,9 +69,11 @@ async function openAddItem(page: Page) {
   const { owner, registry } = await createRegistryWithItem();
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}`);
-  await page.getByRole("button", { name: "Add Item" }).first().click();
+  const addItem = page.getByRole("button", { name: "Add Item" }).first();
+  await waitForReact(addItem);
+  await addItem.click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "Add item to registry" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Add an item" })).toBeVisible();
   return { registry, dialog };
 }
 
@@ -80,7 +82,7 @@ test("a product link fills in the item's name, price and picture", async ({ page
   const link = `${shopUrl}/products/hatch-rest-sound-machine`;
 
   await fetchFromLink(dialog, link);
-  await expect(dialog.getByLabel("Item Name")).toHaveValue("Hatch Rest Sound Machine");
+  await expect(dialog.getByLabel("Item name")).toHaveValue("Hatch Rest Sound Machine");
   await expect(dialog.getByLabel("Price (optional)")).toHaveValue("59.99");
   // The picture it found, chosen for the item.
   await expect(dialog.getByLabel("Image link (optional)")).toHaveValue(`${shopUrl}/images/rest.png`);
@@ -103,8 +105,8 @@ test("a store that won't let the server in still leaves the link and a name from
   const link = `${shopUrl}/products/organic-cotton-swaddle-set`;
 
   await fetchFromLink(dialog, link);
-  await expect(dialog.getByRole("status")).toContainText("We couldn't read the details from this link");
-  await expect(dialog.getByLabel("Item Name")).toHaveValue(/organic cotton swaddle set/i);
+  await expect(dialog.getByRole("status")).toContainText("We couldn't read the details from 127.0.0.1");
+  await expect(dialog.getByLabel("Item name")).toHaveValue(/organic cotton swaddle set/i);
 
   await dialog.getByLabel("Price (optional)").fill("24");
   await dialog.getByRole("button", { name: "Add item" }).click();

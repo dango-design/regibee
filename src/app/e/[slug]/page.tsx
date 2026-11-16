@@ -17,6 +17,7 @@ import {
   getGifteeFor,
   getGiftExchange,
   getGuestWishLists,
+  getInvitationUpdates,
   getSignupSheet,
   registrySlugFromLink,
 } from "@/lib/events-server";
@@ -59,11 +60,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: description || `You're invited to ${event.title}`,
     // Event pages can show a home address, so they're never in search results.
     robots: { index: false, follow: false },
-    // Links texted or posted to friends show the invitation picture.
+    // Links texted or posted to friends show the invitation picture, or
+    // Regibee's share image (src/app/opengraph-image.tsx) for an event without
+    // one. This openGraph replaces the site-wide one, so without that second
+    // choice the link would have no picture and Messenger would pick one off
+    // the page.
     openGraph: {
       title: event.title,
       description: description || undefined,
-      ...(event.image_url && { images: [{ url: event.image_url }] }),
+      images: [{ url: event.image_url || "/opengraph-image" }],
     },
   };
 }
@@ -79,10 +84,12 @@ export default async function PublicEventPage({
   const [event, viewer] = await Promise.all([getEvent(slug), getViewer()]);
   if (!event) notFound();
 
-  const [registries, exchange, signupSheet, guestResult] = await Promise.all([
+  const [registries, exchange, signupSheet, updates, guestResult] = await Promise.all([
     getEventRegistries(event.id, { withItems: true }),
     getGiftExchange(event.id),
     getSignupSheet(event.id),
+    // The host's messages and changes, for anyone with the link (#129).
+    getInvitationUpdates(event.id),
     token
       ? supabaseAdmin
           .from("event_guests")
@@ -199,6 +206,7 @@ export default async function PublicEventPage({
               : null
           }
           addressHidden={addressHidden}
+          updates={updates}
         >
           {giftee && exchange && (
             <SecretSantaCard

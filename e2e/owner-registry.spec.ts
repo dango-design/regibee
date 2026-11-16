@@ -19,21 +19,27 @@ test("an owner makes a baby registry, sees it on the dashboard, and adds, change
   const owner = await createAccount("Remi Owner");
   await signIn(page, owner);
 
-  // The full form.
-  await page.goto("/dashboard/registry/new");
-  await waitForReact(page, "form");
-  await page.getByRole("button", { name: /^Baby/ }).click();
+  // The full form, as the New page's "Baby registry" opens it.
+  await page.goto("/dashboard/registry/new?type=baby");
+  await waitForReact(page.locator("form"));
+  await expect(page.getByRole("button", { name: /What's it for/ })).toContainText("A baby");
   const title = `Remi & Max's Registry ${uniqueId()}`;
-  await page.getByLabel("Registry name").fill(title);
-  await page.getByRole("button", { name: "Create Registry" }).click();
+  const nameField = page.getByLabel("Registry name");
+  await expect(async () => {
+    if (!(await nameField.isVisible())) await page.getByRole("button", { name: /Name and date/ }).click();
+    await expect(nameField).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await nameField.fill(title);
+  await page.getByRole("button", { name: "Create registry" }).click();
   await page.waitForURL(/\/dashboard\/registry\/[0-9a-f-]{36}$/);
   const registryId = page.url().split("/dashboard/registry/")[1];
   const { data: registry } = await db
     .from("registries")
-    .select("owner_id, title, registry_type, is_public, slug")
+    .select("owner_id, title, registry_type, is_public, is_private, slug")
     .eq("id", registryId)
     .single();
-  expect(registry).toMatchObject({ owner_id: owner.id, title, registry_type: "baby", is_public: true });
+  // Anyone with the link can open it, the default: neither public nor private.
+  expect(registry).toMatchObject({ owner_id: owner.id, title, registry_type: "baby", is_public: false, is_private: false });
 
   // The dashboard lists it. A join Supabase couldn't resolve once left this
   // page saying "No registries yet" (CLAUDE.md, "Database changes").
@@ -44,10 +50,12 @@ test("an owner makes a baby registry, sees it on the dashboard, and adds, change
   await page.waitForURL(`**/dashboard/registry/${registryId}`);
 
   // An item added by hand.
-  await page.getByRole("button", { name: "Add Item" }).first().click();
+  const addItem = page.getByRole("button", { name: "Add Item" }).first();
+  await waitForReact(addItem);
+  await addItem.click();
   const addDialog = page.getByRole("dialog");
-  await expect(addDialog.getByRole("heading", { name: "Add item to registry" })).toBeVisible();
-  await addDialog.getByLabel("Item Name").fill("Convertible Crib");
+  await expect(addDialog.getByRole("heading", { name: "Add an item" })).toBeVisible();
+  await addDialog.getByLabel("Item name").fill("Convertible Crib");
   await addDialog.getByLabel("Price (optional)").fill("299");
   await addDialog.getByRole("button", { name: "Add item" }).click();
   await expect(addDialog).toBeHidden();
@@ -69,8 +77,8 @@ test("an owner makes a baby registry, sees it on the dashboard, and adds, change
   // The owner changes its name and price.
   await page.getByText("Convertible Crib").click();
   const editDialog = page.getByRole("dialog");
-  await expect(editDialog.getByRole("heading", { name: "Edit item in registry" })).toBeVisible();
-  await editDialog.getByLabel("Item Name").fill("Convertible Crib, Natural");
+  await expect(editDialog.getByRole("heading", { name: "Edit item" })).toBeVisible();
+  await editDialog.getByLabel("Item name").fill("Convertible Crib, Natural");
   await editDialog.getByLabel("Price (optional)").fill("349.50");
   await editDialog.getByRole("button", { name: "Save changes" }).click();
   await expect(editDialog).toBeHidden();

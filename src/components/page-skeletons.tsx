@@ -225,6 +225,57 @@ export function SavedSkeleton() {
   );
 }
 
+/** Matches the idea cards in src/components/gift-ideas.tsx. */
+function GiftIdeaCardSkeleton() {
+  return (
+    <div className="flex flex-col rounded-xl border border-secondary p-3">
+      <div className="flex gap-3">
+        <Skeleton className="size-16 shrink-0 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-8 w-14 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+/** The Saved tab's Gift ideas view while it loads: one person's ideas. */
+export function GiftIdeasSkeleton() {
+  return (
+    <div className="container mx-auto px-4 pt-6 pb-8" aria-busy="true">
+      <LoadingMessage>Loading your gift ideas</LoadingMessage>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="sr-only">Gift ideas</h1>
+          <p className="text-tertiary">Gifts you might give other people. Only you can see these.</p>
+        </div>
+        <Skeleton className="h-10 w-44 shrink-0 rounded-lg" />
+      </div>
+
+      <div className="mt-6 flex gap-1.5">
+        <Skeleton className="h-9 w-28 rounded-full" />
+        <Skeleton className="h-9 w-20 rounded-full" />
+        <Skeleton className="h-9 w-20 rounded-full" />
+      </div>
+
+      <section className="mt-11">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="mt-1.5 h-4 w-16" />
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <GiftIdeaCardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function FieldSkeleton() {
   return (
     <div className="space-y-1.5">

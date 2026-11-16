@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
+import { AutofillFields } from "@/components/autofill-fields";
 import { Button, EmptyState, Field, Text } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
@@ -31,14 +32,24 @@ export default function ForgotPasswordScreen() {
     }
   }
 
+  // Worded so it doesn't say whether the address has an account. "Try again"
+  // keeps the address, so they can see what they typed and fix it.
   if (sent) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <EmptyState
           icon="checkCircle"
           title="Check your email"
-          message="If there's an account for that address, we sent it a link to set a new password. Then sign in here with it."
-          action={<Button title="Back to sign in" onPress={() => router.back()} />}
+          message={`If there's an account for ${email.trim()}, we sent it a link to set a new password. Then sign in here with it.`}
+          action={
+            <View style={{ alignItems: "center", gap: spacing.sm }}>
+              <Button title="Back to sign in" onPress={() => router.back()} />
+              <Text variant="subhead" tone="secondary" style={{ marginTop: spacing.md }}>
+                Didn't receive it?
+              </Text>
+              <Button title="Try again" variant="ghost" onPress={() => setSent(false)} />
+            </View>
+          }
         />
       </View>
     );
@@ -54,18 +65,21 @@ export default function ForgotPasswordScreen() {
       <Text variant="callout" tone="secondary">
         Enter the email you signed up with. We'll send you a link to set a new password.
       </Text>
-      <Field
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        textContentType="emailAddress"
-        returnKeyType="send"
-        onSubmitEditing={submit}
-        autoFocus
-      />
+      <AutofillFields>
+        <Field
+          label="Email"
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          returnKeyType="send"
+          onSubmitEditing={submit}
+          autoFocus
+        />
+      </AutofillFields>
       {error ? (
         <Text variant="footnote" tone="danger">
           {error}
