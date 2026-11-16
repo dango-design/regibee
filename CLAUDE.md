@@ -6,13 +6,14 @@ These notes are for anyone changing or running the live app, people and Claude a
 
 | Service | What it does | What to know |
 | --- | --- | --- |
-| GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN` and `EXPO_TOKEN` repo secrets. |
+| GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN`, `EXPO_TOKEN`, `CWS_SERVICE_ACCOUNT_KEY`, `CWS_PUBLISHER_ID` and `CWS_ITEM_ID` repo secrets. |
 | Vercel | Builds and hosts the site | `main` deploys to regibee.com and www.regibee.com. Every other branch gets a preview URL. Every deployment URL except regibee.com needs a Vercel login. |
 | Supabase `regibee` (ref `ibfvmgpfwhhyrhnxaxig`) | Database and sign-in | This is the only database. Preview deploys and `vercel env pull` use it too, so anything you do on a preview or locally with those keys changes real data. Database changes are run by hand. See below. |
 | Resend | Sends every email, from `notifications@regibee.com` | The site sends through Resend's API with `RESEND_API_KEY`. Supabase sends its account emails through Resend's SMTP server, with a second key kept in Supabase's settings. Both need the DNS records for regibee.com. |
 | Porkbun | Registrar and DNS for regibee.com | The DNS records point the site at Vercel and verify the domain for Resend. |
 | Expo (EAS) | Builds the phone app, uploads Android builds to Google Play, and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. It also holds the Android signing keystore and the Google service account key. Builds are run by hand. See "Updates" and "Android testers" in [mobile/README.md](mobile/README.md). |
 | Google Play Console | The Android app's listing and testing tracks | Testers install from the internal testing track. `eas build --profile testing --auto-submit` uploads to it. |
+| Chrome Web Store | The browser extension's listing. Chrome installs and updates the extension from it | One listing, private to testers for now. `.github/workflows/extension-publish.yml` sends each merge to main that changes the extension for review, with the `CWS_*` secrets. Google reviews every version, which usually takes a few days. See "Publishing" in [extension/README.md](extension/README.md). |
 | Chromatic | Visual tests of the Storybook stories | The project is in the `dango-design` Chromatic account, on the free plan. Its id is in `chromatic.config.json`. |
 
 Vercel holds these env vars for production, preview and development: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `NEXT_PUBLIC_SITE_URL`. Run `vercel env pull .env.local` to copy them to your machine.
@@ -113,6 +114,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - It signs in with its own Supabase session, which `/extension/connect` creates. Its API is `src/app/api/extension/*`, and it runs as the signed-in user under the same access rules as the website.
 - Store link rules and the pages it reads are in `src/lib/retailers.ts`, which the site and the extension share. Change a store there, not in the extension.
 - The extension only works against a site that has its API routes deployed.
+- People install it from the Chrome Web Store, which updates it for them. When a merge to main changes the extension, `.github/workflows/extension-publish.yml` sends a new version for review. It reaches people days after the website changes, and some keep an older version longer. So `/api/extension/*` and the Connect page must keep working with the version already out: add fields instead of renaming or removing them. See "Publishing" in [extension/README.md](extension/README.md).
 - `npm run test:extension` runs the built extension in Playwright's Chromium on saved copies of real store pages, with Regibee's API stubbed. The pages hold the owner's real registries, so they stay outside the repo, in `~/.regibee/extension-test-pages`. Never commit them. GitHub Actions doesn't run these tests, since it has no pages.
 
 ## Mobile app

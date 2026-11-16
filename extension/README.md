@@ -24,6 +24,8 @@ The server side is in `src/app/api/extension/*`, `src/lib/extension-server.ts` a
 
 ## Build and load it
 
+People install the extension from the Chrome Web Store, which keeps it up to date for them (see "Publishing"). Building and loading it yourself is for working on it.
+
 ```bash
 npm run extension:build
 ```
@@ -81,8 +83,65 @@ Everything store-specific is in `src/lib/retailers.ts`: link rules, product IDs,
 
 The reader (`src/reader.ts`) works the same way for every store: it finds the registry item links by the store's rules, then reads each item from the smallest part of the page around its links that holds no other item. It doesn't depend on a store's class names, but a redesign can still break it. When it finds nothing, the popup says so and points to the copy-link steps.
 
-## Before publishing to the Chrome Web Store
+## Publishing
+
+The extension has one listing on the Chrome Web Store. It's private while people test it, so only testers can install it, and it goes public later. Chrome updates every installed copy by itself. On a Mac or Windows PC, the store is the only way an extension updates itself. A copy loaded with Load unpacked never does.
+
+### How a change reaches people
+
+1. A merge to main that changes the extension runs `.github/workflows/extension-publish.yml`. It builds the extension for regibee.com, uploads it with `extension/publish.mjs` and sends it for review.
+2. Google reviews every version, private ones too. Most reviews take a few days, and some take a few weeks. Reading store pages may make them slower.
+3. When the review passes, the store publishes the new version, and Chrome installs it within a few hours. A tester who wants it sooner can open `chrome://extensions`, turn on Developer mode and click **Update**.
+
+Only one version can wait for review. If a merge lands while an older version is still waiting, the workflow cancels the older one and sends the new one. The review starts over, so merges that keep landing before a review finishes keep putting the update off.
+
+Merges that change only `extension/test/` or this README don't publish anything. A change to `src/lib/extension.ts` or `src/lib/retailers.ts` does, since the extension is built from them.
+
+### Versions
+
+A build from main has four parts in its version: `EXTENSION_VERSION` from `src/manifest.ts`, then the workflow's run number, such as `0.2.0.57`. The popup's bottom bar and `chrome://extensions` show it with the pull request it came from, such as `0.2.0.57 (#212)`. Local builds show only `EXTENSION_VERSION`. Change `EXTENSION_VERSION` when the extension does something new.
+
+The store only takes a higher version than the last one uploaded. To try a failed publish again, click **Run workflow** on the workflow's page in the Actions tab. **Re-run** keeps the same run number, so the store refuses it.
+
+### The website changes first
+
+The website goes live minutes after a merge. The extension reaches people days later, and some keep an older version longer. So:
+
+- `/api/extension/*` and the Connect page must keep working with the version people have now. Add fields instead of renaming or removing them. Remove old behavior only once the store has had the new version for a while.
+- When the site needs something only a newer extension can do, check the `features` the extension reports (`src/lib/extension.ts`), as `src/lib/fetch-product.ts` does, and fall back when it isn't there.
+
+### Setting it up
+
+This is done once, by a person, in Google's dashboards.
+
+1. **Developer account.** Sign in to the [Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole) with the Google account that should own the extension. It needs 2-step verification and a one-time $5 registration fee.
+2. **The listing.** Run `npm run extension:build`, zip what's inside `extension/dist` (not the folder itself) and upload it as a new item. The API can't create an item, so this first upload is by hand. Then fill in:
+   - The store listing: a description, screenshots, and `extension/icons/icon-128.png` as the icon.
+   - Privacy: the extension's purpose, a reason for each permission (`storage`, `activeTab`, `scripting`, `contextMenus`) and for its access to the stores in `src/lib/retailers.ts` and regibee.com, and data-use answers that match the "The browser extension" section of the privacy policy. Use https://www.regibee.com/privacy as the privacy policy URL. Update that page when what the extension reads or keeps changes.
+   - Distribution: **Private**.
+
+   Then submit it for review.
+3. **A service account, so GitHub can publish.** In the [Google Cloud console](https://console.cloud.google.com), make a project and turn on the Chrome Web Store API. Create a service account in it, with no roles, and make a JSON key for it. Add the service account's email in the developer dashboard's account settings. An account can have only one.
+4. **GitHub secrets.** Under the repo's Settings › Secrets and variables › Actions, add:
+   - `CWS_SERVICE_ACCOUNT_KEY`: the whole JSON key file. Delete the file afterwards, and never commit it.
+   - `CWS_PUBLISHER_ID`: the publisher ID, under Publisher › Settings in the developer dashboard.
+   - `CWS_ITEM_ID`: the extension's 32-letter ID, on the item's Package tab.
+
+   Until all three are set, the workflow warns and publishes nothing.
+
+### Adding testers
+
+A private listing can only be installed by Google accounts you name. Anyone else who opens its link gets a page saying it doesn't exist. Either:
+
+- Add testers' emails as trusted testers in the developer dashboard's account settings. The list covers every item the account publishes.
+- Or add a Google Group you manage on the listing's Distribution page, and add testers to the group.
+
+Send testers the listing's link. They open it in Chrome signed in with that Google account and click **Add to Chrome**. Brave and Arc install from the store too. Edge first asks to allow extensions from other stores. Testers also need a Regibee account to connect.
+
+### Going public
 
 - Check the Target owner view and a Pottery Barn Kids registry page, then mark them `verified`.
-- Use https://www.regibee.com/privacy as the privacy policy URL. The store asks for one because the extension reads registry pages and holds a Regibee session. The page's "The browser extension" section says what it reads and keeps, so update it when that changes.
-- A Safari version needs an Apple developer account and an Xcode wrapper.
+- Change Distribution to **Public** in the developer dashboard and publish that change there. The API can't publish a new visibility until it has been published once by hand.
+- From then on, each merge reaches everyone, testers included. If testers should get changes before everyone else, add a second, private listing for them and point the workflow at it. Google requires its name to end in "BETA" and its description to say it's for testing.
+
+A Safari version needs an Apple developer account and an Xcode wrapper.

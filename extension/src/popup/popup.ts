@@ -14,7 +14,7 @@ import {
   type StoreItem,
 } from "@/lib/extension";
 import { classifyStoreLink, EXTENSION_STORES, getStore, storeItemKey, type StoreId, type StoreInfo } from "@/lib/retailers";
-import { REGIBEE_URL } from "../config";
+import { REGIBEE_URL, VERSION_NAME } from "../config";
 import { readProductPage, type ProductPage } from "../product-reader";
 import {
   ask,
@@ -546,6 +546,8 @@ function showHome(state: PopupState, user: { name: string }, data: RegistriesRes
           },
           "Manage store registries"
         ),
+        // So testers can say which build they're on, such as "0.2.0.57 (#212)".
+        h("span", { className: "muted", title: "This version of the extension" }, VERSION_NAME),
         h(
           "button",
           {
