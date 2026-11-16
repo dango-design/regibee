@@ -1,0 +1,89 @@
+name: Extension publish
+
+# Sends the browser extension to the Chrome Web Store when a merge to main
+# changes it. Google reviews every version, usually within a few days, and
+# then publishes it. Chrome updates everyone who has it installed. If an
+# older version is still waiting for review, this cancels it and sends the
+# newer one instead. See "Publishing" in extension/README.md.
+#
+# It needs three repo secrets: CWS_SERVICE_ACCOUNT_KEY, CWS_PUBLISHER_ID and
+# CWS_ITEM_ID. Without them, the run says so and publishes nothing.
+#
+# Each version's fourth part is this workflow's run number, and the store
+# only takes a higher version than the last one uploaded. So to try a failed
+# publish again, use "Run workflow" on the Actions tab, not "Re-run", which
+# keeps the same run number.
+on:
+  push:
+    branches: [main]
+    paths:
+      - extension/**
+      - "!extension/test/**"
+      - "!extension/README.md"
+      # The site files the extension is built from.
+      - src/lib/extension.ts
+      - src/lib/retailers.ts
+      - src/app/icon.svg
+      - .github/workflows/extension-publish.yml
+  workflow_dispatch:
+
+# One publish at a time, in order, so the newest merge is the newest version.
+concurrency:
+  group: extension-publish
+  cancel-in-progress: false
+
+jobs:
+  secrets:
+    name: Chrome Web Store secrets
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+          PUBLISHER: ${{ secrets.CWS_PUBLISHER_ID }}
+          ITEM: ${{ secrets.CWS_ITEM_ID }}
+        run: |
+          if [ -n "$KEY" ] && [ -n "$PUBLISHER" ] && [ -n "$ITEM" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The Chrome Web Store secrets aren't all set, so the extension wasn't published. See extension/README.md."
+          fi
+
+  publish:
+    name: Publish to the Chrome Web Store
+    needs: secrets
+    if: needs.secrets.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # "Merge pull request #212 from ..." gives the pull request number,
+      # which the popup and chrome://extensions show next to the version.
+      - name: Build
+        env:
+          EXTENSION_BUILD: ${{ github.run_number }}
+        run: |
+          subject=$(git log -1 --format=%s)
+          if [[ $subject =~ ^Merge\ pull\ request\ \#([0-9]+) ]]; then
+            export EXTENSION_PR="${BASH_REMATCH[1]}"
+          fi
+          npm run extension:build
+
+      - name: Zip
+        working-directory: extension/dist
+        run: zip -qr "$RUNNER_TEMP/regibee-extension.zip" .
+
+      - name: Publish
+        env:
+          CWS_SERVICE_ACCOUNT_KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_ITEM_ID: ${{ secrets.CWS_ITEM_ID }}
+        run: node extension/publish.mjs "$RUNNER_TEMP/regibee-extension.zip"

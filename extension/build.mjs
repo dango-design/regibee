@@ -4,6 +4,10 @@
 //   npm run extension:dev     for http://localhost:3000, rebuilding on changes
 //
 // REGIBEE_URL overrides the site the extension talks to.
+//
+// .github/workflows/extension-publish.yml also sets EXTENSION_BUILD, the
+// version's fourth part, and EXTENSION_PR, the pull request the build comes
+// from. See BuildInfo in src/manifest.ts.
 
 import * as esbuild from "esbuild";
 import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
@@ -17,6 +21,17 @@ const outdir = path.join(here, "dist");
 const dev = process.argv.includes("--dev");
 const watch = process.argv.includes("--watch");
 const siteUrl = (process.env.REGIBEE_URL || (dev ? "http://localhost:3000" : "https://www.regibee.com")).replace(/\/+$/, "");
+
+/** A whole number from an environment variable, or undefined when it isn't set. */
+function wholeNumber(name, max) {
+  const value = process.env[name];
+  if (!value) return undefined;
+  if (!/^[1-9]\d*$/.test(value) || Number(value) > max) throw new Error(`${name} must be a whole number from 1 to ${max}, not "${value}".`);
+  return Number(value);
+}
+
+// Chrome allows at most 65535 in each part of a version.
+const buildInfo = { build: wholeNumber("EXTENSION_BUILD", 65535), pr: wholeNumber("EXTENSION_PR", Number.MAX_SAFE_INTEGER) };
 
 const shared = {
   bundle: true,
@@ -33,10 +48,10 @@ async function manifest() {
   // store list as the site.
   const tmp = path.join(outdir, ".manifest.mjs");
   await esbuild.build({ ...shared, entryPoints: [path.join(here, "src/manifest.ts")], outfile: tmp, format: "esm", platform: "node", logLevel: "warning" });
-  const { buildManifest, EXTENSION_VERSION } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
+  const { buildManifest, fullVersion, versionName } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
   await rm(tmp);
-  await writeFile(path.join(outdir, "manifest.json"), `${JSON.stringify(buildManifest(siteUrl), null, 2)}\n`);
-  return EXTENSION_VERSION;
+  await writeFile(path.join(outdir, "manifest.json"), `${JSON.stringify(buildManifest(siteUrl, buildInfo), null, 2)}\n`);
+  return { version: fullVersion(buildInfo), versionName: versionName(buildInfo) };
 }
 
 async function copyStatic() {
@@ -51,12 +66,13 @@ async function copyStatic() {
 
 await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
-const version = await manifest();
+const { version, versionName } = await manifest();
 await copyStatic();
 
 const define = {
   __REGIBEE_URL__: JSON.stringify(siteUrl),
   __EXTENSION_VERSION__: JSON.stringify(version),
+  __EXTENSION_VERSION_NAME__: JSON.stringify(versionName),
 };
 
 const builds = [
@@ -74,5 +90,5 @@ if (watch) {
   console.log(`Watching. The extension talks to ${siteUrl}. Reload it in chrome://extensions after changes.`);
 } else {
   await Promise.all(builds.map((options) => esbuild.build(options)));
-  console.log(`Built extension/dist for ${siteUrl}.`);
+  console.log(`Built extension/dist ${versionName} for ${siteUrl}.`);
 }
