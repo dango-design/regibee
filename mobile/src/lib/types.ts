@@ -11,6 +11,8 @@ export interface Registry {
   slug: string;
   event_date: string | null;
   is_public: boolean;
+  /** Only the owner and co-managers can open it. Missing in the demo. */
+  is_private?: boolean;
   description: string | null;
   photo_url: string | null;
   registry_type: RegistryType | null;

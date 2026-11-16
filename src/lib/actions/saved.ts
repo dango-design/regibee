@@ -108,8 +108,7 @@ export async function removeItemsFromList(itemIds: string[], registryId: string)
 }
 
 /**
- * Makes your wishlist in one click, the same as "Make just a wishlist" in the
- * "What are you planning?" picker: a personal list for you, named after you,
+ * Makes your wishlist in one click: a personal list for you, named after you,
  * with no event. Returns its id.
  */
 export async function startMyWishlist(): Promise<{ error: string } | { registryId: string }> {

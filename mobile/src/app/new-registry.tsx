@@ -9,6 +9,7 @@ import { errorMessage, useCreateRegistry } from "@/lib/data";
 import { formatEventDate, toYmd } from "@/lib/format";
 import { spacing, useTheme } from "@/lib/theme";
 import type { EventType, RegistryType } from "@/lib/types";
+import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@shared/list-access";
 import { copyFor, REGISTRY_OCCASION_CHOICES } from "@shared/registry-copy";
 
 // The website's create form (src/components/create-registry-form.tsx) asks the
@@ -23,7 +24,7 @@ export default function NewRegistryScreen() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
@@ -38,7 +39,7 @@ export default function NewRegistryScreen() {
         registryType,
         eventType: registryType === "personal" ? eventType : null,
         eventDate: date ? toYmd(date) : null,
-        isPublic,
+        visibility,
       },
       {
         onSuccess: ({ id }) => {
@@ -137,15 +138,24 @@ export default function NewRegistryScreen() {
           ) : null}
         </Section>
 
-        <Section title="Who can see it" footer="Anyone with your share link can open it either way.">
-          <SwitchRow
-            icon="public"
-            label="Public"
-            description={isPublic ? "Search engines can list it." : "Hidden from search engines."}
-            value={isPublic}
-            onValueChange={setIsPublic}
-          />
-        </Section>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+            Who can open it
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {LIST_VISIBILITIES.map((value) => (
+              <Chip
+                key={value}
+                label={LIST_ACCESS[value].label}
+                selected={visibility === value}
+                onPress={() => setVisibility(value)}
+              />
+            ))}
+          </View>
+          <Text variant="footnote" tone="tertiary">
+            {LIST_ACCESS[visibility].description}
+          </Text>
+        </View>
       </ScrollView>
       <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (

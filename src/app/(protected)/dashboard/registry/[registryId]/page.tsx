@@ -54,7 +54,7 @@ import {
 import { formatRevealDate, nextReveal } from "@/lib/reveal";
 import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notice";
 import { getEventsForReveal, getGiftsRevealedThrough, listEventsForRegistry } from "@/lib/events-server";
-import { RegistryEventsBanner } from "@/components/registry-events-banner";
+import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-events-banner";
 import { findSharedLink } from "@/lib/shared-link";
 import { getSessionUser } from "@/lib/viewer";
 import { itemsHiddenFromOwner, listsForItems, loadListItems, type ListItem } from "@/lib/list-items";
@@ -437,6 +437,12 @@ export default async function RegistryManagePage({
     : [];
   const zipCode = taxEnabled ? (settings?.zip_code as string | undefined) : undefined;
   const registryUrl = `/r/${registry.slug}`;
+  // Guests (anonymous sessions) can't make events, so they get no prompt to.
+  // Once a manager dismisses the prompt, a smaller button in the header takes
+  // its place.
+  const canPlanEvents = !user.is_anonymous;
+  const eventPromptDismissed = settings?.event_prompt_dismissed === true;
+  const showPlanEventButton = canPlanEvents && eventPromptDismissed && linkedEvents.length === 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -473,6 +479,7 @@ export default async function RegistryManagePage({
               </span>
             </Link>
           </Button>
+          {showPlanEventButton && <PlanEventButton registryId={registryId} />}
         </div>
       </div>
 
@@ -485,10 +492,15 @@ export default async function RegistryManagePage({
         />
       )}
 
-      {/* Events that link to this registry, and a way to plan one. */}
-      <div className="mt-6">
-        <RegistryEventsBanner registryId={registryId} events={linkedEvents} />
-      </div>
+      {/* Events that link to this registry, or a small prompt to plan one. */}
+      {(canPlanEvents || linkedEvents.length > 0) && (
+        <RegistryEventsBanner
+          className="mt-6"
+          registryId={registryId}
+          events={linkedEvents}
+          promptDismissed={eventPromptDismissed}
+        />
+      )}
 
       {/* Stats */}
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">

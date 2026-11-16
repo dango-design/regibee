@@ -21,6 +21,7 @@ import {
   updateZipCode,
   inviteManagerByEmail,
   generateInviteLink,
+  replaceRegistryLink,
   removeManager,
   revokeInvite,
   listManagers,
@@ -28,6 +29,9 @@ import {
 } from "@/lib/actions/registry";
 import { CategoryManager } from "@/components/category-manager";
 import { ProfileListingField } from "@/components/profile-listing-field";
+import { ListAccessField } from "@/components/list-access-field";
+import { DEFAULT_LIST_VISIBILITY, listVisibility, parseListVisibility, visibilityColumns, type ListVisibility } from "@/lib/list-access";
+import { ShareLinkField } from "@/components/share-link-field";
 import { StoreRegistriesCard } from "@/components/store-registries-card";
 import { parseRetailerRegistries } from "@/lib/retailers";
 import type { PaymentMethods, PersonalEventType, RegistryType } from "@/lib/types";
@@ -73,6 +77,7 @@ export default function RegistrySettingsPage() {
     description: string | null;
     photo_url: string | null;
     is_public: boolean;
+    is_private: boolean;
     listed_on_profile: boolean;
     slug: string;
     owner_id: string;
@@ -103,10 +108,9 @@ export default function RegistrySettingsPage() {
   const [addressError, setAddressError] = useState("");
   const [addressSuccess, setAddressSuccess] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string; sort_order: number }[]>([]);
-  const [slugCopied, setSlugCopied] = useState(false);
   // Guests (anonymous sessions) have no profile page to list a registry on.
   const [hasProfile, setHasProfile] = useState(false);
-  const [isPublicChoice, setIsPublicChoice] = useState(true);
+  const [visibilityChoice, setVisibilityChoice] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
   const [listedChoice, setListedChoice] = useState(false);
 
   // Manager state
@@ -139,7 +143,7 @@ export default function RegistrySettingsPage() {
       const [{ data }, { data: cats }, { data: { user } }] = await Promise.all([
         supabase
           .from("registries")
-          .select("title, parent_names, honoree_names, event_date, description, photo_url, is_public, listed_on_profile, slug, owner_id, registry_type, event_type, settings")
+          .select("title, parent_names, honoree_names, event_date, description, photo_url, is_public, is_private, listed_on_profile, slug, owner_id, registry_type, event_type, settings")
           .eq("id", registryId)
           .single(),
         supabase
@@ -150,7 +154,7 @@ export default function RegistrySettingsPage() {
         supabase.auth.getUser(),
       ]);
       setRegistry(data);
-      setIsPublicChoice(data?.is_public ?? true);
+      setVisibilityChoice(data ? listVisibility(data) : DEFAULT_LIST_VISIBILITY);
       setListedChoice(data?.listed_on_profile ?? false);
       setCategories(cats || []);
       setCurrentUserId(user?.id || null);
@@ -175,7 +179,7 @@ export default function RegistrySettingsPage() {
         (formData.get("honoreeNames") as string) ||
         (formData.get("parentNames") as string) ||
         "";
-      const savedIsPublic = formData.get("isPublic") === "true";
+      const savedVisibility = parseListVisibility(formData.get("visibility")) ?? listVisibility(registry);
       setRegistry({
         ...registry,
         title: formData.get("title") as string,
@@ -183,8 +187,10 @@ export default function RegistrySettingsPage() {
         honoree_names: honoreeNames || null,
         event_date: (formData.get("eventDate") as string) || null,
         description: (formData.get("description") as string) || null,
-        is_public: savedIsPublic,
-        listed_on_profile: isOwner ? listedChoice : registry.listed_on_profile,
+        ...visibilityColumns(savedVisibility),
+        // Making a list private takes it off its owner's profile.
+        listed_on_profile:
+          savedVisibility === "private" ? false : isOwner ? listedChoice : registry.listed_on_profile,
       });
     }
     setSaving(false);
@@ -449,68 +455,38 @@ export default function RegistrySettingsPage() {
               rows={3}
             />
 
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-secondary">Visibility</span>
-              <p className="text-xs text-tertiary">Anyone with the share link can open your registry either way. This controls search engines, and who sees it on your profile.</p>
-              <div className="flex items-center gap-4 max-sm:flex-col max-sm:items-stretch max-sm:gap-1">
-                <label className="flex items-center gap-2 max-sm:min-h-11">
-                  <input
-                    type="radio"
-                    name="isPublic"
-                    value="true"
-                    defaultChecked={registry.is_public}
-                    onChange={() => setIsPublicChoice(true)}
-                  />
-                  <span className="text-sm">Public — searchable by search engines</span>
-                </label>
-                <label className="flex items-center gap-2 max-sm:min-h-11">
-                  <input
-                    type="radio"
-                    name="isPublic"
-                    value="false"
-                    defaultChecked={!registry.is_public}
-                    onChange={() => setIsPublicChoice(false)}
-                  />
-                  <span className="text-sm">Private — hidden from search engines, and only followers you approve see it on your profile</span>
-                </label>
-              </div>
-            </div>
+            <div className="space-y-4 border-t border-secondary pt-4">
+              <h2 className="font-sans text-md font-semibold tracking-normal text-primary">Sharing</h2>
 
-            {isOwner && hasProfile && (
-              <ProfileListingField
-                isPublic={isPublicChoice}
-                isSelected={listedChoice}
-                onChange={setListedChoice}
-                hasShippingAddress={Boolean(registry.settings?.shipping_address)}
-              />
-            )}
+              <ListAccessField visibility={visibilityChoice} onChange={setVisibilityChoice} />
 
-            <div className="space-y-1">
-              <span className="text-sm font-medium text-secondary">Share URL</span>
-              <div className="flex items-center gap-4">
-                <p className="min-w-0 break-all text-sm text-tertiary font-mono">
-                  /r/{registry.slug}
+              {visibilityChoice === "private" && listVisibility(registry) !== "private" && (
+                <p role="status" className="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-800">
+                  When you save, people you&apos;ve sent the link to won&apos;t be able to open it, and it&apos;ll
+                  come off any event or group you&apos;ve shared it with.
                 </p>
-                <button
-                  type="button"
-                  aria-label="Copy share link"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/r/${registry.slug}`);
-                    setSlugCopied(true);
-                    setTimeout(() => setSlugCopied(false), 2000);
+              )}
+
+              {isOwner && hasProfile && (
+                <ProfileListingField
+                  visibility={visibilityChoice}
+                  isSelected={listedChoice}
+                  onChange={setListedChoice}
+                  hasShippingAddress={Boolean(registry.settings?.shipping_address)}
+                />
+              )}
+
+              {visibilityChoice !== "private" && (
+                <ShareLinkField
+                  path={`/r/${registry.slug}`}
+                  onReplace={async () => {
+                    const result = await replaceRegistryLink(registryId);
+                    if ("error" in result) return result;
+                    setRegistry((current) => (current ? { ...current, slug: result.slug } : current));
+                    return { path: `/r/${result.slug}` };
                   }}
-                  className="shrink-0 text-tertiary hover:text-secondary transition-colors max-sm:-my-3 max-sm:inline-flex max-sm:min-h-11 max-sm:min-w-11 max-sm:items-center max-sm:justify-center"
-                >
-                  {slugCopied ? (
-                    <span className="inline-flex items-center gap-1 text-sm">
-                      <Check className="h-4 w-4" />
-                      Copied!
-                    </span>
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+                />
+              )}
             </div>
 
             {error && <p className="text-sm text-error-primary">{error}</p>}
@@ -563,7 +539,8 @@ export default function RegistrySettingsPage() {
               <Separator className="my-8" />
             </>
           )}
-          {isOwner && hasProfile && (
+          {/* Private lists can't be shared with groups. */}
+          {isOwner && hasProfile && !registry.is_private && (
             <>
               <RegistryGroupsCard registryId={registryId} />
               <Separator className="my-8" />

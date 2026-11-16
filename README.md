@@ -8,7 +8,8 @@ A gift registry app built with Next.js, Supabase, and Tailwind CSS. It started a
 
 - **Baby or personal registries** - Choose a type when you create a registry. A personal registry can name an occasion (birthday, Christmas, wedding, housewarming, graduation or other), which changes its labels and placeholders. Baby registries start with 10 categories. Personal registries start with none.
 - **Items from any store** - Paste a product link and Regibee fills in the title, price and picture from that page where it can. You can also type the details yourself.
-- **Browser extension** - The Chrome extension brings the items on your Amazon, Target, Walmart and Pottery Barn Kids registries into Regibee, with their registry links. On any shop's product page, it can also add that one item. See [extension/README.md](extension/README.md).
+- **Browser extension** - The Chrome extension brings the items on your Amazon, Target, Walmart and Pottery Barn Kids registries into Regibee, with their registry links. On any shop's product page, it can also add that one item, or save it as a gift idea for someone else. See [extension/README.md](extension/README.md).
+- **Gift ideas for other people** - See something that would suit your mom? Save it as a gift idea, to think about before her birthday. Ideas are grouped by who they're for, on the Saved tab's Gift ideas view (`/dashboard/saved/ideas`), with a link, price, picture and note, and a "Bought it" tick. Only you can see them: they aren't on any list, have no link, and the person never hears about them. Save one by pasting a link, from the Android share sheet, or from the Chrome extension.
 - **iPhone and Android app** - Share a product to Regibee from any store's app or Safari, and it's added with its name, price and pictures. The app also manages registries and shows gift activity. See [mobile/README.md](mobile/README.md).
 - **Baby checklist** - Baby registries get a checklist of 100 suggested items in 10 categories (Nursery & Sleep, Feeding, Diapering, Gear & Travel, Bath, Clothing, Health & Safety, Toys & Books, Maternity & Postpartum, Gifts & Extras). Add the ones you want and dismiss the rest.
 - **Cash funds** - Set up money goals, such as a diaper fund or a college fund. Guests pledge an amount and pay you directly by Venmo, PayPal or Zelle. Regibee doesn't handle money.
@@ -46,8 +47,9 @@ A gift registry app built with Next.js, Supabase, and Tailwind CSS. It started a
 
 ### Privacy
 
-- **The share link always works** - Anyone with a registry's link can open it, public or private. That way guests never need an account.
-- **Public or private** - Public registries can appear in search engines. Private registries are hidden from search engines, and on your profile only followers you approved can see them.
+- **Anyone with the link can open it** - A registry's link (`/r/<title>-<code>`) opens it for anyone, with no account, so guests never need to sign up. New links end in 12 random characters, so they can't be guessed. Links made before November 2026 end in 6, and getting a new link gives them 12.
+- **Private, anyone with the link, or public** - "Private" opens only for you and your co-managers. "Anyone with the link", the default, keeps a registry out of search engines, and on your profile only followers you approved see it. "Public" lets search engines list it too.
+- **Get a new link** - On a registry's Settings page, any manager can turn its link off and get a new one, for when a link went further than it should. Guests' gift emails still lead to their gifts (`src/lib/list-links.ts`). Anyone else with the old link sees "This link doesn't open a list".
 
 ### Profiles and following
 

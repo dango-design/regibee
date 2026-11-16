@@ -304,7 +304,8 @@ export function listTitleFor(occasion: Occasion, name: string): string {
  * - exchange: draw names (a Secret Santa).
  * - signup: a sign-up sheet, for things to bring or days to help (src/lib/signups.ts).
  * - no_gifts: a "No gifts, please" note.
- * - later: decide later.
+ * - later: nothing about gifts yet. The picker's Skip button sends this, so
+ *   every occasion allows it.
  */
 export type GiftPlan = "new_list" | "link" | "ask" | "everyone" | "exchange" | "signup" | "no_gifts" | "later";
 
@@ -371,7 +372,7 @@ export function giftPlansFor(audience: Audience, occasion?: Pick<Occasion, "defa
       case "someone":
         return ["link", "ask", "no_gifts", "later"];
       case "everyone":
-        return ["everyone", "exchange"];
+        return ["everyone", "exchange", "later"];
       case "no_one":
         return ["link", "exchange", "signup", "no_gifts", "later"];
     }
@@ -383,13 +384,14 @@ export function giftPlansFor(audience: Audience, occasion?: Pick<Occasion, "defa
 /**
  * The picker's two rows of gift plans. `main` holds the gift lists (and the
  * sign-up sheet, for an occasion that starts with one), shown large and
- * first. `other` holds the rest, shown smaller after them.
+ * first. `other` holds the rest, shown smaller after them. "later" isn't on
+ * either row: the step's Skip button picks it.
  */
 export function giftPlanRows(
   audience: Audience,
   occasion?: Pick<Occasion, "defaults"> | null,
 ): { main: GiftPlan[]; other: GiftPlan[] } {
-  const plans = giftPlansFor(audience, occasion);
+  const plans = giftPlansFor(audience, occasion).filter((plan) => plan !== "later");
   const isMain = (plan: GiftPlan) => LIST_PLANS.includes(plan) || (plan === "signup" && Boolean(occasion?.defaults?.signup));
   return { main: plans.filter(isMain), other: plans.filter((plan) => !isMain(plan)) };
 }

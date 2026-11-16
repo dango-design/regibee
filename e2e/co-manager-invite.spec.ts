@@ -3,20 +3,10 @@
 // accept. Someone who signs in from the same page can.
 
 import { randomBytes } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { createAccount, createRegistryWithItem, db, reserveGift, uniqueEmail } from "./fixtures";
+import { createAccount, createRegistryWithItem, db, reserveGift, uniqueEmail, waitForReact } from "./fixtures";
 import { localSupabase } from "./local-supabase";
-
-// A field typed into before React takes over the page is cleared on React's
-// next render, and on a cold dev server that can take a few seconds. React
-// tags each element it manages with a "__reactProps" key, so wait for that.
-async function waitForReact(page: Page, selector: string) {
-  await page.waitForFunction((s) => {
-    const element = document.querySelector(s);
-    return !!element && Object.keys(element).some((key) => key.startsWith("__reactProps"));
-  }, selector);
-}
 
 async function managersOf(registryId: string) {
   const { data, error } = await db.from("registry_managers").select("user_id, role").eq("registry_id", registryId);
@@ -64,7 +54,7 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
   const account = await createAccount("Casey Comanager");
   await page.getByRole("link", { name: "Sign in" }).click();
   await page.waitForURL(/\/login\?redirect=/);
-  await waitForReact(page, "form");
+  await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
   await page.getByRole("button", { name: "Sign in" }).click();

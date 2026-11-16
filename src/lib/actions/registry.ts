@@ -14,7 +14,9 @@ import {
 } from "@/lib/email";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
-import { insertRegistry } from "@/lib/registry-create";
+import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
+import { canKeepOldLinks } from "@/lib/list-links";
+import { DEFAULT_LIST_VISIBILITY, parseListVisibility, visibilityColumns } from "@/lib/list-access";
 import { registryPhotoUrlPrefix } from "@/lib/registry-photos";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
 import {
@@ -193,8 +195,9 @@ export async function createRegistry(formData: FormData) {
   const title = formData.get("title") as string;
   const eventDate = formData.get("eventDate") as string;
   const description = formData.get("description") as string;
-  const isPublic = formData.get("isPublic") !== "false";
-  const listedOnProfile = formData.get("listedOnProfile") === "true";
+  const visibility = parseListVisibility(formData.get("visibility")) ?? DEFAULT_LIST_VISIBILITY;
+  // Private lists can't be on a profile.
+  const listedOnProfile = visibility !== "private" && formData.get("listedOnProfile") === "true";
   const zipCode = formData.get("zipCode") as string;
   const taxEnabled = formData.get("taxEnabled") === "true";
   const venmo = formData.get("venmo") as string;
@@ -234,7 +237,7 @@ export async function createRegistry(formData: FormData) {
     eventType,
     eventDate,
     description,
-    isPublic,
+    visibility,
     listedOnProfile,
     settings,
   });
@@ -260,13 +263,17 @@ export async function updateRegistry(registryId: string, formData: FormData) {
   const honoreeNames = honoreeNamesRaw.trim();
   const eventDate = formData.get("eventDate") as string;
   const description = formData.get("description") as string;
-  const isPublic = formData.get("isPublic") === "true";
+  const visibility = parseListVisibility(formData.get("visibility"));
+  if (!visibility) return { error: "Choose who can open this list." };
 
   // A listed registry appears under its owner's name, so only the owner can
-  // change this. Private ones stay listed, but only approved followers see them.
+  // list it. Link-only ones stay listed, but only approved followers see them.
+  // Private ones come off the profile, whoever makes them private.
   const listedField = formData.get("listedOnProfile");
   const listing: { listed_on_profile?: boolean } = {};
-  if (role === "owner" && listedField !== null) {
+  if (visibility === "private") {
+    listing.listed_on_profile = false;
+  } else if (role === "owner" && listedField !== null) {
     listing.listed_on_profile = listedField === "true";
   }
 
@@ -278,7 +285,7 @@ export async function updateRegistry(registryId: string, formData: FormData) {
       parent_names: honoreeNames || null,
       event_date: eventDate || null,
       description: description || null,
-      is_public: isPublic,
+      ...visibilityColumns(visibility),
       ...listing,
     })
     .eq("id", registryId);
@@ -289,6 +296,55 @@ export async function updateRegistry(registryId: string, formData: FormData) {
 
   revalidatePath(`/dashboard/registry/${registryId}`);
   return { success: true };
+}
+
+/**
+ * Gives a list a new share link. The old one stops opening the list, for
+ * everyone who has it. Guests' gift emails still lead to their gifts
+ * (src/lib/list-links.ts). Any manager can do it, like the other sharing
+ * settings.
+ */
+export async function replaceRegistryLink(
+  registryId: string,
+): Promise<{ slug: string } | { error: string }> {
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  // Without the old links table, guests' gift emails would stop working.
+  if (!(await canKeepOldLinks())) {
+    return { error: "Getting a new link isn't ready yet. Try again later." };
+  }
+
+  const { data: registry } = await supabaseAdmin
+    .from("registries")
+    .select("title")
+    .eq("id", registryId)
+    .single();
+  if (!registry) return { error: "We couldn't find this list." };
+
+  // The service role, because the database only lets the server change a
+  // link. It records the old one in the same update.
+  const slug = generateRegistrySlug(registry.title);
+  const { error } = await supabaseAdmin.from("registries").update({ slug }).eq("id", registryId);
+  if (error) {
+    console.error("[registry] Failed to replace a list's link:", error);
+    return { error: "We couldn't make a new link. Try again." };
+  }
+
+  // Gift exchange guests who added this list as their wish list keep its link
+  // on their RSVP, and their Secret Santa finds the list through it. Those
+  // people were given the list on purpose, so their copy gets the new link.
+  const { error: wishlistError } = await supabaseAdmin
+    .from("event_guests")
+    .update({ wishlist_url: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/r/${slug}` })
+    .eq("wishlist_registry_id", registryId);
+  if (wishlistError) {
+    console.error("[registry] Failed to update wish list links on RSVPs:", wishlistError);
+  }
+
+  revalidatePath(`/dashboard/registry/${registryId}`, "layout");
+  revalidatePath("/dashboard");
+  return { slug };
 }
 
 export async function deleteRegistry(registryId: string) {
@@ -1147,6 +1203,30 @@ export async function updateZipCode(
   revalidatePath(`/dashboard/registry/${registryId}`);
   revalidatePath(`/dashboard/registry/${registryId}/settings`);
   return { success: true };
+}
+
+/**
+ * Hides the "Planning a party?" prompt on a registry's page, for everyone who
+ * manages it. The page then offers a smaller "Plan an event" button instead.
+ */
+export async function dismissEventPrompt(registryId: string): Promise<{ error: string | null }> {
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const supabase = await createClient();
+  const { data: registry } = await supabase
+    .from("registries")
+    .select("settings")
+    .eq("id", registryId)
+    .single();
+  if (!registry) return { error: "Registry not found" };
+
+  const settings = { ...((registry.settings as Record<string, unknown>) || {}), event_prompt_dismissed: true };
+  const { error } = await supabase.from("registries").update({ settings }).eq("id", registryId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/registry/${registryId}`);
+  return { error: null };
 }
 
 export async function toggleChecklistDismissed(

@@ -22,6 +22,7 @@ import {
   readReservationPrivacy,
   reservationsHiddenText,
 } from "@shared/gifts";
+import { LIST_ACCESS, listAccess, listVisibility } from "@shared/list-access";
 
 import { Icon } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
@@ -121,7 +122,16 @@ export default function RegistryScreen() {
   const shareUrl = registryShareUrl(r.slug);
   const selfPurchaseButton = copyForRegistry(r).selfPurchaseButton;
 
+  const visibility = listVisibility(r);
+
   function shareRegistry() {
+    if (visibility === "private") {
+      Alert.alert(
+        "This list is private",
+        `${LIST_ACCESS.private.description} To share it, change who can open it in the list's settings on the website.`
+      );
+      return;
+    }
     Share.share(
       Platform.OS === "ios" ? { url: shareUrl, message: r.title } : { message: `${r.title}\n${shareUrl}`, title: r.title }
     );
@@ -327,7 +337,7 @@ function RegistryHeader({
         <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
           <Pill label={occasionLabel(r)} tone="accent" />
           {r.event_date ? <Pill label={`${copy.eventDateLabel}: ${formatEventDate(r.event_date)}`} tone="tint" icon="calendar" /> : null}
-          <Pill label={r.is_public ? "Public" : "Private"} icon={r.is_public ? "public" : "lock"} />
+          <Pill label={listAccess(listVisibility(r)).short} icon={listVisibility(r) === "private" ? "lock" : listVisibility(r) === "public" ? "public" : "link"} />
         </View>
       </View>
 
