@@ -78,6 +78,33 @@ interface AddItemDialogProps {
   onAdded?: (registryId: string) => void;
 }
 
+/**
+ * The store's name, or the site's address at a store Regibee doesn't know, as
+ * the app's storeLabel (mobile/src/lib/product.ts) words it.
+ */
+export function storeNameForLink(url: string): string {
+  const store = detectStore(url);
+  if (store) return store.name;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "this link";
+  }
+}
+
+/**
+ * What the add and edit item dialogs say after reading a link. The app's item
+ * editor (mobile/src/components/item-editor.tsx) says the same.
+ */
+export const readLinkMessages = {
+  filled: (store: string) => `Filled in from ${store}. Check it over.`,
+  nothingNew: (store: string) => `Nothing new to fill in from ${store}.`,
+  failed: (store: string, hasName: boolean) =>
+    hasName
+      ? `We couldn't read the details from ${store}. Your link and name are kept, so fill in the rest by hand.`
+      : `We couldn't read the details from ${store}. Your link is kept, so add the name and the rest by hand.`,
+};
+
 const currencySymbols: Record<string, string> = {
   USD: "$",
   EUR: "€",
@@ -240,37 +267,34 @@ export function AddItemDialog({
       // Some stores, Amazon above all, block the server from reading their
       // pages. That's no dead end: keep the link and whatever the owner has,
       // take a name from the link when it has one, and let them finish.
-      const store = detectStore(url)?.name ?? "this link";
+      const store = storeNameForLink(url);
       const guessedTitle = currentTitle ? undefined : nameFromProductUrl(url);
       if (guessedTitle) setTitle(guessedTitle);
       setScrapeStatus(
         guessedTitle
           ? `We couldn't read the details from ${store}, so we took the name from the link. Check it and fill in the rest.`
-          : currentTitle
-            ? `We couldn't read the details from ${store}. Your link and name are kept, so fill in the rest by hand.`
-            : `We couldn't read the details from ${store}. Your link is kept, so add the name and the rest by hand.`,
+          : readLinkMessages.failed(store, Boolean(currentTitle)),
       );
       setScrapeIsError(true);
       if (options.fromTap) (currentTitle || guessedTitle ? priceRef : titleRef).current?.focus();
     } else {
-      let filled: string[] = [];
+      // The tax added to the price shows under the price field.
+      let filledAny = false;
       if (result.title && !currentTitle) {
         setTitle(result.title);
-        filled.push("title");
+        filledAny = true;
       }
       if (result.price && !price) {
         let finalPrice = parseFloat(result.price).toFixed(2);
-        let taxNote = "";
         if (parentPurchased && zipCode) {
           const taxResult = await estimateTax(zipCode, parseFloat(result.price));
           if (taxResult) {
-            taxNote = ` (incl. ~${(taxResult.taxRate * 100).toFixed(1)}% tax)`;
             setTaxInfo({ original: finalPrice, rate: taxResult.taxRate });
             finalPrice = taxResult.priceWithTax;
           }
         }
         setPrice(finalPrice);
-        filled.push("price" + taxNote);
+        filledAny = true;
       }
       const candidates = result.imageUrls ?? (result.imageUrl ? [result.imageUrl] : []);
       if (candidates.length > 0) {
@@ -278,7 +302,7 @@ export function AddItemDialog({
         setBrokenCandidates(new Set());
         if (!imageUrl) {
           setImageUrl(candidates[0]);
-          filled.push(candidates.length > 1 ? `image (${candidates.length} options)` : "image");
+          filledAny = true;
         }
       }
       const titleForCategory = result.title || currentTitle;
@@ -286,14 +310,11 @@ export function AddItemDialog({
         const inferred = inferCategory(titleForCategory);
         if (inferred) {
           setCategoryId(inferred);
-          filled.push("category");
+          filledAny = true;
         }
       }
-      if (filled.length > 0) {
-        setScrapeStatus(`Auto-filled ${filled.join(", ")}`);
-      } else {
-        setScrapeStatus("No new data found to fill");
-      }
+      const store = storeNameForLink(url);
+      setScrapeStatus(filledAny ? readLinkMessages.filled(store) : readLinkMessages.nothingNew(store));
     }
 
     setScraping(false);
@@ -384,14 +405,14 @@ export function AddItemDialog({
           <Button>
             <span className="inline-flex items-center gap-1.5">
               <Plus className="h-4 w-4 shrink-0" />
-              Add Item
+              Add item
             </span>
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>{saveTo ? "Save an item" : "Add item to registry"}</DialogTitle>
+          <DialogTitle>{saveTo ? "Save an item" : "Add an item"}</DialogTitle>
           <DialogDescription>
             Add anything from any store, in two taps.
           </DialogDescription>
@@ -511,7 +532,7 @@ export function AddItemDialog({
 
           <Input
             ref={titleRef}
-            label="Item Name"
+            label="Item name"
             name="title"
             placeholder={isBaby ? "e.g., Convertible Crib" : "e.g., Wireless Headphones"}
             value={title}
@@ -525,7 +546,8 @@ export function AddItemDialog({
             name="isEssential"
             value="true"
             defaultSelected={defaultValues?.isEssential}
-            label="Mark as most wanted item"
+            label="Most wanted"
+            hint="Guests see it tagged Most wanted."
           />
 
           <div className="space-y-1.5">
@@ -593,7 +615,7 @@ export function AddItemDialog({
                   placeholder={
                     categories.length === 0
                       ? "No categories yet"
-                      : "Select a category"
+                      : "No category"
                   }
                   items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
                   isDisabled={categories.length === 0}
@@ -605,7 +627,7 @@ export function AddItemDialog({
                   onClick={() => setAddingCategory(true)}
                   className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:pr-3"
                 >
-                  + Create category
+                  + New category
                 </button>
               </>
             )}
@@ -731,7 +753,8 @@ export function AddItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Mark as open to used condition item"
+            label="Open to used"
+            hint="Guests may give one secondhand."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -752,9 +775,9 @@ export function AddItemDialog({
           )}
 
           <TextArea
-            label="Notes (optional)"
+            label="Note for guests (optional)"
             name="notes"
-            placeholder="Enter a description..."
+            placeholder="Size, color, or anything else that helps"
             rows={3}
           />
 

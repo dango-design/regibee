@@ -22,6 +22,7 @@ import {
   type RetailerRegistry,
   type StoreId,
 } from "@shared/retailers";
+import { copyForRegistry } from "@shared/registry-copy";
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
@@ -117,6 +118,8 @@ export function ItemEditor({
   const readHere = mode === "add" && Boolean(startingLink) && (!initialProduct || initialProduct.price == null);
   const [readingUrl, setReadingUrl] = useState<string | null>(readHere ? startingLink : null);
   const [readState, setReadState] = useState<ReadState>(readHere ? "reading" : initialProduct ? "done" : "idle");
+  // Whether the item had a name when reading failed, which changes what's left to fill in.
+  const [failedWithName, setFailedWithName] = useState(false);
   const [images, setImages] = useState<string[]>(
     initialProduct?.images.length ? initialProduct.images : item?.image_url ? [item.image_url] : []
   );
@@ -174,6 +177,7 @@ export function ItemEditor({
     if (!product) {
       // Safari already gave us something, so that still counts.
       setReadState(initialProduct ? "done" : "failed");
+      setFailedWithName(Boolean(title.trim()));
       return;
     }
     setReadState("done");
@@ -247,10 +251,8 @@ export function ItemEditor({
 
   function confirmDelete() {
     if (!item) return;
-    const reserved = item.quantity_fulfilled > 0 && !item.is_parent_purchased;
-    const message = reserved
-      ? "Someone has already reserved this. Deleting it removes it from your registry, and their reservation stays in gift activity."
-      : "This removes it from your registry.";
+    // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
+    const message = "This cannot be undone.";
     const run = () => {
       deleteItem.mutate(item, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) });
       haptic("success");
@@ -262,7 +264,7 @@ export function ItemEditor({
     }
     Alert.alert(`Delete “${item.title}”?`, message, [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: run },
+      { text: "Remove item", style: "destructive", onPress: run },
     ]);
   }
 
@@ -285,7 +287,7 @@ export function ItemEditor({
   const store = storeLabel(link);
   const openUrl = normalizeLink(link);
   const saveTitle =
-    mode === "edit" ? "Save changes" : duplicate && confirmedDuplicate ? "Add it again" : "Add to registry";
+    mode === "edit" ? "Save changes" : duplicate && confirmedDuplicate ? "Add it again" : "Add item";
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={64}>
@@ -369,7 +371,7 @@ export function ItemEditor({
               </Text>
             </View>
           ) : null}
-          <ReadStatus state={readState} store={store} />
+          <ReadStatus state={readState} store={store} failedWithName={failedWithName} />
           {linkedRegistries ? (
             <StoreLinkStatus link={link} linkedRegistries={linkedRegistries} registryLinkStores={registryLinkStores} />
           ) : null}
@@ -396,7 +398,7 @@ export function ItemEditor({
                   <Pressable
                     key={uri}
                     accessibilityRole="imagebutton"
-                    accessibilityLabel="Use this picture"
+                    accessibilityLabel="Use this image"
                     accessibilityState={{ selected: uri === imageUrl }}
                     onPress={() => {
                       haptic();
@@ -419,7 +421,7 @@ export function ItemEditor({
         {/* Details */}
         <View style={{ gap: spacing.lg }}>
           <Field
-            label="Name"
+            label="Item name"
             value={title}
             onChangeText={(text) => {
               setTitle(text);
@@ -434,7 +436,7 @@ export function ItemEditor({
           <View style={{ flexDirection: "row", gap: spacing.lg, alignItems: "flex-start" }}>
             <View style={{ flex: 1 }}>
               <Field
-                label="Price"
+                label="Price (optional)"
                 value={priceText}
                 onChangeText={(text) => {
                   setPriceText(text.replace(/[^0-9.,]/g, ""));
@@ -468,12 +470,12 @@ export function ItemEditor({
               Category
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              <Chip label="None" selected={categoryId === null} onPress={() => setCategoryId(null)} />
+              <Chip label="No category" selected={categoryId === null} onPress={() => setCategoryId(null)} />
               {categories.map((c) => (
                 <Chip key={c.id} label={c.name} selected={c.id === categoryId} onPress={() => setCategoryId(c.id)} />
               ))}
               {newCategory === null ? (
-                <Chip label="+ New" selected={false} onPress={() => setNewCategory("")} />
+                <Chip label="+ New category" selected={false} onPress={() => setNewCategory("")} />
               ) : null}
             </View>
             {newCategory !== null ? (
@@ -489,6 +491,7 @@ export function ItemEditor({
                   />
                 </View>
                 <Button title="Add" size="medium" onPress={addCategory} loading={createCategory.isPending} disabled={!newCategory.trim()} />
+                <Button title="Cancel" variant="secondary" size="medium" onPress={() => setNewCategory(null)} />
               </View>
             ) : null}
           </View>
@@ -498,15 +501,14 @@ export function ItemEditor({
           <SwitchRow
             icon="star"
             label="Most wanted"
-            description="Shown first, with a star, on your registry."
+            description="Guests see it tagged Most wanted."
             value={mostWanted}
             onValueChange={setMostWanted}
           />
           <Divider inset={52} />
           <SwitchRow
             icon="checkCircle"
-            label="I bought it myself"
-            description="Guests can still give it by sending you the money for it."
+            label={copyForRegistry(detail.data?.registry).selfPurchaseButton}
             value={bought}
             onValueChange={setBought}
           />
@@ -519,16 +521,21 @@ export function ItemEditor({
             onValueChange={setOpenToUsed}
           />
           {openToUsed ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-              {USED_CONDITIONS.map((c) => (
-                <Chip key={c.id} label={`${c.label} or better`} selected={condition === c.id} onPress={() => setCondition(c.id)} />
-              ))}
+            <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
+              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                Minimum condition
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                {USED_CONDITIONS.map((c) => (
+                  <Chip key={c.id} label={c.label} selected={condition === c.id} onPress={() => setCondition(c.id)} />
+                ))}
+              </View>
             </View>
           ) : null}
         </Section>
 
         <Field
-          label="Note for guests"
+          label="Note for guests (optional)"
           value={notes}
           onChangeText={setNotes}
           placeholder="Size, color, or anything else that helps"
@@ -536,7 +543,7 @@ export function ItemEditor({
         />
 
         {mode === "edit" ? (
-          <Button title="Delete item" variant="danger" icon="trash" onPress={confirmDelete} />
+          <Button title="Remove item" variant="danger" icon="trash" onPress={confirmDelete} />
         ) : null}
       </ScrollView>
 
@@ -669,7 +676,11 @@ function StoreLinkStatus({
   );
 }
 
-function ReadStatus({ state, store }: { state: ReadState; store: string | null }) {
+/**
+ * What reading the link found, worded as the website's add and edit item
+ * dialogs (readLinkMessages in src/components/add-item-dialog.tsx).
+ */
+function ReadStatus({ state, store, failedWithName }: { state: ReadState; store: string | null; failedWithName: boolean }) {
   const theme = useTheme();
   if (state === "reading") {
     return (
@@ -686,7 +697,7 @@ function ReadStatus({ state, store }: { state: ReadState; store: string | null }
       <View style={styles.status} accessibilityLiveRegion="polite">
         <Icon name="checkCircle" size={16} color={theme.success} />
         <Text variant="footnote" tone="secondary">
-          Filled in from {store ?? "the page"}. Check it over.
+          Filled in from {store ?? "this link"}. Check it over.
         </Text>
       </View>
     );
@@ -696,7 +707,10 @@ function ReadStatus({ state, store }: { state: ReadState; store: string | null }
       <View style={styles.status} accessibilityLiveRegion="polite">
         <Icon name="error" size={16} color={theme.textTertiary} />
         <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
-          Couldn't read that page. Fill in the details below.
+          We couldn't read the details from {store ?? "this link"}.{" "}
+          {failedWithName
+            ? "Your link and name are kept, so fill in the rest by hand."
+            : "Your link is kept, so add the name and the rest by hand."}
         </Text>
       </View>
     );

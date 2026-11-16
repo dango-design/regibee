@@ -59,7 +59,7 @@ export default function SignInScreen() {
             Regibee
           </Text>
           <Text variant="callout" tone="secondary" style={{ textAlign: "center" }}>
-            One registry, every store.
+            One registry, every occasion.
           </Text>
         </View>
 
@@ -75,6 +75,7 @@ export default function SignInScreen() {
         <View style={{ gap: spacing.lg }}>
           <Field
             label="Email"
+            placeholder="you@example.com"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"

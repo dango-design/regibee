@@ -1,18 +1,11 @@
-// Occasion names, the same as the website's (occasionLabel in src/lib/registry-copy.ts).
+// A registry's occasion name, from the website's occasionLabel
+// (src/lib/registry-copy.ts), so the two can't drift. The new registry screen
+// offers the website's choices too, REGISTRY_OCCASION_CHOICES.
 
-import type { EventType, Registry } from "@/lib/types";
+import { occasionLabel as sharedOccasionLabel } from "@shared/registry-copy";
 
-export const EVENT_TYPES: { value: EventType; label: string }[] = [
-  { value: "birthday", label: "Birthday" },
-  { value: "christmas", label: "Christmas" },
-  { value: "wedding", label: "Wedding" },
-  { value: "housewarming", label: "Housewarming" },
-  { value: "graduation", label: "Graduation" },
-  { value: "other", label: "Other" },
-];
+import type { Registry } from "@/lib/types";
 
 export function occasionLabel(registry: Pick<Registry, "registry_type" | "event_type">) {
-  if ((registry.registry_type ?? "baby") === "baby") return "Baby registry";
-  if (!registry.event_type || registry.event_type === "other") return "Wishlist";
-  return EVENT_TYPES.find((option) => option.value === registry.event_type)?.label ?? "Wishlist";
+  return sharedOccasionLabel(registry.registry_type ?? "baby", registry.event_type);
 }

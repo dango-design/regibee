@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/utils/supabase/client";
 import { Logo } from "@/components/logo";
 
@@ -38,7 +38,8 @@ function LoginForm() {
     });
 
     if (error) {
-      setError(error.message);
+      // Same message as the phone app's sign-in screen.
+      setError(/invalid login/i.test(error.message) ? "That email and password don't match." : error.message);
       setLoading(false);
       return;
     }
@@ -54,8 +55,9 @@ function LoginForm() {
           <Link href="/" className="mx-auto flex items-center gap-2 font-semibold mb-4">
             <Logo size="lg" />
           </Link>
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
-          <CardDescription>Sign in to manage your registry</CardDescription>
+          {/* Like the app's sign-in screen: the logo and tagline. The heading is for screen readers. */}
+          <h1 className="sr-only">Sign in to Regibee</h1>
+          <CardDescription>One registry, every occasion.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -81,7 +83,7 @@ function LoginForm() {
               />
               <div className="mt-1 text-right">
                 <Link href="/forgot-password" className="text-sm text-brand-600 underline-offset-4 hover:underline max-sm:inline-block max-sm:py-2.5">
-                  Forgot password?
+                  Forgot your password?
                 </Link>
               </div>
             </div>
@@ -89,13 +91,13 @@ function LoginForm() {
               <p className="text-sm text-error-primary">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-tertiary">
-            Don&apos;t have an account?{" "}
+            New to Regibee?{" "}
             <Link href={redirectTo !== "/dashboard" ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"} className="text-brand-600 underline-offset-4 hover:underline">
-              Sign up
+              Create an account
             </Link>
           </p>
         </CardContent>

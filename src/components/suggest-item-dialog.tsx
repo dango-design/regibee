@@ -110,7 +110,7 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
             </DialogHeader>
             <form action={handleSubmit} className="space-y-4">
               <Input
-                label="Item Name"
+                label="Item name"
                 name="title"
                 placeholder="e.g. Baby Monitor"
                 isRequired
@@ -157,7 +157,7 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
                 <Select
                   name="categoryId"
                   label="Category"
-                  placeholder="Select a category"
+                  placeholder="No category"
                   items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
                 >
                   {(item) => <Select.Item id={item.id} label={item.label} />}

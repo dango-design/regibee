@@ -1,5 +1,16 @@
-import type { PersonalEventType, Registry, RegistryType } from "./types";
-import { LIST_OCCASION_OPTIONS } from "./occasions";
+// What each kind of registry calls things. The mobile app uses this file too,
+// through its @shared/* path, so it imports only src/lib/occasions.ts, which
+// has no imports.
+import { LIST_OCCASION_OPTIONS, type ListOccasion } from "./occasions";
+
+type RegistryType = "baby" | "personal";
+type PersonalEventType = ListOccasion;
+interface Registry {
+  registry_type: RegistryType | null;
+  event_type: PersonalEventType | null;
+  honoree_names: string | null;
+  parent_names: string | null;
+}
 
 export interface RegistryCopy {
   registryNoun: string;
@@ -20,9 +31,9 @@ export interface RegistryCopy {
 const BABY: RegistryCopy = {
   registryNoun: "baby registry",
   registryNounPlural: "baby registries",
-  eventDateLabel: "Due Date",
-  eventDatePlaceholderHint:
-    "Used for personalized recommendations and reminders",
+  eventDateLabel: "Due date",
+  // Store perks (src/lib/store-perks-server.ts) email owners around it.
+  eventDatePlaceholderHint: "Guests see it at the top of your registry, and we'll tell you when store discounts open.",
   honoreeLabel: "Parent Names",
   honoreePlaceholder: 'e.g., "Denise & Brian"',
   titlePlaceholder: "The Smith Family Baby Registry",
@@ -39,8 +50,8 @@ const BABY: RegistryCopy = {
 const PERSONAL_DEFAULTS: RegistryCopy = {
   registryNoun: "registry",
   registryNounPlural: "registries",
-  eventDateLabel: "Event Date",
-  eventDatePlaceholderHint: "Optional — when's the big day?",
+  eventDateLabel: "Event date",
+  eventDatePlaceholderHint: "Guests see it at the top of your registry.",
   honoreeLabel: "Honoree",
   honoreePlaceholder: 'e.g., "Alex & Sam"',
   titlePlaceholder: "Alex's Wishlist",
@@ -63,14 +74,14 @@ const PERSONAL_OVERRIDES: Record<PersonalEventType, Partial<RegistryCopy>> = {
     tagline: "Set up your birthday wishlist in just a few steps",
   },
   christmas: {
-    eventDateLabel: "Celebration Date",
+    eventDateLabel: "Celebration date",
     honoreeLabel: "Household",
     honoreePlaceholder: 'e.g., "The Chen Family"',
     titlePlaceholder: "The Chen Family Christmas",
     tagline: "Set up your Christmas list in just a few steps",
   },
   wedding: {
-    eventDateLabel: "Wedding Date",
+    eventDateLabel: "Wedding date",
     honoreeLabel: "Couple",
     honoreePlaceholder: 'e.g., "Alex & Sam"',
     titlePlaceholder: "Alex & Sam's Wedding Registry",
@@ -78,14 +89,14 @@ const PERSONAL_OVERRIDES: Record<PersonalEventType, Partial<RegistryCopy>> = {
     registryNoun: "wedding registry",
   },
   housewarming: {
-    eventDateLabel: "Housewarming Date",
+    eventDateLabel: "Housewarming date",
     honoreeLabel: "Household",
     honoreePlaceholder: 'e.g., "Alex & Sam"',
     titlePlaceholder: "Our New Home",
     tagline: "Set up your housewarming registry in just a few steps",
   },
   graduation: {
-    eventDateLabel: "Graduation Date",
+    eventDateLabel: "Graduation date",
     honoreeLabel: "Graduate",
     honoreePlaceholder: 'e.g., "Alex"',
     titlePlaceholder: "Alex's Graduation",
@@ -145,3 +156,13 @@ export const PERSONAL_EVENT_TYPE_OPTIONS: Array<{
   value: PersonalEventType;
   label: string;
 }> = LIST_OCCASION_OPTIONS;
+
+/**
+ * The occasions a new registry offers, in order, on the website's form and
+ * the app's new registry screen: the six occasions, then none, which is the
+ * default.
+ */
+export const REGISTRY_OCCASION_CHOICES: Array<{
+  value: PersonalEventType | null;
+  label: string;
+}> = [...PERSONAL_EVENT_TYPE_OPTIONS, { value: null, label: "No specific occasion" }];

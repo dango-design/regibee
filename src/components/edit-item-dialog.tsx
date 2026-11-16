@@ -31,6 +31,7 @@ import type { PersonalEventType, RegistryType } from "@/lib/types";
 import type { RetailerRegistry, StoreId } from "@/lib/retailers";
 import { StoreLinkNotice } from "@/components/store-link-notice";
 import { ItemImageField } from "@/components/item-image-field";
+import { readLinkMessages, storeNameForLink } from "@/components/add-item-dialog";
 import { uploadRegistryPhoto } from "@/lib/upload-registry-photo";
 
 interface Category {
@@ -195,38 +196,35 @@ export function EditItemDialog({
       onReadingWithExtension: () => setScrapeStatus("Reading the page in a background tab with the Regibee extension…"),
     });
 
+    const store = storeNameForLink(url);
     if (result.error) {
-      setScrapeStatus(result.error);
+      // Worded as the add dialog, which explains why: some stores block reading.
+      setScrapeStatus(readLinkMessages.failed(store, Boolean(title.trim())));
       setScrapeIsError(true);
     } else {
-      let filled: string[] = [];
+      // The tax added to the price shows under the price field.
+      let filledAny = false;
       if (result.title && !title) {
         setTitle(result.title);
-        filled.push("title");
+        filledAny = true;
       }
       if (result.price && !price) {
         let finalPrice = parseFloat(result.price).toFixed(2);
-        let taxNote = "";
         if (item.is_parent_purchased && zipCode) {
           const taxResult = await estimateTax(zipCode, parseFloat(result.price));
           if (taxResult) {
-            taxNote = ` (incl. ~${(taxResult.taxRate * 100).toFixed(1)}% tax)`;
             setTaxInfo({ original: finalPrice, rate: taxResult.taxRate });
             finalPrice = taxResult.priceWithTax;
           }
         }
         setPrice(finalPrice);
-        filled.push("price" + taxNote);
+        filledAny = true;
       }
       if (result.imageUrl && !imageUrl) {
         setImageUrl(result.imageUrl);
-        filled.push("image");
+        filledAny = true;
       }
-      if (filled.length > 0) {
-        setScrapeStatus(`Auto-filled ${filled.join(", ")}`);
-      } else {
-        setScrapeStatus("No new data found to fill");
-      }
+      setScrapeStatus(filledAny ? readLinkMessages.filled(store) : readLinkMessages.nothingNew(store));
     }
 
     setScraping(false);
@@ -277,7 +275,7 @@ export function EditItemDialog({
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setScrapeStatus(""); setScrapeIsError(false); setOpenToUsed(item.is_open_to_used); setParentPurchased(item.is_parent_purchased); setCurrency("USD"); setError(""); setTitle(item.title); setPrice(item.price != null ? item.price.toFixed(2) : ""); setImageUrl(item.image_url || ""); setExternalUrl(item.external_url || ""); setTaxInfo(null); setCategoryId(item.category_id ?? undefined); setAddingCategory(false); setNewCategoryName(""); setCategoryError(""); } }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Edit item in registry</DialogTitle>
+          <DialogTitle>Edit item</DialogTitle>
           <DialogDescription>
             {onOtherLists
               ? `It's also on ${listNames(otherLists)}, so changes show there too. Its category is only for this list.`
@@ -286,12 +284,12 @@ export function EditItemDialog({
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Product URL</Label>
+            <Label>Product link</Label>
             <div className="flex items-center gap-2 sm:gap-4">
               <Input
                 ref={urlRef}
                 name="externalUrl"
-                placeholder="https://www.example.com"
+                placeholder="Paste a link from any store"
                 value={externalUrl}
                 onChange={setExternalUrl}
                 onBlur={(e) => handleScrape((e.target as HTMLInputElement).value)}
@@ -302,7 +300,7 @@ export function EditItemDialog({
                     handleScrape(externalUrl);
                   }
                 }}
-                aria-label="Product URL"
+                aria-label="Product link"
                 inputMode="url"
                 autoComplete="off"
                 autoCorrect="off"
@@ -350,12 +348,12 @@ export function EditItemDialog({
               />
             )}
             {scrapeStatus && (
-              <p className={`text-xs ${scrapeIsError ? "text-error-primary" : "text-tertiary"}`}>{scrapeStatus}</p>
+              <p role="status" className={`text-xs ${scrapeIsError ? "text-warning-primary" : "text-tertiary"}`}>{scrapeStatus}</p>
             )}
           </div>
 
           <Input
-            label="Item Name"
+            label="Item name"
             name="title"
             placeholder={isBaby ? "e.g., Convertible Crib" : "e.g., Wireless Headphones"}
             value={title}
@@ -367,7 +365,8 @@ export function EditItemDialog({
             name="isEssential"
             value="true"
             defaultSelected={item.is_essential}
-            label="Mark as most wanted item"
+            label="Most wanted"
+            hint="Guests see it tagged Most wanted."
           />
 
           <div className="space-y-1.5">
@@ -435,7 +434,7 @@ export function EditItemDialog({
                   placeholder={
                     categories.length === 0
                       ? "No categories yet"
-                      : "Select a category"
+                      : "No category"
                   }
                   items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
                   isDisabled={categories.length === 0}
@@ -447,7 +446,7 @@ export function EditItemDialog({
                   onClick={() => setAddingCategory(true)}
                   className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:pr-3"
                 >
-                  + Create category
+                  + New category
                 </button>
               </>
             )}
@@ -525,7 +524,8 @@ export function EditItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Mark as open to used condition item"
+            label="Open to used"
+            hint="Guests may give one secondhand."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -546,9 +546,9 @@ export function EditItemDialog({
           )}
 
           <TextArea
-            label="Notes (optional)"
+            label="Note for guests (optional)"
             name="notes"
-            placeholder="Enter a description..."
+            placeholder="Size, color, or anything else that helps"
             defaultValue={item.notes || ""}
             rows={3}
           />

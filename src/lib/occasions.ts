@@ -420,3 +420,17 @@ export function nameLabelFor(audience: Audience): string | null {
       return null;
   }
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// "12 days to go", "Tomorrow", "Today" or "Event passed". Baby registries
+// count down to the due date instead. Both dates are YYYY-MM-DD strings, like
+// `event_date`, so the result doesn't depend on the time of day.
+export function countdownLabel(eventDate: string, today: string, registryType: "baby" | "personal"): string {
+  const days = Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
+  const baby = registryType === "baby";
+  if (days < 0) return baby ? "Due date passed" : "Event passed";
+  if (days === 0) return baby ? "Due today" : "Today";
+  if (days === 1) return baby ? "Due tomorrow" : "Tomorrow";
+  return baby ? `Due in ${days} days` : `${days} days to go`;
+}

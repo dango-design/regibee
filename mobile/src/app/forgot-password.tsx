@@ -31,14 +31,24 @@ export default function ForgotPasswordScreen() {
     }
   }
 
+  // Worded so it doesn't say whether the address has an account. "Try again"
+  // keeps the address, so they can see what they typed and fix it.
   if (sent) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <EmptyState
           icon="checkCircle"
           title="Check your email"
-          message="If there's an account for that address, we sent it a link to set a new password. Then sign in here with it."
-          action={<Button title="Back to sign in" onPress={() => router.back()} />}
+          message={`If there's an account for ${email.trim()}, we sent it a link to set a new password. Then sign in here with it.`}
+          action={
+            <View style={{ alignItems: "center", gap: spacing.sm }}>
+              <Button title="Back to sign in" onPress={() => router.back()} />
+              <Text variant="subhead" tone="secondary" style={{ marginTop: spacing.md }}>
+                Didn't receive it?
+              </Text>
+              <Button title="Try again" variant="ghost" onPress={() => setSent(false)} />
+            </View>
+          }
         />
       </View>
     );
@@ -56,6 +66,7 @@ export default function ForgotPasswordScreen() {
       </Text>
       <Field
         label="Email"
+        placeholder="you@example.com"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"

@@ -57,7 +57,7 @@ async function signInAs(page: Page, account: { email: string; password: string }
   await page.goto("/login");
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/dashboard/);
 }
 
