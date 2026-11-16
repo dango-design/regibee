@@ -38,10 +38,14 @@
 --      and not exists (select 1 from public.group_gifts g where g.purchase_id = p.id);
 --
 -- and check that keep_placed_item_on_delete is still the only other trigger
--- that runs before an item is deleted (see step 1):
+-- that runs before an item is deleted (see step 1). Before this file runs,
+-- this should list only keep_placed_item_on_delete:
 --
---   select tgname from pg_trigger
---    where tgrelid = 'public.registry_items'::regclass and not tgisinternal;
+--   select trigger_name, action_timing
+--     from information_schema.triggers
+--    where event_object_schema = 'public'
+--      and event_object_table = 'registry_items'
+--      and event_manipulation = 'DELETE';
 --
 -- It needs no code change, so it can run before or after any deploy. Run
 -- more than once, it changes nothing new.
