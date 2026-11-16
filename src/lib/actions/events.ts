@@ -7,6 +7,8 @@ import { after } from "next/server";
 import { requireAccount } from "@/lib/require-account";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { eventImageUrlPrefix } from "@/lib/event-images";
+import { noEmailsMessage, reserveEmails, settleEmails } from "@/lib/email-budget";
+import { notEnoughLeftMessage, partlySentMessage } from "@/lib/account-levels";
 import {
   canManageRegistry,
   getEventForManager,
@@ -547,7 +549,15 @@ async function emailEventChange(
   // Nobody has the invitation yet, so there's no old version to correct.
   if (!someoneHasInvitation(guests)) return;
   const signedUp = sheet ? claimsByGuest(sheet) : new Map();
-  const recipients = changeRecipients(guests);
+  // Everyone or no one: a notice to only some guests would leave the rest
+  // with the old details. Over the limit, the change still shows on the
+  // invitation, as it does for guests with no email address.
+  let recipients = changeRecipients(guests);
+  const reservation = await reserveEmails(userId, "change", recipients.length, { allOrNothing: true });
+  if (reservation.granted === 0 && recipients.length > 0) {
+    console.warn(`[events] Didn't email a change to ${recipients.length} guests: over the email limit or the check failed.`);
+    recipients = [];
+  }
   const { sent } =
     recipients.length > 0
       ? await sendEventChangeEmails({
@@ -560,6 +570,7 @@ async function emailEventChange(
           guests: recipients.map((g) => ({ name: g.name, email: g.email, token: g.token, signedUp: signedUp.has(g.id) })),
         })
       : { sent: 0 };
+  await settleEmails(reservation, sent);
   const when = nextEvent.event_date
     ? [formatEventDate(nextEvent.event_date), formatEventTime(nextEvent)].filter(Boolean).join(", ")
     : formatEventTime(nextEvent);
@@ -755,6 +766,11 @@ export async function sendEventInvites(eventId: string, guestIds?: string[]): Pr
   ) as (typeof guests[number] & { email: string })[];
   if (recipients.length === 0) return { error: "There's no one to send it to. Add guests with email addresses." };
 
+  // As many as today's email limit allows. The rest stay uninvited, so the
+  // same button sends to them another day.
+  const reservation = await reserveEmails(access.user.id, "invitation", recipients.length);
+  if (reservation.granted === 0) return { error: noEmailsMessage(reservation) };
+
   const [registries, exchange, hostName, signups] = await Promise.all([
     getEventRegistries(eventId),
     getGiftExchange(eventId),
@@ -768,8 +784,9 @@ export async function sendEventInvites(eventId: string, guestIds?: string[]): Pr
     signupTitle: signups?.sheet.title ?? null,
     hostName,
     replyTo: access.user.email ?? null,
-    guests: recipients,
+    guests: recipients.slice(0, reservation.granted),
   });
+  await settleEmails(reservation, sentTokens.length);
 
   if (sentTokens.length > 0) {
     await supabaseAdmin
@@ -780,6 +797,8 @@ export async function sendEventInvites(eventId: string, guestIds?: string[]): Pr
     revalidateEvent(access.event);
   }
   if (error) return { error };
+  const limited = partlySentMessage(sentTokens.length, recipients.length);
+  if (limited) return { error: limited };
   return { error: null, sent: sentTokens.length };
 }
 
@@ -801,6 +820,9 @@ export async function sendEventReminders(eventId: string): Promise<Result<{ sent
     return { error: "Everyone invited has replied or got a reminder in the last day." };
   }
 
+  const reservation = await reserveEmails(access.user.id, "reminder", recipients.length);
+  if (reservation.granted === 0) return { error: noEmailsMessage(reservation) };
+
   const [registries, exchange, hostName, signups] = await Promise.all([
     getEventRegistries(eventId),
     getGiftExchange(eventId),
@@ -814,9 +836,10 @@ export async function sendEventReminders(eventId: string): Promise<Result<{ sent
     signupTitle: signups?.sheet.title ?? null,
     hostName,
     replyTo: access.user.email ?? null,
-    guests: recipients,
+    guests: recipients.slice(0, reservation.granted),
     reminder: true,
   });
+  await settleEmails(reservation, sentTokens.length);
 
   if (sentTokens.length > 0) {
     await supabaseAdmin
@@ -827,6 +850,8 @@ export async function sendEventReminders(eventId: string): Promise<Result<{ sent
     revalidateEvent(access.event);
   }
   if (error) return { error };
+  const limited = partlySentMessage(sentTokens.length, recipients.length);
+  if (limited) return { error: limited };
   return { error: null, sent: sentTokens.length };
 }
 
@@ -1212,11 +1237,17 @@ export async function inviteCoHost(eventId: string, email: string): Promise<Resu
   const address = email.trim().toLowerCase();
   if (!isEmail(address)) return { error: "That email address doesn't look right." };
 
+  const reservation = await reserveEmails(access.user.id, "co_host_invite", 1);
+  if (reservation.granted === 0) return { error: noEmailsMessage(reservation) };
+
   const token = generateInviteToken();
   const { error } = await supabaseAdmin
     .from("event_host_invites")
     .insert({ event_id: eventId, invited_by: access.user.id, email: address, token });
-  if (error) return { error: "The invitation wasn't saved. Try again." };
+  if (error) {
+    await settleEmails(reservation, 0);
+    return { error: "The invitation wasn't saved. Try again." };
+  }
 
   const hostName = await hostNameFor(access.event, access.user.id);
   after(() => sendCoHostInvite({ toEmail: address, inviterName: hostName, eventTitle: access.event.title, token }));
@@ -1696,6 +1727,16 @@ export async function drawExchangeNames(
     };
   }
 
+  // Everyone with an email gets theirs, or nobody does: a half-emailed draw
+  // leaves some people without a name to buy for.
+  const withEmail = participants.filter((g) => g.email).length;
+  const reservation = await reserveEmails(access.user.id, "exchange", withEmail, { allOrNothing: true });
+  if (withEmail > 0 && reservation.granted === 0) {
+    return {
+      error: reservation.failed ? noEmailsMessage(reservation) : notEnoughLeftMessage(withEmail, reservation.left, "draw"),
+    };
+  }
+
   // Claim the draw against the drawn_at this request read, so two hosts
   // pressing the button at once can't both draw, or clear each other's draw
   // after its emails went out.
@@ -1707,7 +1748,10 @@ export async function drawExchangeNames(
     ? claim.eq("drawn_at", access.exchange.drawn_at)
     : claim.is("drawn_at", null)
   ).select("event_id");
-  if (!claimed || claimed.length === 0) return { error: "Names were just drawn. Refresh the page." };
+  if (!claimed || claimed.length === 0) {
+    await settleEmails(reservation, 0);
+    return { error: "Names were just drawn. Refresh the page." };
+  }
 
   // Each person is drawn once (a unique index), so the old pairs go first.
   await supabaseAdmin.from("event_guests").update({ giftee_id: null }).eq("event_id", eventId).not("giftee_id", "is", null);
@@ -1720,6 +1764,7 @@ export async function drawExchangeNames(
     if (error) {
       console.error("[events] Failed to save a draw:", error);
       await clearDraw(eventId);
+      await settleEmails(reservation, 0);
       return { error: "The draw wasn't saved. Try again." };
     }
   }
@@ -1888,7 +1933,13 @@ export async function startPlan(input: PlanInput): Promise<Result<{ href: string
     const week = mealTrain && date ? rowsForDays(date, addDays(date, MEAL_TRAIN_DAYS - 1), "Dinner") : null;
     await insertSignupSheet(saved.id, defaults?.signup ?? "potluck", week ?? []);
   }
-  if (input.gifts === "ask") {
+  // The event is made either way. Over today's email limit, the request to
+  // make a list isn't saved or sent.
+  const askReservation = input.gifts === "ask" ? await reserveEmails(user.id, "list_request", 1) : null;
+  if (askReservation && askReservation.granted === 0) {
+    console.warn("[plan] Didn't ask for a list: over the email limit or the check failed.");
+  }
+  if (askReservation && askReservation.granted > 0) {
     const token = crypto.randomBytes(24).toString("hex");
     const { error: requestError } = await supabaseAdmin.from("event_list_requests").insert({
       event_id: saved.id,
@@ -1899,6 +1950,7 @@ export async function startPlan(input: PlanInput): Promise<Result<{ href: string
     });
     if (requestError) {
       console.error("[plan] Failed to save a list request:", requestError);
+      await settleEmails(askReservation, 0);
     } else {
       const hostName = await hostNameFor(saved, user.id);
       after(() =>

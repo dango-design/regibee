@@ -1,5 +1,5 @@
 import { EVENT_IMAGES_BUCKET } from "@/lib/event-images";
-import { EXTENSIONS, shrinkPhoto, type PhotoUploadResult } from "@/lib/upload-registry-photo";
+import { EXTENSIONS, photoLimitReached, shrinkPhoto, type PhotoUploadResult } from "@/lib/upload-registry-photo";
 
 // Invitations are read up close, often with small print, so they keep more
 // detail than registry photos: 1600px on the longer side.
@@ -34,6 +34,9 @@ export async function uploadEventImage(eventId: string, file: File): Promise<Pho
     .from(EVENT_IMAGES_BUCKET)
     .upload(path, image, { contentType: image.type, cacheControl: "31536000" });
   if (error) {
+    if (await photoLimitReached(supabase)) {
+      return { error: "You've uploaded as many pictures as an account can." };
+    }
     return { error: "The picture didn't upload. Try again." };
   }
   const { data } = supabase.storage.from(EVENT_IMAGES_BUCKET).getPublicUrl(path);

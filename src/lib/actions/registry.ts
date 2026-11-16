@@ -14,6 +14,7 @@ import {
 } from "@/lib/email";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
+import { noEmailsMessage, reserveEmails, settleEmails } from "@/lib/email-budget";
 import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
 import { canKeepOldLinks } from "@/lib/list-links";
 import { DEFAULT_LIST_VISIBILITY, parseListVisibility, visibilityColumns } from "@/lib/list-access";
@@ -1682,6 +1683,9 @@ export async function inviteManagerByEmail(registryId: string, email: string) {
   const { user, role, error: authError } = await requireManager(registryId);
   if (authError || !user) return { error: authError || "Not authenticated" };
 
+  const reservation = await reserveEmails(user.id, "manager_invite", 1);
+  if (reservation.granted === 0) return { error: noEmailsMessage(reservation) };
+
   const token = crypto.randomBytes(24).toString("hex");
 
   const { error } = await supabaseAdmin.from("registry_invites").insert({
@@ -1693,6 +1697,7 @@ export async function inviteManagerByEmail(registryId: string, email: string) {
   });
 
   if (error) {
+    await settleEmails(reservation, 0);
     return { error: error.message };
   }
 

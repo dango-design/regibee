@@ -60,8 +60,23 @@ export async function uploadRegistryPhoto(registryId: string, file: File): Promi
     .from(REGISTRY_PHOTOS_BUCKET)
     .upload(path, photo, { contentType: photo.type, cacheControl: "31536000" });
   if (error) {
+    if (await photoLimitReached(supabase)) {
+      return { error: "You've uploaded as many photos as an account can. Paste a link to an image instead." };
+    }
     return { error: "The photo didn't upload. Try again, or paste a link to an image." };
   }
   const { data } = supabase.storage.from(REGISTRY_PHOTOS_BUCKET).getPublicUrl(path);
   return { url: data.publicUrl };
+}
+
+/**
+ * Whether a refused upload was refused because the account has uploaded as
+ * many photos as its level allows (can_upload_photo in
+ * 20261116074752_account_levels.sql). False if that can't be checked.
+ */
+export async function photoLimitReached(supabase: {
+  rpc: (fn: "can_upload_photo") => PromiseLike<{ data: unknown }>;
+}): Promise<boolean> {
+  const { data } = await supabase.rpc("can_upload_photo");
+  return data === false;
 }

@@ -24,6 +24,17 @@ export function uniqueEmail(who: string): string {
 
 export const SHIPPING_ADDRESS = "123 Main St\nApt 4B\nSan Francisco, CA 94102";
 
+/**
+ * Makes an account a star (see "Account levels" in CLAUDE.md). The accounts
+ * made here are stars unless a test asks otherwise. All basic accounts share
+ * one daily email allowance, and the local database keeps its rows between
+ * runs, so running the tests a few times in a day would use it up.
+ */
+export async function makeStar(email: string) {
+  const { error } = await db.from("star_emails").upsert({ email: email.toLowerCase() });
+  if (error) throw error;
+}
+
 /** An owner with a confirmed account, and a public baby registry with one item. */
 export async function createRegistryWithItem() {
   const id = uniqueId();
@@ -37,6 +48,7 @@ export async function createRegistryWithItem() {
     user_metadata: { full_name: "Remi Owner" },
   });
   if (userError || !created.user) throw userError ?? new Error("No user");
+  await makeStar(ownerEmail);
 
   const { data: registry, error: registryError } = await db
     .from("registries")
@@ -84,8 +96,8 @@ export async function runReservationJob(page: Page): Promise<{ released: number;
   return response.json();
 }
 
-/** A confirmed account with a password, for tests that sign in. */
-export async function createAccount(fullName: string) {
+/** A confirmed account with a password, for tests that sign in. A star unless `star` is false. */
+export async function createAccount(fullName: string, { star = true }: { star?: boolean } = {}) {
   const email = uniqueEmail(fullName.split(" ")[0].toLowerCase());
   const password = `pw-${randomUUID()}`;
   const { data, error } = await db.auth.admin.createUser({
@@ -95,6 +107,7 @@ export async function createAccount(fullName: string) {
     user_metadata: { full_name: fullName },
   });
   if (error || !data.user) throw error ?? new Error("No user");
+  if (star) await makeStar(email);
   return { id: data.user.id, email, password, name: fullName };
 }
 

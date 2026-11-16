@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 15, 2026",
+  effectiveDate: "November 16, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -135,6 +135,12 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               To make an account you give your name, email address and a password. Supabase, which runs our
               sign-in, keeps only a scrambled form of the password (a hash), so nobody at Regibee can read it.
+            </P>
+            <P>
+              When you use Regibee to email other people, such as invitations or messages to your guests, we keep
+              how many emails went out, when and what kind, but not who they went to. That lets us limit how many
+              one account sends in a day. Some accounts, such as people helping us test Regibee, have higher
+              limits.
             </P>
 
             <H3>Your profile</H3>
