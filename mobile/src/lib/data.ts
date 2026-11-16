@@ -463,6 +463,8 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: async (item: Item) => {
       if (isDemo()) return demo.deleteItem(item.id);
+      // The database moves an item that's on another of the owner's lists
+      // instead, and deletes guests' gifts with one that goes, as the website does.
       const { error } = await supabase.from("registry_items").delete().eq("id", item.id);
       if (error) throw error;
     },

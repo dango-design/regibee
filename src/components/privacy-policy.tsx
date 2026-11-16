@@ -542,8 +542,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Gifts and RSVPs.</strong> These stay with the registry
-                or event they were for. They aren&apos;t tied to an account, even if you have one, because we only
-                have the name and email you typed. To have yours removed, ask the owner, or email us.
+                or event they were for, and a gift is deleted when the owner deletes the item or cash fund it was
+                for. They aren&apos;t tied to an account, even if you have one, because we only have the name and
+                email you typed. To have yours removed, ask the owner, or email us.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Anything else.</strong> Email us at <ContactEmail /> for
@@ -561,8 +562,10 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
           <Section id="keeping">
             <P>
               We keep your information until you delete it or your account. Gifts, suggestions and RSVPs stay with
-              the registry or event they were for until its owner deletes it. A group gift and the pledges on it stay
-              until the registry is deleted or the person who started it deletes their account. We keep a note of
+              the registry or event they were for until its owner deletes it. A gift goes sooner if the owner deletes
+              the item or cash fund it was for. A group gift and the pledges on it stay until the registry is deleted
+              or the person who started it deletes their account, and so does its reservation of the item, even if
+              the owner deletes the item. We keep a note of
               each birthday email we send for 60 days, so the same one is never sent twice. Deleted information can
               stay in our
               providers&apos; backups, and records of emails already sent can stay in our email service&apos;s logs,
