@@ -8,7 +8,7 @@ import { CopyLinkButton } from "@/components/copy-link-button";
 import { EventGuestManager } from "@/components/event-guest-manager";
 import { EventCoHosts } from "@/components/event-co-hosts";
 import { ExchangeManager } from "@/components/exchange-manager";
-import { PlanAgainButton } from "@/components/plan-again-button";
+import { EventActionsMenu } from "@/components/event-actions-menu";
 import { SignupSheetManager, SignupSheetStarter } from "@/components/signup-sheet-manager";
 import { GuestMessages } from "@/components/guest-messages";
 import { MESSAGE_AUDIENCES, messageRecipients, type MessageAudience } from "@/lib/event-updates";
@@ -39,7 +39,6 @@ import {
 import { getViewer } from "@/lib/viewer";
 import { listGroupsForOwner } from "@/lib/groups-server";
 import { cx } from "@/lib/utils/cx";
-import { DeleteEventButton } from "./delete-event-button";
 
 export const metadata: Metadata = { title: "Event | Regibee" };
 
@@ -100,8 +99,10 @@ export default async function ManageEventPage({
         Events
       </Link>
 
-      <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
+      {/* On phones the buttons wrap under the title, so the "More actions" button
+          sits at the top right instead of on a line of its own. */}
+      <div className="relative mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="max-md:pr-12">
           <p className={cx("text-sm font-semibold tracking-wide uppercase", theme.text)}>
             {eventTypeLabel(event.event_type)}
           </p>
@@ -137,6 +138,9 @@ export default async function ManageEventPage({
               </span>
             </Link>
           </Button>
+          <div className="max-md:absolute max-md:top-0 max-md:right-0">
+            <EventActionsMenu eventId={event.id} isOwner={isOwner} guestCount={guests.length} />
+          </div>
         </div>
       </div>
 
@@ -262,10 +266,6 @@ export default async function ManageEventPage({
           />
 
           <EventCoHosts eventId={event.id} hosts={hosts} invites={invites} viewerId={viewer.id} />
-
-          <PlanAgainButton eventId={event.id} />
-
-          {isOwner && <DeleteEventButton eventId={event.id} guestCount={guests.length} />}
         </aside>
       </div>
     </div>

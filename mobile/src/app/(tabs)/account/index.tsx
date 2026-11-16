@@ -5,6 +5,7 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from "react-
 
 import { Icon, type IconName } from "@/components/icon";
 import { Divider, Section, Text } from "@/components/ui";
+import { VersionSection } from "@/components/version-section";
 import { useDeleteAccount } from "@/lib/account";
 import { signOut, useSession } from "@/lib/auth";
 import { initials } from "@/lib/format";
@@ -82,11 +83,14 @@ export default function AccountScreen() {
       </View>
 
       <Section title="On regibee.com" footer="These open the website. Sign in there with the same account if it asks.">
-        <Row icon="calendar" label="Events and invitations" onPress={() => open("/dashboard/events")} />
+        {/* The website's dashboard tabs and account menu, by their names there. */}
+        <Row icon="bookmark" label="Saved" onPress={() => open("/dashboard/saved")} />
         <Divider inset={52} />
-        <Row icon="people" label="People you follow" onPress={() => open("/dashboard/following")} />
+        <Row icon="calendar" label="Events" onPress={() => open("/dashboard/events")} />
         <Divider inset={52} />
-        <Row icon="settings" label="Profile, privacy and email" onPress={() => open("/dashboard/account")} />
+        <Row icon="people" label="Following" onPress={() => open("/dashboard/following")} />
+        <Divider inset={52} />
+        <Row icon="settings" label="Account settings" onPress={() => open("/dashboard/account")} />
         <Divider inset={52} />
         <Row icon="lock" label="Privacy policy" onPress={() => open("/privacy")} />
       </Section>
@@ -104,6 +108,8 @@ export default function AccountScreen() {
           {deleteRow}
         </Section>
       )}
+
+      <VersionSection />
 
       <Text variant="caption" tone="tertiary" style={{ textAlign: "center" }}>
         Regibee {Application.nativeApplicationVersion ?? ""}

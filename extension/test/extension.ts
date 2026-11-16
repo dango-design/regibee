@@ -7,7 +7,14 @@
 import { test as base, chromium, type BrowserContext, type Page, type Worker } from "@playwright/test";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import type { CheckResponse, ExtensionRegistry, ExtensionSession, MeResponse } from "../../src/lib/extension";
+import type {
+  CheckResponse,
+  ExtensionRegistry,
+  ExtensionSession,
+  IdeaRequest,
+  IdeaResponse,
+  MeResponse,
+} from "../../src/lib/extension";
 import { pageHtml, type SavedPage } from "./pages";
 
 const DIST = path.resolve(__dirname, "../dist");
@@ -100,13 +107,18 @@ export async function tabIdFor(worker: Worker, url: string): Promise<number> {
 /**
  * Signs the extension in with a made-up session and answers its calls to
  * Regibee's API: one registry, with the items `existing` picks from each
- * check already on it. Any other call gets an error. Returns the calls, so
- * tests can check them.
+ * check already on it, and saving gift ideas. `registries` and
+ * `ideaRecipients` change what the account has. Any other call gets an error.
+ * Returns the calls, so tests can check them.
  */
 export async function connect(
   context: BrowserContext,
   worker: Worker,
-  { existing = () => [] }: { existing?: (urls: string[]) => string[] } = {}
+  {
+    existing = () => [],
+    registries = [REGISTRY],
+    ideaRecipients = [],
+  }: { existing?: (urls: string[]) => string[]; registries?: ExtensionRegistry[]; ideaRecipients?: string[] } = {}
 ) {
   const session: ExtensionSession = {
     access_token: "test-access-token",
@@ -121,8 +133,13 @@ export async function connect(
     const call: ApiCall = { method: request.method(), path: new URL(request.url()).pathname, body: request.postDataJSON() };
     calls.push(call);
     if (call.method === "GET" && call.path === "/api/extension/me") {
-      const me: MeResponse = { user: { name: "Remi", email: null }, registries: [REGISTRY] };
+      const me: MeResponse = { user: { name: "Remi", email: null }, registries, ideaRecipients };
       return route.fulfill({ json: me });
+    }
+    if (call.method === "POST" && call.path === "/api/extension/ideas") {
+      const { idea } = call.body as IdeaRequest;
+      const saved: IdeaResponse = { added: { id: "00000000-0000-4000-8000-0000000000aa", title: idea.title, recipient: idea.recipient } };
+      return route.fulfill({ json: saved });
     }
     if (call.method === "POST" && call.path === "/api/extension/items/check") {
       const check: CheckResponse = { existing: existing((call.body as { urls: string[] }).urls), plain: [] };

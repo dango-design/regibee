@@ -28,7 +28,7 @@ Every email the site sends lands in Mailpit, a fake inbox that comes with local 
    npm run e2e:db
    ```
 
-   The first run downloads Supabase's images, about 3.5 GB. The command starts local Supabase, empties its database and runs every file in `supabase/migrations` in name order. Run it again after adding a migration. A new migration that breaks on an empty database will fail here, which is worth knowing before it reaches production.
+   The first run downloads Supabase's images, about 3.5 GB. The command starts local Supabase, empties its database and runs every file in `supabase/migrations` in name order. Run it again after adding a migration or changing `supabase/config.toml`. A new migration that breaks on an empty database will fail here, which is worth knowing before it reaches production.
 
 ## Run the tests
 
@@ -36,7 +36,17 @@ Every email the site sends lands in Mailpit, a fake inbox that comes with local 
 npm run test:e2e
 ```
 
-The tests start their own website on http://localhost:3100. That server reads local Supabase's address and keys from `supabase status`, and sends email to Mailpit. The values in `.env.local` don't apply to it. It builds into `.next-e2e`, so it can run next to `npm run dev`.
+The tests start their own website on http://localhost:3100. That server reads local Supabase's address and keys from `supabase status`, and sends email to Mailpit. The values in `.env.local` don't apply to it. It builds into `.next-e2e`, so it can run next to `npm run dev`. If every page in a run comes back "404 This page could not be found" after merging main or switching branches, that build is stale: delete `.next-e2e` and run again.
+
+To run some files, name them:
+
+```bash
+npm run test:e2e -- e2e/gift-funds.spec.ts e2e/accounts.spec.ts
+```
+
+The whole suite takes a few minutes and keeps the computer busy, so while working on a change, run the files that cover it. The End-to-end tests check runs every file on the pull request.
+
+Only one run at a time can use port 3100. If another is going, for example in another worktree, a second one stops with "http://localhost:3100 is already used". Wait for the first to finish. `npm run e2e:db` empties the database a run is using, so wait for the port to be free before running it too.
 
 Add `--ui` to watch the tests run in Playwright's window, or `--headed` to see the browser.
 
@@ -73,3 +83,5 @@ colima stop
 - `mailbox.ts` reads Mailpit. `waitForEmail(to, subject)` waits for an email, since the site sends most of them after it answers the request. `linkIn(email, pattern)` finds a link in an email to open next.
 - Make every email address and slug new (`uniqueEmail`, `uniqueId`), so tests don't depend on each other or on a fresh database.
 - For something that happens later, such as a reservation running out, change the time in the database and call the cron route with `CRON_SECRET`, as `guest-reserve.spec.ts` does.
+- Sign-up confirmations and password resets come from Supabase itself, and their links go through local Supabase's `/auth/v1/verify` first, as `accounts.spec.ts` shows. The tests open them in the same browser that asked for them.
+- The site's server won't fetch addresses on its own machine, which stops anyone pointing autofill at its private network. `add-items.spec.ts` serves a store's product page on 127.0.0.1 anyway, because the test server sets `SCRAPE_ALLOW_LOCAL_TEST_PAGES`, which only lets through 127.0.0.1 and does nothing in a production build.

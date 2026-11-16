@@ -7,6 +7,8 @@ import {
   type AddProductResponse,
   type AddResponse,
   type ExtensionRegistry,
+  type IdeaRequest,
+  type IdeaResponse,
   type LinkResponse,
   type ProductItem,
   type StoreItem,
@@ -21,6 +23,7 @@ import {
   type MenuClick,
   type Mode,
   type PopupState,
+  type ProductMode,
   type ReadResult,
   type RegistriesResult,
   type Result,
@@ -510,6 +513,8 @@ function showHome(state: PopupState, user: { name: string }, data: RegistriesRes
                 product: page,
                 registries: data.registries,
                 registryId,
+                mode: state.productMode ?? "list",
+                ideaRecipients: data.ideaRecipients ?? [],
                 storesWithRegistries: storesWithRegistries(state, registry),
               }),
           },
@@ -562,7 +567,12 @@ interface ProductContext {
   user: { name: string };
   product: ProductPage;
   registries: ExtensionRegistry[];
-  registryId: string;
+  /** Null when the owner has no registry. The form then only saves gift ideas. */
+  registryId: string | null;
+  /** Whether the form opens on adding to a registry or on a gift idea. */
+  mode: ProductMode;
+  /** The people the owner saved gift ideas for, most recent first. */
+  ideaRecipients: string[];
   /** Stores the owner has a registry at: linked in Settings or read by the extension. */
   storesWithRegistries: Set<StoreId>;
   /** The picture the owner right-clicked to open the form, shown first. */
@@ -573,11 +583,20 @@ const PREV = '<path d="m15 18-6-6 6-6"/>';
 const NEXT = '<path d="m9 18 6-6-6-6"/>';
 const MINUS = '<path d="M5 12h14"/>';
 const PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>';
+const LOCK = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+const IDEAS_URL = `${REGIBEE_URL}/dashboard/saved/ideas`;
 
-/** The "Add to Regibee" form for the product on the page, like the site's add-item dialog. */
+/**
+ * The "Add to Regibee" form for the product on the page, like the site's
+ * add-item dialog. A switch at the top saves it as a gift idea for someone
+ * else instead, which only the owner can see.
+ */
 function showProduct(ctx: ProductContext) {
   const { user, product, registries } = ctx;
-  let registryId = ctx.registryId;
+  // Someone with no registry can still save the product as a gift idea.
+  const canAddToList = ctx.registryId !== null && registries.length > 0;
+  let mode: ProductMode = canAddToList ? ctx.mode : "idea";
+  let registryId = ctx.registryId ?? "";
   let imageIndex = 0;
   let quantity = 1;
   const registry = () => registries.find((r) => r.id === registryId)!;
@@ -641,7 +660,7 @@ function showProduct(ctx: ProductContext) {
   const fillCategories = () => {
     category.replaceChildren(
       h("option", { value: "" }, "No category"),
-      ...registry().categories.map((c) => h("option", { value: c.id }, c.name))
+      ...(registry()?.categories ?? []).map((c) => h("option", { value: c.id }, c.name))
     );
   };
   fillCategories();
@@ -662,6 +681,42 @@ function showProduct(ctx: ProductContext) {
     rows: 2,
     maxlength: 1000,
     placeholder: "For example, which size or color you'd like.",
+  }) as HTMLTextAreaElement;
+
+  // ── Gift idea: who it's for, and a note only the owner sees ──
+  const recipient = h("input", {
+    id: "recipient",
+    type: "text",
+    maxlength: 80,
+    autocomplete: "off",
+    placeholder: "Mom, Sam, my brother…",
+    required: true,
+  }) as HTMLInputElement;
+  const chips = ctx.ideaRecipients.slice(0, 6).map((name) =>
+    h(
+      "button",
+      {
+        type: "button",
+        className: "chip",
+        "aria-pressed": "false",
+        onclick: () => {
+          recipient.value = name;
+          syncChips();
+        },
+      },
+      name
+    )
+  );
+  const syncChips = () => {
+    const typed = recipient.value.replace(/\s+/g, " ").trim().toLowerCase();
+    for (const chip of chips) chip.setAttribute("aria-pressed", String(chip.textContent?.toLowerCase() === typed));
+  };
+  recipient.addEventListener("input", syncChips);
+  const ideaNotes = h("textarea", {
+    id: "idea-notes",
+    rows: 2,
+    maxlength: 1000,
+    placeholder: "Their size, the color they liked, when to get it…",
   }) as HTMLTextAreaElement;
 
   // ── Notices: the registry link, and whether it's already on Regibee ──
@@ -686,6 +741,7 @@ function showProduct(ctx: ProductContext) {
   const duplicateNote = h("p", { className: "note", hidden: true });
   const error = h("p", { className: "error", role: "alert", hidden: true });
   const button = h("button", { type: "button", className: "button primary" }, "Add to Regibee") as HTMLButtonElement;
+  const ideaButton = h("button", { type: "button", className: "button primary" }, "Save gift idea") as HTMLButtonElement;
 
   // Already on Regibee with a plain link, and this page has the registry
   // link: the button swaps it in instead of adding the item again.
@@ -762,14 +818,8 @@ function showProduct(ctx: ProductContext) {
       title.focus();
       return;
     }
-    const priceText = price.value.replace(/[$,\s]/g, "");
-    const priceValue = priceText ? Number(priceText) : null;
-    if (priceValue !== null && (!Number.isFinite(priceValue) || priceValue < 0)) {
-      error.textContent = "Enter the price as a number, like 24.99.";
-      error.hidden = false;
-      price.focus();
-      return;
-    }
+    const priceValue = readPrice();
+    if (priceValue === undefined) return;
     const item: ProductItem = {
       url: product.url,
       title: name,
@@ -800,51 +850,201 @@ function showProduct(ctx: ProductContext) {
     showProductAdded(user, registryId, registry().title, link?.kind === "registry" ? link.store.name : null, plainStore);
   });
 
+  /** The price as a number, null when it's empty, or undefined after showing an error. */
+  const readPrice = (): number | null | undefined => {
+    const priceText = price.value.replace(/[$,\s]/g, "");
+    const priceValue = priceText ? Number(priceText) : null;
+    if (priceValue !== null && (!Number.isFinite(priceValue) || priceValue < 0)) {
+      error.textContent = "Enter the price as a number, like 24.99.";
+      error.hidden = false;
+      price.focus();
+      return undefined;
+    }
+    return priceValue;
+  };
+
+  ideaButton.addEventListener("click", async () => {
+    error.hidden = true;
+    const who = recipient.value.replace(/\s+/g, " ").trim();
+    if (!who) {
+      error.textContent = "Say who it's for.";
+      error.hidden = false;
+      recipient.focus();
+      return;
+    }
+    const name = title.value.replace(/\s+/g, " ").trim();
+    if (!name) {
+      error.textContent = "Give the idea a name.";
+      error.hidden = false;
+      title.focus();
+      return;
+    }
+    const priceValue = readPrice();
+    if (priceValue === undefined) return;
+    const idea: IdeaRequest["idea"] = {
+      recipient: who,
+      title: name,
+      url: product.url,
+      imageUrl: images[imageIndex] ?? null,
+      price: priceValue,
+      notes: ideaNotes.value.trim() || null,
+    };
+    ideaButton.disabled = true;
+    ideaButton.textContent = "Saving…";
+    const result = await ask<IdeaResponse>({ type: "add-idea", idea });
+    if (!result.ok) {
+      if (result.notConnected) return showConnect(true);
+      error.textContent = result.error;
+      error.hidden = false;
+      ideaButton.disabled = false;
+      ideaButton.textContent = "Save gift idea";
+      return;
+    }
+    showIdeaSaved(user, result.data.added.recipient);
+  });
+
   const field = (id: string, label: string, control: Node, extra?: string) =>
     h("div", { className: `field${extra ? ` ${extra}` : ""}` }, h("label", { for: id }, label), control);
+
+  // ── Which kind of save, and the fields that go with each ──
+  const heading = h("h1", { className: "sr-only" });
+  const modeOption = (value: ProductMode, label: string) =>
+    h(
+      "label",
+      { className: "segment" },
+      h("input", {
+        type: "radio",
+        name: "product-mode",
+        value,
+        checked: mode === value,
+        onchange: () => setMode(value),
+      }),
+      h("span", {}, label)
+    );
+  const modeSwitch =
+    canAddToList &&
+    h(
+      "fieldset",
+      { className: "segmented" },
+      h("legend", { className: "sr-only" }, "Save it"),
+      modeOption("list", "For my registry"),
+      modeOption("idea", "Gift idea")
+    );
+
+  const quantityField = field(
+    "quantity",
+    "Quantity",
+    h(
+      "div",
+      { className: "stepper" },
+      h("button", { type: "button", className: "icon-button", "aria-label": "Fewer", onclick: () => setQuantity(quantity - 1) }, icon(MINUS)),
+      qty,
+      h("button", { type: "button", className: "icon-button", "aria-label": "More", onclick: () => setQuantity(quantity + 1) }, icon(PLUS))
+    )
+  );
+  const ideaTop = h(
+    "div",
+    { className: "group" },
+    h(
+      "p",
+      { className: "private-note" },
+      icon(LOCK, 14),
+      h("span", {}, "Only you can see gift ideas. The person they're for never does.")
+    ),
+    h(
+      "div",
+      { className: "field" },
+      h("label", { for: "recipient" }, "Who's it for?"),
+      recipient,
+      chips.length > 0 && h("div", { className: "chips", role: "group", "aria-label": "People you've saved ideas for" }, ...chips)
+    )
+  );
+  const listTop = h("div", { className: "group" }, linkNote, duplicateNote);
+  const listBottom = h(
+    "div",
+    { className: "group" },
+    canAddToList && h("div", { className: "row" }, registryField, field("category", "Category", category)),
+    h(
+      "div",
+      { className: "checks" },
+      h("label", { className: "check" }, essential, "Most wanted"),
+      h("label", { className: "check" }, openToUsed, "Open to used")
+    ),
+    conditionField,
+    field("notes", "Note for friends and family (optional)", notes)
+  );
+  const ideaBottom = h("div", { className: "group" }, field("idea-notes", "Note (optional, only you see it)", ideaNotes));
+
+  function setMode(next: ProductMode) {
+    mode = next;
+    const idea = mode === "idea";
+    heading.textContent = idea ? "Save this as a gift idea" : "Add this item to Regibee";
+    ideaTop.hidden = !idea;
+    ideaBottom.hidden = !idea;
+    ideaButton.hidden = !idea;
+    listTop.hidden = idea;
+    listBottom.hidden = idea;
+    quantityField.hidden = idea;
+    button.hidden = idea;
+    error.hidden = true;
+    if (canAddToList) void ask({ type: "set-product-mode", mode });
+  }
 
   render(
     header(user),
     h(
       "main",
       { className: "body product" },
-      h("h1", { className: "sr-only" }, "Add this item to Regibee"),
+      heading,
       h(
         "div",
         { className: "form-scroll" },
+        modeSwitch,
         h("div", { className: "product-top" }, gallery, field("title", "Name", title, "grow")),
-        linkNote,
-        duplicateNote,
+        ideaTop,
+        listTop,
         h(
           "div",
           { className: "row" },
           field("price", "Price", h("div", { className: "money" }, h("span", { "aria-hidden": "true" }, "$"), price)),
-          field(
-            "quantity",
-            "Quantity",
-            h(
-              "div",
-              { className: "stepper" },
-              h("button", { type: "button", className: "icon-button", "aria-label": "Fewer", onclick: () => setQuantity(quantity - 1) }, icon(MINUS)),
-              qty,
-              h("button", { type: "button", className: "icon-button", "aria-label": "More", onclick: () => setQuantity(quantity + 1) }, icon(PLUS))
-            )
-          )
+          quantityField
         ),
-        h("div", { className: "row" }, registryField, field("category", "Category", category)),
-        h(
-          "div",
-          { className: "checks" },
-          h("label", { className: "check" }, essential, "Most wanted"),
-          h("label", { className: "check" }, openToUsed, "Open to used")
-        ),
-        conditionField,
-        field("notes", "Note for friends and family (optional)", notes)
+        listBottom,
+        ideaBottom
       ),
-      h("div", { className: "footer-actions" }, error, button)
+      h("div", { className: "footer-actions" }, error, button, ideaButton)
     )
   );
-  void checkDuplicate();
+  // Show the right fields without saving the choice again.
+  const idea = mode === "idea";
+  heading.textContent = idea ? "Save this as a gift idea" : "Add this item to Regibee";
+  ideaTop.hidden = ideaBottom.hidden = ideaButton.hidden = !idea;
+  listTop.hidden = listBottom.hidden = quantityField.hidden = button.hidden = idea;
+  if (canAddToList) void checkDuplicate();
+}
+
+/** The gift idea was saved. */
+function showIdeaSaved(user: { name: string }, recipient: string) {
+  render(
+    header(user),
+    h(
+      "main",
+      { className: "body" },
+      h(
+        "div",
+        { className: "done", role: "status" },
+        icon(CIRCLE_CHECK, 36),
+        h("h1", {}, `Saved for ${recipient}`),
+        h("p", { className: "lead" }, "It's in your gift ideas on Regibee. Only you can see it.")
+      ),
+      h(
+        "div",
+        { className: "footer-actions" },
+        h("button", { type: "button", className: "button primary", onclick: () => window.close() }, "Done"),
+        h("button", { type: "button", className: "button secondary", onclick: () => openTab(IDEAS_URL) }, "See your gift ideas")
+      )
+    )
+  );
 }
 
 function showProductAdded(
@@ -1009,7 +1209,25 @@ async function start() {
   if (!registriesResult.ok) return handleFailure(registriesResult, state.user, start);
   const data = registriesResult.data;
   const user = data.user;
-  if (data.registries.length === 0 || !data.registryId) return showNoRegistries(user);
+  const noRegistries = data.registries.length === 0 || !data.registryId;
+
+  // Without a registry, a product page can still be saved as a gift idea.
+  if (noRegistries && !read?.store) {
+    const page = await readProduct(tab);
+    if (page && (page.isProduct || menuClick)) {
+      return showProduct({
+        user,
+        product: page,
+        registries: [],
+        registryId: null,
+        mode: "idea",
+        ideaRecipients: data.ideaRecipients ?? [],
+        storesWithRegistries: new Set(),
+        preferredImage: menuClick?.imageUrl,
+      });
+    }
+  }
+  if (noRegistries || !data.registryId) return showNoRegistries(user);
 
   if (read?.store) {
     const store = getStore(read.store);
@@ -1034,6 +1252,8 @@ async function start() {
       product: page,
       registries: data.registries,
       registryId: data.registryId,
+      mode: state.productMode ?? "list",
+      ideaRecipients: data.ideaRecipients ?? [],
       storesWithRegistries: storesWithRegistries(state, data.registries.find((r) => r.id === data.registryId)),
       preferredImage: menuClick?.imageUrl,
     });

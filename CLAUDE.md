@@ -6,11 +6,12 @@ These notes are for anyone changing or running the live app, people and Claude a
 
 | Service | What it does | What to know |
 | --- | --- | --- |
-| GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN` repo secret. |
+| GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN` and `EXPO_TOKEN` repo secrets. |
 | Vercel | Builds and hosts the site | `main` deploys to regibee.com and www.regibee.com. Every other branch gets a preview URL. Every deployment URL except regibee.com needs a Vercel login. |
 | Supabase `regibee` (ref `ibfvmgpfwhhyrhnxaxig`) | Database and sign-in | This is the only database. Preview deploys and `vercel env pull` use it too, so anything you do on a preview or locally with those keys changes real data. Database changes are run by hand. See below. |
 | Resend | Sends every email, from `notifications@regibee.com` | The site sends through Resend's API with `RESEND_API_KEY`. Supabase sends its account emails through Resend's SMTP server, with a second key kept in Supabase's settings. Both need the DNS records for regibee.com. |
 | Porkbun | Registrar and DNS for regibee.com | The DNS records point the site at Vercel and verify the domain for Resend. |
+| Expo (EAS) | Builds the phone app and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. See "Updates" in [mobile/README.md](mobile/README.md). |
 | Chromatic | Visual tests of the Storybook stories | The project is in the `dango-design` Chromatic account, on the free plan. Its id is in `chromatic.config.json`. |
 
 Vercel holds these env vars for production, preview and development: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `NEXT_PUBLIC_SITE_URL`. Run `vercel env pull .env.local` to copy them to your machine.
@@ -33,7 +34,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
   `--remote` runs the file on the linked project, and the CLI asks you to confirm first. Without it, `db query` runs against a local database. The older `--linked` flag still works in CLI 3 but is deprecated and goes away in v4.
 
 - If a migration takes away access that the live code still uses, deploy the code first and run the migration after. Run the other way round, and the live site breaks until the code is deployed. `009_restrict_registry_reads.sql` was one of these.
-- A new table with foreign keys to two tables that already link to each other gives Supabase's API a second route between them. It then refuses any query that joins the two without naming the link (error `PGRST201`), and pages that use one show nothing. `20261112062733_item_placements.sql` did this to `registries` and `registry_items`, and the dashboard showed "No registries yet" until each join named its link, as in `registry_items!registry_items_registry_id_fkey(...)`. `exchange_exclusions` (in `20261111103947_event_hosts_lists_and_gift_exchanges.sql`) did the same to `events` and `event_guests`, and hosts' Events tab came back empty. The end-to-end tests passed with it in place, so don't count on them to catch this. Before running such a migration, name the link in every join between those tables, in the website and in `mobile/src/lib/data.ts`.
+- A new table with foreign keys to two tables that already link to each other gives Supabase's API a second route between them. It then refuses any query that joins the two without naming the link (error `PGRST201`), and pages that use one show nothing. `20261112062733_item_placements.sql` did this to `registries` and `registry_items`, and the dashboard showed "No registries yet" until each join named its link, as in `registry_items!registry_items_registry_id_fkey(...)`. `exchange_exclusions` (in `20261111103947_event_hosts_lists_and_gift_exchanges.sql`) did the same to `events` and `event_guests`, and hosts' Events tab came back empty. The end-to-end tests passed with both in place. They now check that the dashboard lists an owner's registries and the Events tab lists a host's events, but a join on another page can still break unnoticed. Before running such a migration, name the link in every join between those tables, in the website and in `mobile/src/lib/data.ts`.
 - To test access rules (RLS) on production without saving anything, put the test in a `DO` block. Set `local role` and `request.jwt.claims` inside it, run the queries, and end the block with `raise exception` so everything rolls back.
 
 ## Keys and access rules
@@ -43,7 +44,9 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 ## List links
 
-- Anyone with a list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
+- A list is private, link-only or public (`src/lib/list-access.ts`). The database keeps this as `is_private` and `is_public`; both can't be set. New lists start link-only.
+- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wish lists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
+- Anyone with a link-only or public list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
 - A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
 - Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
 
@@ -52,7 +55,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - An item's home list is `registry_items.registry_id`. `registry_item_placements` puts it on more of the same owner's lists, each with its own category. Gifts belong to the item, so they show on every list it's on.
 - Only the server reads placements. To list a list's items, use `src/lib/list-items.ts`, not `registry_items` filtered by `registry_id`, or placed items go missing.
 - Taking an item off its home list moves it to the next list it's on. Only an item on no other list is deleted. A database trigger does this for direct deletes too, so the phone app and the extension follow the same rule.
+- Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
+
+## Gift ideas
+
+- A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it.
+- Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email or to co-managers. Don't put gift ideas on a registry or give them a link.
+- The table has access rules for the signed-in owner, so the website, the extension and the phone app can read and write it as that user. Prefer that over the service-role client. Checks and grouping are in `src/lib/gift-ideas.ts`, which has no imports.
 
 ## Visual tests (Chromatic)
 
@@ -67,7 +77,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 ## End-to-end tests
 
 - `e2e/` holds Playwright tests that use the website in a browser and check the emails that follow. [e2e/README.md](e2e/README.md) covers setup.
-- They run against local Supabase in Docker (`npm run e2e:db`), never production. Every email, Supabase's own included, lands in local Supabase's Mailpit inbox at http://127.0.0.1:54324.
+- They run against local Supabase in Docker (`npm run e2e:db`), never production. Every email, Supabase's own included, lands in local Supabase's Mailpit inbox at http://127.0.0.1:54324. Like production, local Supabase asks new accounts to confirm their email (`supabase/config.toml`).
 - `EMAIL_TRANSPORT=mailpit` makes `src/lib/mailer.ts` send to Mailpit instead of Resend. Only the tests set it. Send every email through `src/lib/mailer.ts`, not Resend directly, so tests can catch it. Supabase's account emails are the one exception: local Supabase sends those to Mailpit itself.
 - `.github/workflows/e2e.yml` runs them on pull requests that change `src/`, `e2e/`, `supabase/`, `package.json` or `next.config.ts`, and on `main`. The check is called **End-to-end tests**. It isn't required yet, so read its result before merging, and don't merge over a failure without knowing why.
 
@@ -92,8 +102,10 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 - The iPhone and Android app lives in `mobile/`. It's an Expo (React Native) app for registry owners. [mobile/README.md](mobile/README.md) covers what it does, running it and what's left before the app stores.
 - It signs in to the same Supabase project and reads and writes the tables directly, as the signed-in user, under the same access rules as the website. It only has the anon key. The one exception is deleting the account, which needs the service-role key: the app calls the website's `/api/account` (on `EXPO_PUBLIC_SITE_URL`, regibee.com by default) with its access token. Like the extension, that only works once the route is deployed there. `mobile/src/lib/data.ts` copies what the website's server actions in `src/lib/actions/registry.ts` do. When you change one, check the other.
-- It shares `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts` and `src/lib/account-deletion-summary.ts` with the website through the `@shared/*` path. Keep those files free of imports, or the app can't use them.
+- The app says and does what the website does. Use the website's words for the same thing, and its rules for what's shown. Do something differently only where a phone app can clearly do it better, such as the share sheet, native menus or haptics. When both show the same thing, put the logic in a shared file and call it from both, as `ownerItemStatus` in `src/lib/gifts.ts` does for an item's gift status.
+- It shares `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts`, `src/lib/account-deletion-summary.ts`, `src/lib/occasions.ts`, `src/lib/list-access.ts` and `src/lib/registry-copy.ts` with the website through the `@shared/*` path. Keep those files free of imports, or the app can't use them. The one exception is `registry-copy.ts`, which imports `occasions.ts`.
 - Its product reader is built from `extension/src/product-reader.ts`. After changing that file, run `npm run product-reader` in `mobile/`.
+- Preview builds get over-the-air updates. When a merge to main changes the app, `.github/workflows/mobile-update.yml` publishes one to the `preview` channel, if the `EXPO_TOKEN` secret is set. The Account tab's "This version" says which pull request a preview build is running and has a Check for updates button. An update can't change native code: new native packages, an Expo upgrade, config plugins or the product reader need a new build. See "Updates" in [mobile/README.md](mobile/README.md).
 - The root `tsconfig.json` leaves out `mobile/`. The app has its own checks.
 
 ## Privacy policy
@@ -118,11 +130,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Run `npx tsc --noEmit` and `npm run build`.
 - If you changed components or stories, also run `npm run build-storybook`.
 - If you added a migration, also run `npm run check:migrations`.
-- `npm test` runs the unit tests in `src/lib/*.test.ts` and `supabase/*.test.mts` with Node's own test runner. Run it if you changed a file they test. The End-to-end tests check runs them too.
+- `npm test` runs the unit tests in `src/lib/*.test.ts` and `supabase/*.test.mts` with Node's own test runner, such as the gift exchange name draw and what autofill reads from a store's page (`src/lib/product-page.ts`). Run it if you changed anything in `src/lib/` or `supabase/`. The **Unit tests** check (`.github/workflows/unit-tests.yml`) runs it on pull requests that change `src/lib/`.
 - If you changed `src/lib/auth-email-templates.ts`, run `npm run auth-emails`, and copy any new subject into `supabase/config.toml`. After merging, update production's templates (see "Account emails").
-- If you changed a flow the end-to-end tests cover, emails, `supabase/migrations` or `e2e/`, also run `npm run test:e2e` if Docker is running on this computer. After adding a migration, run `npm run e2e:db` first. Without Docker, the End-to-end tests check on the pull request runs them.
+- If you changed a flow the end-to-end tests cover, emails, `supabase/migrations` or `e2e/`, and Docker is running on this computer, run the test files that cover your change, such as `npm run test:e2e -- e2e/gift-funds.spec.ts`. Don't run the whole suite locally: the End-to-end tests check on the pull request runs every file. Without Docker, leave it all to that check.
+- Other sessions on this computer use the same local Supabase and the tests' port, 3100. If a run says the port is already used, another session's tests are running. Wait for them to finish, and don't stop that server. After adding a migration, run `npm run e2e:db` first, but only once the port is free, because it empties the database those runs use.
 - If you changed `extension/`, `src/lib/retailers.ts` or `src/lib/extension.ts`, also run `npm run extension:build` and `npm run test:extension`. The tests skip when this computer has no saved store pages. See "Tests" in [extension/README.md](extension/README.md).
-- If you changed `mobile/`, `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts`, `src/lib/account-deletion-summary.ts` or `extension/src/product-reader.ts`, also run `npm run lint` and `npm run check` in `mobile/`.
+- If you changed `mobile/`, `extension/src/product-reader.ts` or one of the files the app shares (listed under "Mobile app"), also run `npm run lint` and `npm run check` in `mobile/`.
 - `npm run lint` fails right now. `eslint.config.mjs` imports `eslint-plugin-storybook`, which isn't in `package.json`.
 
 ## After opening a pull request

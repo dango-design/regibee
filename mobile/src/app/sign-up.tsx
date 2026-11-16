@@ -65,6 +65,7 @@ export default function SignUpScreen() {
         <AutofillFields>
           <Field
             label="Your name"
+            placeholder="Remi & Max Porter"
             value={fullName}
             onChangeText={setFullName}
             autoCapitalize="words"
@@ -77,6 +78,7 @@ export default function SignUpScreen() {
           <Field
             ref={emailRef}
             label="Email"
+            placeholder="you@example.com"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"

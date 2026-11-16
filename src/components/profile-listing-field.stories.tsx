@@ -6,7 +6,7 @@ const meta: Meta<typeof ProfileListingField> = {
   component: ProfileListingField,
   parameters: { layout: "centered" },
   args: {
-    isPublic: true,
+    visibility: "public",
     isSelected: true,
     onChange: () => {},
   },
@@ -20,6 +20,11 @@ export const ListedWithShippingAddress: Story = {
 };
 
 // A link-only list only shows to approved followers.
+export const LinkOnly: Story = {
+  args: { visibility: "link" },
+};
+
+// A private list can't be on a profile, so there's nothing to choose.
 export const Private: Story = {
-  args: { isPublic: false },
+  args: { visibility: "private" },
 };

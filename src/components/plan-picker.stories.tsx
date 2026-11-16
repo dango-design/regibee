@@ -15,8 +15,21 @@ const meta: Meta<typeof PlanPicker> = {
 export default meta;
 type Story = StoryObj<typeof PlanPicker>;
 
-/** The first question: every occasion, and a way to make just a wishlist. */
-export const WhatAreYouPlanning: Story = {};
+/**
+ * The first step: a gift list on its own, or an event. The lists open the
+ * registry form with no event questions.
+ */
+export const ListsAndEvents: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("link", { name: /Baby registry/ })).toHaveAttribute(
+      "href",
+      "/dashboard/registry/new?type=baby",
+    );
+    // The event steps only show once an event is being planned.
+    await expect(canvas.queryByRole("list", { name: "Steps" })).toBeNull();
+  },
+};
 
 /** A baby shower: it's usually for someone else, so the name field asks for theirs. */
 export const WhoItsFor: Story = {
@@ -24,6 +37,7 @@ export const WhoItsFor: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Baby shower" }));
     await expect(canvas.getByRole("heading", { name: "Who's the baby shower for?" })).toBeVisible();
+    await expect(canvas.getByRole("list", { name: "Steps" })).toBeVisible();
     await userEvent.type(canvas.getByRole("textbox", { name: "Their name" }), "Remi");
   },
 };
@@ -32,6 +46,28 @@ export const WhoItsFor: Story = {
 export const GiftsForAParty: Story = {
   args: {
     initial: { step: "gifts", occasion: "christmas", audience: "no_one" },
+  },
+};
+
+/**
+ * Gifts are optional. With nothing picked the button says Skip, and clicking
+ * a picked card again unpicks it. Skipping makes the event with nothing
+ * about gifts.
+ */
+export const SkipGifts: Story = {
+  args: {
+    initial: { step: "gifts", occasion: "wedding", audience: "us", name: "Alex & Sam" },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const registry = canvas.getByRole("button", { name: /Make your wedding registry/ });
+    await userEvent.click(registry);
+    await expect(canvas.getByRole("button", { name: "Next" })).toBeVisible();
+    await userEvent.click(registry);
+    await expect(registry).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(canvas.getByRole("button", { name: "Skip" }));
+    await expect(canvas.getByRole("heading", { name: "Name your event" })).toBeVisible();
+    await expect(canvas.getByText("Nothing about gifts yet. You can set that up from the event any time.")).toBeVisible();
   },
 };
 

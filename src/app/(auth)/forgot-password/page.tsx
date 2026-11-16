@@ -44,8 +44,9 @@ export default function ForgotPasswordPage() {
               <Logo size="lg" />
             </Link>
             <CardTitle className="text-2xl">Check your email</CardTitle>
+            {/* Worded so it doesn't say whether the address has an account. */}
             <CardDescription>
-              We sent a password reset link to <strong>{email}</strong>
+              If there&apos;s an account for <strong>{email}</strong>, we sent it a link to set a new password.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
@@ -73,7 +74,7 @@ export default function ForgotPasswordPage() {
           </Link>
           <CardTitle className="text-2xl">Reset your password</CardTitle>
           <CardDescription>
-            Enter your email and we&apos;ll send you a reset link
+            Enter the email you signed up with. We&apos;ll send you a link to set a new password.
           </CardDescription>
         </CardHeader>
         <CardContent>

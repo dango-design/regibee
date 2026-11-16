@@ -62,7 +62,7 @@ import { getCategorySectionId } from "@/lib/category-section-id";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { formatDollars, formatPrice } from "@/lib/money";
 import { RegistryTabs } from "@/components/registry-tabs";
-import { RegistryEventsBanner } from "@/components/registry-events-banner";
+import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-events-banner";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
@@ -70,6 +70,7 @@ import { StorePerksCard } from "@/components/store-perks-card";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 import { getChecklistProgress } from "@/lib/checklist-matching";
 import { copyForRegistry } from "@/lib/registry-copy";
+import { giftActivityFor, giftActivityTag, ownerItemStatus } from "@/lib/gifts";
 import { parseRetailerRegistries, plainLinksByStore, type StoreId } from "@/lib/retailers";
 import { StoreRegistryLine } from "@/components/store-registry-line";
 import { buildStorePerks, parseStorePerksState, readyPerkCount } from "@/lib/store-perks";
@@ -216,13 +217,13 @@ function DemoAddItemDialog({
         <Button>
           <span className="inline-flex items-center gap-1.5">
             <Plus className="h-4 w-4 shrink-0" />
-            Add Item
+            Add item
           </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Add item to registry</DialogTitle>
+          <DialogTitle>Add an item</DialogTitle>
           <DialogDescription>
             Add anything from any store, in two taps.
           </DialogDescription>
@@ -291,7 +292,7 @@ function DemoAddItemDialog({
 
           <Input
             ref={titleRef}
-            label="Item Name"
+            label="Item name"
             name="title"
             placeholder="e.g., Convertible Crib"
             isRequired
@@ -300,14 +301,15 @@ function DemoAddItemDialog({
           <Checkbox
             name="isEssential"
             value="true"
-            label="Mark as most wanted item"
+            label="Most wanted"
+            hint="Guests see it tagged Most wanted."
           />
 
           <Select
             name="categoryId"
             label="Category"
             defaultSelectedKey={categories[0]?.id}
-            placeholder="Select a category"
+            placeholder="No category"
             items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
           >
             {(item) => <Select.Item id={item.id} label={item.label} />}
@@ -363,7 +365,8 @@ function DemoAddItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Mark as open to used condition item"
+            label="Open to used"
+            hint="Guests may give one secondhand."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -384,9 +387,9 @@ function DemoAddItemDialog({
           )}
 
           <TextArea
-            label="Notes (optional)"
+            label="Note for guests (optional)"
             name="notes"
-            placeholder="Enter a description..."
+            placeholder="Size, color, or anything else that helps"
             rows={3}
           />
 
@@ -501,7 +504,7 @@ function DemoEditItemDialog({
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setScrapeStatus(""); setOpenToUsed(false); setCurrency("USD"); setImageUrl(item.image_url || ""); } }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Edit item in registry</DialogTitle>
+          <DialogTitle>Edit item</DialogTitle>
           <DialogDescription>
             This is a demo — paste a URL to see auto-fill in action.
           </DialogDescription>
@@ -547,7 +550,7 @@ function DemoEditItemDialog({
 
           <Input
             ref={titleRef}
-            label="Item Name"
+            label="Item name"
             name="title"
             placeholder="e.g., Convertible Crib"
             defaultValue={item.title}
@@ -558,14 +561,15 @@ function DemoEditItemDialog({
             name="isEssential"
             value="true"
             defaultSelected={item.is_essential}
-            label="Mark as most wanted item"
+            label="Most wanted"
+            hint="Guests see it tagged Most wanted."
           />
 
           <Select
             name="categoryId"
             label="Category"
             defaultSelectedKey={item.category_id ?? undefined}
-            placeholder="Select a category"
+            placeholder="No category"
             items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
           >
             {(item) => <Select.Item id={item.id} label={item.label} />}
@@ -622,7 +626,8 @@ function DemoEditItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Mark as open to used condition item"
+            label="Open to used"
+            hint="Guests may give one secondhand."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -643,9 +648,9 @@ function DemoEditItemDialog({
           )}
 
           <TextArea
-            label="Notes (optional)"
+            label="Note for guests (optional)"
             name="notes"
-            placeholder="Enter a description..."
+            placeholder="Size, color, or anything else that helps"
             defaultValue={item.notes || ""}
             rows={3}
           />
@@ -680,6 +685,7 @@ function DemoItemCard({
   onClick,
   selfPurchaseButton,
   linkedStores,
+  purchases,
 }: {
   item: DemoItem;
   categoryName?: string;
@@ -689,12 +695,12 @@ function DemoItemCard({
   selfPurchaseButton: string;
   /** The stores the owner linked, for baby registries. Unset hides the store registry line. */
   linkedStores?: StoreId[];
+  /** This item's demo gifts. */
+  purchases: DemoPurchase[];
 }) {
   const isFulfilled = item.quantity_fulfilled >= item.quantity_needed;
-  const remaining = item.quantity_needed - item.quantity_fulfilled;
-  const availableToGift = item.is_parent_purchased
-    ? item.quantity_needed
-    : remaining;
+  // The same words as the real item card and the app (src/lib/gifts.ts).
+  const status = ownerItemStatus(item, purchases);
 
   return (
     <Card
@@ -730,12 +736,7 @@ function DemoItemCard({
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium">{item.title}</h3>
               <div className="shrink-0 h-6">
-                {item.is_parent_purchased && (
-                  <Tag variant="purchased-by-you">Purchased by you</Tag>
-                )}
-                {isFulfilled && !item.is_parent_purchased && (
-                  <Tag variant="gifted">Gifted</Tag>
-                )}
+                {status.tag && <Tag variant={status.tag.kind}>{status.tag.label}</Tag>}
               </div>
             </div>
 
@@ -752,9 +753,7 @@ function DemoItemCard({
                 </span>
               )}
               <span className="text-xs">
-                {item.is_parent_purchased
-                  ? `${availableToGift} of ${item.quantity_needed} available to gift`
-                  : `${remaining} of ${item.quantity_needed} still needed`}
+                {status.quantity}
               </span>
             </div>
 
@@ -950,13 +949,8 @@ function DemoGiftActivity({ purchases, items }: { purchases: DemoPurchase[]; ite
             const isCancelled = purchase.status === "cancelled";
             const item = items.find((i) => i.id === purchase.registry_item_id);
             const isParentPurchased = item?.is_parent_purchased ?? false;
-            const tagType = isCancelled
-              ? "cancelled"
-              : purchase.cash_fund_id
-                ? "contribution"
-                : isParentPurchased
-                  ? "covered"
-                  : "purchased";
+            const tag = giftActivityTag(purchase, isParentPurchased);
+            const tagType = tag.kind;
             const displayAmount = purchase.cash_fund_id ? purchase.amount : item?.price;
             return (
               <Card key={purchase.id} className={`py-0 ${isCancelled ? "opacity-50" : ""}`}>
@@ -976,20 +970,12 @@ function DemoGiftActivity({ purchases, items }: { purchases: DemoPurchase[]; ite
                                   : "bg-sunshine-100 border-sunshine-100 text-primary"
                           }`}
                         >
-                          {tagType === "cancelled"
-                            ? "Cancelled"
-                            : tagType === "contribution"
-                              ? "Contribution"
-                              : tagType === "covered"
-                                ? "Covered by guest"
-                                : "Purchased by guest"}
+                          {tag.label}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-xs text-secondary">
-                          {purchase.cash_fund_id
-                            ? purchase.item_title
-                            : `Reserved ${purchase.quantity > 1 ? `${purchase.quantity}x ` : ""}${purchase.item_title}`}
+                          {giftActivityFor(purchase, purchase.item_title)}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1191,6 +1177,13 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
     setLinkedEvents((current) => current.filter((e) => e.id !== eventId));
     return { error: null };
   };
+  // Dismissing the "Planning a party?" prompt lasts until you leave, like the
+  // rest of the demo.
+  const [eventPromptDismissed, setEventPromptDismissed] = useState(false);
+  const dismissEventPrompt = async () => {
+    setEventPromptDismissed(true);
+    return { error: null };
+  };
 
   const handleAddItem = (item: DemoItem) => {
     setItems((prev) => [...prev, item]);
@@ -1318,6 +1311,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
       onClick={() => setEditingItem(item)}
       selfPurchaseButton={copy.selfPurchaseButton}
       linkedStores={registry.registry_type === "baby" ? linkedRegistries.map((r) => r.store) : undefined}
+      purchases={purchases.filter((p) => p.registry_item_id === item.id)}
     />
   );
 
@@ -1357,25 +1351,34 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
                 </span>
               </Link>
             </Button>
+            {eventPromptDismissed && linkedEvents.length === 0 && (
+              <PlanEventButton registryId={registry.id} basePath="/demo" />
+            )}
           </div>
         </div>
 
-        {/* Events that link to this registry, and a way to plan one. */}
-        <div className="mt-6">
-          <RegistryEventsBanner registryId={registry.id} events={linkedEvents} basePath="/demo" unlinkAction={unlinkEvent} />
-        </div>
+        {/* Events that link to this registry, or a small prompt to plan one. */}
+        <RegistryEventsBanner
+          className="mt-6"
+          registryId={registry.id}
+          events={linkedEvents}
+          promptDismissed={eventPromptDismissed}
+          basePath="/demo"
+          unlinkAction={unlinkEvent}
+          dismissAction={dismissEventPrompt}
+        />
 
         {/* Stats */}
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Total Items</p>
+              <p className="text-sm text-tertiary">Total items</p>
               <p className="text-2xl font-bold">{totalItems}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Fulfilled</p>
+              <p className="text-sm text-tertiary">Gifted</p>
               <p className="text-2xl font-bold">{fulfilledItems}</p>
             </CardContent>
           </Card>
@@ -1390,7 +1393,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Total Value</p>
+              <p className="text-sm text-tertiary">Total value</p>
               <p className="text-2xl font-bold">{formatDollars(totalValue)}</p>
             </CardContent>
           </Card>

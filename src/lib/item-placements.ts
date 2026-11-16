@@ -12,7 +12,8 @@ export type RemoveResult = { error: string } | { removed: "placement" | "moved" 
  * - On a list it was placed on, only the placement goes.
  * - On its home list, its home moves to the next list it's on, with its
  *   category there. Its gifts go with it.
- * - On no other list, it's deleted.
+ * - On no other list, it's deleted. The database deletes guests' gifts on it
+ *   along with it (20261116012811_delete_gifts_with_items.sql).
  */
 export async function removeItemFromList(itemId: string, registryId: string): Promise<RemoveResult> {
   const { data: item, error: readError } = await supabaseAdmin

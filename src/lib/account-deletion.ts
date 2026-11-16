@@ -15,9 +15,11 @@
 //   co-manager who joined first becomes the owner, so the registry and its
 //   guests' gifts stay for them. If the account then can't be deleted, they're
 //   handed back.
-// - Guests' gift records (purchases) point at items and funds with
-//   "on delete set null", so a deleted registry would leave them behind with
-//   the guests' names, emails and messages. They're deleted.
+// - Guests' gift records (purchases) on the deleted registries, with the
+//   guests' names, emails and messages, are deleted by id. The database
+//   deletes them with their items and funds now
+//   (20261116012811_delete_gifts_with_items.sql); this covers a database that
+//   hasn't run that file.
 // - Uploaded photos and invitation pictures live in Storage, in folders named
 //   for each registry and event. Those folders are emptied.
 

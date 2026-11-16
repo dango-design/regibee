@@ -40,11 +40,11 @@ import { PandaMark } from "@/components/panda-mark";
 import { copyForRegistry } from "@/lib/registry-copy";
 import { formatDollars, formatPrice } from "@/lib/money";
 import {
-  formatReservedUntil,
+  formatGiftDate,
   fundAsRevealed,
+  giftActivityFor,
+  giftActivityTag,
   isGiftRevealed,
-  isHeldUntilBought,
-  isOpenReservation,
   itemAsRevealed,
   itemAsUnreserved,
   maskGiverForOwner,
@@ -54,7 +54,7 @@ import {
 import { formatRevealDate, nextReveal } from "@/lib/reveal";
 import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notice";
 import { getEventsForReveal, getGiftsRevealedThrough, listEventsForRegistry } from "@/lib/events-server";
-import { RegistryEventsBanner } from "@/components/registry-events-banner";
+import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-events-banner";
 import { findSharedLink } from "@/lib/shared-link";
 import { getSessionUser } from "@/lib/viewer";
 import { itemsHiddenFromOwner, listsForItems, loadListItems, type ListItem } from "@/lib/list-items";
@@ -437,6 +437,12 @@ export default async function RegistryManagePage({
     : [];
   const zipCode = taxEnabled ? (settings?.zip_code as string | undefined) : undefined;
   const registryUrl = `/r/${registry.slug}`;
+  // Guests (anonymous sessions) can't make events, so they get no prompt to.
+  // Once a manager dismisses the prompt, a smaller button in the header takes
+  // its place.
+  const canPlanEvents = !user.is_anonymous;
+  const eventPromptDismissed = settings?.event_prompt_dismissed === true;
+  const showPlanEventButton = canPlanEvents && eventPromptDismissed && linkedEvents.length === 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -473,6 +479,7 @@ export default async function RegistryManagePage({
               </span>
             </Link>
           </Button>
+          {showPlanEventButton && <PlanEventButton registryId={registryId} />}
         </div>
       </div>
 
@@ -485,22 +492,27 @@ export default async function RegistryManagePage({
         />
       )}
 
-      {/* Events that link to this registry, and a way to plan one. */}
-      <div className="mt-6">
-        <RegistryEventsBanner registryId={registryId} events={linkedEvents} />
-      </div>
+      {/* Events that link to this registry, or a small prompt to plan one. */}
+      {(canPlanEvents || linkedEvents.length > 0) && (
+        <RegistryEventsBanner
+          className="mt-6"
+          registryId={registryId}
+          events={linkedEvents}
+          promptDismissed={eventPromptDismissed}
+        />
+      )}
 
       {/* Stats */}
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Total Items</p>
+            <p className="text-sm text-tertiary">Total items</p>
             <p className="text-2xl font-bold">{totalItems}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Fulfilled</p>
+            <p className="text-sm text-tertiary">Gifted</p>
             <p className="text-2xl font-bold">{fulfilledItems}</p>
           </CardContent>
         </Card>
@@ -515,7 +527,7 @@ export default async function RegistryManagePage({
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Total Value</p>
+            <p className="text-sm text-tertiary">Total value</p>
             <p className="text-2xl font-bold">{formatDollars(totalValue)}</p>
           </CardContent>
         </Card>
@@ -697,16 +709,9 @@ export default async function RegistryManagePage({
                 {allPurchases.map((purchase: any) => {
                   const isCancelled = purchase.status === "cancelled";
                   const isParentPurchased = purchase.registry_items?.is_parent_purchased ?? false;
-                  const isReserved = isOpenReservation(purchase);
-                  const tagType = isCancelled
-                    ? "cancelled"
-                    : purchase.cash_fund_id
-                      ? "contribution"
-                      : isParentPurchased
-                        ? "covered"
-                        : isReserved
-                          ? "reserved"
-                          : "purchased";
+                  // The app's Gifts tab words them the same way (src/lib/gifts.ts).
+                  const tag = giftActivityTag(purchase, isParentPurchased);
+                  const tagType = tag.kind;
                   const displayAmount = purchase.cash_fund_id
                     ? purchase.amount
                     : purchase.registry_items?.price;
@@ -735,26 +740,12 @@ export default async function RegistryManagePage({
                                           : "bg-sunshine-100 border-sunshine-100 text-primary"
                                 }`}
                               >
-                                {tagType === "cancelled"
-                                  ? "Cancelled"
-                                  : tagType === "contribution"
-                                    ? "Contribution"
-                                    : tagType === "covered"
-                                      ? "Covered by guest"
-                                      : tagType === "reserved"
-                                        ? "Reserved by guest"
-                                        : "Purchased by guest"}
+                                {tag.label}
                               </span>
                             </div>
                             <div className="min-w-0 sm:flex-1">
                               <span className="text-xs text-secondary">
-                                {purchase.cash_fund_id
-                                  ? purchase.item_title
-                                  : `${purchase.quantity > 1 ? `${purchase.quantity}x ` : ""}${purchase.item_title}${
-                                      isReserved && !isHeldUntilBought(purchase)
-                                        ? ` · until ${formatReservedUntil(purchase.reserved_until, "short")}`
-                                        : ""
-                                    }`}
+                                {giftActivityFor(purchase, purchase.item_title)}
                               </span>
                             </div>
                             <div className="min-w-0 sm:flex-1">
@@ -771,11 +762,7 @@ export default async function RegistryManagePage({
                             </div>
                             <div className="min-w-0 sm:flex-1 sm:text-right">
                               <span className="text-xs text-secondary">
-                                {new Date(purchase.created_at).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
+                                {formatGiftDate(purchase.created_at)}
                               </span>
                             </div>
                           </div>

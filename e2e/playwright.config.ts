@@ -44,6 +44,9 @@ export default defineConfig({
       EMAIL_TRANSPORT: "mailpit",
       MAILPIT_URL: supabase.mailpitUrl,
       CRON_SECRET,
+      // Lets the add-item dialog read the product pages e2e/add-items.spec.ts
+      // serves on 127.0.0.1. Ignored by a production build (src/lib/actions/scrape.ts).
+      SCRAPE_ALLOW_LOCAL_TEST_PAGES: "true",
       // Blank, so the values in .env.local don't apply. With no key, Resend
       // can't send even if something skipped Mailpit.
       RESEND_API_KEY: "",

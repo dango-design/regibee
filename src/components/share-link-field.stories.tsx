@@ -14,12 +14,18 @@ type Story = StoryObj<typeof ShareLinkField>;
 const path = "/r/maya-s-birthday-wishlist-k7m2p9qx4tab";
 const replace = async () => ({ path: "/r/maya-s-birthday-wishlist-wd3hn8ec6ryu" });
 
-// The sharing part of a list's Settings: who can see it, the link, and the
+// The sharing part of a list's Settings: who can open it, the link, and the
 // question "Get a new link" asks first.
 export const AllStates: Story = {
   render: () => (
     <div className="flex flex-col gap-8">
-      <ListAccessField isPublic={false} onChange={() => {}} />
+      {/* Separate forms, so the two sets of choices don't act as one. */}
+      <form>
+        <ListAccessField visibility="link" onChange={() => {}} />
+      </form>
+      <form>
+        <ListAccessField visibility="private" onChange={() => {}} />
+      </form>
       <ShareLinkField path={path} onReplace={replace} />
       <ShareLinkField path={path} onReplace={replace} startConfirming />
     </div>

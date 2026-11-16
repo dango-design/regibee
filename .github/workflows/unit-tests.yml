@@ -1,0 +1,34 @@
+name: Unit tests
+
+# Runs `npm test`: the tests in src/lib/*.test.ts, with Node's own test
+# runner. They test functions on their own, such as the gift exchange name
+# draw and what autofill reads from a store's page, and take seconds. The
+# website itself is tested by the End-to-end tests workflow.
+on:
+  pull_request:
+    paths:
+      - src/lib/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/unit-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - src/lib/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/unit-tests.yml
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test

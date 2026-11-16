@@ -11,7 +11,7 @@ import { toggleParentPurchased } from "@/lib/actions/registry";
 import { EditItemDialog } from "@/components/edit-item-dialog";
 import { GiftDetailModal, type Purchase } from "@/components/gift-detail-modal";
 import { StoreRegistryLine } from "@/components/store-registry-line";
-import { giverNameForOwner, isOpenReservation } from "@/lib/gifts";
+import { ownerItemStatus } from "@/lib/gifts";
 import type { RetailerRegistry, StoreId } from "@/lib/retailers";
 import { formatPrice } from "@/lib/money";
 
@@ -56,19 +56,9 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
   const cardRef = useRef<HTMLDivElement>(null);
   const isHighlighted = highlightId === item.id;
   const isFulfilled = item.quantity_fulfilled >= item.quantity_needed;
-  // Released reservations stay in the list as cancelled. A gift that's only
-  // reserved shows as reserved until the guest says they bought it.
-  const activePurchases = (purchases || []).filter((p) => p.status !== "cancelled");
-  const givenPurchases = activePurchases.filter((p) => !isOpenReservation(p));
-  const onlyReserved = activePurchases.length > 0 && givenPurchases.length === 0;
-  const firstGiver = givenPurchases[0] ?? activePurchases[0];
-  const remaining = item.quantity_needed - item.quantity_fulfilled;
-  const coveredQuantity = item.is_parent_purchased
-    ? (purchases || []).reduce((sum, p) => sum + (p.quantity || 0), 0)
-    : 0;
-  const availableToGift = item.is_parent_purchased
-    ? item.quantity_needed - coveredQuantity
-    : remaining;
+  // The app's item row shows the same status (src/lib/gifts.ts).
+  const status = ownerItemStatus(item, purchases);
+  const hasGifts = (purchases || []).some((p) => p.status !== "cancelled");
 
   useEffect(() => {
     if (isHighlighted && cardRef.current) {
@@ -124,23 +114,20 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
             <div className="flex items-start justify-between gap-2 min-w-0">
               <h3 className="text-sm font-medium min-w-0 flex-1 break-words">{item.title}</h3>
               <div className="min-w-0 max-w-[45%] shrink">
-                {item.is_parent_purchased && (
-                  <Tag variant="purchased-by-you" className="max-w-full overflow-hidden text-ellipsis block">Purchased by you</Tag>
+                {status.tag?.kind === "purchased-by-you" && (
+                  <Tag variant="purchased-by-you" className="max-w-full overflow-hidden text-ellipsis block">{status.tag.label}</Tag>
                 )}
-                {isFulfilled && !item.is_parent_purchased && (
-                  activePurchases.length > 0 ? (
+                {status.tag && status.tag.kind !== "purchased-by-you" && (
+                  hasGifts ? (
                     <Tag
-                      variant={onlyReserved ? "reserved" : "gifted"}
+                      variant={status.tag.kind}
                       className="cursor-pointer hover:opacity-80 max-w-full overflow-hidden text-ellipsis block"
                       onClick={(e) => { e.stopPropagation(); setGiftDetailOpen(true); }}
                     >
-                      {`${onlyReserved ? "Reserved" : "Gifted"} by ${giverNameForOwner(firstGiver)}`}
-                      {activePurchases.length > 1
-                        ? ` + ${activePurchases.length - 1} other${activePurchases.length > 2 ? "s" : ""}`
-                        : ""}
+                      {status.tag.label}
                     </Tag>
                   ) : (
-                    <Tag variant="gifted">Gifted</Tag>
+                    <Tag variant="gifted">{status.tag.label}</Tag>
                   )
                 )}
               </div>
@@ -163,11 +150,7 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
                   {formatPrice(item.price)}
                 </span>
               )}
-              <span className="text-xs">
-                {item.is_parent_purchased
-                  ? `${availableToGift} of ${item.quantity_needed} available to gift`
-                  : `${remaining} of ${item.quantity_needed} still needed`}
-              </span>
+              <span className="text-xs">{status.quantity}</span>
             </div>
 
             {/* Gifts of an item the owner bought go as money, not through the link. */}

@@ -11,7 +11,7 @@ import {
   demoPurchases,
   demoSuggestions,
 } from "@shared/demo-data";
-import { GIFT_HOLD_DAYS, isOpenReservation } from "@shared/gifts";
+import { GIFT_HOLD_DAYS, giftActivityAction } from "@shared/gifts";
 
 import type { Category, Gift, Item, Registry, RegistryDetail, RegistrySummary } from "@/lib/types";
 
@@ -97,6 +97,8 @@ function build(): Store {
       cash_fund_id: p.cash_fund_id ?? null,
       kind: p.cash_fund_id ? "fund" : "item",
       for_title: titles.get((p.registry_item_id ?? p.cash_fund_id) as string) ?? "",
+      item_price: items.find((i) => i.id === p.registry_item_id)?.price ?? null,
+      item_bought_by_owner: Boolean(items.find((i) => i.id === p.registry_item_id)?.is_parent_purchased),
     };
   });
   const detail: RegistryDetail = {
@@ -128,7 +130,7 @@ function summary(detail: RegistryDetail, gifts: Gift[]): RegistrySummary {
     totalValue: detail.items.reduce((sum, i) => sum + (i.price ?? 0), 0),
     recentGifts: active
       .slice(0, 3)
-      .map((g) => ({ id: g.id, buyer_name: g.buyer_name, created_at: g.created_at, held: isOpenReservation(g) })),
+      .map((g) => ({ id: g.id, buyer_name: g.buyer_name, action: giftActivityAction(g) })),
     reservationsHidden: detail.reservationsHidden,
   };
 }
@@ -191,7 +193,11 @@ export const demo = {
     setItems(itemRegistry(itemId), (items) => items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)));
   },
   deleteItem(itemId: string) {
-    setItems(itemRegistry(itemId), (items) => items.filter((i) => i.id !== itemId));
+    const registryId = itemRegistry(itemId);
+    // Guests' gifts go with the item, as in the database.
+    const gifts = current().gifts.get(registryId);
+    if (gifts) current().gifts.set(registryId, gifts.filter((g) => g.registry_item_id !== itemId));
+    setItems(registryId, (items) => items.filter((i) => i.id !== itemId));
   },
   cancelGift(registryId: string, giftId: string) {
     const gifts = current().gifts.get(registryId) ?? [];
@@ -206,7 +212,7 @@ export const demo = {
       );
     }
   },
-  createRegistry(input: { title: string; registry_type: Registry["registry_type"]; event_type: Registry["event_type"]; event_date: string | null; is_public: boolean }, categoryNames: string[]) {
+  createRegistry(input: { title: string; registry_type: Registry["registry_type"]; event_type: Registry["event_type"]; event_date: string | null; is_public: boolean; is_private: boolean }, categoryNames: string[]) {
     const id = newId("registry");
     const registry: Registry = {
       id,
@@ -215,6 +221,7 @@ export const demo = {
       slug: id,
       event_date: input.event_date,
       is_public: input.is_public,
+      is_private: input.is_private,
       description: null,
       photo_url: null,
       registry_type: input.registry_type,
