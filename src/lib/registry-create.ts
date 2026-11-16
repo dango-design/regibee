@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
-import { DEFAULT_LIST_VISIBILITY, visibilityColumns, type ListVisibility } from "@/lib/list-access";
+// A relative path with .ts, not @/lib, so registry-create.test.ts can load this
+// file in Node's test runner (npm test).
+import { DEFAULT_LIST_VISIBILITY, visibilityColumns, type ListVisibility } from "./list-access.ts";
 
 // Making a registry row, shared by the registry form (createRegistry in
 // src/lib/actions/registry.ts), the "What are you planning?" picker and an
