@@ -255,6 +255,17 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Regibee's account emails. Don't edit these files: `npm run auth-emails`
+# writes them from src/lib/auth-email-templates.ts. Keep these subjects the
+# same as the ones there. `npm test` checks both.
+[auth.email.template.confirmation]
+subject = "Confirm your Regibee account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Regibee password"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

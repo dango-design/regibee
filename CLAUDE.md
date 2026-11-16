@@ -9,7 +9,7 @@ These notes are for anyone changing or running the live app, people and Claude a
 | GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN` and `EXPO_TOKEN` repo secrets. |
 | Vercel | Builds and hosts the site | `main` deploys to regibee.com and www.regibee.com. Every other branch gets a preview URL. Every deployment URL except regibee.com needs a Vercel login. |
 | Supabase `regibee` (ref `ibfvmgpfwhhyrhnxaxig`) | Database and sign-in | This is the only database. Preview deploys and `vercel env pull` use it too, so anything you do on a preview or locally with those keys changes real data. Database changes are run by hand. See below. |
-| Resend | Sends notification emails from `notifications@regibee.com` | Needs `RESEND_API_KEY`, and DNS records for regibee.com. |
+| Resend | Sends every email, from `notifications@regibee.com` | The site sends through Resend's API with `RESEND_API_KEY`. Supabase sends its account emails through Resend's SMTP server, with a second key kept in Supabase's settings. Both need the DNS records for regibee.com. |
 | Porkbun | Registrar and DNS for regibee.com | The DNS records point the site at Vercel and verify the domain for Resend. |
 | Expo (EAS) | Builds the phone app, uploads Android builds to Google Play, and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. It also holds the Android signing keystore and the Google service account key. Builds are run by hand. See "Updates" and "Android testers" in [mobile/README.md](mobile/README.md). |
 | Google Play Console | The Android app's listing and testing tracks | Testers install from the internal testing track. `eas build --profile testing --auto-submit` uploads to it. |
@@ -79,8 +79,17 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 - `e2e/` holds Playwright tests that use the website in a browser and check the emails that follow. [e2e/README.md](e2e/README.md) covers setup.
 - They run against local Supabase in Docker (`npm run e2e:db`), never production. Every email, Supabase's own included, lands in local Supabase's Mailpit inbox at http://127.0.0.1:54324. Like production, local Supabase asks new accounts to confirm their email (`supabase/config.toml`).
-- `EMAIL_TRANSPORT=mailpit` makes `src/lib/mailer.ts` send to Mailpit instead of Resend. Only the tests set it. Send every email through `src/lib/mailer.ts`, not Resend directly, so tests can catch it.
+- `EMAIL_TRANSPORT=mailpit` makes `src/lib/mailer.ts` send to Mailpit instead of Resend. Only the tests set it. Send every email through `src/lib/mailer.ts`, not Resend directly, so tests can catch it. Supabase's account emails are the one exception: local Supabase sends those to Mailpit itself.
 - `.github/workflows/e2e.yml` runs them on pull requests that change `src/`, `e2e/`, `supabase/`, `package.json` or `next.config.ts`, and on `main`. The check is called **End-to-end tests**. It isn't required yet, so read its result before merging, and don't merge over a failure without knowing why.
+
+## Account emails
+
+- Supabase sends two emails itself: one to confirm a new account's email address, and one to reset a password. The website and the phone app both trigger them. Every other email goes through `src/lib/mailer.ts`.
+- On production, Supabase sends them through Resend's SMTP server. The settings are under Authentication → Emails → SMTP Settings in the Supabase dashboard: host `smtp.resend.com`, port `465`, username `resend`, a Resend API key as the password, and sender `Regibee <notifications@regibee.com>`. Without them, Supabase uses its own sender, which only delivers to members of the Supabase team, about 2 emails an hour.
+- With custom SMTP, Supabase sends at most 30 account emails an hour to start with. Raise it under Authentication → Rate Limits if sign-ups need more.
+- The templates are in `src/lib/auth-email-templates.ts`, with stories under "Email Templates" in Storybook. `npm run auth-emails` writes them to `supabase/templates/`, which local Supabase reads. Their subjects are also in `supabase/config.toml`. `npm test` fails if any of those is out of date.
+- Nothing deploys the templates to production. After changing one, paste its subject and the contents of its file into the matching template under Authentication → Emails in the Supabase dashboard: `confirmation.html` is "Confirm sign up" and `recovery.html` is "Reset password".
+- Don't use `supabase config push` to do it. It sends whatever `supabase/config.toml` declares, and that file holds local settings such as `site_url`.
 
 ## Browser extension
 
@@ -122,7 +131,8 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Run `npx tsc --noEmit` and `npm run build`.
 - If you changed components or stories, also run `npm run build-storybook`.
 - If you added a migration, also run `npm run check:migrations`.
-- `npm test` runs the unit tests in `src/lib/*.test.ts` with Node's own test runner, such as the gift exchange name draw and what autofill reads from a store's page (`src/lib/product-page.ts`). Run it if you changed anything in `src/lib/`. The **Unit tests** check (`.github/workflows/unit-tests.yml`) runs it on pull requests that change `src/lib/`.
+- `npm test` runs the unit tests in `src/lib/*.test.ts` and `supabase/*.test.mts` with Node's own test runner, such as the gift exchange name draw and what autofill reads from a store's page (`src/lib/product-page.ts`). Run it if you changed anything in `src/lib/` or `supabase/`. The **Unit tests** check (`.github/workflows/unit-tests.yml`) runs it on pull requests that change `src/lib/` or `supabase/`.
+- If you changed `src/lib/auth-email-templates.ts`, run `npm run auth-emails`, and copy any new subject into `supabase/config.toml`. After merging, update production's templates (see "Account emails").
 - If you changed a flow the end-to-end tests cover, emails, `supabase/migrations` or `e2e/`, and Docker is running on this computer, run the test files that cover your change, such as `npm run test:e2e -- e2e/gift-funds.spec.ts`. Don't run the whole suite locally: the End-to-end tests check on the pull request runs every file. Without Docker, leave it all to that check.
 - Other sessions on this computer use the same local Supabase and the tests' port, 3100. If a run says the port is already used, another session's tests are running. Wait for them to finish, and don't stop that server. After adding a migration, run `npm run e2e:db` first, but only once the port is free, because it empties the database those runs use.
 - If you changed `extension/`, `src/lib/retailers.ts` or `src/lib/extension.ts`, also run `npm run extension:build` and `npm run test:extension`. The tests skip when this computer has no saved store pages. See "Tests" in [extension/README.md](extension/README.md).

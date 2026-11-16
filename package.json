@@ -16,7 +16,8 @@
     "e2e:db": "bash e2e/db.sh",
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "check:migrations": "node supabase/check-migrations.mjs",
-    "test": "node --test src/lib/*.test.ts"
+    "auth-emails": "node supabase/auth-emails.mts",
+    "test": "node --test src/lib/*.test.ts supabase/*.test.mts"
   },
   "dependencies": {
     "@react-stately/utils": "^3.11.0",

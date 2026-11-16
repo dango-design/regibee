@@ -1,13 +1,16 @@
 name: Unit tests
 
-# Runs `npm test`: the tests in src/lib/*.test.ts, with Node's own test
-# runner. They test functions on their own, such as the gift exchange name
-# draw and what autofill reads from a store's page, and take seconds. The
-# website itself is tested by the End-to-end tests workflow.
+# Runs `npm test`: the tests in src/lib/*.test.ts and supabase/*.test.mts,
+# with Node's own test runner. They test functions on their own, such as the
+# gift exchange name draw and what autofill reads from a store's page, and
+# check that the account email templates in supabase/templates/ were
+# rewritten after a change. They take seconds. The website itself is tested
+# by the End-to-end tests workflow.
 on:
   pull_request:
     paths:
       - src/lib/**
+      - supabase/**
       - package.json
       - package-lock.json
       - .github/workflows/unit-tests.yml
@@ -15,6 +18,7 @@ on:
     branches: [main]
     paths:
       - src/lib/**
+      - supabase/**
       - package.json
       - package-lock.json
       - .github/workflows/unit-tests.yml
