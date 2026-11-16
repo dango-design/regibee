@@ -81,22 +81,22 @@ export const NameStep: Story = {
   },
 };
 
-// "Baby registry" on the New page opens the form with Baby already chosen,
+// "Baby registry" on the New page opens the form with A baby already chosen,
 // on the name.
 export const StartedAsBabyRegistry: Story = {
   args: { startType: "baby" },
   play: async ({ canvasElement }) => {
     await isOpen(canvasElement, /Name and date/);
-    await expect(within(canvasElement).getByRole("button", { name: /Registry type/ })).toHaveTextContent("Baby");
+    await expect(within(canvasElement).getByRole("button", { name: /What's it for/ })).toHaveTextContent("A baby");
   },
 };
 
-// "Wishlist" on the New page opens on the occasions, with Personal chosen.
+// "Wishlist" on the New page opens on the occasions, with Something else chosen.
 export const StartedAsWishlist: Story = {
   args: { startType: "personal" },
   play: async ({ canvasElement }) => {
-    await isOpen(canvasElement, /Registry type/);
-    await expect(within(canvasElement).getByRole("button", { name: /^Personal/ })).toHaveAttribute("aria-pressed", "true");
+    await isOpen(canvasElement, /What's it for/);
+    await expect(within(canvasElement).getByRole("button", { name: /^Something else/ })).toHaveAttribute("aria-pressed", "true");
   },
 };
 

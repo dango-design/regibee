@@ -181,8 +181,8 @@ test("a baby registry on its own asks nothing about an event, and its party prom
   // The gift lists come first, and open the registry form with the type chosen.
   await openPicker(page);
   await page.getByRole("link", { name: /Baby registry/ }).click();
-  await expect(page.getByRole("heading", { name: "Create Your Registry" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Registry type/ })).toContainText("Baby");
+  await expect(page.getByRole("heading", { name: "New registry" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /What's it for/ })).toContainText("A baby");
   // A click before the page's scripts load does nothing, so wait until the
   // form answers one.
   await expect(async () => {
@@ -191,7 +191,7 @@ test("a baby registry on its own asks nothing about an event, and its party prom
   }).toPass();
   await page.getByRole("button", { name: /Name and date/ }).click();
   await page.getByLabel("Registry name").fill("Maya's Baby Registry");
-  await page.getByRole("button", { name: "Create Registry" }).click();
+  await page.getByRole("button", { name: "Create registry" }).click();
   await page.waitForURL(/\/dashboard\/registry\/[0-9a-f-]{36}$/);
   const registryId = page.url().split("/dashboard/registry/")[1];
   const { data: registry } = await db.from("registries").select("owner_id, registry_type, title").eq("id", registryId).single();
