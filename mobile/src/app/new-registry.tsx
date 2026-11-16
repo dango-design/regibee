@@ -6,23 +6,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Chip, Field, IconButton, Section, SwitchRow, Text } from "@/components/ui";
 import { errorMessage, useCreateRegistry } from "@/lib/data";
-import { formatEventDate } from "@/lib/format";
-import { EVENT_TYPES } from "@/lib/occasion";
+import { formatEventDate, toYmd } from "@/lib/format";
 import { spacing, useTheme } from "@/lib/theme";
 import type { EventType, RegistryType } from "@/lib/types";
 import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@shared/list-access";
+import { copyFor, REGISTRY_OCCASION_CHOICES } from "@shared/registry-copy";
 
-function toYmd(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
+// The website's create form (src/components/create-registry-form.tsx) asks the
+// same things in the same words, with the same defaults. Change both together.
 
 export default function NewRegistryScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const create = useCreateRegistry();
   const [registryType, setRegistryType] = useState<RegistryType>("baby");
-  const [eventType, setEventType] = useState<EventType>("birthday");
+  const [eventType, setEventType] = useState<EventType | null>(null);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -53,8 +51,7 @@ export default function NewRegistryScreen() {
     );
   }
 
-  const placeholder =
-    registryType === "baby" ? "Baby Lee's registry" : eventType === "wedding" ? "Sam & Alex's wedding" : "Jordan's birthday";
+  const copy = copyFor({ registryType, eventType: registryType === "personal" ? eventType : null });
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -76,10 +73,20 @@ export default function NewRegistryScreen() {
             <Chip label="Something else" selected={registryType === "personal"} onPress={() => setRegistryType("personal")} />
           </View>
           {registryType === "personal" ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs }}>
-              {EVENT_TYPES.map((option) => (
-                <Chip key={option.value} label={option.label} selected={eventType === option.value} onPress={() => setEventType(option.value)} />
-              ))}
+            <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                What's the occasion?
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                {REGISTRY_OCCASION_CHOICES.map((option) => (
+                  <Chip
+                    key={option.value ?? "none"}
+                    label={option.label}
+                    selected={eventType === option.value}
+                    onPress={() => setEventType(option.value)}
+                  />
+                ))}
+              </View>
             </View>
           ) : (
             <Text variant="footnote" tone="tertiary">
@@ -88,13 +95,20 @@ export default function NewRegistryScreen() {
           )}
         </View>
 
-        <Field label="Name" value={title} onChangeText={setTitle} placeholder={placeholder} autoCapitalize="words" returnKeyType="done" />
+        <Field
+          label="Registry name"
+          value={title}
+          onChangeText={setTitle}
+          placeholder={copy.titlePlaceholder}
+          autoCapitalize="words"
+          returnKeyType="done"
+        />
 
         <Section>
           <SwitchRow
             icon="calendar"
-            label={date ? formatEventDate(toYmd(date))! : "Add a date"}
-            description={registryType === "baby" ? "The due date or the shower." : "The day of the occasion."}
+            label={`${copy.eventDateLabel} (optional)`}
+            description={date ? formatEventDate(toYmd(date))! : copy.eventDatePlaceholderHint}
             value={Boolean(date) || showPicker}
             onValueChange={(on) => {
               if (on) {
@@ -126,7 +140,7 @@ export default function NewRegistryScreen() {
 
         <View style={{ gap: spacing.sm }}>
           <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-            Who can open it?
+            Who can open it
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {LIST_VISIBILITIES.map((value) => (

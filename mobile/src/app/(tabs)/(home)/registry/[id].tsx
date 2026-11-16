@@ -14,7 +14,14 @@ import {
   View,
 } from "react-native";
 
-import { formatReservedUntil, isHeldUntilBought, isOpenReservation } from "@shared/gifts";
+import {
+  formatGiftDate,
+  giftActivityFor,
+  giftActivityTag,
+  isOpenReservation,
+  readReservationPrivacy,
+  reservationsHiddenText,
+} from "@shared/gifts";
 import { LIST_ACCESS, listAccess, listVisibility } from "@shared/list-access";
 
 import { Icon } from "@/components/icon";
@@ -41,8 +48,9 @@ import {
   useRegistry,
   useToggleItem,
 } from "@/lib/data";
-import { formatDollars, formatEventDate, formatPrice, initials, plural, relativeDay, timeAgo } from "@/lib/format";
+import { formatDollars, formatEventDate, formatPrice, initials, plural } from "@/lib/format";
 import { occasionLabel } from "@/lib/occasion";
+import { copyForRegistry } from "@shared/registry-copy";
 import { registryShareUrl, SITE_URL } from "@/lib/supabase";
 import { fonts, radius, spacing, useTheme } from "@/lib/theme";
 import type { Gift, Item, RegistryDetail } from "@/lib/types";
@@ -72,10 +80,10 @@ export default function RegistryScreen() {
         toggleItem({ item, field: "is_parent_purchased" }, { onError: (e) => Alert.alert("Couldn't change it", errorMessage(e)) });
       },
       remove: (item) =>
-        Alert.alert(`Delete “${item.title}”?`, "This removes it from your registry.", [
+        Alert.alert(`Delete “${item.title}”?`, "This cannot be undone.", [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Delete",
+            text: "Remove item",
             style: "destructive",
             onPress: () => removeItem(item, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) }),
           },
@@ -86,7 +94,8 @@ export default function RegistryScreen() {
   );
 
   const data = registry.data;
-  const activeGifts = (gifts.data ?? []).filter((g) => g.status !== "cancelled");
+  // Cancelled gifts stay in the list, faded, as on the website.
+  const allGifts = gifts.data ?? [];
 
   const sections = useMemo(() => (data ? itemSections(data, categoryFilter) : []), [data, categoryFilter]);
   // One array for every row, kept while the registry row is unchanged, so
@@ -111,6 +120,7 @@ export default function RegistryScreen() {
 
   const r = data.registry;
   const shareUrl = registryShareUrl(r.slug);
+  const selfPurchaseButton = copyForRegistry(r).selfPurchaseButton;
 
   const visibility = listVisibility(r);
 
@@ -130,12 +140,12 @@ export default function RegistryScreen() {
   function moreActions() {
     const open = (path: string) => WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
     Alert.alert(r.title, undefined, [
-      { text: "See it as a guest", onPress: () => open(`/r/${r.slug}`) },
+      { text: "Preview", onPress: () => open(`/r/${r.slug}`) },
       {
-        text: data!.pendingSuggestions > 0 ? `Suggestions from guests (${data!.pendingSuggestions})` : "Settings and suggestions",
-        onPress: () => open(`/dashboard/registry/${r.id}`),
+        text: data!.pendingSuggestions > 0 ? `Suggestions (${data!.pendingSuggestions})` : "Suggestions",
+        onPress: () => open(`/dashboard/registry/${r.id}?tab=suggestions`),
       },
-      { text: "Registry settings", onPress: () => open(`/dashboard/registry/${r.id}/settings`) },
+      { text: "Settings", onPress: () => open(`/dashboard/registry/${r.id}/settings`) },
       { text: "Cancel", style: "cancel" },
     ]);
   }
@@ -144,7 +154,7 @@ export default function RegistryScreen() {
     <RegistryHeader
       detail={data}
       tab={tab}
-      giftCount={activeGifts.length}
+      giftCount={allGifts.length}
       onTab={(next) => {
         haptic();
         setTab(next);
@@ -212,24 +222,20 @@ export default function RegistryScreen() {
                 index === section.data.length - 1 && styles.groupLast,
               ]}
             >
-              <ItemRow item={item} actions={actions} linkedStores={linkedStores} />
+              <ItemRow item={item} actions={actions} linkedStores={linkedStores} selfPurchaseButton={selfPurchaseButton} />
               {index < section.data.length - 1 ? <Divider inset={92} /> : null}
             </View>
           )}
           ListEmptyComponent={
             <EmptyState
               icon="bag"
-              title={data.items.length === 0 ? "Add your first item" : "Nothing in this category"}
-              message={
-                data.items.length === 0
-                  ? "Paste a link from any store, or share a product to Regibee from a store's app."
-                  : undefined
-              }
+              title={data.items.length === 0 ? "No items yet" : "Nothing in this category"}
+              message={data.items.length === 0 ? "Add items from any store to get started." : undefined}
               action={
                 data.items.length === 0 ? (
                   <View style={{ width: "100%", maxWidth: 320 }}>
                     <Button
-                      title="Add an item"
+                      title="Add item"
                       icon="add"
                       onPress={() => router.push({ pathname: "/add", params: { registryId: r.id } })}
                     />
@@ -241,7 +247,7 @@ export default function RegistryScreen() {
         />
       ) : (
         <SectionList
-          sections={activeGifts.length > 0 ? [{ title: "gifts", data: activeGifts }] : []}
+          sections={allGifts.length > 0 ? [{ title: "gifts", data: allGifts }] : []}
           keyExtractor={(gift) => gift.id}
           contentInsetAdjustmentBehavior="automatic"
           style={{ backgroundColor: theme.background }}
@@ -266,17 +272,11 @@ export default function RegistryScreen() {
               <LoadingState />
             ) : gifts.isError ? (
               <ErrorState message={errorMessage(gifts.error)} onRetry={() => gifts.refetch()} />
-            ) : data.reservationsHidden ? (
-              <EmptyState
-                icon="eyeSlash"
-                title="What's been reserved is hidden from you"
-                message="Your gifts stay a surprise. Guests still see what's taken, so nobody buys the same thing twice. You can change this in the registry's settings on the website."
-              />
-            ) : (
+            ) : data.reservationsHidden ? undefined : (
               <EmptyState
                 icon="gift"
-                title="No gifts yet"
-                message="When someone reserves an item or gives to a fund, it shows up here. You'll get an email too."
+                title="No gifts reserved yet"
+                message="Share your registry link to get started!"
                 action={
                   <View style={{ width: "100%", maxWidth: 320 }}>
                     <Button title="Share your registry" icon="share" variant="secondary" onPress={shareRegistry} />
@@ -293,9 +293,7 @@ export default function RegistryScreen() {
 
 function itemSections(detail: RegistryDetail, filter: string | "all") {
   const byCategory = new Map<string | null, Item[]>();
-  // Most wanted first within each category, then newest.
-  const items = [...detail.items].sort((a, b) => Number(b.is_essential) - Number(a.is_essential));
-  for (const item of items) {
+  for (const item of detail.items) {
     const key = detail.categories.some((c) => c.id === item.category_id) ? item.category_id : null;
     byCategory.set(key, [...(byCategory.get(key) ?? []), item]);
   }
@@ -303,7 +301,7 @@ function itemSections(detail: RegistryDetail, filter: string | "all") {
     .filter((c) => byCategory.has(c.id))
     .map((c) => ({ key: c.id, title: c.name, data: byCategory.get(c.id)! }));
   const other = byCategory.get(null);
-  if (other) sections.push({ key: "other", title: detail.categories.length > 0 ? "Other" : "Items", data: other });
+  if (other) sections.push({ key: "other", title: "Other", data: other });
   return filter === "all" ? sections : sections.filter((s) => s.key === filter);
 }
 
@@ -324,9 +322,10 @@ function RegistryHeader({
 }) {
   const theme = useTheme();
   const r = detail.registry;
-  const given = detail.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
+  // The same numbers as the website's registry page.
+  const gifted = detail.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
   const value = detail.items.reduce((sum, i) => sum + (i.price ?? 0), 0);
-  const when = relativeDay(r.event_date);
+  const copy = copyForRegistry(r);
   const usedCategories = detail.categories.filter((c) => detail.items.some((i) => i.category_id === c.id));
 
   return (
@@ -337,32 +336,23 @@ function RegistryHeader({
         </Text>
         <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
           <Pill label={occasionLabel(r)} tone="accent" />
-          {r.event_date ? <Pill label={`${formatEventDate(r.event_date)}${when ? ` · ${when}` : ""}`} tone="tint" icon="calendar" /> : null}
+          {r.event_date ? <Pill label={`${copy.eventDateLabel}: ${formatEventDate(r.event_date)}`} tone="tint" icon="calendar" /> : null}
           <Pill label={listAccess(listVisibility(r)).short} icon={listVisibility(r) === "private" ? "lock" : listVisibility(r) === "public" ? "public" : "link"} />
         </View>
       </View>
 
-      {detail.reservationsHidden ? (
-        <View style={[styles.hiddenNotice, { backgroundColor: theme.surfaceAlt, marginHorizontal: spacing.lg }]}>
-          <Icon name="eyeSlash" size={16} color={theme.textSecondary} />
-          <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
-            {detail.revealedCount
-              ? "New reservations are hidden from you. The gifts from your last event are revealed, so you know who to thank."
-              : "What's been reserved is hidden from you, so your gifts stay a surprise until the day after your event. Guests still see what's taken."}
-          </Text>
-        </View>
-      ) : null}
+      {detail.reservationsHidden ? <HiddenNotice detail={detail} /> : null}
 
       <View style={[styles.stats, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Stat label="Items" value={String(detail.items.length)} />
+        <Stat label="Total items" value={String(detail.items.length)} />
         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <Stat label="Given" value={String(given)} />
+        <Stat label="Gifted" value={String(gifted)} />
         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <Stat label="Value" value={value > 0 ? formatDollars(value) : "—"} />
+        <Stat label="Total value" value={formatDollars(value)} />
       </View>
       {detail.items.length > 0 ? (
         <View style={{ paddingHorizontal: spacing.lg }}>
-          <ProgressBar value={given / detail.items.length} color={theme.success} />
+          <ProgressBar value={gifted / detail.items.length} color={theme.success} />
         </View>
       ) : null}
 
@@ -376,13 +366,26 @@ function RegistryHeader({
                   {fund.title}
                 </Text>
               </View>
-              <Text variant="headline">
-                {formatPrice(fund.current_amount).replace(/\.00$/, "")}
-                {fund.goal_amount ? (
-                  <Text variant="footnote" tone="tertiary">{` of ${formatDollars(fund.goal_amount)}`}</Text>
-                ) : null}
-              </Text>
-              {fund.goal_amount ? <ProgressBar value={fund.current_amount / fund.goal_amount} color={theme.success} /> : null}
+              {fund.description ? (
+                <Text variant="caption" tone="tertiary" numberOfLines={2}>
+                  {fund.description}
+                </Text>
+              ) : null}
+              {/* The website's fund card says the same (src/components/cash-fund-card.tsx). */}
+              {fund.goal_amount ? (
+                <>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                    <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
+                    <Text variant="footnote">{formatDollars(fund.goal_amount)} goal</Text>
+                  </View>
+                  <ProgressBar value={fund.current_amount / fund.goal_amount} color={theme.success} />
+                  <Text variant="caption" tone="tertiary">
+                    {formatDollars(Math.max(0, fund.goal_amount - fund.current_amount))} remaining
+                  </Text>
+                </>
+              ) : fund.current_amount > 0 ? (
+                <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
+              ) : null}
             </View>
           ))}
         </ScrollView>
@@ -400,7 +403,7 @@ function RegistryHeader({
               style={[styles.segment, selected && { backgroundColor: theme.surface, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 }]}
             >
               <Text variant="subhead" style={{ fontWeight: selected ? "600" : "500", color: selected ? theme.text : theme.textSecondary }}>
-                {t === "items" ? `Items · ${detail.items.length}` : `Gifts · ${giftCount}`}
+                {t === "items" ? `Items · ${detail.items.length + detail.funds.length}` : `Gifts · ${giftCount}`}
               </Text>
             </Pressable>
           );
@@ -419,6 +422,45 @@ function RegistryHeader({
   );
 }
 
+/**
+ * The website's notice, in its words (src/lib/gifts.ts). The website also says
+ * when the next event's gifts are revealed; the app doesn't load events yet.
+ */
+function HiddenNotice({ detail }: { detail: RegistryDetail }) {
+  const theme = useTheme();
+  const r = detail.registry;
+  const text = reservationsHiddenText({
+    revealedCount: detail.revealedCount,
+    turnedOnByExchange: readReservationPrivacy(r.settings).hide_reservations_source === "exchange",
+  });
+  return (
+    <View style={[styles.hiddenNotice, { backgroundColor: theme.surfaceAlt, marginHorizontal: spacing.lg }]}>
+      <Icon name="eyeSlash" size={16} color={theme.textSecondary} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="footnote" style={{ fontWeight: "600" }}>
+          {text.title}
+        </Text>
+        {text.revealed ? (
+          <Text variant="footnote" tone="secondary">
+            {text.revealed}
+          </Text>
+        ) : null}
+        <Text variant="footnote" tone="tertiary">
+          {text.why}{" "}
+          <Text
+            variant="footnote"
+            accessibilityRole="link"
+            style={{ color: theme.tint, fontWeight: "600" }}
+            onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/dashboard/registry/${r.id}/settings`)}
+          >
+            Change this in settings
+          </Text>
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, alignItems: "center", gap: 2 }}>
@@ -432,53 +474,63 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/**
- * What a guest did, as the website's owner page says it: an open hold is
- * reserved until its date, and every other gift was given, including the ones
- * saved before holds existed (src/lib/gifts.ts).
- */
+/** A gift, worded as the website's Gift Activity tab words it (src/lib/gifts.ts). */
 function GiftRow({ gift, onPress }: { gift: Gift; onPress: () => void }) {
   const theme = useTheme();
-  const item = `${gift.for_title}${gift.quantity > 1 ? ` ×${gift.quantity}` : ""}`;
-  const what =
-    gift.kind === "fund"
-      ? `gave${gift.amount ? ` ${formatPrice(gift.amount)}` : ""} to ${gift.for_title}`
-      : isOpenReservation(gift)
-        ? isHeldUntilBought(gift)
-          ? `reserved ${item}`
-          : `reserved ${item} until ${formatReservedUntil(gift.reserved_until!, "short")}`
-        : `bought ${item}`;
+  const tag = giftActivityTag(gift, gift.item_bought_by_owner);
+  const what = giftActivityFor(gift, gift.for_title);
+  const amount = gift.kind === "fund" ? gift.amount : gift.item_price;
+  const date = formatGiftDate(gift.created_at);
+  const cancelled = tag.kind === "cancelled";
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${gift.buyer_name} ${what}, ${timeAgo(gift.created_at)}`}
+      accessibilityLabel={`${gift.buyer_name}, ${tag.label}, ${what}${amount != null ? `, ${formatPrice(amount)}` : ""}, ${date}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.giftRow, { backgroundColor: pressed ? theme.surfaceAlt : theme.surface }]}
+      style={({ pressed }) => [styles.giftRow, { backgroundColor: pressed ? theme.surfaceAlt : theme.surface, opacity: cancelled ? 0.5 : 1 }]}
     >
       <View style={[styles.avatar, { backgroundColor: theme.tintSoft }]}>
         <Text variant="subhead" style={{ color: theme.tint, fontWeight: "700" }}>
           {initials(gift.buyer_name)}
         </Text>
       </View>
-      <View style={{ flex: 1, gap: 3 }}>
-        <Text variant="subhead">
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <Text variant="subhead" style={{ fontWeight: "600" }}>
             {gift.buyer_name}
-          </Text>{" "}
-          {what}
-        </Text>
+          </Text>
+          <Pill label={tag.label} tone={GIFT_TAG_TONE[tag.kind]} />
+        </View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Text variant="footnote" tone="secondary" style={{ flexShrink: 1 }}>
+            {what}
+          </Text>
+          {amount != null ? (
+            <Text variant="footnote" style={{ fontWeight: "600" }}>
+              {formatPrice(amount)}
+            </Text>
+          ) : null}
+        </View>
         {gift.message ? (
-          <Text variant="footnote" tone="secondary" numberOfLines={3} style={{ fontStyle: "italic" }}>
-            “{gift.message}”
+          <Text variant="footnote" tone="secondary" numberOfLines={3}>
+            {gift.message}
           </Text>
         ) : null}
         <Text variant="caption" tone="tertiary">
-          {timeAgo(gift.created_at)}
+          {date}
         </Text>
       </View>
     </Pressable>
   );
 }
+
+const GIFT_TAG_TONE = {
+  gifted: "success",
+  covered: "success",
+  contribution: "success",
+  reserved: "tint",
+  cancelled: "neutral",
+} as const;
 
 function giftActions(gift: Gift, cancel: (gift: Gift) => void) {
   const buttons: Parameters<typeof Alert.alert>[2] = [];
@@ -486,7 +538,7 @@ function giftActions(gift: Gift, cancel: (gift: Gift) => void) {
   if (gift.buyer_email && !gift.hide_giver) {
     buttons.push({ text: `Email ${gift.buyer_name.split(" ")[0]}`, onPress: () => Linking.openURL(`mailto:${gift.buyer_email}`) });
   }
-  if (gift.kind === "item") {
+  if (gift.kind === "item" && gift.status !== "cancelled") {
     const what = isOpenReservation(gift) ? "reservation" : "gift";
     buttons.push({
       text: `Cancel this ${what}`,

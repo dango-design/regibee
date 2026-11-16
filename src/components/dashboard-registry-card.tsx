@@ -14,7 +14,7 @@ import { formatDollars } from "@/lib/money";
 export interface RegistryActivity {
   id: string;
   name: string;
-  /** What they did, after their name: "reserved an item". */
+  /** What they did, after their name: "reserved an item" or "gifted an item" (giftActivityAction). */
   action: string;
 }
 
@@ -140,7 +140,7 @@ export function DashboardRegistryCard({
           <div>
             <div className="mb-1 flex justify-between text-sm">
               <span>
-                {fulfilledItems} of {totalItems} items fulfilled
+                {fulfilledItems} of {totalItems} items gifted
               </span>
               {allDone ? (
                 <span className="inline-flex items-center gap-1 font-medium text-mint-800">
@@ -151,7 +151,7 @@ export function DashboardRegistryCard({
                 <span className="text-tertiary">{Math.round(progress)}%</span>
               )}
             </div>
-            <Progress value={progress} aria-label={`Items fulfilled for ${title}`} />
+            <Progress value={progress} aria-label={`Items gifted for ${title}`} />
           </div>
         )}
 

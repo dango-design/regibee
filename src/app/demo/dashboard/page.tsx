@@ -7,6 +7,7 @@ import { DashboardRegistryCard } from "@/components/dashboard-registry-card";
 import { demoOwnRegistries, demoRegistryPath } from "@/lib/demo-registries";
 import { DEMO_FOLLOWS } from "@/lib/demo-people";
 import { addDays } from "@/lib/demo-data";
+import { giftActivityAction } from "@/lib/gifts";
 import { useDemoToday } from "../demo-today";
 import { DemoOwnerShell } from "../_components/demo-shell";
 import { DemoTour } from "../_components/demo-tour";
@@ -70,8 +71,9 @@ export default function DemoDashboardPage() {
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {registries.map((registry) => {
+            // Item gifts only, worded as the real dashboard and the app word them.
             const recent = [...registry.purchases]
-              .filter((p) => p.status !== "cancelled")
+              .filter((p) => p.status !== "cancelled" && !p.cash_fund_id)
               .sort((a, b) => b.created_at.localeCompare(a.created_at))
               .slice(0, 3);
             return (
@@ -88,7 +90,7 @@ export default function DemoDashboardPage() {
                 recentActivity={recent.map((p) => ({
                   id: p.id,
                   name: p.buyer_name,
-                  action: p.cash_fund_id ? `gave to ${p.item_title}` : `reserved ${p.item_title}`,
+                  action: giftActivityAction(p),
                 }))}
                 manageHref={`/demo/dashboard/registry/${registry.id}`}
                 publicHref={demoRegistryPath(registry)}

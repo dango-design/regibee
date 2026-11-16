@@ -86,14 +86,18 @@ export default function ShareScreen() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {cancel}
       {!hasShareIntent && !shared.url ? (
-        <EmptyState icon="link" title="Nothing to add" message="Share a product to Regibee from a store's app or website." />
+        <EmptyState
+          icon="link"
+          title="There's no link to add"
+          message="What you shared didn't include a link to a product. Open the product in its store's app or your browser, then share it to Regibee again."
+        />
       ) : fallback === undefined ? (
         <LoadingState />
       ) : !registryId ? (
         <EmptyState
           icon="gift"
           title="Make a registry first"
-          message="Items go on a registry. Create one, then share this again."
+          message="You don't have a registry to add this to yet. Make one, then share the product to Regibee again."
           action={<Button title="Create a registry" icon="add" onPress={() => router.push("/new-registry")} />}
         />
       ) : (

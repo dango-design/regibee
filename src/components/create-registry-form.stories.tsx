@@ -60,43 +60,43 @@ export const PrivateList: Story = {
   },
 };
 
-// Choosing Personal shows the occasions. Picking one moves on to the name.
+// Choosing "Something else" shows the occasions. Picking one moves on to the name.
 export const PersonalOccasions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: /^Personal/ }));
+    await userEvent.click(canvas.getByRole("button", { name: /^Something else/ }));
     await expect(canvas.getByRole("button", { name: "Birthday" })).toBeVisible();
     await settle();
   },
 };
 
-// Clicking Baby closes the first section and puts the cursor in the name field.
+// Clicking "A baby" closes the first section and puts the cursor in the name field.
 export const NameStep: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: /^Baby/ }));
+    await userEvent.click(canvas.getByRole("button", { name: /^A baby/ }));
     await waitFor(() => expect(canvas.getByLabelText(/Registry name/)).toHaveFocus());
     await isOpen(canvasElement, /Name and date/);
     await settle();
   },
 };
 
-// "Baby registry" on the New page opens the form with Baby already chosen,
+// "Baby registry" on the New page opens the form with A baby already chosen,
 // on the name.
 export const StartedAsBabyRegistry: Story = {
   args: { startType: "baby" },
   play: async ({ canvasElement }) => {
     await isOpen(canvasElement, /Name and date/);
-    await expect(within(canvasElement).getByRole("button", { name: /Registry type/ })).toHaveTextContent("Baby");
+    await expect(within(canvasElement).getByRole("button", { name: /What's it for/ })).toHaveTextContent("A baby");
   },
 };
 
-// "Wishlist" on the New page opens on the occasions, with Personal chosen.
+// "Wishlist" on the New page opens on the occasions, with Something else chosen.
 export const StartedAsWishlist: Story = {
   args: { startType: "personal" },
   play: async ({ canvasElement }) => {
-    await isOpen(canvasElement, /Registry type/);
-    await expect(within(canvasElement).getByRole("button", { name: /^Personal/ })).toHaveAttribute("aria-pressed", "true");
+    await isOpen(canvasElement, /What's it for/);
+    await expect(within(canvasElement).getByRole("button", { name: /^Something else/ })).toHaveAttribute("aria-pressed", "true");
   },
 };
 
@@ -104,9 +104,9 @@ export const StartedAsWishlist: Story = {
 export const MissingName: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Create Registry" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Create registry" }));
     await waitFor(() => expect(canvas.getByLabelText(/Registry name/)).toHaveFocus());
-    await expect(canvas.getByText("Add a name to continue.")).toBeVisible();
+    await expect(canvas.getByText("Give your registry a name.")).toBeVisible();
     await settle();
   },
 };
@@ -118,7 +118,7 @@ export const AllStepsDone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(canvas.getByRole("button", { name: /^Baby/ }));
+    await userEvent.click(canvas.getByRole("button", { name: /^A baby/ }));
     const title = canvas.getByLabelText(/Registry name/);
     await waitFor(() => expect(title).toHaveFocus());
     fill(title, "Remi & Max's Baby Registry");
@@ -139,7 +139,7 @@ export const AllStepsDone: Story = {
     fill(canvas.getByLabelText(/Zip code/), "94110");
 
     await waitFor(() =>
-      expect(canvas.getByRole("button", { name: "Create Registry" })).toHaveFocus(),
+      expect(canvas.getByRole("button", { name: "Create registry" })).toHaveFocus(),
     );
     await settle();
   },

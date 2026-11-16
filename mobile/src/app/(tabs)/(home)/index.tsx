@@ -9,6 +9,11 @@ import { spacing, useTheme } from "@/lib/theme";
 export default function RegistriesScreen() {
   const theme = useTheme();
   const registries = useRegistries();
+  // The owner's own lists, then the ones they help manage under "Shared with
+  // you", as on the website's dashboard.
+  const all = registries.data ?? [];
+  const list = [...all.filter((r) => r.role === "owner"), ...all.filter((r) => r.role !== "owner")];
+  const firstShared = list.findIndex((r) => r.role !== "owner");
 
   return (
     <>
@@ -20,7 +25,7 @@ export default function RegistriesScreen() {
         }}
       />
       <FlatList
-        data={registries.data ?? []}
+        data={list}
         keyExtractor={(r) => r.id}
         contentInsetAdjustmentBehavior="automatic"
         style={{ backgroundColor: theme.background }}
@@ -41,11 +46,21 @@ export default function RegistriesScreen() {
             </Text>
           ) : undefined
         }
-        renderItem={({ item }) => (
-          <RegistryCard
-            registry={item}
-            onPress={() => router.push({ pathname: "/registry/[id]", params: { id: item.id } })}
-          />
+        renderItem={({ item, index }) => (
+          <>
+            {index === firstShared ? (
+              <View style={{ marginTop: index > 0 ? spacing.lg : 0, marginBottom: spacing.sm, gap: 2 }}>
+                <Text variant="headline">Shared with you</Text>
+                <Text variant="footnote" tone="tertiary">
+                  Registries you&apos;ve been invited to manage
+                </Text>
+              </View>
+            ) : null}
+            <RegistryCard
+              registry={item}
+              onPress={() => router.push({ pathname: "/registry/[id]", params: { id: item.id } })}
+            />
+          </>
         )}
         ListEmptyComponent={
           registries.isPending ? (
@@ -55,8 +70,8 @@ export default function RegistriesScreen() {
           ) : (
             <EmptyState
               icon="gift"
-              title="Start your first registry"
-              message="Add things from any store, then share one link with friends and family."
+              title="No registries yet"
+              message="Create your first registry to start adding items."
               action={
                 <View style={{ width: "100%", maxWidth: 320 }}>
                   <Button title="Create a registry" icon="add" onPress={() => router.push("/new-registry")} />
