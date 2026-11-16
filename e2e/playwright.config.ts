@@ -4,7 +4,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
 import { localSupabase, REPO_ROOT } from "./local-supabase";
-import { CRON_SECRET, SITE_URL } from "./fixtures";
+import { ALERT_EMAIL, CRON_SECRET, SITE_URL } from "./fixtures";
 
 const supabase = localSupabase();
 // Set by GitHub Actions (.github/workflows/e2e.yml).
@@ -44,6 +44,10 @@ export default defineConfig({
       EMAIL_TRANSPORT: "mailpit",
       MAILPIT_URL: supabase.mailpitUrl,
       CRON_SECRET,
+      // The account email warning (auth-email-alerts.spec.ts). With a limit of
+      // 1, the first account email of the hour reaches it.
+      ALERT_EMAIL,
+      AUTH_EMAIL_HOURLY_LIMIT: "1",
       // Lets the add-item dialog read the product pages e2e/add-items.spec.ts
       // serves on 127.0.0.1. Ignored by a production build (src/lib/actions/scrape.ts).
       SCRAPE_ALLOW_LOCAL_TEST_PAGES: "true",
