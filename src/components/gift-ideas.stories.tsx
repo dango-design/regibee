@@ -79,6 +79,15 @@ export const OnePerson: Story = {
   },
 };
 
+/** Just after ticking "Bought it": the card says it's saving until the server has it. */
+export const Saving: Story = {
+  args: { setBoughtAction: () => new Promise<never>(() => {}) },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("checkbox", { name: /Bought it\W+Wool scarf in forest green/ }));
+    await canvas.findByText("Saving…");
+  },
+};
+
 /** Nothing saved yet: what gift ideas are, and the ways to save one. */
 export const Empty: Story = {
   args: { ideas: [] },

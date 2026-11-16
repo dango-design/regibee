@@ -20,7 +20,8 @@ import { cx } from "@/lib/utils/cx";
 
 // The Saved tab's Gift ideas view: things you might give other people,
 // grouped by who they're for. Only you can see them. Ticking "Bought it"
-// shows straight away, then the page refreshes from the server.
+// shows straight away, and the card says "Saving…" until the server has it.
+// Then the page refreshes from the server.
 
 export interface GiftIdeasProps {
   ideas: GiftIdea[];
@@ -98,7 +99,7 @@ function IdeaCard({
   const bought = Boolean(idea.boughtAt);
 
   return (
-    <li className="flex flex-col rounded-xl border border-secondary bg-primary p-3 shadow-xs">
+    <li aria-busy={pending || undefined} className="flex flex-col rounded-xl border border-secondary bg-primary p-3 shadow-xs">
       <div className="flex gap-3">
         <ItemImage imageUrl={idea.imageUrl} title={idea.title} className={bought ? "opacity-60" : undefined} />
         <div className="min-w-0 flex-1">
@@ -127,16 +128,19 @@ function IdeaCard({
         </div>
       </div>
       <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-        <Checkbox
-          label={
-            <>
-              Bought it<span className="sr-only">: {idea.title}</span>
-            </>
-          }
-          isSelected={bought}
-          isReadOnly={pending}
-          onChange={onBought}
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <Checkbox
+            label={
+              <>
+                Bought it<span className="sr-only">: {idea.title}</span>
+              </>
+            }
+            isSelected={bought}
+            isReadOnly={pending}
+            onChange={onBought}
+          />
+          {pending && <span className="text-sm text-tertiary">Saving…</span>}
+        </div>
         <GiftIdeaDialog
           idea={idea}
           recipients={recipients}
