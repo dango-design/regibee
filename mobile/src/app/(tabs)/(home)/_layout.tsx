@@ -16,7 +16,7 @@ export default function HomeLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Registries", headerLargeTitle: true }} />
+      <Stack.Screen name="index" options={{ title: "My registries", headerLargeTitle: true }} />
       <Stack.Screen name="registry/[id]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
     </Stack>
   );

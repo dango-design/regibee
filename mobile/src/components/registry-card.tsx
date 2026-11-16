@@ -3,7 +3,9 @@ import { StyleSheet, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { Card, Pill, ProgressBar, Text } from "@/components/ui";
-import { formatDollars, plural, relativeDay, timeAgo } from "@/lib/format";
+import { countdownLabel } from "@shared/occasions";
+
+import { formatDollars, initials, plural, toYmd } from "@/lib/format";
 import { occasionLabel } from "@/lib/occasion";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import type { RegistrySummary } from "@/lib/types";
@@ -11,9 +13,9 @@ import { LIST_ACCESS, listVisibility } from "@shared/list-access";
 
 export function RegistryCard({ registry, onPress }: { registry: RegistrySummary; onPress: () => void }) {
   const theme = useTheme();
-  const when = relativeDay(registry.event_date);
+  // The website's dashboard card counts down the same way (src/lib/occasions.ts).
+  const when = registry.event_date ? countdownLabel(registry.event_date, toYmd(), registry.registry_type ?? "baby") : null;
   const progress = registry.itemCount > 0 ? registry.fulfilledCount / registry.itemCount : 0;
-  const latest = registry.recentGifts[0];
 
   return (
     <Card
@@ -22,7 +24,7 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
       accessibilityLabel={
         registry.reservationsHidden
           ? `${registry.title}. What's been reserved is hidden from you.`
-          : `${registry.title}. ${registry.fulfilledCount} of ${registry.itemCount} items given.`
+          : `${registry.title}. ${registry.fulfilledCount} of ${registry.itemCount} items gifted.`
       }
     >
       <View style={styles.top}>
@@ -40,7 +42,7 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
             <Pill label={occasionLabel(registry)} tone="accent" />
             {when ? <Pill label={when} tone="tint" icon="calendar" /> : null}
-            {registry.role === "manager" ? <Pill label="Shared with you" icon="people" /> : null}
+            {registry.role === "manager" ? <Pill label="Manager" icon="people" /> : null}
             {listVisibility(registry) === "link" ? <Pill label={LIST_ACCESS.link.short} icon="link" /> : null}
             {listVisibility(registry) === "private" ? <Pill label={LIST_ACCESS.private.short} icon="lock" /> : null}
           </View>
@@ -55,30 +57,41 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
               <Icon name="eyeSlash" size={14} color={theme.textSecondary} />
               <Text variant="footnote" tone="secondary" numberOfLines={1} style={{ flexShrink: 1 }}>
-                What&apos;s been reserved is hidden
+                What&apos;s been reserved is hidden from you
               </Text>
             </View>
           ) : (
             <Text variant="footnote" tone="secondary">
-              {registry.itemCount === 0
-                ? "No items yet"
-                : `${registry.fulfilledCount} of ${plural(registry.itemCount, "item")} given`}
+              {`${registry.fulfilledCount} of ${plural(registry.itemCount, "item")} gifted`}
             </Text>
           )}
-          {registry.totalValue > 0 ? (
-            <Text variant="footnote" tone="tertiary">
-              {formatDollars(registry.totalValue)}
-            </Text>
-          ) : null}
+          <Text variant="footnote" tone="tertiary">
+            {formatDollars(registry.totalValue)} total value
+          </Text>
         </View>
       </View>
 
-      {latest ? (
-        <View style={[styles.latest, { backgroundColor: theme.successSoft }]}>
-          <Icon name="gift" size={14} color={theme.success} />
-          <Text variant="footnote" style={{ flex: 1, color: theme.success }} numberOfLines={1}>
-            {latest.buyer_name} {latest.held ? "reserved" : "gave"} a gift · {timeAgo(latest.created_at)}
+      {registry.recentGifts.length > 0 ? (
+        // The website's dashboard card lists the same three (src/lib/gifts.ts).
+        <View style={{ gap: 6 }}>
+          <Text variant="footnote" style={{ fontWeight: "600" }}>
+            Recent activity
           </Text>
+          {registry.recentGifts.map((gift) => (
+            <View key={gift.id} style={styles.activity}>
+              <View style={[styles.activityAvatar, { backgroundColor: theme.tintSoft }]}>
+                <Text variant="caption" style={{ color: theme.tint, fontWeight: "700", fontSize: 10 }}>
+                  {initials(gift.buyer_name)}
+                </Text>
+              </View>
+              <Text variant="footnote" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
+                <Text variant="footnote" style={{ fontWeight: "600" }}>
+                  {gift.buyer_name}
+                </Text>{" "}
+                {gift.action}
+              </Text>
+            </View>
+          ))}
         </View>
       ) : null}
     </Card>
@@ -88,12 +101,6 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
 const styles = StyleSheet.create({
   top: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
   photo: { width: 56, height: 56, borderRadius: radius.md },
-  latest: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.sm,
-  },
+  activity: { flexDirection: "row", alignItems: "center", gap: 8 },
+  activityAvatar: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });

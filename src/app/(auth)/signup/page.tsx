@@ -6,7 +6,7 @@ import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/utils/supabase/client";
 import { Logo } from "@/components/logo";
 
@@ -78,12 +78,11 @@ function SignupForm() {
             </Link>
             <CardTitle className="text-2xl">Check your email</CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
+          <CardContent className="text-center">
+            {/* The link signs them in here, so unlike the phone app this
+                doesn't send them back to sign in. */}
             <p className="text-secondary">
-              We sent a confirmation link to <strong>{email}</strong>.
-            </p>
-            <p className="text-tertiary text-sm">
-              Click the link in the email to verify your account and continue.
+              We sent a link to <strong>{email}</strong>. Open it to confirm your account, and we&apos;ll sign you in.
             </p>
           </CardContent>
         </Card>
@@ -98,13 +97,12 @@ function SignupForm() {
           <Link href="/" className="mx-auto flex items-center gap-2 font-semibold mb-4">
             <Logo size="lg" />
           </Link>
-          <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Start building your registry today</CardDescription>
+          <CardTitle className="text-2xl">Create an account</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
             <Input
-              label="Full Name"
+              label="Your name"
               type="text"
               placeholder="Remi & Max Porter"
               autoComplete="name"
@@ -126,7 +124,7 @@ function SignupForm() {
             <Input
               label="Password"
               type="password"
-              placeholder="At least 6 characters"
+              hint="At least 6 characters."
               autoComplete="new-password"
               enterKeyHint="go"
               value={password}
@@ -144,7 +142,7 @@ function SignupForm() {
               <p className="text-sm text-error-primary">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating account..." : "Create account"}
             </Button>
             <p className="text-center text-xs text-tertiary">
               Our{" "}

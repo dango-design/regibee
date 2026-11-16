@@ -1,11 +1,21 @@
 // A co-manager invite link. A guest who reserved a gift has an anonymous
 // session, which isn't an account, so they're asked to sign in and can't
-// accept. Someone who signs in from the same page can.
+// accept. Someone who signs in from the same page can. Someone whose dashboard
+// already accepted an emailed invite is told they already help manage the
+// registry when they click the link in the email.
 
 import { randomBytes } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { createAccount, createRegistryWithItem, db, reserveGift, uniqueEmail, waitForReact } from "./fixtures";
+import {
+  createAccount,
+  createRegistryWithItem,
+  db,
+  reserveGift,
+  signIn,
+  uniqueEmail,
+  waitForReact,
+} from "./fixtures";
 import { localSupabase } from "./local-supabase";
 
 async function managersOf(registryId: string) {
@@ -29,7 +39,7 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
   // The invite page treats the guest as signed out.
   await page.goto(invitePath);
   await expect(page.getByText("Sign in or create an account to accept this invitation.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create Account" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Create account" })).toHaveAttribute(
     "href",
     `/signup?redirect=${encodeURIComponent(invitePath)}`,
   );
@@ -52,12 +62,12 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
   // Someone with an account signs in from the invite page, comes back to it,
   // and accepts.
   const account = await createAccount("Casey Comanager");
-  await page.getByRole("link", { name: "Sign In" }).click();
+  await page.getByRole("link", { name: "Sign in" }).click();
   await page.waitForURL(/\/login\?redirect=/);
   await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(`**${invitePath}`);
   await page.getByRole("button", { name: "Accept Invitation" }).click();
   await page.waitForURL(/\/dashboard/);
@@ -69,4 +79,51 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
     ]),
   );
   expect(await managersOf(registry.id)).toHaveLength(2);
+});
+
+test("someone whose dashboard accepted an emailed invite is told they already help manage the registry", async ({
+  page,
+  browser,
+}) => {
+  const { owner, registry } = await createRegistryWithItem();
+  const account = await createAccount("Casey Coparent");
+  // An emailed invite, as inviteManagerByEmail makes it: for one address, one use.
+  const token = randomBytes(24).toString("hex");
+  const { error: inviteError } = await db
+    .from("registry_invites")
+    .insert({ registry_id: registry.id, invited_by: owner.id, email: account.email, token, max_uses: 1 });
+  if (inviteError) throw inviteError;
+  const invitePath = `/invite/${token}`;
+
+  // Signing in opens the dashboard, which accepts invites sent to the
+  // account's address. That uses up this one.
+  await signIn(page, account);
+  await expect(page.getByRole("heading", { name: registry.title })).toBeVisible();
+  expect(await managersOf(registry.id)).toEqual(
+    expect.arrayContaining([{ user_id: account.id, role: "manager" }]),
+  );
+  const { data: invite } = await db.from("registry_invites").select("use_count").eq("token", token).single();
+  expect(invite?.use_count).toBe(1);
+
+  // Then they click the link in the email.
+  await page.goto(invitePath);
+  await expect(page.getByRole("heading", { name: "You Already Help Manage This" })).toBeVisible();
+  await expect(page.getByText(`You already help manage ${registry.title}`)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Registry" })).toHaveAttribute(
+    "href",
+    `/dashboard/registry/${registry.id}`,
+  );
+  await expect(page.getByText("Invite Fully Used")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Accept Invitation" })).toHaveCount(0);
+
+  // Anyone else who opens the used link is still told it's used.
+  const stranger = await browser.newContext();
+  try {
+    const strangerPage = await stranger.newPage();
+    await strangerPage.goto(invitePath);
+    await expect(strangerPage.getByRole("heading", { name: "Invite Fully Used" })).toBeVisible();
+    await expect(strangerPage.getByText("You Already Help Manage This")).toHaveCount(0);
+  } finally {
+    await stranger.close();
+  }
 });

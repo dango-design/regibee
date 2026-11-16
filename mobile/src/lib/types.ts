@@ -63,7 +63,7 @@ export interface Item {
 
 /** A gift as an item's row reads it. */
 export type ItemGift = Pick<Gift, "id" | "status" | "reserved_until" | "buyer_name" | "quantity"> &
-  Partial<Pick<Gift, "created_at">>;
+  Partial<Pick<Gift, "created_at" | "hide_giver">>;
 
 export interface CashFund {
   id: string;
@@ -96,6 +96,10 @@ export interface Gift {
   /** The item's or fund's title. */
   for_title: string;
   kind: "item" | "fund";
+  /** The item's price, shown beside an item gift as on the website. */
+  item_price?: number | null;
+  /** The owner bought the item, so this gift is money toward it ("Covered by guest"). */
+  item_bought_by_owner?: boolean;
   /**
    * A Secret Santa's gift. data.ts already swaps the name for "Secret Santa"
    * and removes the email, so owners never see who gave it.
@@ -119,8 +123,8 @@ export interface RegistrySummary extends Registry {
   itemCount: number;
   fulfilledCount: number;
   totalValue: number;
-  /** `held` is true while the guest's reservation waits for them to buy it. */
-  recentGifts: { id: string; buyer_name: string; created_at: string; held: boolean }[];
+  /** The newest three gifts, worded as the website's dashboard card words them: "reserved an item". */
+  recentGifts: { id: string; buyer_name: string; action: string }[];
   /**
    * The owner hides what's been reserved from themselves. Then fulfilledCount
    * counts only items they bought, and recentGifts is empty.

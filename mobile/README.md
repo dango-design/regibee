@@ -45,9 +45,20 @@ Sharing and the product reader need native code, so the app doesn't run in Expo 
 
 - **iPhone simulator:** install Xcode from the App Store, then `npm run ios`.
 - **Android emulator:** install Android Studio, then `npm run android`.
-- **A real phone, without Xcode:** `npx eas-cli@latest build --profile development --platform ios` (or `android`) builds in Expo's cloud and gives you a link to install. It needs an Expo account, and for iPhone an Apple Developer account. Add the anon key to the build once: `npx eas-cli@latest env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <key> --visibility plaintext --environment development --environment preview --environment production`.
+- **A real phone, without Xcode:** build in Expo's cloud. See below.
 
 `npm run web` opens a browser preview of the screens. It can't read other sites' pages or share, so use it for layout only.
+
+### On a real phone
+
+EAS builds the app in Expo's cloud and gives you a link to install it. The Expo project belongs to the account named as `owner` in `app.config.ts`, so your Expo account needs to be in that team. Run every `eas` command in this folder. From the repo root it can't find the project and offers to set up a new one.
+
+The anon key is already in EAS for the development, preview and production builds. To change it, use `npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <key> --visibility plaintext --environment development --environment preview --environment production`.
+
+- **Android:** `npx eas-cli@latest build --profile development --platform android`. Open the link on the phone and allow your browser to install apps.
+- **iPhone:** this needs an active Apple Developer Program membership. A paid enrollment that's still pending won't do, so wait for Apple's welcome email. Register each phone once with `npx eas-cli@latest device:create`: open its link on the phone and install the profile. Then run `npx eas-cli@latest build --profile development --platform ios` and let EAS manage the certificates. After installing, turn on Developer Mode in Settings → Privacy & Security and restart the phone.
+
+Then run `npx expo start` with the phone on the same Wi-Fi as your computer, and open Regibee: it lists your computer's server, or scan the QR code. A development build loads its JavaScript from your computer, so it reads your `.env.local`. Rebuild after adding native code or changing `app.config.ts`, which includes the Safari share reader.
 
 ## Updates
 

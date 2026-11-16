@@ -56,7 +56,7 @@ function getTagStyle(purchase: Purchase) {
   }
   return {
     className: "bg-sunshine-100 border-sunshine-100 text-primary",
-    label: "Purchased by guest",
+    label: "Gifted by guest",
   };
 }
 

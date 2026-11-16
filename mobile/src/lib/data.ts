@@ -6,9 +6,9 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import {
   fundAsRevealed,
+  giftActivityAction,
   giverNameForOwner,
   isGiftRevealed,
-  isOpenReservation,
   itemAsRevealed,
   itemAsUnreserved,
   maskGiverForOwner,
@@ -90,7 +90,7 @@ function summarize(row: CardRow, role: "owner" | "manager", userId: string): Reg
     recentGifts: gifts
       .slice(0, 3)
       // A Secret Santa's gift shows as "Secret Santa", as on the website.
-      .map((g) => ({ id: g.id, buyer_name: giverNameForOwner(g), created_at: g.created_at, held: isOpenReservation(g) })),
+      .map((g) => ({ id: g.id, buyer_name: giverNameForOwner(g), action: giftActivityAction(g) })),
     reservationsHidden: hidden,
   };
 }
@@ -150,7 +150,7 @@ async function fetchRegistry(id: string, userId: string): Promise<RegistryDetail
     supabase
       .from("registry_items")
       .select(
-        "id, registry_id, category_id, title, external_url, image_url, price, quantity_needed, quantity_fulfilled, is_essential, is_parent_purchased, is_open_to_used, minimum_condition, notes, sort_order, created_at, purchases(id, status, reserved_until, buyer_name, quantity, created_at)"
+        "id, registry_id, category_id, title, external_url, image_url, price, quantity_needed, quantity_fulfilled, is_essential, is_parent_purchased, is_open_to_used, minimum_condition, notes, sort_order, created_at, purchases(id, status, reserved_until, buyer_name, quantity, created_at, hide_giver)"
       )
       .eq("registry_id", id)
       .order("sort_order")
@@ -166,7 +166,8 @@ async function fetchRegistry(id: string, userId: string): Promise<RegistryDetail
       .from("suggestions")
       .select("id", { count: "exact", head: true })
       .eq("registry_id", id)
-      .eq("status", "pending"),
+      // The website counts both (its Suggestions tab).
+      .in("status", ["pending", "offering"]),
   ]);
   if (registry.error) throw registry.error;
   if (categories.error) throw categories.error;
@@ -240,7 +241,7 @@ export function useRegistry(id: string | undefined) {
 }
 
 type GiftRow = Omit<Gift, "for_title" | "kind"> & {
-  registry_items?: { title: string } | null;
+  registry_items?: { title: string; price: number | null; is_parent_purchased: boolean | null } | null;
   cash_funds?: { title: string } | null;
 };
 
@@ -254,7 +255,7 @@ async function fetchGifts(registryId: string, userId: string): Promise<Gift[]> {
     supabase.from("registries").select("owner_id, settings").eq("id", registryId).single(),
     supabase
       .from("purchases")
-      .select(`${GIFT_FIELDS}, registry_items!registry_item_id!inner(title, registry_id)`)
+      .select(`${GIFT_FIELDS}, registry_items!registry_item_id!inner(title, registry_id, price, is_parent_purchased)`)
       .eq("registry_items.registry_id", registryId)
       .order("created_at", { ascending: false }),
     supabase
@@ -290,6 +291,8 @@ function toGift(row: GiftRow, kind: "item" | "fund"): Gift {
     hide_giver: Boolean(rest.hide_giver),
     kind,
     for_title: (kind === "item" ? registry_items?.title : cash_funds?.title) ?? "",
+    item_price: registry_items?.price ?? null,
+    item_bought_by_owner: Boolean(registry_items?.is_parent_purchased),
   });
 }
 

@@ -21,7 +21,7 @@ const readProductInSafari = `
 const config: ExpoConfig = {
   name: "Regibee",
   slug: "regibee",
-  // The Expo account the project belongs to.
+  // The Expo project (EAS builds and updates) belongs to the team account.
   owner: "deniseangos-team",
   version: "1.0.0",
   // An update reaches only builds with the same native code. See fingerprint.config.js.

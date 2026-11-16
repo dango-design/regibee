@@ -83,11 +83,11 @@ export function PublicRegistryHero({
         <div className="w-full max-w-[566px]">
           <div className="flex justify-between text-sm text-secondary mb-1">
             <span>
-              {fulfilledItems} of {totalItems} gifts fulfilled
+              {fulfilledItems} of {totalItems} items gifted
             </span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <Progress value={progress} aria-label="Gifts fulfilled" />
+          <Progress value={progress} aria-label="Items gifted" />
         </div>
         <p className="inline-flex items-center gap-1.5 text-xs text-tertiary">
           <LockOpen className="h-3.5 w-3.5" />

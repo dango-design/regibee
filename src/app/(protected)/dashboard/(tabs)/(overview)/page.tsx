@@ -10,7 +10,7 @@ import { createClient } from "@/utils/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { countFollowRequests } from "@/lib/follows";
 import { getSessionUser } from "@/lib/viewer";
-import { giverNameForOwner, itemAsUnreserved, reservationsHiddenFrom } from "@/lib/gifts";
+import { giftActivityAction, giverNameForOwner, itemAsUnreserved, reservationsHiddenFrom } from "@/lib/gifts";
 import { itemsHiddenFromOwner, loadPlacements } from "@/lib/list-items";
 
 type CardPurchase = { id: string; status: string; created_at: string; buyer_name: string; hide_giver?: boolean | null };
@@ -68,7 +68,7 @@ function RegistryCard({
       totalItems={items.length}
       fulfilledItems={items.filter((item) => item.quantity_fulfilled >= item.quantity_needed).length}
       totalValue={items.reduce((sum, item) => sum + (item.price || 0), 0)}
-      recentActivity={recentPurchases.map((p) => ({ id: p.id, name: giverNameForOwner(p), action: "reserved an item" }))}
+      recentActivity={recentPurchases.map((p) => ({ id: p.id, name: giverNameForOwner(p), action: giftActivityAction(p) }))}
       manageHref={`/dashboard/registry/${registry.id}`}
       publicHref={`/r/${registry.slug}`}
       reservationsHidden={hidden}
@@ -81,7 +81,7 @@ function RegistryCard({
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const CARD_ITEM_FIELDS =
-  "id, quantity_needed, quantity_fulfilled, is_parent_purchased, price, purchases(id, status, created_at, buyer_name, hide_giver)";
+  "id, quantity_needed, quantity_fulfilled, is_parent_purchased, price, purchases(id, status, reserved_until, created_at, buyer_name, hide_giver)";
 
 /**
  * Adds the items placed on each list from its owner's other lists
