@@ -11,6 +11,7 @@ import {
   type CheckResponse,
   type ExtensionRegistry,
   type ExtensionSession,
+  type IdeaResponse,
   type LinkResponse,
   type MeResponse,
   type ReadProduct,
@@ -41,9 +42,10 @@ function keysOf(items: StoreItem[]): string[] {
 }
 
 async function registries(refresh = false): Promise<RegistriesResult> {
-  const stored = await load("registries", "registriesFetchedAt", "user", "registryId");
+  const stored = await load("registries", "registriesFetchedAt", "user", "registryId", "ideaRecipients");
   let list = stored.registries;
   let user = stored.user;
+  let ideaRecipients = stored.ideaRecipients ?? [];
   const fresh =
     stored.registriesFetchedAt &&
     Date.now() - stored.registriesFetchedAt < REGISTRIES_MAX_AGE_MS &&
@@ -53,7 +55,8 @@ async function registries(refresh = false): Promise<RegistriesResult> {
     const me = await api<MeResponse>("/api/extension/me");
     list = me.registries;
     user = me.user;
-    await save({ registries: list, user, registriesFetchedAt: Date.now() });
+    ideaRecipients = me.ideaRecipients ?? [];
+    await save({ registries: list, user, ideaRecipients, registriesFetchedAt: Date.now() });
   }
   // Keep the chosen registry if it's still there; otherwise use the newest.
   let registryId = stored.registryId && list.some((r) => r.id === stored.registryId) ? stored.registryId : null;
@@ -61,7 +64,14 @@ async function registries(refresh = false): Promise<RegistriesResult> {
     registryId = list[0].id;
     await save({ registryId });
   }
-  return { user, registries: list, registryId };
+  return { user, registries: list, registryId, ideaRecipients };
+}
+
+/** Puts who an idea was just saved for first in the names the form offers. */
+async function rememberRecipient(name: string): Promise<void> {
+  const { ideaRecipients = [] } = await load("ideaRecipients");
+  const key = name.toLowerCase();
+  await save({ ideaRecipients: [name, ...ideaRecipients.filter((n) => n.toLowerCase() !== key)].slice(0, 8) });
 }
 
 async function currentRegistry(): Promise<ExtensionRegistry | null> {
@@ -182,14 +192,22 @@ async function disconnect() {
 }
 
 async function popupState(): Promise<PopupState> {
-  const { session, user, mode = "ask", registryId, lastChecked = {} } = await load(
+  const { session, user, mode = "ask", productMode = "list", registryId, lastChecked = {} } = await load(
     "session",
     "user",
     "mode",
+    "productMode",
     "registryId",
     "lastChecked"
   );
-  return { connected: Boolean(session), user: user ?? null, mode, registryId: registryId ?? null, lastChecked };
+  return {
+    connected: Boolean(session),
+    user: user ?? null,
+    mode,
+    productMode,
+    registryId: registryId ?? null,
+    lastChecked,
+  };
 }
 
 /**
@@ -313,6 +331,9 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
     case "set-mode":
       await save({ mode: request.mode === "auto" ? "auto" : "ask" });
       return null;
+    case "set-product-mode":
+      await save({ productMode: request.mode === "idea" ? "idea" : "list" });
+      return null;
     case "check":
       await recordChecked(request.store, request.items.length);
       return check(request.registryId, request.items);
@@ -350,6 +371,11 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
       // Automatic mode shouldn't add it again from the store's registry page.
       const key = storeItemKey(request.item.url);
       if (key) await markSeen(request.registryId, [key]);
+      return result;
+    }
+    case "add-idea": {
+      const result = await api<IdeaResponse>("/api/extension/ideas", { method: "POST", body: { idea: request.idea } });
+      await rememberRecipient(result.added.recipient);
       return result;
     }
     case "page-items": {

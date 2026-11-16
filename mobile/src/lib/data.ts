@@ -15,6 +15,7 @@ import {
   reservationsHiddenFrom,
 } from "@shared/gifts";
 import { parseRetailerRegistries, type RetailerRegistry } from "@shared/retailers";
+import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 
 import { useSession } from "@/lib/auth";
 import { demo, isDemo } from "@/lib/demo";
@@ -39,7 +40,7 @@ export const keys = {
 };
 
 const REGISTRY_FIELDS =
-  "id, owner_id, title, slug, event_date, is_public, description, photo_url, registry_type, event_type, honoree_names, settings, created_at";
+  "id, owner_id, title, slug, event_date, is_public, is_private, description, photo_url, registry_type, event_type, honoree_names, settings, created_at";
 
 // The items are the ones whose registry_id is this registry. The link is named
 // because registry_item_placements also joins registries and items, and
@@ -521,8 +522,15 @@ const BABY_DEFAULT_CATEGORIES = [
   "Gifts & Extras",
 ];
 
-function slugFor(title: string) {
-  // The same shape as the website's generateSlug (src/lib/actions/registry.ts).
+// A new list's link. Anyone with it can open the list, so its random part
+// has to be hard to guess, and the app has no strong random source. The
+// database makes it (new_registry_slug, the same shape as the website's
+// generateRegistrySlug in src/lib/registry-create.ts). The fallback is only
+// for a database without that function yet
+// (supabase/migrations/20261114100553_list_links.sql).
+async function slugFor(title: string) {
+  const { data, error } = await supabase.rpc("new_registry_slug", { p_title: title });
+  if (!error && typeof data === "string" && data) return data;
   return (
     title
       .toLowerCase()
@@ -538,7 +546,7 @@ export interface NewRegistryInput {
   registryType: RegistryType;
   eventType: EventType | null;
   eventDate: string | null;
-  isPublic: boolean;
+  visibility: ListVisibility;
 }
 
 export function useCreateRegistry() {
@@ -553,7 +561,7 @@ export function useCreateRegistry() {
             registry_type: input.registryType,
             event_type: input.registryType === "personal" ? input.eventType : null,
             event_date: input.eventDate,
-            is_public: input.isPublic,
+            ...visibilityColumns(input.visibility),
           },
           input.registryType === "baby" ? BABY_DEFAULT_CATEGORIES : []
         );
@@ -565,9 +573,9 @@ export function useCreateRegistry() {
         .insert({
           owner_id: userId,
           title: input.title.trim(),
-          slug: slugFor(input.title.trim() || "registry"),
+          slug: await slugFor(input.title.trim() || "registry"),
           event_date: input.eventDate,
-          is_public: input.isPublic,
+          ...visibilityColumns(input.visibility),
           listed_on_profile: false,
           registry_type: input.registryType,
           event_type: input.registryType === "personal" ? input.eventType : null,

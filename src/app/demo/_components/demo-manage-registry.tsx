@@ -62,7 +62,7 @@ import { getCategorySectionId } from "@/lib/category-section-id";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { formatDollars, formatPrice } from "@/lib/money";
 import { RegistryTabs } from "@/components/registry-tabs";
-import { RegistryEventsBanner } from "@/components/registry-events-banner";
+import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-events-banner";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
@@ -1185,7 +1185,19 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
   const copy = copyForRegistry(registry);
   const fundActions = demoFundActions(setFunds);
   const publicPath = demoRegistryPath(registry);
-  const linkedEvents = demoEventsForRegistry(today, registry.id);
+  // Unlinking someone else's event takes it off this page until you leave.
+  const [linkedEvents, setLinkedEvents] = useState(() => demoEventsForRegistry(today, registry.id));
+  const unlinkEvent = async (eventId: string) => {
+    setLinkedEvents((current) => current.filter((e) => e.id !== eventId));
+    return { error: null };
+  };
+  // Dismissing the "Planning a party?" prompt lasts until you leave, like the
+  // rest of the demo.
+  const [eventPromptDismissed, setEventPromptDismissed] = useState(false);
+  const dismissEventPrompt = async () => {
+    setEventPromptDismissed(true);
+    return { error: null };
+  };
 
   const handleAddItem = (item: DemoItem) => {
     setItems((prev) => [...prev, item]);
@@ -1352,13 +1364,22 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
                 </span>
               </Link>
             </Button>
+            {eventPromptDismissed && linkedEvents.length === 0 && (
+              <PlanEventButton registryId={registry.id} basePath="/demo" />
+            )}
           </div>
         </div>
 
-        {/* Events that link to this registry, and a way to plan one. */}
-        <div className="mt-6">
-          <RegistryEventsBanner registryId={registry.id} events={linkedEvents} basePath="/demo" />
-        </div>
+        {/* Events that link to this registry, or a small prompt to plan one. */}
+        <RegistryEventsBanner
+          className="mt-6"
+          registryId={registry.id}
+          events={linkedEvents}
+          promptDismissed={eventPromptDismissed}
+          basePath="/demo"
+          unlinkAction={unlinkEvent}
+          dismissAction={dismissEventPrompt}
+        />
 
         {/* Stats */}
         <div className="mt-6 grid gap-4 md:grid-cols-4">

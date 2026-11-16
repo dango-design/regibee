@@ -70,6 +70,51 @@ function readWithExtension(url: string): Promise<ReadProduct | null> {
   return answer.then((message) => (message ? parseReadProduct(message.product) : null));
 }
 
+// The extension reads one page at a time and refuses another request while
+// it's busy. A refused read would fall back to the server, which Amazon
+// blocks, so the owner would see an error while the first read was about to
+// work. So each read through the extension waits for the one before it.
+let extensionTurn: Promise<unknown> = Promise.resolve();
+
+function inExtensionTurn<T>(task: () => Promise<T>): Promise<T> {
+  const result = extensionTurn.then(task);
+  extensionTurn = result.catch(() => {});
+  return result;
+}
+
+interface Read {
+  answer: Promise<ProductDetails>;
+  /** True once the extension has started reading the page. */
+  withExtension: boolean;
+  /** Callers to tell when the extension starts reading. */
+  onReading: Set<() => void>;
+}
+
+// Reads under way on this page, by link. Closing a dialog doesn't stop its
+// read, so a dialog reopened for the same link joins that read instead of
+// waiting behind it.
+const reads = new Map<string, Read>();
+
+async function readLink(url: string, secureUrl: string, startedWithExtension: () => void): Promise<ProductDetails> {
+  if (extensionCanReadLink(secureUrl)) {
+    const product = await inExtensionTurn(async () => {
+      const features = await extensionFeatures();
+      if (!features?.includes("read-product")) return null;
+      startedWithExtension();
+      return readWithExtension(secureUrl);
+    });
+    if (product) {
+      return {
+        title: product.title,
+        price: product.price != null ? product.price.toFixed(2) : undefined,
+        imageUrl: product.images[0],
+        imageUrls: product.images.length > 0 ? product.images : undefined,
+      };
+    }
+  }
+  return scrapeProductUrl(url);
+}
+
 interface Options {
   /** Called when the extension starts reading the link in a background tab. */
   onReadingWithExtension?: () => void;
@@ -78,25 +123,28 @@ interface Options {
 /**
  * A product link's name, price and pictures. At a store the extension reads,
  * the extension reads it when it's installed. Otherwise, or when it couldn't,
- * the server fetches the page.
+ * the server fetches the page. Asking for a link that's already being read
+ * gives that read's answer.
  */
-export async function fetchProductDetails(url: string, options: Options = {}): Promise<ProductDetails> {
+export function fetchProductDetails(url: string, options: Options = {}): Promise<ProductDetails> {
   // The dialogs add http:// to a link pasted without one. The stores are all on https.
   const secureUrl = url.replace(/^http:\/\//i, "https://");
-  if (extensionCanReadLink(secureUrl)) {
-    const features = await extensionFeatures();
-    if (features?.includes("read-product")) {
-      options.onReadingWithExtension?.();
-      const product = await readWithExtension(secureUrl);
-      if (product) {
-        return {
-          title: product.title,
-          price: product.price != null ? product.price.toFixed(2) : undefined,
-          imageUrl: product.images[0],
-          imageUrls: product.images.length > 0 ? product.images : undefined,
-        };
-      }
-    }
+  let read = reads.get(secureUrl);
+  if (!read) {
+    const started: Read = { answer: Promise.resolve({}), withExtension: false, onReading: new Set() };
+    started.answer = readLink(url, secureUrl, () => {
+      started.withExtension = true;
+      for (const tell of started.onReading) tell();
+    }).finally(() => {
+      if (reads.get(secureUrl) === started) reads.delete(secureUrl);
+    });
+    reads.set(secureUrl, started);
+    read = started;
   }
-  return scrapeProductUrl(url);
+  const { onReadingWithExtension } = options;
+  if (onReadingWithExtension) {
+    if (read.withExtension) onReadingWithExtension();
+    else read.onReading.add(onReadingWithExtension);
+  }
+  return read.answer;
 }

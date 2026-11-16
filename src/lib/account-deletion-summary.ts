@@ -50,7 +50,7 @@ export function accountDeletionLines(summary: AccountDeletionSummary): string[] 
   }
 
   lines.push(
-    "Your profile, the people you follow and your followers are deleted, and you're signed out everywhere, the browser extension included.",
+    "Your profile, your gift ideas, the people you follow and your followers are deleted, and you're signed out everywhere, the browser extension included.",
   );
 
   return lines;

@@ -12,6 +12,8 @@ export interface RegistrySettings {
   shipping_address?: string;
   /** The owner's own registries at stores. Read with parseRetailerRegistries. */
   retailer_registries?: RetailerRegistry[];
+  /** True once a manager dismissed the "Planning a party?" prompt on the registry's page. */
+  event_prompt_dismissed?: boolean;
   [key: string]: unknown;
 }
 
@@ -27,6 +29,8 @@ export interface Registry {
   slug: string;
   event_date: string | null;
   is_public: boolean;
+  /** Only the owner and co-managers can open it (src/lib/list-access.ts). */
+  is_private: boolean;
   listed_on_profile: boolean;
   description: string | null;
   photo_url: string | null;

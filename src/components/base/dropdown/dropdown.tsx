@@ -30,9 +30,11 @@ interface DropdownItemProps extends AriaMenuItemProps {
     unstyled?: boolean;
     /** An icon to be displayed on the left side of the item. */
     icon?: FC<{ className?: string }>;
+    /** Shows the item in red, for an action that deletes something. */
+    destructive?: boolean;
 }
 
-const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }: DropdownItemProps) => {
+const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, destructive, ...props }: DropdownItemProps) => {
     if (unstyled) {
         return <AriaMenuItem id={label} textValue={label} {...props} />;
     }
@@ -60,15 +62,18 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
                     {Icon && (
                         <Icon
                             aria-hidden="true"
-                            className={cx("mr-2 size-4 shrink-0 stroke-[2.25px]", state.isDisabled ? "text-fg-disabled" : "text-fg-quaternary")}
+                            className={cx(
+                                "mr-2 size-4 shrink-0 stroke-[2.25px]",
+                                state.isDisabled ? "text-fg-disabled" : destructive ? "text-fg-error-secondary" : "text-fg-quaternary",
+                            )}
                         />
                     )}
 
                     <span
                         className={cx(
                             "grow truncate text-sm font-semibold",
-                            state.isDisabled ? "text-disabled" : "text-secondary",
-                            state.isFocused && "text-secondary_hover",
+                            state.isDisabled ? "text-disabled" : destructive ? "text-error-primary" : "text-secondary",
+                            state.isFocused && !destructive && "text-secondary_hover",
                         )}
                     >
                         {label || (typeof children === "function" ? children(state) : children)}

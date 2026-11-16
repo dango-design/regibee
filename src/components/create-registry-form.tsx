@@ -10,12 +10,13 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
-import { Baby, Check, Gift } from "lucide-react";
+import { Baby, Check, Gift, Globe, Link2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { createRegistry } from "@/lib/actions/registry";
+import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@/lib/list-access";
 import { PERSONAL_EVENT_TYPE_OPTIONS, copyFor } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 import { cx } from "@/lib/utils/cx";
@@ -224,6 +225,12 @@ function SectionFooter({
   );
 }
 
+const VISIBILITY_ICONS: Record<ListVisibility, typeof Lock> = {
+  private: Lock,
+  link: Link2,
+  public: Globe,
+};
+
 function ChoiceCard({
   selected,
   onClick,
@@ -250,8 +257,10 @@ function ChoiceCard({
           : "border-secondary hover:border-primary",
       )}
     >
-      <span className="flex items-center gap-2 font-medium text-primary">
-        {icon}
+      {/* The icon sits beside the title's first line, so a title that wraps,
+          like "Anyone with the link", doesn't pull it down between lines. */}
+      <span className="flex items-start gap-2 font-medium text-primary">
+        {icon && <span className="flex h-[1lh] shrink-0 items-center">{icon}</span>}
         {title}
       </span>
       <span className="mt-1 block text-xs text-tertiary">{description}</span>
@@ -265,19 +274,38 @@ export interface CreateRegistryFormProps {
    * "Show on my profile" choice is left out.
    */
   canListOnProfile?: boolean;
+  /**
+   * The registry type, already chosen on the New page. With one, the form
+   * opens on the name, or on the occasion for a personal list without one.
+   */
+  startType?: RegistryType;
+  /** A personal list's occasion, already chosen on the New page. */
+  startOccasion?: PersonalEventType;
   createAction?: (formData: FormData) => Promise<{ error?: string } | void>;
+}
+
+/** Which section opens first, and which count as visited already. */
+function startingNav(startType?: RegistryType, startOccasion?: PersonalEventType): NavState {
+  const typeIsSettled = startType === "baby" || (startType === "personal" && Boolean(startOccasion));
+  return typeIsSettled
+    ? { open: "details", visited: new Set<SectionId>(["type"]) }
+    : { open: "type", visited: new Set<SectionId>() };
 }
 
 export function CreateRegistryForm({
   canListOnProfile = true,
+  startType,
+  startOccasion,
   createAction = createRegistry,
 }: CreateRegistryFormProps) {
-  const [registryType, setRegistryType] = useState<RegistryType>("baby");
-  const [eventType, setEventType] = useState<PersonalEventType | "">("");
+  const [registryType, setRegistryType] = useState<RegistryType>(startType ?? "baby");
+  const [eventType, setEventType] = useState<PersonalEventType | "">(
+    startType === "personal" ? (startOccasion ?? "") : "",
+  );
   const [title, setTitle] = useState("");
   const [titleError, setTitleError] = useState(false);
   const [eventDate, setEventDate] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
   const [listedChoice, setListedChoice] = useState<boolean | null>(null);
   const [description, setDescription] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -287,7 +315,7 @@ export function CreateRegistryForm({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [nav, dispatch] = useReducer(navReducer, { open: "type", visited: new Set<SectionId>() });
+  const [nav, dispatch] = useReducer(navReducer, startingNav(startType, startOccasion));
 
   const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
   const titleRef = useRef<HTMLInputElement>(null);
@@ -396,10 +424,11 @@ export function CreateRegistryForm({
     }
   };
 
-  const chooseVisibility = (value: boolean) => {
-    setIsPublic(value);
-    // Without a profile, visibility is the only choice in this section.
-    if (!canListOnProfile) advanceSoon("privacy");
+  const chooseVisibility = (value: ListVisibility) => {
+    setVisibility(value);
+    // Without a profile, or for a private list, which can't be on one,
+    // visibility is the only choice in this section.
+    if (!canListOnProfile || value === "private") advanceSoon("privacy");
   };
 
   // The zip code is the last field in the payments section, so a full zip
@@ -463,8 +492,8 @@ export function CreateRegistryForm({
 
   const occasion = PERSONAL_EVENT_TYPE_OPTIONS.find((option) => option.value === eventType);
   const privacySummary = [
-    isPublic ? "Public" : "Private",
-    canListOnProfile ? (isListed ? "on your profile" : "not on your profile") : null,
+    LIST_ACCESS[visibility].short,
+    canListOnProfile && visibility !== "private" ? (isListed ? "on your profile" : "not on your profile") : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -526,7 +555,7 @@ export function CreateRegistryForm({
       >
         <input type="hidden" name="registryType" value={registryType} />
         {registryType === "personal" && <input type="hidden" name="eventType" value={eventType} />}
-        <input type="hidden" name="isPublic" value={isPublic ? "true" : "false"} />
+        <input type="hidden" name="visibility" value={visibility} />
         {/* The zip code is only used for tax estimates, so entering one turns them on. */}
         <input type="hidden" name="taxEnabled" value={hasZip ? "true" : "false"} />
 
@@ -546,7 +575,7 @@ export function CreateRegistryForm({
                 onClick={() => chooseRegistryType("baby")}
                 icon={<Baby className="h-4 w-4" />}
                 title="Baby"
-                description="Baby shower, expecting a new arrival"
+                description="Expecting or welcoming a new arrival"
               />
               <ChoiceCard
                 selected={registryType === "personal"}
@@ -616,28 +645,27 @@ export function CreateRegistryForm({
             <SectionFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
           </Section>
 
-          <Section title="Who can see it" {...sectionProps("privacy")}>
-            <p className="mb-3 text-sm text-tertiary">
-              Anyone with your share link can open it either way.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <ChoiceCard
-                selected={isPublic}
-                onClick={() => chooseVisibility(true)}
-                title="Public"
-                description="Search engines can list it."
-              />
-              <ChoiceCard
-                selected={!isPublic}
-                onClick={() => chooseVisibility(false)}
-                title="Private"
-                description="Hidden from search engines. Only followers you approve see it on your profile."
-              />
+          <Section title="Who can open it" {...sectionProps("privacy")}>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {LIST_VISIBILITIES.map((value) => {
+                const VisibilityIcon = VISIBILITY_ICONS[value];
+                return (
+                  <ChoiceCard
+                    key={value}
+                    selected={visibility === value}
+                    onClick={() => chooseVisibility(value)}
+                    icon={<VisibilityIcon className="h-4 w-4" />}
+                    title={LIST_ACCESS[value].label}
+                    description={LIST_ACCESS[value].who}
+                  />
+                );
+              })}
             </div>
+            <p className="mt-2 text-sm text-tertiary">{LIST_ACCESS[visibility].description}</p>
             {canListOnProfile && (
               <div className="mt-4">
                 <ProfileListingField
-                  isPublic={isPublic}
+                  visibility={visibility}
                   isSelected={isListed}
                   onChange={setListedChoice}
                 />
