@@ -28,9 +28,20 @@
       "channel": "production",
       "autoIncrement": true,
       "environment": "production"
+    },
+    "testing": {
+      "extends": "base",
+      "channel": "preview",
+      "autoIncrement": true,
+      "environment": "preview"
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "testing": {
+      "android": {
+        "track": "internal"
+      }
+    }
   }
 }
