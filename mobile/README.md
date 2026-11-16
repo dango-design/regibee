@@ -70,7 +70,7 @@ npx eas-cli@latest build --profile preview --platform android
 
 Preview builds get changes over the air. When a merge to main changes the app, the **App update** workflow (`.github/workflows/mobile-update.yml`) publishes an update to the `preview` channel. The app checks each time it opens and uses a downloaded update from the next start.
 
-**Account › This version** says which code the app is running: the newest pull request in it, the commit, and whether it's running an update or the version it was built with. **Check for updates** checks straight away, downloads a newer update, and offers **Restart now**. The section shows in preview builds and while developing, not in the store version. `scripts/build-info.js` reads the commit and pull request from git when a build or update is made.
+**Account › This version** says which code the app is running: the newest pull request in it, the commit, and whether it's running an update or the version it was built with. **Check for updates** checks straight away, downloads a newer update, and offers **Restart now**. The section shows in builds on the `preview` channel (preview builds and the Play testing builds below) and while developing, not in the public store version. `scripts/build-info.js` reads the commit and pull request from git when a build or update is made.
 
 An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest" means there's no newer update for that build. `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
 
@@ -89,6 +89,31 @@ npx eas-cli@latest update --channel preview --environment preview --message "Wha
 - Add an Expo access token that can publish to the project as the repo secret `EXPO_TOKEN`. Until then the workflow publishes nothing and says why.
 - Make a new preview build. Builds from before updates were set up can't get them.
 
+## Android testers
+
+Testers install Regibee from the Play Store, through Google Play's internal testing track, and Play updates it for them like any other app. The `testing` build profile puts these builds on the `preview` channel, so they also get each merge to main over the air once `EXPO_TOKEN` is set (see "Updates"), and show **Account › This version**.
+
+**Once:**
+
+1. Your Expo account needs to be in the team that owns the project (see "On a real phone").
+2. In Play Console, create the app: Regibee, App, Free. A free app can't become paid later.
+3. Make a Google service account key, so EAS can upload to Play: https://expo.fyi/creating-google-service-account. Give it to EAS with `npx eas-cli@latest credentials --platform android`, or when `eas submit` asks for it. EAS keeps it on Expo's servers. Never commit the key file.
+
+**Each new build** (the first one, and after a change to native code):
+
+```bash
+npx eas-cli@latest build --platform android --profile testing --auto-submit
+```
+
+This builds a signed `.aab` in Expo's cloud and uploads it to the internal testing track (`submit.testing` in `eas.json`). Changes that aren't native need no new build: they arrive over the air.
+
+- The first build offers to make an Android keystore. Say yes. EAS keeps it, and Google signs the copy people install with its own key (Play App Signing).
+- The version code goes up by itself (`autoIncrement`, stored on EAS). Change `version` in `app.config.ts` when testers should see a new version number.
+- Play keeps the app as a draft until the store listing and setup tasks in Play Console are done. Only a public release needs those.
+- Don't promote a testing build to production: it would keep taking every merge to main. The public release needs a build from the `production` profile, on the `production` channel.
+
+**Adding testers:** in Play Console, open Testing › Internal testing › Testers, make an email list of each tester's Google account, and copy the join link. A tester opens the link on their Android phone, taps "Become a tester", then installs Regibee from Play. Internal testing takes up to 100 testers, with no review by Google.
+
 ## Checks
 
 ```bash
@@ -104,6 +129,7 @@ The root `tsconfig.json` leaves out `mobile/`, so the website's checks don't rea
 
 The privacy policy URL for both store listings is https://www.regibee.com/privacy. Its "The Regibee app" section says what the app reads and keeps on the phone, so update it when that changes. Apple's privacy questions and Google Play's data safety form should match it.
 
-- **Store accounts.** An Apple Developer account and a Google Play developer account. The bundle id is `com.regibee.app` for both, set in `app.config.ts`. Change it before the first upload if you want another.
+- **Store accounts.** The Google Play developer account is set up. iPhone still needs an Apple Developer account. The bundle id is `com.regibee.app` for both, set in `app.config.ts`. The first upload locks it, so change it before then if you want another.
+- **Public release on Play.** A personal Play developer account needs a closed test, with at least 12 testers opted in for 14 days in a row, before Google allows a public release. Internal testing doesn't count. An organization account skips this.
 - **Real phones.** Sharing from Amazon, Target, Walmart and Safari, and reading in the hidden web view, have only been checked in code and in a browser so far. Try each on an iPhone and an Android phone.
 - **App group.** The iPhone share extension shares data with the app through `group.com.regibee.app`. EAS sets it up when it manages your credentials.
