@@ -87,12 +87,19 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
   await scarf.getByText(/^Bought it/).click();
   await expect(scarf.getByRole("checkbox", { name: /Bought it/ })).toBeChecked();
   await expect(mom.getByText("1 idea · 1 bought")).toBeVisible();
+  // The tick shows before the server has it, so reloading now could bring the
+  // box back unchecked. The card is busy, and says "Saving…", until the save
+  // is done. It turned busy in the same update that ticked the box, so this
+  // can't pass before the save has started.
+  await expect(scarf).not.toHaveAttribute("aria-busy");
   await page.reload();
   await expect(page.getByRole("region", { name: "For Mom" }).getByRole("checkbox", { name: /Bought it\W+Wool scarf in green/ })).toBeChecked();
 
   // ── Edit, then delete ──
   // Reopening an idea after saving it shows what was saved.
-  await page.getByRole("button", { name: "Edit Wool scarf in green" }).click();
+  const editScarf = page.getByRole("button", { name: "Edit Wool scarf in green" });
+  await waitForReact(editScarf);
+  await editScarf.click();
   dialog = page.getByRole("dialog", { name: "Edit gift idea" });
   await dialog.getByLabel("Price (optional)").fill("52");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
