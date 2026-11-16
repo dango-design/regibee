@@ -6,11 +6,12 @@ These notes are for anyone changing or running the live app, people and Claude a
 
 | Service | What it does | What to know |
 | --- | --- | --- |
-| GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN` repo secret. |
+| GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN` and `EXPO_TOKEN` repo secrets. |
 | Vercel | Builds and hosts the site | `main` deploys to regibee.com and www.regibee.com. Every other branch gets a preview URL. Every deployment URL except regibee.com needs a Vercel login. |
 | Supabase `regibee` (ref `ibfvmgpfwhhyrhnxaxig`) | Database and sign-in | This is the only database. Preview deploys and `vercel env pull` use it too, so anything you do on a preview or locally with those keys changes real data. Database changes are run by hand. See below. |
 | Resend | Sends notification emails from `notifications@regibee.com` | Needs `RESEND_API_KEY`, and DNS records for regibee.com. |
 | Porkbun | Registrar and DNS for regibee.com | The DNS records point the site at Vercel and verify the domain for Resend. |
+| Expo (EAS) | Builds the phone app and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. See "Updates" in [mobile/README.md](mobile/README.md). |
 | Chromatic | Visual tests of the Storybook stories | The project is in the `dango-design` Chromatic account, on the free plan. Its id is in `chromatic.config.json`. |
 
 Vercel holds these env vars for production, preview and development: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `NEXT_PUBLIC_SITE_URL`. Run `vercel env pull .env.local` to copy them to your machine.
@@ -95,6 +96,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The app says and does what the website does. Use the website's words for the same thing, and its rules for what's shown. Do something differently only where a phone app can clearly do it better, such as the share sheet, native menus or haptics. When both show the same thing, put the logic in a shared file and call it from both, as `ownerItemStatus` in `src/lib/gifts.ts` does for an item's gift status.
 - It shares `src/lib/retailers.ts`, `src/lib/demo-data.ts`, `src/lib/gifts.ts`, `src/lib/account-deletion-summary.ts`, `src/lib/occasions.ts`, `src/lib/list-access.ts` and `src/lib/registry-copy.ts` with the website through the `@shared/*` path. Keep those files free of imports, or the app can't use them. The one exception is `registry-copy.ts`, which imports `occasions.ts`.
 - Its product reader is built from `extension/src/product-reader.ts`. After changing that file, run `npm run product-reader` in `mobile/`.
+- Preview builds get over-the-air updates. When a merge to main changes the app, `.github/workflows/mobile-update.yml` publishes one to the `preview` channel, if the `EXPO_TOKEN` secret is set. The Account tab's "This version" says which pull request a preview build is running and has a Check for updates button. An update can't change native code: new native packages, an Expo upgrade, config plugins or the product reader need a new build. See "Updates" in [mobile/README.md](mobile/README.md).
 - The root `tsconfig.json` leaves out `mobile/`. The app has its own checks.
 
 ## Privacy policy
