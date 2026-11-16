@@ -103,7 +103,7 @@ test("an owner removes an item a guest reserved, and the guest's gift goes with 
   const card = page.getByRole("heading", { name: item.title });
   await waitForReact(card);
   await card.click();
-  const dialog = page.getByRole("dialog", { name: "Edit item in registry" });
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
   let question = "";
   page.once("dialog", (confirm) => {
     question = confirm.message();
