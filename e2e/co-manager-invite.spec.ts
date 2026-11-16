@@ -29,7 +29,7 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
   // The invite page treats the guest as signed out.
   await page.goto(invitePath);
   await expect(page.getByText("Sign in or create an account to accept this invitation.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create Account" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Create account" })).toHaveAttribute(
     "href",
     `/signup?redirect=${encodeURIComponent(invitePath)}`,
   );
@@ -52,12 +52,12 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
   // Someone with an account signs in from the invite page, comes back to it,
   // and accepts.
   const account = await createAccount("Casey Comanager");
-  await page.getByRole("link", { name: "Sign In" }).click();
+  await page.getByRole("link", { name: "Sign in" }).click();
   await page.waitForURL(/\/login\?redirect=/);
   await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(`**${invitePath}`);
   await page.getByRole("button", { name: "Accept Invitation" }).click();
   await page.waitForURL(/\/dashboard/);

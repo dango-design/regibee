@@ -28,20 +28,10 @@ export function formatEventDate(ymd: string | null) {
   return localDate(ymd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-/** "In 23 days", "Tomorrow", "Today", "3 weeks ago". */
-export function relativeDay(ymd: string | null) {
-  if (!ymd) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.round((localDate(ymd).getTime() - today.getTime()) / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Tomorrow";
-  if (days === -1) return "Yesterday";
-  if (days > 1 && days < 14) return `In ${days} days`;
-  if (days >= 14 && days < 60) return `In ${Math.round(days / 7)} weeks`;
-  if (days >= 60) return `In ${Math.round(days / 30)} months`;
-  if (days < -1 && days > -14) return `${-days} days ago`;
-  return formatEventDate(ymd);
+/** A date (today by default) in this phone's time zone, as YYYY-MM-DD, the way event_date is stored. */
+export function toYmd(date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /** "Just now", "5m", "3h", "2d", or a date, for gift activity. */

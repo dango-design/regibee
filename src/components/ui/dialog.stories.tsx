@@ -35,9 +35,9 @@ export const Default: Story = {
           </DialogDescription>
         </DialogHeader>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <Input label="Item Name" placeholder="e.g. Baby Monitor" />
+          <Input label="Item name" placeholder="e.g. Baby Monitor" />
           <Input label="Link (optional)" placeholder="https://example.com/item" />
-          <Button type="submit">Add Item</Button>
+          <Button type="submit">Add item</Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -117,12 +117,12 @@ export default async function InvitePage({
             <div className="flex gap-3 justify-center mt-6">
               <Button asChild>
                 <Link href={`/login?redirect=${encodeURIComponent(redirectUrl)}`}>
-                  Sign In
+                  Sign in
                 </Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href={`/signup?redirect=${encodeURIComponent(redirectUrl)}`}>
-                  Create Account
+                  Create account
                 </Link>
               </Button>
             </div>

@@ -11,7 +11,7 @@ import {
   demoPurchases,
   demoSuggestions,
 } from "@shared/demo-data";
-import { GIFT_HOLD_DAYS, isOpenReservation } from "@shared/gifts";
+import { GIFT_HOLD_DAYS, giftActivityAction } from "@shared/gifts";
 
 import type { Category, Gift, Item, Registry, RegistryDetail, RegistrySummary } from "@/lib/types";
 
@@ -97,6 +97,8 @@ function build(): Store {
       cash_fund_id: p.cash_fund_id ?? null,
       kind: p.cash_fund_id ? "fund" : "item",
       for_title: titles.get((p.registry_item_id ?? p.cash_fund_id) as string) ?? "",
+      item_price: items.find((i) => i.id === p.registry_item_id)?.price ?? null,
+      item_bought_by_owner: Boolean(items.find((i) => i.id === p.registry_item_id)?.is_parent_purchased),
     };
   });
   const detail: RegistryDetail = {
@@ -128,7 +130,7 @@ function summary(detail: RegistryDetail, gifts: Gift[]): RegistrySummary {
     totalValue: detail.items.reduce((sum, i) => sum + (i.price ?? 0), 0),
     recentGifts: active
       .slice(0, 3)
-      .map((g) => ({ id: g.id, buyer_name: g.buyer_name, created_at: g.created_at, held: isOpenReservation(g) })),
+      .map((g) => ({ id: g.id, buyer_name: g.buyer_name, action: giftActivityAction(g) })),
     reservationsHidden: detail.reservationsHidden,
   };
 }

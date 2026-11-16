@@ -116,7 +116,7 @@ export async function signIn(page: Page, account: { email: string; password: str
   await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/dashboard/);
 }
 

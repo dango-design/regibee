@@ -87,12 +87,12 @@ test("new lists start as anyone with the link", async ({ page }) => {
   const owner = await createAccount("Nia Owner");
   await signIn(page, owner);
   await page.goto("/dashboard/registry/new");
-  const baby = page.getByRole("button", { name: /^Baby/ });
+  const baby = page.getByRole("button", { name: /^A baby/ });
   await waitForReact(baby);
   await baby.click();
   const title = `Nia's Baby Registry ${Date.now()}`;
   await page.getByLabel(/Registry name/).fill(title);
-  await page.getByRole("button", { name: "Create Registry" }).click();
+  await page.getByRole("button", { name: "Create registry" }).click();
   await page.waitForURL(/\/dashboard\/registry\/[0-9a-f-]+$/);
 
   const { data: made } = await db
