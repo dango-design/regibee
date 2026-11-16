@@ -60,6 +60,35 @@ The anon key is already in EAS for the development, preview and production build
 
 Then run `npx expo start` with the phone on the same Wi-Fi as your computer, and open Regibee: it lists your computer's server, or scan the QR code. A development build loads its JavaScript from your computer, so it reads your `.env.local`. Rebuild after adding native code or changing `app.config.ts`, which includes the Safari share reader.
 
+## Updates
+
+A preview build has the code built in, so it runs without a computer:
+
+```bash
+npx eas-cli@latest build --profile preview --platform android
+```
+
+Preview builds get changes over the air. When a merge to main changes the app, the **App update** workflow (`.github/workflows/mobile-update.yml`) publishes an update to the `preview` channel. The app checks each time it opens and uses a downloaded update from the next start.
+
+**Account › This version** says which code the app is running: the newest pull request in it, the commit, and whether it's running an update or the version it was built with. **Check for updates** checks straight away, downloads a newer update, and offers **Restart now**. The section shows in preview builds and while developing, not in the store version. `scripts/build-info.js` reads the commit and pull request from git when a build or update is made.
+
+An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest" means there's no newer update for that build. `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
+
+```bash
+npx expo-updates fingerprint:generate --platform android
+```
+
+To publish an update by hand, from this folder (it reads `EXPO_PUBLIC_SUPABASE_URL` from `.env.local`, since `eas.json`'s settings are for builds):
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "What changed"
+```
+
+**Once, to turn it on:**
+
+- Add an Expo access token that can publish to the project as the repo secret `EXPO_TOKEN`. Until then the workflow publishes nothing and says why.
+- Make a new preview build. Builds from before updates were set up can't get them.
+
 ## Checks
 
 ```bash
