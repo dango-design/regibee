@@ -54,6 +54,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - An item's home list is `registry_items.registry_id`. `registry_item_placements` puts it on more of the same owner's lists, each with its own category. Gifts belong to the item, so they show on every list it's on.
 - Only the server reads placements. To list a list's items, use `src/lib/list-items.ts`, not `registry_items` filtered by `registry_id`, or placed items go missing.
 - Taking an item off its home list moves it to the next list it's on. Only an item on no other list is deleted. A database trigger does this for direct deletes too, so the phone app and the extension follow the same rule.
+- Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
 
 ## Gift ideas

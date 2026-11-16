@@ -191,7 +191,11 @@ export const demo = {
     setItems(itemRegistry(itemId), (items) => items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)));
   },
   deleteItem(itemId: string) {
-    setItems(itemRegistry(itemId), (items) => items.filter((i) => i.id !== itemId));
+    const registryId = itemRegistry(itemId);
+    // Guests' gifts go with the item, as in the database.
+    const gifts = current().gifts.get(registryId);
+    if (gifts) current().gifts.set(registryId, gifts.filter((g) => g.registry_item_id !== itemId));
+    setItems(registryId, (items) => items.filter((i) => i.id !== itemId));
   },
   cancelGift(registryId: string, giftId: string) {
     const gifts = current().gifts.get(registryId) ?? [];
