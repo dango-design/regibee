@@ -5,6 +5,8 @@ import { requireAccount } from "@/lib/require-account";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getEventForManager, getEventGuests } from "@/lib/events-server";
 import { sendGuestMessage } from "@/lib/email";
+import { noEmailsMessage, reserveEmails, settleEmails } from "@/lib/email-budget";
+import { notEnoughLeftMessage } from "@/lib/account-levels";
 import {
   MAX_MESSAGES_PER_DAY,
   MAX_MESSAGE_BODY_LENGTH,
@@ -54,6 +56,15 @@ export async function sendEventMessage(
   let sent = 0;
   let error: string | null = null;
   if (recipients.length > 0) {
+    // Everyone chosen gets it, or nobody does, within today's email limit.
+    const reservation = await reserveEmails(user.id, "message", recipients.length, { allOrNothing: true });
+    if (reservation.granted === 0) {
+      return {
+        error: reservation.failed
+          ? noEmailsMessage(reservation)
+          : notEnoughLeftMessage(recipients.length, reservation.left, "message"),
+      };
+    }
     const { data: profile } = await supabaseAdmin.from("profiles").select("full_name").eq("id", user.id).single();
     const hostName = event.hosted_by || profile?.full_name?.trim() || "Your host";
     ({ sent, error } = await sendGuestMessage({
@@ -64,6 +75,7 @@ export async function sendEventMessage(
       body,
       guests: recipients,
     }));
+    await settleEmails(reservation, sent);
     // Nothing went out, so the host tries again rather than posting it twice.
     if (sent === 0) return { error: error ?? "Your message wasn't sent. Try again." };
   }
