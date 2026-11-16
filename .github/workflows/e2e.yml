@@ -49,11 +49,6 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # The unit tests take a second. They also check that the account email
-      # templates in supabase/templates/ were rewritten after a change.
-      - name: Run the unit tests
-        run: npm test
-
       # The version the tests were written against. Newer ones should work.
       - uses: supabase/setup-cli@v3
         with:

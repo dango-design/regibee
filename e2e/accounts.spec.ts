@@ -1,11 +1,21 @@
 // Making an account and getting back into one. Both emails here come from
 // Supabase itself, not from the site's mailer, and local Supabase sends them
 // to Mailpit too. Local Supabase asks new accounts to confirm their email, as
-// production does (supabase/config.toml).
+// production does (supabase/config.toml). It sends Regibee's templates from
+// supabase/templates/, which `npm run auth-emails` writes from
+// src/lib/auth-email-templates.ts.
 
 import { expect, test } from "@playwright/test";
+import { AUTH_EMAILS } from "../src/lib/auth-email-templates";
 import { createAccount, db, uniqueEmail, waitForReact } from "./fixtures";
-import { linkIn, waitForEmail } from "./mailbox";
+import { linkIn, waitForEmail, type ReceivedEmail } from "./mailbox";
+
+/** Checks the email is Regibee's template, not Supabase's default. */
+function expectRegibeeEmail(email: ReceivedEmail, button: string, link: string) {
+  expect(email.html).toContain(`>${button}</a>`);
+  // The button and the link to copy under it are the same link.
+  expect(email.html.replaceAll("&amp;", "&").split(link)).toHaveLength(3);
+}
 
 test("someone signs up, confirms their email, and starts on an empty dashboard", async ({ page }) => {
   const email = uniqueEmail("sam");
@@ -33,8 +43,10 @@ test("someone signs up, confirms their email, and starts on an empty dashboard",
   await other.close();
 
   // The link in the email signs them in and opens the dashboard.
-  const confirm = await waitForEmail(email, /confirm/i);
-  await page.goto(linkIn(confirm, /\/auth\/v1\/verify\?.*type=signup/));
+  const confirm = await waitForEmail(email, AUTH_EMAILS.confirmation.subject);
+  const confirmLink = linkIn(confirm, /\/auth\/v1\/verify\?.*type=signup/);
+  expectRegibeeEmail(confirm, "Confirm email address", confirmLink);
+  await page.goto(confirmLink);
   await page.waitForURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "No registries yet" })).toBeVisible();
 
@@ -62,8 +74,10 @@ test("someone who forgot their password sets a new one from the email", async ({
   await page.getByRole("button", { name: "Send reset link" }).click();
   await expect(page.getByText(`If there's an account for ${account.email}, we sent it a link to set a new password.`)).toBeVisible();
 
-  const reset = await waitForEmail(account.email, /reset/i);
-  await page.goto(linkIn(reset, /\/auth\/v1\/verify\?.*type=recovery/));
+  const reset = await waitForEmail(account.email, AUTH_EMAILS.recovery.subject);
+  const resetLink = linkIn(reset, /\/auth\/v1\/verify\?.*type=recovery/);
+  expectRegibeeEmail(reset, "Choose a new password", resetLink);
+  await page.goto(resetLink);
   await page.waitForURL(/\/reset-password$/);
   await waitForReact(page.locator("form"));
   await page.getByLabel("New password").fill("brand-new-password");
