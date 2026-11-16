@@ -28,10 +28,11 @@ export const SHIPPING_ADDRESS = "123 Main St\nApt 4B\nSan Francisco, CA 94102";
 export async function createRegistryWithItem() {
   const id = uniqueId();
   const ownerEmail = `owner-${id}@example.com`;
+  const ownerPassword = `pw-${randomUUID()}`;
 
   const { data: created, error: userError } = await db.auth.admin.createUser({
     email: ownerEmail,
-    password: `pw-${randomUUID()}`,
+    password: ownerPassword,
     email_confirm: true,
     user_metadata: { full_name: "Remi Owner" },
   });
@@ -59,7 +60,7 @@ export async function createRegistryWithItem() {
     .single();
   if (itemError) throw itemError;
 
-  return { owner: { id: created.user.id, email: ownerEmail }, registry, item };
+  return { owner: { id: created.user.id, email: ownerEmail, password: ownerPassword }, registry, item };
 }
 
 /** Reserves the registry's one item as a guest, from the registry page. */
@@ -95,6 +96,19 @@ export async function createAccount(fullName: string) {
   });
   if (error || !data.user) throw error ?? new Error("No user");
   return { id: data.user.id, email, password, name: fullName };
+}
+
+/**
+ * Waits until React manages the element. A field typed into before React
+ * takes over the page is cleared on React's next render, and on a cold dev
+ * server that can take a few seconds. React tags each element it manages
+ * with a "__reactProps" key.
+ */
+export async function waitForReact(page: Page, selector: string) {
+  await page.waitForFunction((s) => {
+    const element = document.querySelector(s);
+    return !!element && Object.keys(element).some((key) => key.startsWith("__reactProps"));
+  }, selector);
 }
 
 /** Signs in from the login page. */

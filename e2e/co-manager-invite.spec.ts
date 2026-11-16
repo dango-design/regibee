@@ -1,22 +1,14 @@
-// A co-manager invite link. A guest who reserved a gift has an anonymous
-// session, which isn't an account, so they're asked to sign in and can't
-// accept. Someone who signs in from the same page can.
+// Co-managers. A guest who reserved a gift has an anonymous session, which
+// isn't an account, so they're asked to sign in and can't accept an invite
+// link. Someone who signs in from the same page can. And an owner can invite
+// someone by email.
 
 import { randomBytes } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { createAccount, createRegistryWithItem, db, reserveGift, uniqueEmail } from "./fixtures";
+import { createAccount, createRegistryWithItem, db, reserveGift, signIn, uniqueEmail, waitForReact } from "./fixtures";
 import { localSupabase } from "./local-supabase";
-
-// A field typed into before React takes over the page is cleared on React's
-// next render, and on a cold dev server that can take a few seconds. React
-// tags each element it manages with a "__reactProps" key, so wait for that.
-async function waitForReact(page: Page, selector: string) {
-  await page.waitForFunction((s) => {
-    const element = document.querySelector(s);
-    return !!element && Object.keys(element).some((key) => key.startsWith("__reactProps"));
-  }, selector);
-}
+import { linkIn, waitForEmail } from "./mailbox";
 
 async function managersOf(registryId: string) {
   const { data, error } = await db.from("registry_managers").select("user_id, role").eq("registry_id", registryId);
@@ -79,4 +71,72 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
     ]),
   );
   expect(await managersOf(registry.id)).toHaveLength(2);
+});
+
+test("an owner invites a co-parent by email, who signs in from the link and accepts", async ({ page, browser }) => {
+  const { owner, registry, item } = await createRegistryWithItem();
+  const coparent = await createAccount("Max Coparent");
+
+  await signIn(page, owner);
+  await page.goto(`/dashboard/registry/${registry.id}/settings`);
+  await page.getByPlaceholder("coparent@example.com").fill(coparent.email);
+  await page.getByRole("button", { name: "Send Invite" }).click();
+  await expect(page.getByRole("button", { name: "Sent!" })).toBeVisible();
+
+  // Signed with the registry's names, "Remi & Max".
+  const invite = await waitForEmail(coparent.email, `Remi & Max invited you to manage "${registry.title}"`);
+  const invitePath = new URL(linkIn(invite, /\/invite\/[0-9a-f]+$/)).pathname;
+
+  // The co-parent opens the link in a browser that isn't signed in, signs in
+  // from it, comes back to it and accepts.
+  const theirs = await browser.newContext();
+  const theirPage = await theirs.newPage();
+  await theirPage.goto(invitePath);
+  await expect(theirPage.getByText(`Remi & Max invited you to help manage ${registry.title}.`)).toBeVisible();
+  await theirPage.getByRole("link", { name: "Sign In" }).click();
+  await theirPage.waitForURL(/\/login\?redirect=/);
+  await waitForReact(theirPage, "form");
+  await theirPage.getByLabel("Email").fill(coparent.email);
+  await theirPage.getByLabel("Password").fill(coparent.password);
+  await theirPage.getByRole("button", { name: "Sign In" }).click();
+  await theirPage.waitForURL(`**${invitePath}`);
+  await theirPage.getByRole("button", { name: "Accept Invitation" }).click();
+  await theirPage.waitForURL(/\/dashboard/);
+  expect(await managersOf(registry.id)).toEqual(
+    expect.arrayContaining([
+      { user_id: owner.id, role: "owner" },
+      { user_id: coparent.id, role: "manager" },
+    ]),
+  );
+
+  // Their dashboard lists it as shared with them, and they can add to it.
+  await theirPage.goto("/dashboard");
+  await expect(theirPage.getByRole("heading", { name: "Shared with you" })).toBeVisible();
+  await expect(theirPage.getByText(registry.title)).toBeVisible();
+  await theirPage.goto(`/dashboard/registry/${registry.id}`);
+  await expect(theirPage.getByText(item.title)).toBeVisible();
+  await expect(theirPage.getByRole("button", { name: "Add Item" }).first()).toBeVisible();
+  await theirs.close();
+});
+
+test("an emailed invite is accepted as soon as its person opens their dashboard", async ({ page }) => {
+  const { owner, registry } = await createRegistryWithItem();
+  const coparent = await createAccount("Max Coparent");
+  // What "Send Invite" saves (inviteManagerByEmail).
+  const { error } = await db.from("registry_invites").insert({
+    registry_id: registry.id,
+    invited_by: owner.id,
+    email: coparent.email,
+    token: randomBytes(24).toString("hex"),
+    max_uses: 1,
+  });
+  if (error) throw error;
+
+  // Signing in opens the dashboard, which accepts it without the link.
+  await signIn(page, coparent);
+  await expect(page.getByRole("heading", { name: "Shared with you" })).toBeVisible();
+  await expect(page.getByText(registry.title)).toBeVisible();
+  expect(await managersOf(registry.id)).toEqual(
+    expect.arrayContaining([{ user_id: coparent.id, role: "manager" }]),
+  );
 });

@@ -172,6 +172,10 @@ test("a Secret Santa and a wishlist on its own", async ({ page }) => {
   const eventId = await eventIdFrom(page);
   const { data: exchange } = await db.from("gift_exchanges").select("event_id").eq("event_id", eventId).maybeSingle();
   expect(exchange?.event_id).toBe(eventId);
+  // The Events tab lists it. A join Supabase couldn't resolve once left this
+  // tab empty (CLAUDE.md, "Database changes").
+  await page.goto("/dashboard/events");
+  await expect(page.getByText("Chen Family Secret Santa", { exact: true }).first()).toBeVisible();
 
   // Just a wishlist: no event.
   await openPicker(page);

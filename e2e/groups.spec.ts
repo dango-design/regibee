@@ -4,6 +4,7 @@
 
 import { expect, test, type Page } from "@playwright/test";
 import { createAccount, createExchangeEvent, createWishlist, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
+import { waitForEmail } from "./mailbox";
 
 async function guestsOf(eventId: string) {
   const { data } = await db.from("event_guests").select("id, name, email, giftee_id").eq("event_id", eventId);
@@ -115,6 +116,15 @@ test("a guest list saved as a group fills an event and runs next year's exchange
   const pairs = drawn.map((g) => `${g.name}->${nameOf.get(g.giftee_id ?? "")}`);
   for (const old of ["Ann->Cy", "Cy->Ben", "Ben->Grandma", "Grandma->Ann", "Ann->Ben", "Ben->Ann"]) {
     expect(pairs).not.toContain(old);
+  }
+
+  // Everyone with an email hears who they drew. Grandma has none.
+  const { data: titled } = await db.from("events").select("title").eq("id", thisYearId).single();
+  const givers = drawn.filter((g) => g.email);
+  expect(givers.map((g) => g.name).sort()).toEqual(["Ann", "Ben", "Cy", "Dee"]);
+  for (const giver of givers) {
+    const assignment = await waitForEmail(giver.email!, `Your Secret Santa name for ${titled!.title}`);
+    expect(assignment.html).toContain(nameOf.get(giver.giftee_id ?? "")!);
   }
 });
 
