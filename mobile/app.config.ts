@@ -84,10 +84,13 @@ const config: ExpoConfig = {
           NSExtensionActivationSupportsWebPageWithMaxCount: 1,
           NSExtensionActivationSupportsText: true,
         },
-        androidIntentFilters: ["text/*"],
         preprocessorInjectJS: readProductInSafari,
+        // Android shares go through the plugin below instead.
+        disableAndroid: true,
       },
     ],
+    // Shared text on Android, from any app. See the plugin file.
+    "./plugins/with-android-share-receiver",
   ],
   experiments: {
     typedRoutes: true,
