@@ -19,6 +19,14 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: "bookmark", selected: "bookmark.fill" }} md="bookmark" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="events">
+        <NativeTabs.Trigger.Label>Events</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar" }} md="event" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="following">
+        <NativeTabs.Trigger.Label>Following</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "person.2", selected: "person.2.fill" }} md="group" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="person" />

@@ -3,13 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { GroupManager } from "@/components/group-manager";
-import {
-  getGroupForOwner,
-  getGroupMembers,
-  listGroupEvents,
-  listGroupRegistries,
-} from "@/lib/groups-server";
-import { getEventForManager } from "@/lib/events-server";
+import { loadGroupPage } from "@/lib/events-page";
 import { getViewer } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Group | Regibee" };
@@ -20,18 +14,10 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
   if (!viewer) redirect("/login");
 
   const { groupId } = await params;
-  const group = await getGroupForOwner(groupId, viewer.id);
-  if (!group) notFound();
-
-  const [members, groupEvents, sharedLists] = await Promise.all([
-    getGroupMembers(group.id),
-    listGroupEvents(group.id),
-    listGroupRegistries(group.id),
-  ]);
-  // Only events this person still hosts. A co-host who was removed doesn't
-  // keep seeing the event here.
-  const hosted = await Promise.all(groupEvents.map((e) => getEventForManager(e.id, viewer.id)));
-  const events = groupEvents.filter((_, index) => hosted[index] !== null);
+  // The phone app loads the same data (src/lib/events-page.ts).
+  const data = await loadGroupPage(groupId);
+  if (!data) notFound();
+  const { group, members, events, sharedLists } = data;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -45,7 +31,7 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
       <div className="mt-4">
         <GroupManager
           group={{ id: group.id, name: group.name }}
-          members={members.map((m) => ({ id: m.id, name: m.name, email: m.email }))}
+          members={members}
           events={events}
           sharedLists={sharedLists}
         />

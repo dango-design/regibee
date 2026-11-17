@@ -80,6 +80,8 @@ function RootNavigator({ ready }: { ready: boolean }) {
           <Stack.Screen name="new-registry" options={{ presentation: "modal", title: "New registry" }} />
           <Stack.Screen name="fund" options={{ presentation: "modal", title: "Gift fund" }} />
           <Stack.Screen name="idea" options={{ presentation: "modal", title: "Gift idea" }} />
+          <Stack.Screen name="new" options={{ presentation: "modal", title: "Start something new" }} />
+          <Stack.Screen name="event-form" options={{ presentation: "modal", title: "Plan an event" }} />
           <Stack.Screen name="saved-item" options={{ presentation: "formSheet", title: "Lists", sheetAllowedDetents: [0.6, 1], sheetGrabberVisible: true }} />
           <Stack.Screen name="place-items" options={{ presentation: "modal", title: "Add to list" }} />
           <Stack.Screen name="share" options={{ presentation: "modal", title: "Add to Regibee", gestureEnabled: false }} />

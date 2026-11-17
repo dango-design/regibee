@@ -69,6 +69,7 @@ const ICONS = {
   person1: { ios: "person", android: "person_outline" },
   arrowUp: { ios: "arrow.up", android: "arrow_upward" },
   arrowDown: { ios: "arrow.down", android: "arrow_downward" },
+  baby: { ios: "stroller", android: "child_friendly" },
 } as const satisfies Record<string, { ios: string; android: string }>;
 
 export type IconName = keyof typeof ICONS;

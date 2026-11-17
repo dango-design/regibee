@@ -7,6 +7,7 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
+import { EVENT_IMAGES_BUCKET } from "@shared/event-images";
 import { REGISTRY_PHOTOS_BUCKET } from "@shared/registry-photos";
 
 import { ApiError } from "@/lib/api";
@@ -22,12 +23,12 @@ export async function pickPhoto(): Promise<ImagePicker.ImagePickerAsset | null> 
   return result.canceled ? null : (result.assets?.[0] ?? null);
 }
 
-async function shrink(asset: ImagePicker.ImagePickerAsset): Promise<string> {
+async function shrink(asset: ImagePicker.ImagePickerAsset, maxSide = MAX_SIDE): Promise<string> {
   const context = ImageManipulator.ImageManipulator.manipulate(asset.uri);
   // Only shrink: a smaller photo stays its own size.
   const longest = Math.max(asset.width, asset.height);
-  if (longest > MAX_SIDE) {
-    context.resize(asset.width >= asset.height ? { width: MAX_SIDE } : { height: MAX_SIDE });
+  if (longest > maxSide) {
+    context.resize(asset.width >= asset.height ? { width: maxSide } : { height: maxSide });
   }
   const image = await context.renderAsync();
   const saved = await image.saveAsync({ format: ImageManipulator.SaveFormat.JPEG, compress: 0.85 });
@@ -39,6 +40,29 @@ function fileName() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 10)}.jpg`;
 }
 
+async function upload(bucket: string, folder: string, uri: string, limitMessage: string, failMessage: string) {
+  const body = await (await fetch(uri)).arrayBuffer();
+  const path = `${folder}/${fileName()}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, body, { contentType: "image/jpeg", cacheControl: "31536000" });
+  if (error) {
+    // The same messages as the website's uploads.
+    const { data: allowed } = await supabase.rpc("can_upload_photo");
+    throw new ApiError(allowed === false ? limitMessage : failMessage);
+  }
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+/**
+ * Uploads an invitation picture to an event's folder, as the website does
+ * (src/lib/upload-event-image.ts): 1600px on the longer side, since
+ * invitations are read up close. Only the event's hosts can upload there.
+ */
+export async function uploadEventImage(eventId: string, asset: ImagePicker.ImagePickerAsset): Promise<string> {
+  const uri = await shrink(asset, 1600);
+  if (isDemo()) return uri;
+  return upload(EVENT_IMAGES_BUCKET, eventId, uri, "You've uploaded as many pictures as an account can.", "The picture didn't upload. Try again.");
+}
+
 /**
  * Uploads a picked photo to a list's folder and returns its public URL. In the
  * demo nothing is uploaded, and the photo stays on the phone.
@@ -47,18 +71,11 @@ export async function uploadListPhoto(registryId: string, asset: ImagePicker.Ima
   const uri = await shrink(asset);
   if (isDemo()) return uri;
 
-  const body = await (await fetch(uri)).arrayBuffer();
-  const path = `${registryId}/${fileName()}`;
-  const { error } = await supabase.storage
-    .from(REGISTRY_PHOTOS_BUCKET)
-    .upload(path, body, { contentType: "image/jpeg", cacheControl: "31536000" });
-  if (error) {
-    // The same messages as the website's upload.
-    const { data: allowed } = await supabase.rpc("can_upload_photo");
-    if (allowed === false) {
-      throw new ApiError("You've uploaded as many photos as an account can. Paste a link to an image instead.");
-    }
-    throw new ApiError("The photo didn't upload. Try again, or paste a link to an image.");
-  }
-  return supabase.storage.from(REGISTRY_PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
+  return upload(
+    REGISTRY_PHOTOS_BUCKET,
+    registryId,
+    uri,
+    "You've uploaded as many photos as an account can. Paste a link to an image instead.",
+    "The photo didn't upload. Try again, or paste a link to an image."
+  );
 }

@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { formatEventDate, toYmd } from "@/lib/format";
 import { spacing, useTheme } from "@/lib/theme";
 import type { EventType, RegistryType } from "@/lib/types";
 import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@shared/list-access";
+import { LIST_OCCASIONS } from "@shared/occasions";
 import { copyFor, REGISTRY_OCCASION_CHOICES } from "@shared/registry-copy";
 
 // The website's create form (src/components/create-registry-form.tsx) asks the
@@ -20,8 +21,17 @@ export default function NewRegistryScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const create = useCreateRegistry();
-  const [registryType, setRegistryType] = useState<RegistryType>("baby");
-  const [eventType, setEventType] = useState<EventType | null>(null);
+  // "Start something new" opens this with the type, and a personal list's
+  // occasion, already chosen, as the website's /dashboard/registry/new?type=…&occasion=… does.
+  const params = useLocalSearchParams<{ registryType?: string; eventType?: string }>();
+  const startType: RegistryType | undefined =
+    params.registryType === "baby" || params.registryType === "personal" ? params.registryType : undefined;
+  const startOccasion =
+    startType === "personal" && (LIST_OCCASIONS as readonly string[]).includes(params.eventType ?? "")
+      ? (params.eventType as EventType)
+      : null;
+  const [registryType, setRegistryType] = useState<RegistryType>(startType ?? "baby");
+  const [eventType, setEventType] = useState<EventType | null>(startOccasion);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);

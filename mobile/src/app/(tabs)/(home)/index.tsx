@@ -24,7 +24,7 @@ export default function RegistriesScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <IconButton icon="add" accessibilityLabel="Start something new" onPress={() => router.push("/new-registry")} />
+            <IconButton icon="add" accessibilityLabel="Start something new" onPress={() => router.push("/new")} />
           ),
         }}
       />
@@ -106,7 +106,7 @@ export default function RegistriesScreen() {
               message="Create your first registry to start adding items."
               action={
                 <View style={{ width: "100%", maxWidth: 320 }}>
-                  <Button title="Start something new" icon="add" onPress={() => router.push("/new-registry")} />
+                  <Button title="Start something new" icon="add" onPress={() => router.push("/new")} />
                 </View>
               }
             />

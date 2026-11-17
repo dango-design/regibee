@@ -4,7 +4,9 @@
 // app's user (src/lib/app-request.ts). Return null for "not found".
 
 import { loadDashboard } from "@/lib/dashboard-page";
+import { loadEventForm, loadEventPage, loadEventsTab, loadGroupPage, loadPlanPicker } from "@/lib/events-page";
 import { loadListPage } from "@/lib/list-page";
+import { loadAccountPage, loadFollowingTab } from "@/lib/people-page";
 import { loadSavedItems } from "@/lib/saved-items";
 import { getViewer } from "@/lib/viewer";
 
@@ -18,4 +20,11 @@ export const APP_LOADERS = {
   dashboard: () => loadDashboard(),
   listPage: (registryId: unknown) => (typeof registryId === "string" ? loadListPage(registryId) : null),
   saved: () => forViewer(loadSavedItems),
+  eventsTab: () => loadEventsTab(),
+  eventPage: (eventId: unknown) => (typeof eventId === "string" ? loadEventPage(eventId) : null),
+  eventForm: (eventId: unknown) => loadEventForm(typeof eventId === "string" ? eventId : null),
+  planPicker: () => loadPlanPicker(),
+  followingTab: () => loadFollowingTab(),
+  accountPage: () => loadAccountPage(),
+  groupPage: (groupId: unknown) => (typeof groupId === "string" ? loadGroupPage(groupId) : null),
 };
