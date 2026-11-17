@@ -23,7 +23,6 @@ import { radius, spacing, useTheme } from "@/lib/theme";
 type View_ = "items" | "ideas";
 
 export default function SavedScreen() {
-  const theme = useTheme();
   const { demo } = useSession();
   const [view, setView] = useState<View_>("items");
 
