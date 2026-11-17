@@ -43,8 +43,23 @@ import {
 } from "./events";
 import { hidesAddressUntilSignup, withAddressFor } from "./signups";
 import type { ChangedPart } from "./event-updates";
+import type { EmailAllowance } from "./email-budget";
 
 const FROM = "Regibee <notifications@regibee.com>";
+
+/**
+ * Set on the emails a visitor sets off on a list, event or group gift, so
+ * they count against that page's allowance (visitorEmailAllowance in
+ * email-budget.ts). Without it, the email isn't limited.
+ */
+interface Limited {
+  allow?: EmailAllowance;
+}
+
+/** How many of `wanted` emails may go out: all of them when there's no allowance. */
+async function allowedCount(allow: EmailAllowance | undefined, wanted: number): Promise<number> {
+  return allow ? allow(wanted) : wanted;
+}
 
 // Resend's free testing sender can only deliver to the account email.
 // Set this env var to override the recipient for testing.
@@ -196,11 +211,12 @@ async function getRegistryInfoForBuyer(opts: {
   };
 }
 
-type ReservationEmailOpts = Parameters<typeof itemReservedBuyerHtml>[0] & { buyerEmail: string };
+type ReservationEmailOpts = Parameters<typeof itemReservedBuyerHtml>[0] & { buyerEmail: string } & Limited;
 
 /** Tells a guest their reservation is held, with the address and links to finish. */
 export async function confirmItemReserved(opts: ReservationEmailOpts) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
@@ -214,9 +230,10 @@ export async function confirmItemReserved(opts: ReservationEmailOpts) {
 
 /** Reminds a guest that their reservation runs out soon. */
 export async function remindItemReservation(
-  opts: Parameters<typeof itemReservationReminderBuyerHtml>[0] & { buyerEmail: string }
+  opts: Parameters<typeof itemReservationReminderBuyerHtml>[0] & { buyerEmail: string } & Limited
 ) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
@@ -230,9 +247,10 @@ export async function remindItemReservation(
 
 /** Tells a guest their reservation ran out and the item went back on the list. */
 export async function notifyItemReservationEnded(
-  opts: Parameters<typeof itemReservationEndedBuyerHtml>[0] & { buyerEmail: string }
+  opts: Parameters<typeof itemReservationEndedBuyerHtml>[0] & { buyerEmail: string } & Limited
 ) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
@@ -246,9 +264,10 @@ export async function notifyItemReservationEnded(
 
 /** Thanks a guest once they say they bought the item. */
 export async function confirmItemGiven(
-  opts: Parameters<typeof itemGivenBuyerHtml>[0] & { buyerEmail: string }
+  opts: Parameters<typeof itemGivenBuyerHtml>[0] & { buyerEmail: string } & Limited
 ) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
@@ -262,9 +281,10 @@ export async function confirmItemGiven(
 
 /** Thanks a guest for sending the money for an item the owners bought, with a link to undo it. */
 export async function confirmItemCovered(
-  opts: Parameters<typeof itemCoveredBuyerHtml>[0] & { buyerEmail: string }
+  opts: Parameters<typeof itemCoveredBuyerHtml>[0] & { buyerEmail: string } & Limited
 ) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
@@ -285,8 +305,9 @@ export async function confirmCashFundContribution(opts: {
   registryTitle: string;
   paymentMethods?: { venmo?: string; paypal?: string; zelle?: string };
   registryUrl?: string;
-}) {
+} & Limited) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
@@ -311,10 +332,11 @@ export async function notifyItemGiven(opts: {
   message?: string | null;
   /** Set when this gift may have unlocked a store's welcome box. */
   welcomeBox?: { storeName: string; boxName: string } | null;
-}) {
+} & Limited) {
   try {
     const managers = await getRegistryManagerEmails({ itemId: opts.itemId, giftNews: true });
     if (!managers) return;
+    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
 
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
 
@@ -328,7 +350,7 @@ export async function notifyItemGiven(opts: {
       : null;
 
     await Promise.all(
-      managers.map((m) =>
+      allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -395,10 +417,11 @@ export async function notifyCashFundContribution(opts: {
   hideGiver?: boolean;
   amount: number;
   message?: string | null;
-}) {
+} & Limited) {
   try {
     const managers = await getRegistryManagerEmails({ fundId: opts.fundId, giftNews: true });
     if (!managers) return;
+    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
 
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
 
@@ -407,7 +430,7 @@ export async function notifyCashFundContribution(opts: {
     const formatted = formatPrice(opts.amount);
 
     await Promise.all(
-      managers.map((m) =>
+      allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -440,10 +463,11 @@ export async function notifyItemCovered(opts: {
   /** Price times quantity. Null when the item has no price. */
   amount: number | null;
   message?: string | null;
-}) {
+} & Limited) {
   try {
     const managers = await getRegistryManagerEmails({ itemId: opts.itemId, giftNews: true });
     if (!managers) return;
+    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
 
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
 
@@ -452,7 +476,7 @@ export async function notifyItemCovered(opts: {
     const sent = opts.amount != null ? formatPrice(opts.amount) : "money";
 
     await Promise.all(
-      managers.map((m) =>
+      allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -506,13 +530,14 @@ export async function notifyNewSuggestion(opts: {
   suggestedByName: string;
   price?: number | null;
   notes?: string | null;
-}) {
+} & Limited) {
   try {
     const managers = await getRegistryManagerEmails({ registryId: opts.registryId });
     if (!managers) return;
+    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
 
     await Promise.all(
-      managers.map((m) =>
+      allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -805,8 +830,9 @@ export async function confirmRsvpToGuest(opts: {
   signups?: { title: string; claims: string[] } | null;
   /** The guest's answers to the RSVP questions. */
   answers?: { label: string; value: string }[];
-}) {
+} & Limited) {
   try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
     // A meal train's address goes only to people who signed up for a day.
     const event = withAddressFor(opts.event, (opts.signups?.claims.length ?? 0) > 0);
     const eventUrl = `${siteUrl()}/e/${opts.event.slug}`;
@@ -852,14 +878,14 @@ export async function notifyHostOfRsvp(opts: {
   signups?: string[];
   /** The guest's answers to the RSVP questions. */
   answers?: { label: string; value: string }[];
-}) {
+} & Limited) {
   try {
     const [{ data: userData }, { data: profile }] = await Promise.all([
       supabaseAdmin.auth.admin.getUserById(opts.event.owner_id),
       supabaseAdmin.from("profiles").select("full_name").eq("id", opts.event.owner_id).single(),
     ]);
     const email = userData?.user?.email;
-    if (!email) return;
+    if (!email || (await allowedCount(opts.allow, 1)) < 1) return;
 
     const answer = hidesAddressUntilSignup(opts.event.event_type)
       ? opts.status === "no"

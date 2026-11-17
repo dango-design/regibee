@@ -4,6 +4,7 @@
 // sendGiftConfirmedEmails in src/lib/gift-reservations-server.ts.
 
 import { sendEmail } from "@/lib/mailer";
+import { visitorEmailAllowance, type EmailAllowance } from "@/lib/email-budget";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { groupGiftUrl } from "@/lib/group-gifts";
 import { formatAmount } from "@/lib/money";
@@ -47,6 +48,12 @@ async function send(to: string, subject: string, html: string, what: string) {
   }
 }
 
+/** Like send, when the allowance has room for one more. */
+async function sendAllowed(allow: EmailAllowance, ...args: Parameters<typeof send>) {
+  if ((await allow(1)) < 1) return;
+  await send(...args);
+}
+
 /** Gives the organizer the link to share, right after they start. */
 export async function sendGroupGiftStartedEmail(giftToken: string) {
   const loaded = await loadGroupGift(giftToken);
@@ -71,7 +78,9 @@ export async function sendGroupGiftStartedEmail(giftToken: string) {
 
 /**
  * After someone chips in: their own link, by email, and a note to the
- * organizer. The organizer chipping in on their own gift gets neither.
+ * organizer. The organizer chipping in on their own gift gets neither. Both
+ * count against the group gift's visitor email limit, whose size the
+ * organizer's level sets.
  */
 export async function sendPledgeEmails(giftToken: string, pledgeId: string) {
   const loaded = await loadGroupGift(giftToken);
@@ -85,10 +94,12 @@ export async function sendPledgeEmails(giftToken: string, pledgeId: string) {
     ? `${formatAmount(pledged)} of ${formatAmount(goal)}`
     : `${formatAmount(pledged)} so far`;
   const organizerEmail = await emailOf(loaded.gift.organizer_id);
+  const allow = visitorEmailAllowance({ pageId: loaded.gift.id, ownerId: loaded.gift.organizer_id }, "pledge");
 
   await Promise.all([
     pledge.email
-      ? send(
+      ? sendAllowed(
+          allow,
           pledge.email,
           `You're chipping in ${amount} for "${itemTitle}"`,
           groupGiftPledgedHtml({
@@ -104,7 +115,8 @@ export async function sendPledgeEmails(giftToken: string, pledgeId: string) {
         )
       : Promise.resolve(),
     organizerEmail
-      ? send(
+      ? sendAllowed(
+          allow,
           organizerEmail,
           `${pledge.name} is chipping in ${amount} for "${itemTitle}"`,
           groupGiftNewPledgeHtml({
