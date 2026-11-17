@@ -13,16 +13,27 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 
-const appRequest = new AsyncLocalStorage<{ accessToken: string; user: User }>();
+type AppRequest = { accessToken: string; user: User };
+
+// Made the first time it's needed, not when this file loads. Storybook bundles
+// server actions for the browser, where node:async_hooks is an empty module
+// (.storybook/main.ts). Making it on load broke every story that imports a
+// server action, since they all import createClient().
+let storage: AsyncLocalStorage<AppRequest> | undefined;
+
+function appRequest(): AsyncLocalStorage<AppRequest> {
+  storage ??= new AsyncLocalStorage<AppRequest>();
+  return storage;
+}
 
 /** The app user's access token, while a request from the app is being handled. */
 export function appAccessToken(): string | null {
-  return appRequest.getStore()?.accessToken ?? null;
+  return storage?.getStore()?.accessToken ?? null;
 }
 
 /** Runs `run` as the app's user: createClient() then acts as them. */
 export function runAsAppUser<T>(accessToken: string, user: User, run: () => Promise<T>): Promise<T> {
-  return appRequest.run({ accessToken, user }, run);
+  return appRequest().run({ accessToken, user }, run);
 }
 
 /**
@@ -37,7 +48,7 @@ export function appUserClient(accessToken: string): SupabaseClient {
   });
   // The user was checked when the request came in, so each call doesn't ask
   // Supabase's auth server again.
-  const user = appRequest.getStore()?.user;
+  const user = storage?.getStore()?.user;
   const getUser = client.auth.getUser.bind(client.auth);
   client.auth.getUser = ((jwt?: string) =>
     !jwt && user
