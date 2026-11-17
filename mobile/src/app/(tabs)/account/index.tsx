@@ -1,12 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
+import { useState } from "react";
 import * as Application from "expo-application";
 import * as WebBrowser from "expo-web-browser";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Icon, type IconName } from "@/components/icon";
-import { Divider, Section, Text } from "@/components/ui";
+import { BIRTHDAY_REMINDER_DAYS } from "@shared/gift-profile";
+
+import { NavRow } from "@/components/nav-row";
+import { Divider, Section, SwitchRow, Text } from "@/components/ui";
 import { VersionSection } from "@/components/version-section";
 import { useDeleteAccount } from "@/lib/account";
+import { errorMessage } from "@/lib/data";
+import { useAccountPage, useRunPeopleAction } from "@/lib/people-data";
 import { signOut, useSession } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { clearCache } from "@/lib/query";
@@ -82,16 +89,11 @@ export default function AccountScreen() {
         </View>
       </View>
 
+      {demo ? null : (
+        <AccountSections />
+      )}
+
       <Section title="On regibee.com" footer="These open the website. Sign in there with the same account if it asks.">
-        {/* The website's dashboard tabs and account menu, by their names there. */}
-        <Row icon="bookmark" label="Saved" onPress={() => open("/dashboard/saved")} />
-        <Divider inset={52} />
-        <Row icon="calendar" label="Events" onPress={() => open("/dashboard/events")} />
-        <Divider inset={52} />
-        <Row icon="people" label="Following" onPress={() => open("/dashboard/following")} />
-        <Divider inset={52} />
-        <Row icon="settings" label="Account settings" onPress={() => open("/dashboard/account")} />
-        <Divider inset={52} />
         <Row icon="lock" label="Privacy policy" onPress={() => open("/privacy")} />
       </Section>
 
@@ -116,6 +118,55 @@ export default function AccountScreen() {
         {Application.nativeBuildVersion ? ` (${Application.nativeBuildVersion})` : ""}
       </Text>
     </ScrollView>
+  );
+}
+
+/**
+ * The website's Account page (src/components/account-settings.tsx), as
+ * screens: your profile, gift profile, follows and birthday emails.
+ */
+function AccountSections() {
+  const page = useAccountPage();
+  const { run } = useRunPeopleAction();
+  const data = page.data;
+  const requests = data?.follows.requests.length ?? 0;
+  const [birthdayEmails, setBirthdayEmails] = useState<boolean | null>(null);
+  const emailsOn = birthdayEmails ?? data?.birthdayEmails ?? true;
+  return (
+    <>
+      <Section>
+        <NavRow icon="person1" label="Your profile" detail="Name, search, profile link" onPress={() => router.push("/account/profile")} />
+        <Divider inset={52} />
+        <NavRow icon="cake" label="Gift profile" detail="Birthday, sizes, likes" onPress={() => router.push("/account/gift-profile")} />
+        <Divider inset={52} />
+        <NavRow
+          icon="people"
+          label="Follows"
+          detail={requests > 0 ? undefined : "Requests, followers, blocked"}
+          badge={requests}
+          onPress={() => router.push("/account/follows")}
+        />
+      </Section>
+      <Section
+        title="Birthday emails"
+        footer={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they approved you and added their birthday.`}
+      >
+        <SwitchRow
+          icon="bell"
+          label="Email me before birthdays"
+          value={emailsOn}
+          onValueChange={async (on) => {
+            setBirthdayEmails(on);
+            try {
+              await run("giftProfile.setBirthdayEmails", on);
+            } catch (e) {
+              setBirthdayEmails(!on);
+              Alert.alert("That didn't save", errorMessage(e));
+            }
+          }}
+        />
+      </Section>
+    </>
   );
 }
 

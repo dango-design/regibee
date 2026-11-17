@@ -112,14 +112,30 @@ export default function ShareScreen() {
           initialTitle={shared.title}
           initialProduct={shared.product}
           header={
-            shared.product ? (
-              <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
-                <Icon name="checkCircle" size={16} color={theme.success} />
-                <Text variant="footnote" tone="secondary">
-                  Read from the page you shared.
-                </Text>
-              </View>
-            ) : null
+            <View style={{ gap: spacing.sm }}>
+              {shared.product ? (
+                <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
+                  <Icon name="checkCircle" size={16} color={theme.success} />
+                  <Text variant="footnote" tone="secondary">
+                    Read from the page you shared.
+                  </Text>
+                </View>
+              ) : null}
+              {/* The website's share page asks "For you" or "For someone else" (src/components/share-picker.tsx). */}
+              <Button
+                title="For someone else? Save as a gift idea"
+                icon="sparkles"
+                variant="secondary"
+                size="small"
+                onPress={() => {
+                  resetShareIntent();
+                  router.replace({
+                    pathname: "/idea",
+                    params: { url: shared.url ?? undefined, title: shared.title ?? undefined },
+                  });
+                }}
+              />
+            </View>
           }
           onDone={(result) => {
             if (result.type !== "added") return;

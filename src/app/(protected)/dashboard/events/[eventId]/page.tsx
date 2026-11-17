@@ -11,33 +11,9 @@ import { ExchangeManager } from "@/components/exchange-manager";
 import { EventActionsMenu } from "@/components/event-actions-menu";
 import { SignupSheetManager, SignupSheetStarter } from "@/components/signup-sheet-manager";
 import { GuestMessages } from "@/components/guest-messages";
-import { MESSAGE_AUDIENCES, messageRecipients, type MessageAudience } from "@/lib/event-updates";
-import { storedQuestions } from "@/lib/rsvp-questions";
-import { claimsByGuest, describeClaim, hidesAddressUntilSignup, signupRowsForHost } from "@/lib/signups";
-import {
-  eventTheme,
-  eventTypeLabel,
-  exchangeKind,
-  exchangeStatus,
-  formatEventDate,
-  formatEventTime,
-  guestForHost,
-} from "@/lib/events";
-import {
-  getEventForManager,
-  getEventGuests,
-  getEventHosts,
-  getEventRegistries,
-  getExchangeExclusions,
-  getGiftExchange,
-  getHostInvites,
-  getEventMessages,
-  getPendingListRequests,
-  getSignupSheet,
-  listOtherEventsForCopy,
-} from "@/lib/events-server";
+import { eventTheme, eventTypeLabel, exchangeKind, formatEventDate } from "@/lib/events";
+import { loadEventPage } from "@/lib/events-page";
 import { getViewer } from "@/lib/viewer";
-import { listGroupsForOwner } from "@/lib/groups-server";
 import { cx } from "@/lib/utils/cx";
 
 export const metadata: Metadata = { title: "Event | Regibee" };
@@ -53,40 +29,31 @@ export default async function ManageEventPage({
   if (!viewer) redirect("/login");
 
   const [{ eventId }, { image }] = await Promise.all([params, searchParams]);
-  const found = await getEventForManager(eventId, viewer.id);
-  if (!found) notFound();
-  const { event, isOwner } = found;
-
-  const [allGuests, registries, exchange, exclusions, hosts, invites, copySources, groups, listRequests, signupSheet, messages] = await Promise.all([
-    getEventGuests(event.id),
-    getEventRegistries(event.id),
-    getGiftExchange(event.id),
-    getExchangeExclusions(event.id),
-    getEventHosts(event),
-    getHostInvites(event.id),
-    listOtherEventsForCopy(viewer.id, event.id),
-    listGroupsForOwner(viewer.id),
-    getPendingListRequests(event.id),
-    getSignupSheet(event.id),
-    getEventMessages(event.id, 5),
-  ]);
-  // Worked out before the guests are trimmed for the host, since it needs the pairs.
-  const status = exchange ? exchangeStatus(allGuests, exchange) : null;
-  // The host never sees who drew whom, or the wishlists and addresses guests
-  // were told only their Secret Santa sees.
-  const guests = allGuests.map(guestForHost);
-  // What each guest signed up for, as their row on the guest list shows it.
-  const signupsByGuest = signupSheet
-    ? Object.fromEntries([...claimsByGuest(signupSheet)].map(([id, claims]) => [id, claims.map(describeClaim)]))
-    : undefined;
-  const mealTrain = hidesAddressUntilSignup(event.event_type);
-  const questions = storedQuestions(event.rsvp_questions);
-  // How many guests with an email each "Message guests" choice reaches.
-  const audienceCounts = Object.fromEntries(
-    (Object.keys(MESSAGE_AUDIENCES) as MessageAudience[]).map((a) => [a, messageRecipients(allGuests, a).length]),
-  ) as Record<MessageAudience, number>;
+  // The phone app loads the same data (src/lib/events-page.ts).
+  const data = await loadEventPage(eventId);
+  if (!data) notFound();
+  const {
+    event,
+    isOwner,
+    guests,
+    registries,
+    exchange,
+    exchangeStatus: status,
+    exclusions,
+    hosts,
+    invites,
+    copySources,
+    groups,
+    listRequests,
+    signupSheet,
+    signupsByGuest,
+    mealTrain,
+    questions,
+    audienceCounts,
+    messages,
+    time,
+  } = data;
   const theme = eventTheme(event.event_type);
-  const time = formatEventTime(event);
   const publicPath = `/e/${event.slug}`;
 
   return (
@@ -166,7 +133,7 @@ export default async function ManageEventPage({
             <SignupSheetManager
               eventId={event.id}
               sheet={signupSheet.sheet}
-              rows={signupRowsForHost(signupSheet, allGuests)}
+              rows={signupSheet.rows}
               mealTrain={mealTrain}
             />
           )}

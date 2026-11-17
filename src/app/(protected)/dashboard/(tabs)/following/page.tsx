@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { FollowingFeed } from "@/components/following-feed";
-import { listFollowingFeed } from "@/lib/follows";
-import { listUpcomingBirthdays } from "@/lib/birthdays-server";
-import { listRegistriesSharedWithViewer } from "@/lib/groups-server";
+import { loadFollowingTab } from "@/lib/people-page";
 import { getSessionUser } from "@/lib/viewer";
 
 export default async function FollowingPage() {
@@ -18,21 +16,17 @@ export default async function FollowingPage() {
     redirect("/signup?redirect=/dashboard/following");
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const [feed, shared, birthdays] = await Promise.all([
-    listFollowingFeed(user.id),
-    // An email counts for group membership only once it's confirmed.
-    listRegistriesSharedWithViewer({ id: user.id, email: user.email_confirmed_at ? user.email : null }),
-    listUpcomingBirthdays(user.id, today),
-  ]);
+  // The phone app loads the same data (src/lib/people-page.ts).
+  const data = await loadFollowingTab();
+  if (!data) redirect("/login");
 
   return (
     <FollowingFeed
-      people={feed.people}
-      registries={feed.registries}
-      shared={shared}
-      birthdays={birthdays}
-      today={today}
+      people={data.people}
+      registries={data.registries}
+      shared={data.shared}
+      birthdays={data.birthdays}
+      today={data.today}
     />
   );
 }

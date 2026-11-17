@@ -41,7 +41,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       persistOptions={{
         persister,
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        buster: "1",
+        // Bumped when what the cache holds changes shape, so an old copy is dropped.
+        buster: "2",
         // The demo lives only in memory.
         dehydrateOptions: { shouldDehydrateQuery: (query) => !isDemo() && defaultShouldDehydrateQuery(query) },
       }}

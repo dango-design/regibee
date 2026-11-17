@@ -1,0 +1,681 @@
+// An event's guest list for its hosts: RSVP counts, adding guests, sending
+// invitations and reminders, and each guest's details. The website's
+// EventGuestManager (src/components/event-guest-manager.tsx), in its words,
+// running the same server actions.
+
+import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
+import { useMemo, useState } from "react";
+import { Alert, Pressable, Share, StyleSheet, View } from "react-native";
+
+import type { EventPageData } from "@shared/events-page-types";
+import { exchangeKind, isEmail, parseGuestList, RSVP_LABELS, summarizeRsvps, type EventGuest, type ParsedGuest, type RsvpStatus } from "@shared/events";
+import { answerLines, mealCounts, storedAnswers } from "@shared/rsvp-questions";
+
+import { Button, Card, Chip, Divider, Field, haptic, Pill, Stepper, Text } from "@/components/ui";
+import { errorMessage } from "@/lib/data";
+import { useRunEventAction } from "@/lib/events-data";
+import { initials } from "@/lib/format";
+import { SITE_URL } from "@/lib/supabase";
+import { radius, spacing, useTheme } from "@/lib/theme";
+
+type Filter = "all" | RsvpStatus;
+
+function formatShortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+const STATUS_TONE = { yes: "success", maybe: "accent", no: "neutral", pending: "tint" } as const;
+
+/** "Added 2 guests. 1 already on the list." */
+function addedText(added: number, skipped: number) {
+  return `${added === 1 ? "Added 1 guest" : `Added ${added} guests`}${skipped ? `. ${skipped} already on the list.` : ""}`;
+}
+
+function csvCell(value: string | number | null) {
+  const text = value == null ? "" : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** The website's "Download CSV", as text to share from the phone. */
+function guestListCsv(data: EventPageData) {
+  const { guests, questions, signupsByGuest: signups } = data;
+  const askKids = data.event.ask_kids;
+  const hasExchange = Boolean(data.exchange);
+  const coming = (g: EventGuest) => g.rsvp_status === "yes" || g.rsvp_status === "maybe";
+  const rows = [
+    [
+      "Name",
+      "Email",
+      "RSVP",
+      "People",
+      ...(askKids ? ["Kids"] : []),
+      ...(hasExchange ? ["Gift exchange"] : []),
+      ...(signups ? ["Signed up for"] : []),
+      ...questions.map((q) => q.label),
+      "Note",
+      "Invited",
+    ],
+    ...guests.map((g) => [
+      g.name,
+      g.email,
+      RSVP_LABELS[g.rsvp_status],
+      coming(g) ? g.party_size : "",
+      ...(askKids ? [coming(g) ? g.kids_count : ""] : []),
+      ...(hasExchange ? [g.in_exchange ? "In" : ""] : []),
+      ...(signups ? [(signups[g.id] ?? []).join("; ")] : []),
+      ...questions.map((q) => {
+        const answer = storedAnswers(g.answers)[q.id];
+        return Array.isArray(answer) ? answer.filter(Boolean).join("; ") : (answer ?? "");
+      }),
+      g.rsvp_note,
+      g.invited_at ? new Date(g.invited_at).toISOString().slice(0, 10) : "",
+    ]),
+  ];
+  return rows.map((row) => row.map(csvCell).join(",")).join("\n");
+}
+
+export function GuestsPanel({ data }: { data: EventPageData }) {
+  const theme = useTheme();
+  const { run } = useRunEventAction();
+  const { event, guests } = data;
+  const summary = summarizeRsvps(guests);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // The name for "Save as a group", while it's being typed.
+  const [groupDraft, setGroupDraft] = useState<string | null>(null);
+
+  // When the panel opened, for "at most one reminder a day".
+  const [now] = useState(() => Date.now());
+  // Matches sendEventInvites: guests who already replied, including people
+  // who added themselves from the event link, don't need the invitation.
+  const uninvited = guests.filter((g) => g.email && !g.invited_at && g.rsvp_status === "pending");
+  const remindable = guests.filter(
+    (g) =>
+      g.email &&
+      g.invited_at &&
+      g.rsvp_status === "pending" &&
+      (!g.reminded_at || now - Date.parse(g.reminded_at) >= 24 * 60 * 60 * 1000)
+  );
+  const withoutEmail = guests.filter((g) => !g.email).length;
+  const shown = filter === "all" ? guests : guests.filter((g) => g.rsvp_status === filter);
+  const pastePreview = useMemo(() => parseGuestList(pasted), [pasted]);
+  const meals = mealCounts(
+    data.questions,
+    guests.map((g) => ({ rsvp_status: g.rsvp_status, answers: storedAnswers(g.answers) }))
+  );
+  const kidsComing = guests.filter((g) => g.rsvp_status === "yes").reduce((sum, g) => sum + (g.kids_count ?? 0), 0);
+  const everyoneGives = exchangeKind(data.exchange) === "everyone";
+
+  async function attempt<R>(key: string, work: () => Promise<R>, done?: (result: R) => string | void) {
+    setBusy(key);
+    setMessage(null);
+    try {
+      const result = await work();
+      haptic("success");
+      const text = done?.(result);
+      if (text) setMessage({ text, error: false });
+      return result;
+    } catch (e) {
+      setMessage({ text: errorMessage(e), error: true });
+      return null;
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function add(list: ParsedGuest[]) {
+    return attempt(
+      "add",
+      () => run<{ added: number; alreadyListed: number }>("events.addEventGuests", event.id, list),
+      (r) => {
+        setName("");
+        setEmail("");
+        setPasted("");
+        return addedText(r.added, r.alreadyListed);
+      }
+    );
+  }
+
+  function addOne() {
+    if (!name.trim()) {
+      setMessage({ text: "Add the guest's name.", error: true });
+      return;
+    }
+    if (email.trim() && !isEmail(email.trim())) {
+      setMessage({ text: "That email address doesn't look right.", error: true });
+      return;
+    }
+    add([{ name: name.trim(), email: email.trim() || null }]);
+  }
+
+  function addPasted() {
+    if (pastePreview.guests.length === 0) {
+      setMessage({ text: "Paste one guest per line, like: Glinda Upland, glinda@example.com", error: true });
+      return;
+    }
+    add(pastePreview.guests);
+  }
+
+  function send(kind: "invite" | "remind") {
+    const count = kind === "invite" ? uninvited.length : remindable.length;
+    Alert.alert(
+      kind === "invite"
+        ? `Email the invitation to ${count === 1 ? "1 guest" : `${count} guests`} now?`
+        : `Remind ${count === 1 ? "1 guest who hasn't" : `${count} guests who haven't`} replied?`,
+      data.replyToEmail ? `If they reply to the email, it goes to ${data.replyToEmail}.` : "Each guest gets their own RSVP link.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send",
+          onPress: () =>
+            attempt(
+              kind,
+              () => run<{ sent: number }>(kind === "invite" ? "events.sendEventInvites" : "events.sendEventReminders", event.id),
+              (r) =>
+                kind === "invite"
+                  ? `Sent ${r.sent === 1 ? "1 invitation" : `${r.sent} invitations`}`
+                  : `Sent ${r.sent === 1 ? "1 reminder" : `${r.sent} reminders`}`
+            ),
+        },
+      ]
+    );
+  }
+
+  function chooseGroup() {
+    Alert.alert("Invite a group", undefined, [
+      ...data.groups.map((group) => ({
+        text: `${group.name} (${group.memberCount === 1 ? "1 person" : `${group.memberCount} people`})`,
+        onPress: () =>
+          attempt(
+            "group",
+            () => run<{ added: number; alreadyListed: number }>("events.inviteGroupToEvent", event.id, group.id),
+            (r) => addedText(r.added, r.alreadyListed)
+          ),
+      })),
+      { text: "Cancel", style: "cancel" as const },
+    ]);
+  }
+
+  function chooseCopySource() {
+    Alert.alert("Copy guests from another event", undefined, [
+      ...data.copySources.map((source) => ({
+        text: `${source.title} (${source.guestCount === 1 ? "1 guest" : `${source.guestCount} guests`})`,
+        onPress: () =>
+          attempt(
+            "copy",
+            () => run<{ added: number; alreadyListed: number }>("events.copyGuestsFromEvent", event.id, source.id),
+            (r) => addedText(r.added, r.alreadyListed)
+          ),
+      })),
+      { text: "Cancel", style: "cancel" as const },
+    ]);
+  }
+
+  function saveAsGroup() {
+    const groupName = groupDraft?.trim() ?? "";
+    if (!groupName) return;
+    attempt(
+      "group-save",
+      () => run<{ groupId: string }>("events.saveGuestListAsGroup", event.id, groupName),
+      (r) => {
+        setGroupDraft(null);
+        router.push({ pathname: "/events/group/[groupId]", params: { groupId: r.groupId } });
+        return `Saved “${groupName}” as a group`;
+      }
+    );
+  }
+
+  return (
+    <View style={{ gap: spacing.lg }}>
+      <View style={styles.stats}>
+        <Stat label="Going" value={summary.attending} detail={summary.yes === 1 ? "1 RSVP" : `${summary.yes} RSVPs`} />
+        <Stat label="Maybe" value={summary.maybeHeadcount} detail={summary.maybe === 1 ? "1 RSVP" : `${summary.maybe} RSVPs`} />
+        <Stat label="Can't go" value={summary.no} />
+        <Stat label="No reply" value={summary.pending} detail={`${summary.invited} of ${summary.guests} invited`} />
+      </View>
+      {event.ask_kids && kidsComing > 0 ? (
+        <Text variant="footnote" tone="secondary">
+          {kidsComing === 1 ? "1 kid coming" : `${kidsComing} kids coming`}
+        </Text>
+      ) : null}
+      {meals.map(({ question, counts, unanswered }) => (
+        <Card key={question.id}>
+          <Text variant="subhead" style={{ fontWeight: "600" }}>
+            {question.label}
+          </Text>
+          <Text variant="footnote" tone="secondary">
+            {counts.map((c) => `${c.option}: ${c.count}`).join(" · ")}
+            {unanswered > 0 ? ` · ${unanswered === 1 ? "1 RSVP" : `${unanswered} RSVPs`} without an answer` : ""}
+          </Text>
+        </Card>
+      ))}
+
+      {uninvited.length > 0 || remindable.length > 0 ? (
+        <Card>
+          <Text variant="subhead" style={{ fontWeight: "600" }}>
+            {uninvited.length > 0
+              ? `${uninvited.length === 1 ? "1 guest hasn't" : `${uninvited.length} guests haven't`} been sent the invitation`
+              : `${remindable.length === 1 ? "1 guest hasn't" : `${remindable.length} guests haven't`} replied yet`}
+          </Text>
+          <Text variant="footnote" tone="secondary">
+            {uninvited.length > 0
+              ? "Each guest gets the invitation by email with their own RSVP link."
+              : "Send a friendly reminder. Each guest gets at most one a day."}
+          </Text>
+          <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
+            {uninvited.length > 0 ? (
+              <Button title="Send invitations" icon="send" size="small" loading={busy === "invite"} onPress={() => send("invite")} />
+            ) : null}
+            {remindable.length > 0 ? (
+              <Button
+                title={`Remind ${remindable.length}`}
+                icon="bell"
+                size="small"
+                variant={uninvited.length > 0 ? "secondary" : "primary"}
+                loading={busy === "remind"}
+                onPress={() => send("remind")}
+              />
+            ) : null}
+          </View>
+        </Card>
+      ) : null}
+      {withoutEmail > 0 ? (
+        <Text variant="footnote" tone="tertiary">
+          {withoutEmail === 1 ? "1 guest has" : `${withoutEmail} guests have`} no email address. Copy their RSVP link from the
+          guest&apos;s Edit button and text it to them.
+        </Text>
+      ) : null}
+
+      <Card>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text variant="headline">Add guests</Text>
+          <Button title={pasting ? "Add one at a time" : "Paste a list"} size="small" variant="ghost" onPress={() => setPasting(!pasting)} />
+        </View>
+        {pasting ? (
+          <>
+            <Field
+              value={pasted}
+              onChangeText={setPasted}
+              multiline
+              placeholder={"Glinda Upland, glinda@example.com\nElphaba Thropp <elphie@example.com>\nNessa Thropp"}
+              hint="One guest per line: a name and an email address. Copy them from a spreadsheet or your contacts."
+              autoCapitalize="words"
+              accessibilityLabel="Guest list"
+            />
+            {pastePreview.skipped.length > 0 ? (
+              <Text variant="footnote" tone="tertiary">
+                Skipped: {pastePreview.skipped.join(", ")}
+              </Text>
+            ) : null}
+            <Button
+              title={pastePreview.guests.length > 0 ? `Add ${pastePreview.guests.length === 1 ? "1 guest" : `${pastePreview.guests.length} guests`}` : "Add"}
+              size="medium"
+              loading={busy === "add"}
+              onPress={addPasted}
+            />
+          </>
+        ) : (
+          <>
+            <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />
+            <Field
+              label="Email (optional)"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="emailAddress"
+              returnKeyType="done"
+              onSubmitEditing={addOne}
+            />
+            <Button title="Add" icon="add" size="medium" loading={busy === "add"} onPress={addOne} />
+          </>
+        )}
+        {data.groups.length > 0 || data.copySources.length > 0 ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {data.groups.length > 0 ? (
+              <Button title="Invite a group…" icon="people" size="small" variant="secondary" loading={busy === "group"} onPress={chooseGroup} />
+            ) : null}
+            {data.copySources.length > 0 ? (
+              <Button
+                title="Copy guests from another event…"
+                icon="copy"
+                size="small"
+                variant="secondary"
+                loading={busy === "copy"}
+                onPress={chooseCopySource}
+              />
+            ) : null}
+          </View>
+        ) : null}
+      </Card>
+
+      {message ? (
+        <Text variant="footnote" tone={message.error ? "danger" : "success"} accessibilityLiveRegion="polite">
+          {message.text}
+        </Text>
+      ) : null}
+
+      <View style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text variant="title" style={{ fontSize: 20 }}>
+            Guest list
+          </Text>
+          {guests.length > 0 ? (
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <Button title="Save as a group" size="small" variant="ghost" onPress={() => setGroupDraft(event.title)} />
+              <Button
+                title="Share CSV"
+                size="small"
+                variant="ghost"
+                onPress={() => Share.share({ message: guestListCsv(data), title: "guest-list.csv" })}
+              />
+            </View>
+          ) : null}
+        </View>
+        {groupDraft !== null ? (
+          <Card>
+            <Text variant="headline">Save as a group</Text>
+            <Text variant="footnote" tone="secondary">
+              Keep these {guests.length === 1 ? "1 guest" : `${guests.length} guests`} as a group, like “The Chens” or “Book
+              club”. Invite the whole group to your next event, run a gift exchange with it, or share a wishlist with it.
+            </Text>
+            <Field label="Group name" value={groupDraft} onChangeText={setGroupDraft} maxLength={80} autoFocus />
+            <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end" }}>
+              <Button title="Cancel" size="small" variant="ghost" onPress={() => setGroupDraft(null)} />
+              <Button title="Save group" size="small" loading={busy === "group-save"} disabled={!groupDraft.trim()} onPress={saveAsGroup} />
+            </View>
+          </Card>
+        ) : null}
+        {guests.length > 0 ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {(["all", "yes", "maybe", "no", "pending"] as Filter[]).map((value) => (
+              <Chip
+                key={value}
+                label={`${value === "all" ? "All" : RSVP_LABELS[value]} (${value === "all" ? guests.length : summary[value]})`}
+                selected={filter === value}
+                onPress={() => setFilter(value)}
+              />
+            ))}
+          </View>
+        ) : null}
+        {guests.length === 0 ? (
+          <Text variant="footnote" tone="tertiary">
+            Add your guests above, then send the invitation. Or share the event link, and guests who RSVP are added here.
+          </Text>
+        ) : (
+          <View style={[styles.list, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            {shown.map((guest, index) => (
+              <View key={guest.id}>
+                {index > 0 ? <Divider inset={64} /> : null}
+                {editingId === guest.id ? (
+                  <GuestEditor data={data} guest={guest} onClose={() => setEditingId(null)} />
+                ) : (
+                  <GuestRow data={data} guest={guest} everyoneGives={everyoneGives} onEdit={() => setEditingId(guest.id)} />
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function Stat({ label, value, detail }: { label: string; value: number; detail?: string }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.stat, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <Text variant="caption" tone="tertiary">
+        {label}
+      </Text>
+      <Text variant="title" style={{ fontSize: 22 }}>
+        {value}
+      </Text>
+      {detail ? (
+        <Text variant="caption" tone="tertiary">
+          {detail}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function GuestRow({
+  data,
+  guest,
+  everyoneGives,
+  onEdit,
+}: {
+  data: EventPageData;
+  guest: EventGuest;
+  everyoneGives: boolean;
+  onEdit: () => void;
+}) {
+  const theme = useTheme();
+  const coming = guest.rsvp_status === "yes" || guest.rsvp_status === "maybe";
+  const lines = answerLines(data.questions, storedAnswers(guest.answers), guest.name);
+  const signups = data.signupsByGuest?.[guest.id] ?? [];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Edit ${guest.name}`}
+      onPress={() => {
+        haptic();
+        onEdit();
+      }}
+      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? theme.surfaceAlt : "transparent" }]}
+    >
+      <View style={[styles.avatar, { backgroundColor: theme.tintSoft }]}>
+        <Text variant="footnote" tone="tint" style={{ fontWeight: "700" }}>
+          {initials(guest.name)}
+        </Text>
+      </View>
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <Text variant="subhead" style={{ fontWeight: "600" }}>
+            {guest.name}
+          </Text>
+          <Pill
+            tone={STATUS_TONE[guest.rsvp_status]}
+            label={`${RSVP_LABELS[guest.rsvp_status]}${coming && guest.party_size > 1 ? ` · ${guest.party_size}` : ""}${
+              data.event.ask_kids && coming && guest.kids_count > 0 ? ` (${guest.kids_count} ${guest.kids_count === 1 ? "kid" : "kids"})` : ""
+            }`}
+          />
+          {data.exchange && guest.in_exchange ? (
+            <Pill
+              label={
+                everyoneGives
+                  ? guest.wishlist_url || guest.gift_ideas
+                    ? "Wish list added"
+                    : "No wish list yet"
+                  : `Gift exchange${guest.wishlist_url || guest.gift_ideas ? " · wishlist added" : ""}`
+              }
+            />
+          ) : null}
+        </View>
+        <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+          {guest.email ?? "No email"}
+          {" · "}
+          {guest.invited_at
+            ? `Invited ${formatShortDate(guest.invited_at)}${guest.reminded_at ? `, reminded ${formatShortDate(guest.reminded_at)}` : ""}`
+            : "Not sent yet"}
+        </Text>
+        {signups.length > 0 ? (
+          <Text variant="footnote" tone="secondary">
+            Signed up for {signups.join(", ")}
+          </Text>
+        ) : null}
+        {lines.map((line) => (
+          <Text key={line.label} variant="footnote" tone="secondary">
+            {line.label} {line.value}
+          </Text>
+        ))}
+        {guest.rsvp_note ? (
+          <Text variant="footnote" tone="secondary" style={{ fontStyle: "italic" }}>
+            “{guest.rsvp_note}”
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+/** A guest's details, opened from their row: the website's guest dialog. */
+function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: EventGuest; onClose: () => void }) {
+  const theme = useTheme();
+  const { run } = useRunEventAction();
+  const [name, setName] = useState(guest.name);
+  const [email, setEmail] = useState(guest.email ?? "");
+  const [rsvp, setRsvp] = useState<RsvpStatus>(guest.rsvp_status);
+  const [party, setParty] = useState(Math.max(1, guest.party_size || 1));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const link = `${SITE_URL}/e/${data.event.slug}?g=${encodeURIComponent(guest.token)}`;
+
+  async function attempt(key: string, work: () => Promise<unknown>, after?: () => void) {
+    setBusy(key);
+    setError(null);
+    try {
+      await work();
+      haptic("success");
+      after?.();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function save() {
+    if (!name.trim()) {
+      setError("Add the guest's name.");
+      return;
+    }
+    if (email.trim() && !isEmail(email.trim())) {
+      setError("That email address doesn't look right.");
+      return;
+    }
+    attempt(
+      "save",
+      async () => {
+        if (name.trim() !== guest.name || (email.trim() || null) !== guest.email) {
+          await run("events.updateEventGuest", data.event.id, guest.id, { name: name.trim(), email: email.trim() || null });
+        }
+        if (rsvp !== guest.rsvp_status || party !== guest.party_size) {
+          await run("events.setGuestRsvp", data.event.id, guest.id, rsvp, party);
+        }
+      },
+      onClose
+    );
+  }
+
+  return (
+    <View style={[styles.editor, { backgroundColor: theme.surfaceAlt }]}>
+      <Text variant="footnote" tone="tertiary">
+        {guest.responded_at
+          ? `Replied ${formatShortDate(guest.responded_at)}`
+          : guest.invited_at
+            ? `Invited ${formatShortDate(guest.invited_at)}, no reply yet`
+            : "Not invited yet"}
+      </Text>
+      <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" />
+      <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+      <View style={{ gap: spacing.sm }}>
+        <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+          RSVP
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          {(["yes", "maybe", "no", "pending"] as RsvpStatus[]).map((status) => (
+            <Chip key={status} label={RSVP_LABELS[status]} selected={rsvp === status} onPress={() => setRsvp(status)} />
+          ))}
+        </View>
+      </View>
+      {rsvp === "yes" || rsvp === "maybe" ? (
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+            People
+          </Text>
+          <Stepper value={party} onChange={setParty} min={1} max={Math.max(1, data.event.max_party_size || 1)} />
+        </View>
+      ) : null}
+      <View style={{ gap: spacing.sm }}>
+        <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+          Their RSVP link
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          <Button
+            title="Copy link"
+            icon="copy"
+            size="small"
+            variant="secondary"
+            onPress={async () => {
+              await Clipboard.setStringAsync(link);
+              haptic("success");
+              Alert.alert("Copied", "Text it to them, or send it however you like.");
+            }}
+          />
+          <Button title="Share" icon="share" size="small" variant="secondary" onPress={() => Share.share({ message: link })} />
+          {guest.email ? (
+            <Button
+              title={guest.invited_at ? "Send invitation again" : "Send invitation"}
+              icon="send"
+              size="small"
+              variant="secondary"
+              loading={busy === "invite"}
+              onPress={() => attempt("invite", () => run("events.sendEventInvites", data.event.id, [guest.id]))}
+            />
+          ) : null}
+        </View>
+      </View>
+      {error ? (
+        <Text variant="footnote" tone="danger">
+          {error}
+        </Text>
+      ) : null}
+      <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <Button
+          title="Remove"
+          size="small"
+          variant="danger"
+          loading={busy === "remove"}
+          onPress={() =>
+            Alert.alert(`Remove ${guest.name}?`, undefined, [
+              { text: "Keep them", style: "cancel" },
+              {
+                text: "Remove",
+                style: "destructive",
+                onPress: () => attempt("remove", () => run("events.removeEventGuest", data.event.id, guest.id), onClose),
+              },
+            ])
+          }
+        />
+        <Button title="Cancel" size="small" variant="ghost" onPress={onClose} />
+        <Button title="Save" size="small" loading={busy === "save"} onPress={save} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  stats: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  stat: {
+    flexGrow: 1,
+    flexBasis: "45%",
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 2,
+  },
+  list: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  row: { flexDirection: "row", gap: spacing.md, padding: spacing.md, alignItems: "flex-start" },
+  avatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  editor: { padding: spacing.md, gap: spacing.md },
+});

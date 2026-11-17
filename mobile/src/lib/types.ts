@@ -1,8 +1,15 @@
 // The rows the app reads, matching the website's src/lib/types.ts and the
-// tables in supabase/migrations.
+// tables in supabase/migrations. Screens that the website's server loads come
+// with the website's own types (@shared/*-types).
+
+import type { DashboardCard } from "@shared/dashboard-page-types";
+import type { ListPageEvent, ListPageSuggestion } from "@shared/list-page-types";
+import type { ListOccasion } from "@shared/occasions";
+import type { RetailerRegistry, StoreId } from "@shared/retailers";
+import type { StorePerksRow } from "@shared/store-perks";
 
 export type RegistryType = "baby" | "personal";
-export type EventType = "birthday" | "christmas" | "wedding" | "housewarming" | "graduation" | "other";
+export type EventType = ListOccasion;
 
 export interface Registry {
   id: string;
@@ -13,15 +20,17 @@ export interface Registry {
   is_public: boolean;
   /** Only the owner and co-managers can open it. Missing in the demo. */
   is_private?: boolean;
+  /** Shown on the owner's profile. */
+  listed_on_profile?: boolean;
   description: string | null;
   photo_url: string | null;
   registry_type: RegistryType | null;
   event_type: EventType | null;
   honoree_names: string | null;
   /**
-   * The registry's settings. The app reads only "Hide what's been reserved
-   * from me", with reservationsHiddenFrom (src/lib/gifts.ts), and the owner's
-   * store registries, with storeRegistries (src/lib/data.ts).
+   * The registry's settings: payment methods, zip code, store registries,
+   * "Hide what's been reserved from me" and the rest. Read them with the
+   * website's helpers, such as reservationsHiddenFrom (src/lib/gifts.ts).
    */
   settings?: Record<string, unknown> | null;
   created_at: string;
@@ -36,7 +45,9 @@ export interface Category {
 
 export interface Item {
   id: string;
+  /** The list it's shown on. For an item placed from another list, this list. */
   registry_id: string;
+  /** Its category on this list. */
   category_id: string | null;
   title: string;
   external_url: string | null;
@@ -59,11 +70,15 @@ export interface Item {
    * gift that was given.
    */
   purchases: ItemGift[];
+  /** The titles of the owner's other lists this item is on (src/lib/list-items.ts). */
+  otherLists?: string[];
+  /** It's on this list through a placement from another of the owner's lists. */
+  placed?: boolean;
 }
 
 /** A gift as an item's row reads it. */
 export type ItemGift = Pick<Gift, "id" | "status" | "reserved_until" | "buyer_name" | "quantity"> &
-  Partial<Pick<Gift, "created_at" | "hide_giver">>;
+  Partial<Pick<Gift, "created_at" | "hide_giver" | "message" | "buyer_email" | "amount">>;
 
 export interface CashFund {
   id: string;
@@ -101,8 +116,8 @@ export interface Gift {
   /** The owner bought the item, so this gift is money toward it ("Covered by guest"). */
   item_bought_by_owner?: boolean;
   /**
-   * A Secret Santa's gift. data.ts already swaps the name for "Secret Santa"
-   * and removes the email, so owners never see who gave it.
+   * A Secret Santa's gift. The server already swaps the name for "Secret
+   * Santa" and removes the email, so owners never see who gave it.
    */
   hide_giver?: boolean;
 }
@@ -117,27 +132,21 @@ export const USED_CONDITIONS = [
 
 export type UsedCondition = (typeof USED_CONDITIONS)[number]["id"];
 
-/** A registry on the home screen, with what its card summarizes. */
-export interface RegistrySummary extends Registry {
-  role: "owner" | "manager";
-  itemCount: number;
-  fulfilledCount: number;
-  totalValue: number;
-  /** The newest three gifts, worded as the website's dashboard card words them: "reserved an item". */
-  recentGifts: { id: string; buyer_name: string; action: string }[];
-  /**
-   * The owner hides what's been reserved from themselves. Then fulfilledCount
-   * counts only items they bought, and recentGifts is empty.
-   */
-  reservationsHidden: boolean;
-}
+/** A list's card on the home screen, as the website's My registries tab loads it. */
+export type RegistrySummary = DashboardCard;
 
+export type Suggestion = ListPageSuggestion;
+
+/** A list's screen, as the website's list page loads it (src/lib/list-page.ts). */
 export interface RegistryDetail {
   registry: Registry;
   role: "owner" | "manager";
   categories: Category[];
   items: Item[];
   funds: CashFund[];
+  /** Gift Activity, newest first. Cancelled gifts stay, faded, as on the website. */
+  gifts: Gift[];
+  suggestions: Suggestion[];
   pendingSuggestions: number;
   /**
    * The owner hides what's been reserved from themselves. Then items, funds
@@ -147,6 +156,29 @@ export interface RegistryDetail {
   reservationsHidden: boolean;
   /** With reservations hidden: how many gifts have been revealed. */
   revealedCount?: number;
+  /** With reservations hidden: when the next event's gifts are revealed. */
+  nextReveal?: { date: string; eventTitle: string } | null;
+  /** A gift exchange turned "Hide what's been reserved" on. */
+  turnedOnByExchange: boolean;
+  /** Events that link this list. */
+  linkedEvents: ListPageEvent[];
+  /** Baby lists have the checklist. */
+  showChecklist: boolean;
+  checklistProgress: { matched: number; total: number };
+  /** The owner's store registries, for baby lists. Null on other lists. */
+  linkedRegistries: RetailerRegistry[] | null;
+  /** Stores with a registry link on any item. */
+  registryLinkStores: StoreId[];
+  /** Items with a plain link at a store where the owner has a registry. */
+  plainLinkGroups: { storeId: StoreId; items: { id: string; title: string }[] }[];
+  perkRows: StorePerksRow[];
+  perkEmails: boolean;
+  readyPerkCount: number;
+  /** Set when the list adds estimated sales tax to what the owner bought. */
+  zipCode: string | null;
+  canPlanEvents: boolean;
+  eventPromptDismissed: boolean;
+  showPlanEventButton: boolean;
 }
 
 /** The fields of the add and edit item forms. */
