@@ -5,8 +5,17 @@
 
 import { loadDashboard } from "@/lib/dashboard-page";
 import { loadListPage } from "@/lib/list-page";
+import { loadSavedItems } from "@/lib/saved-items";
+import { getViewer } from "@/lib/viewer";
+
+/** Runs a loader for the signed-in account, or returns null without one. */
+async function forViewer<T>(load: (userId: string) => Promise<T>): Promise<T | null> {
+  const viewer = await getViewer();
+  return viewer ? load(viewer.id) : null;
+}
 
 export const APP_LOADERS = {
   dashboard: () => loadDashboard(),
   listPage: (registryId: unknown) => (typeof registryId === "string" ? loadListPage(registryId) : null),
+  saved: () => forViewer(loadSavedItems),
 };

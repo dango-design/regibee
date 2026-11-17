@@ -15,6 +15,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Registries</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: "gift", selected: "gift.fill" }} md="redeem" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="saved">
+        <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "bookmark", selected: "bookmark.fill" }} md="bookmark" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="person" />
