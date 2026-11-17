@@ -60,6 +60,7 @@ import {
 } from "@/lib/data";
 import { formatDollars, formatEventDate, formatPrice, initials, plural } from "@/lib/format";
 import { occasionLabel } from "@/lib/occasion";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { registryShareUrl, SITE_URL } from "@/lib/supabase";
 import { fonts, radius, spacing, useTheme } from "@/lib/theme";
 import type { CashFund, Gift, Item, RegistryDetail } from "@/lib/types";
@@ -70,6 +71,7 @@ export default function RegistryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const registry = useRegistry(id);
+  const pull = usePullToRefresh(registry.refetch);
   const [tab, setTab] = useState<Tab>("items");
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
 
@@ -173,10 +175,7 @@ export default function RegistryScreen() {
 
   const refresh = (
     <RefreshControl
-      refreshing={registry.isRefetching}
-      onRefresh={() => {
-        registry.refetch();
-      }}
+      {...pull}
       tintColor={theme.tint}
     />
   );

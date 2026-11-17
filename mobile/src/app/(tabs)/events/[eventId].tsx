@@ -21,6 +21,7 @@ import { Button, Card, ErrorState, haptic, IconButton, LoadingState, Text } from
 import { errorMessage } from "@/lib/data";
 import { useEventPage, useRunEventAction } from "@/lib/events-data";
 import { pickPhoto, uploadEventImage } from "@/lib/photos";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
 
@@ -28,6 +29,7 @@ export default function EventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const theme = useTheme();
   const page = useEventPage(eventId);
+  const pull = usePullToRefresh(page.refetch);
   const { run } = useRunEventAction();
   const [uploading, setUploading] = useState(false);
   const data = page.data;
@@ -147,10 +149,7 @@ export default function EventScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: 120 }}
         refreshControl={
           <RefreshControl
-            refreshing={page.isRefetching}
-            onRefresh={() => {
-              page.refetch();
-            }}
+            {...pull}
             tintColor={theme.tint}
           />
         }

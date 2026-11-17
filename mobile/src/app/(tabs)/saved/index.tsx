@@ -17,6 +17,7 @@ import { Button, Chip, EmptyState, ErrorState, Field, haptic, IconButton, Loadin
 import { errorMessage } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 import { useSession } from "@/lib/auth";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { useGiftIdeas, useSavedItems, useSetIdeaBought, useStartWishlist } from "@/lib/saved-data";
 import { radius, spacing, useTheme } from "@/lib/theme";
 
@@ -90,6 +91,7 @@ type Status = "wanted" | "gifted" | "all";
 function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => void }) {
   const theme = useTheme();
   const saved = useSavedItems();
+  const pull = usePullToRefresh(saved.refetch);
   const start = useStartWishlist();
   const [status, setStatus] = useState<Status>("wanted");
   const [search, setSearch] = useState("");
@@ -194,10 +196,7 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
-            refreshing={saved.isRefetching}
-            onRefresh={() => {
-              saved.refetch();
-            }}
+            {...pull}
             tintColor={theme.tint}
           />
         }
@@ -322,6 +321,7 @@ function SavedItemRow({
 function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => void }) {
   const theme = useTheme();
   const ideas = useGiftIdeas();
+  const pull = usePullToRefresh(ideas.refetch);
   const bought = useSetIdeaBought();
   const [person, setPerson] = useState("all");
   const groups = useMemo(() => groupByRecipient(ideas.data ?? []), [ideas.data]);
@@ -337,10 +337,7 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120, flexGrow: 1 }}
       refreshControl={
         <RefreshControl
-          refreshing={ideas.isRefetching}
-          onRefresh={() => {
-            ideas.refetch();
-          }}
+          {...pull}
           tintColor={theme.tint}
         />
       }

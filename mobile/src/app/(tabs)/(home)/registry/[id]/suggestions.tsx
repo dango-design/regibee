@@ -10,6 +10,7 @@ import { Alert, FlatList, Linking, RefreshControl, ScrollView, View } from "reac
 import { Button, Card, Chip, EmptyState, ErrorState, haptic, LoadingState, Pill, Text } from "@/components/ui";
 import { errorMessage, useAnswerSuggestion, useRegistry, type SuggestionAction } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { spacing, useTheme } from "@/lib/theme";
 import type { Suggestion } from "@/lib/types";
 
@@ -44,6 +45,7 @@ export default function SuggestionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const registry = useRegistry(id);
+  const pull = usePullToRefresh(registry.refetch);
   const answer = useAnswerSuggestion(id);
   const [filter, setFilter] = useState<Filter>("all");
   const suggestions = registry.data?.suggestions ?? [];
@@ -68,9 +70,7 @@ export default function SuggestionsScreen() {
         style={{ backgroundColor: theme.background }}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 80, flexGrow: 1 }}
         refreshControl={
-          <RefreshControl refreshing={registry.isRefetching} onRefresh={() => {
-              registry.refetch();
-            }} tintColor={theme.tint} />
+          <RefreshControl {...pull} tintColor={theme.tint} />
         }
         ListHeaderComponent={
           <View style={{ gap: spacing.md }}>

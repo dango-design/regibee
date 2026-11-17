@@ -5,6 +5,7 @@ import { Notice } from "@/components/notice";
 import { RegistryCard } from "@/components/registry-card";
 import { Button, EmptyState, ErrorState, IconButton, LoadingState, Text } from "@/components/ui";
 import { errorMessage, useDashboard } from "@/lib/data";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { spacing, useTheme } from "@/lib/theme";
 import type { RegistrySummary } from "@/lib/types";
 
@@ -13,6 +14,7 @@ import type { RegistrySummary } from "@/lib/types";
 export default function RegistriesScreen() {
   const theme = useTheme();
   const dashboard = useDashboard();
+  const pull = usePullToRefresh(dashboard.refetch);
   const data = dashboard.data;
   // The owner's own lists, then the ones they help manage under "Shared with
   // you", as on the website's dashboard.
@@ -36,10 +38,7 @@ export default function RegistriesScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
-            refreshing={dashboard.isRefetching}
-            onRefresh={() => {
-              dashboard.refetch();
-            }}
+            {...pull}
             tintColor={theme.tint}
           />
         }

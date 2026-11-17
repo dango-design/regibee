@@ -21,6 +21,7 @@ import { Icon } from "@/components/icon";
 import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { searchPeople, useFollowingTab, useRunPeopleAction, type SearchResult } from "@/lib/people-data";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
 
@@ -32,6 +33,7 @@ export default function FollowingScreen() {
   const theme = useTheme();
   const { demo } = useSession();
   const tab = useFollowingTab();
+  const pull = usePullToRefresh(tab.refetch);
 
   if (demo) {
     return (
@@ -63,10 +65,7 @@ export default function FollowingScreen() {
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: 120 }}
       refreshControl={
         <RefreshControl
-          refreshing={tab.isRefetching}
-          onRefresh={() => {
-            tab.refetch();
-          }}
+          {...pull}
           tintColor={theme.tint}
         />
       }

@@ -18,6 +18,7 @@ import { Button, Card, Divider, EmptyState, ErrorState, Field, IconButton, Loadi
 import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { useEventsTab, useRunEventAction } from "@/lib/events-data";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { radius, spacing, useTheme } from "@/lib/theme";
 
@@ -25,6 +26,7 @@ export default function EventsScreen() {
   const theme = useTheme();
   const { demo } = useSession();
   const tab = useEventsTab();
+  const pull = usePullToRefresh(tab.refetch);
 
   if (demo) {
     return (
@@ -52,10 +54,7 @@ export default function EventsScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120 }}
         refreshControl={
           <RefreshControl
-            refreshing={tab.isRefetching}
-            onRefresh={() => {
-              tab.refetch();
-            }}
+            {...pull}
             tintColor={theme.tint}
           />
         }

@@ -13,12 +13,14 @@ import { displayName, profilePath } from "@shared/profile-link";
 import { Button, Card, Divider, ErrorState, haptic, LoadingState, Pill, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useAccountPage, useRunPeopleAction } from "@/lib/people-data";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
 
 export default function FollowsScreen() {
   const theme = useTheme();
   const page = useAccountPage();
+  const pull = usePullToRefresh(page.refetch);
   const { run } = useRunPeopleAction();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,10 +86,7 @@ export default function FollowsScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: 120 }}
         refreshControl={
           <RefreshControl
-            refreshing={page.isRefetching}
-            onRefresh={() => {
-              page.refetch();
-            }}
+            {...pull}
             tintColor={theme.tint}
           />
         }
