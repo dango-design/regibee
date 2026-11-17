@@ -77,6 +77,7 @@ function RootNavigator({ ready }: { ready: boolean }) {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="add" options={{ presentation: "modal", title: "Add an item" }} />
           <Stack.Screen name="item/[id]" options={{ presentation: "modal", title: "Edit item" }} />
+          <Stack.Screen name="gift-idea/[id]" options={{ presentation: "modal", title: "Edit gift idea" }} />
           <Stack.Screen name="new-registry" options={{ presentation: "modal", title: "New registry" }} />
           <Stack.Screen name="share" options={{ presentation: "modal", title: "Add to Regibee", gestureEnabled: false }} />
         </Stack.Protected>

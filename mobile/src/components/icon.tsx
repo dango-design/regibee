@@ -35,6 +35,8 @@ const ICONS = {
   eye: { ios: "eye", android: "visibility" },
   eyeSlash: { ios: "eye.slash", android: "visibility_off" },
   bookmark: { ios: "bookmark", android: "bookmark" },
+  lightbulb: { ios: "lightbulb", android: "lightbulb" },
+  circle: { ios: "circle", android: "radio_button_unchecked" },
 } as const satisfies Record<string, { ios: string; android: string }>;
 
 export type IconName = keyof typeof ICONS;

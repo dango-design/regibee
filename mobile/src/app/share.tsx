@@ -1,6 +1,7 @@
 // What another app shared to Regibee: a product link, usually with its name.
 // On iPhone, a page shared from Safari arrives already read (see
-// app.config.ts), so the form fills in at once.
+// app.config.ts), so the form fills in at once. It goes on one of the owner's
+// registries or in their gift ideas, whichever they pick in the form.
 
 import { router, Stack } from "expo-router";
 import { useShareIntentContext } from "expo-share-intent";
@@ -11,7 +12,7 @@ import { Icon } from "@/components/icon";
 import { ItemEditor } from "@/components/item-editor";
 import { Button, EmptyState, haptic, LoadingState, Text } from "@/components/ui";
 import { useRegistries } from "@/lib/data";
-import { rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
+import { GIFT_IDEAS, rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
 import { parseReadProduct, parseSharedText } from "@/lib/product";
 import { spacing, useTheme } from "@/lib/theme";
 
@@ -21,7 +22,7 @@ export default function ShareScreen() {
   const registries = useRegistries();
   const fallback = useDefaultRegistry(registries.data);
   const [chosen, setChosen] = useState<string | null>(null);
-  const [added, setAdded] = useState<{ registryId: string; title: string } | null>(null);
+  const [added, setAdded] = useState<{ registryId: string; title: string; recipient?: string } | null>(null);
   const registryId = chosen ?? fallback ?? null;
 
   const shared = useMemo(() => {
@@ -55,6 +56,31 @@ export default function ShareScreen() {
       }}
     />
   );
+
+  if (added?.registryId === GIFT_IDEAS) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {cancel}
+        <EmptyState
+          icon="lightbulb"
+          title={added.recipient ? `Saved for ${added.recipient}` : "Saved"}
+          message={`“${added.title}” is in your gift ideas. Only you can see it.`}
+          action={
+            <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
+              <Button
+                title="See your gift ideas"
+                onPress={() => {
+                  resetShareIntent();
+                  router.replace("/gift-ideas");
+                }}
+              />
+              <Button title="Done" variant="secondary" onPress={close} />
+            </View>
+          }
+        />
+      </View>
+    );
+  }
 
   if (added) {
     const registry = registries.data?.find((r) => r.id === added.registryId);
@@ -91,15 +117,8 @@ export default function ShareScreen() {
           title="There's no link to add"
           message="What you shared didn't include a link to a product. Open the product in its store's app or your browser, then share it to Regibee again."
         />
-      ) : fallback === undefined ? (
-        <LoadingState />
       ) : !registryId ? (
-        <EmptyState
-          icon="gift"
-          title="Make a registry first"
-          message="You don't have a registry to add this to yet. Make one, then share the product to Regibee again."
-          action={<Button title="Create a registry" icon="add" onPress={() => router.push("/new-registry")} />}
-        />
+        <LoadingState />
       ) : (
         <ItemEditor
           // Start over if a new share arrives while this one is open.
@@ -125,7 +144,7 @@ export default function ShareScreen() {
             if (result.type !== "added") return;
             rememberRegistry(result.registryId);
             haptic("success");
-            setAdded({ registryId: result.registryId, title: result.title });
+            setAdded({ registryId: result.registryId, title: result.title, recipient: result.recipient });
             // Handled, so opening the app later doesn't offer it again.
             resetShareIntent();
           }}

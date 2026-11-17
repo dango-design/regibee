@@ -14,6 +14,7 @@ import {
   maskGiverForOwner,
   reservationsHiddenFrom,
 } from "@shared/gifts";
+import { GIFT_IDEA_COLUMNS, toGiftIdea, type GiftIdea, type GiftIdeaFields, type GiftIdeaRow } from "@shared/gift-ideas";
 import { parseRetailerRegistries, type RetailerRegistry } from "@shared/retailers";
 import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 
@@ -37,6 +38,7 @@ export const keys = {
   registries: (userId: string) => ["registries", userId] as const,
   registry: (id: string) => ["registry", id] as const,
   gifts: (id: string) => ["gifts", id] as const,
+  giftIdeas: (userId: string) => ["gift-ideas", userId] as const,
 };
 
 const REGISTRY_FIELDS =
@@ -615,6 +617,158 @@ export function useCreateCategory() {
       return data as Category;
     },
     onSuccess: (_data, { registryId }) => queryClient.invalidateQueries({ queryKey: keys.registry(registryId) }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Gift ideas
+// ---------------------------------------------------------------------------
+// Things the owner might give other people, which only they can see. The app
+// reads and writes them as the signed-in user, so the table's access rules
+// keep each account to its own ideas
+// (supabase/migrations/20261115094644_gift_ideas.sql). The website's server
+// actions do the same (src/lib/actions/gift-ideas.ts). Checks and grouping are
+// shared with it (src/lib/gift-ideas.ts).
+
+async function fetchGiftIdeas(userId: string): Promise<GiftIdea[]> {
+  if (isDemo()) return demo.giftIdeas();
+  const { data, error } = await supabase
+    .from("gift_ideas")
+    .select(GIFT_IDEA_COLUMNS)
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    // The website's Gift ideas page reads the same number.
+    .limit(2000);
+  if (error) throw error;
+  return ((data ?? []) as GiftIdeaRow[]).map(toGiftIdea);
+}
+
+export function useGiftIdeas() {
+  const { userId } = useSession();
+  return useQuery({
+    queryKey: keys.giftIdeas(userId),
+    queryFn: () => fetchGiftIdeas(userId),
+    enabled: Boolean(userId),
+  });
+}
+
+/** Changes the cached ideas right away, so the screen changes before the save finishes. */
+function patchCachedIdeas(queryClient: QueryClient, userId: string, change: (ideas: GiftIdea[]) => GiftIdea[]) {
+  const key = keys.giftIdeas(userId);
+  const previous = queryClient.getQueryData<GiftIdea[]>(key);
+  if (previous) queryClient.setQueryData<GiftIdea[]>(key, change(previous));
+  return previous;
+}
+
+/**
+ * Saves a new gift idea, or changes the one with `id`. `fields` come from
+ * parseGiftIdea (src/lib/gift-ideas.ts), which the form runs first so it can
+ * show what's wrong. `bought` marks it bought or not; leave it out to keep it
+ * as it is.
+ */
+export function useSaveGiftIdea() {
+  const queryClient = useQueryClient();
+  const { userId } = useSession();
+  return useMutation({
+    mutationFn: async ({ fields, id, bought }: { fields: GiftIdeaFields; id?: string; bought?: boolean }) => {
+      if (isDemo()) return demo.saveGiftIdea(fields, id, bought);
+      if (!userId) throw new Error("You're signed out. Sign in again.");
+      if (id) {
+        const before = queryClient.getQueryData<GiftIdea[]>(keys.giftIdeas(userId))?.find((idea) => idea.id === id);
+        const boughtAt =
+          bought === undefined ? {} : { bought_at: bought ? (before?.boughtAt ?? new Date().toISOString()) : null };
+        const { data, error } = await supabase
+          .from("gift_ideas")
+          .update({ ...fields, ...boughtAt })
+          .eq("id", id)
+          .eq("owner_id", userId)
+          .select(GIFT_IDEA_COLUMNS)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("That gift idea was deleted.");
+        return toGiftIdea(data as GiftIdeaRow);
+      }
+      const { data, error } = await supabase
+        .from("gift_ideas")
+        .insert({ ...fields, owner_id: userId, bought_at: bought ? new Date().toISOString() : null })
+        .select(GIFT_IDEA_COLUMNS)
+        .single();
+      if (error) throw error;
+      return toGiftIdea(data as GiftIdeaRow);
+    },
+    onMutate: ({ fields, id, bought }) => {
+      if (!id) return { previous: undefined };
+      return {
+        previous: patchCachedIdeas(queryClient, userId, (ideas) =>
+          ideas.map((idea) =>
+            idea.id !== id
+              ? idea
+              : {
+                  ...idea,
+                  recipient: fields.recipient,
+                  title: fields.title,
+                  externalUrl: fields.external_url,
+                  imageUrl: fields.image_url,
+                  price: fields.price,
+                  notes: fields.notes,
+                  boughtAt: bought === undefined ? idea.boughtAt : bought ? (idea.boughtAt ?? new Date().toISOString()) : null,
+                }
+          )
+        ),
+      };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(keys.giftIdeas(userId), context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["gift-ideas"] }),
+  });
+}
+
+/** Marks an idea as bought, or back to still an idea, from its row. */
+export function useSetGiftIdeaBought() {
+  const queryClient = useQueryClient();
+  const { userId } = useSession();
+  return useMutation({
+    mutationFn: async ({ idea, bought }: { idea: GiftIdea; bought: boolean }) => {
+      if (isDemo()) return demo.setGiftIdeaBought(idea.id, bought);
+      const { data, error } = await supabase
+        .from("gift_ideas")
+        .update({ bought_at: bought ? new Date().toISOString() : null })
+        .eq("id", idea.id)
+        .eq("owner_id", userId)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("That gift idea was deleted.");
+    },
+    onMutate: ({ idea, bought }) => ({
+      previous: patchCachedIdeas(queryClient, userId, (ideas) =>
+        ideas.map((i) => (i.id === idea.id ? { ...i, boughtAt: bought ? new Date().toISOString() : null } : i))
+      ),
+    }),
+    onError: (_error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(keys.giftIdeas(userId), context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["gift-ideas"] }),
+  });
+}
+
+export function useDeleteGiftIdea() {
+  const queryClient = useQueryClient();
+  const { userId } = useSession();
+  return useMutation({
+    mutationFn: async (idea: GiftIdea) => {
+      if (isDemo()) return demo.deleteGiftIdea(idea.id);
+      const { error } = await supabase.from("gift_ideas").delete().eq("id", idea.id).eq("owner_id", userId);
+      if (error) throw error;
+    },
+    onMutate: (idea) => ({
+      previous: patchCachedIdeas(queryClient, userId, (ideas) => ideas.filter((i) => i.id !== idea.id)),
+    }),
+    onError: (_error, _idea, context) => {
+      if (context?.previous) queryClient.setQueryData(keys.giftIdeas(userId), context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["gift-ideas"] }),
   });
 }
 

@@ -1,6 +1,12 @@
 // The add and edit item form. Paste or share a link and it fills in the name,
 // price and pictures; everything stays editable.
+//
+// It also saves gift ideas for other people, as if they were one more list:
+// the "Add to" row offers Gift ideas after the registries. A gift idea asks
+// who it's for and keeps a note only the owner sees, and has none of a
+// registry item's fields for guests.
 
+import { router } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +29,7 @@ import {
   type StoreId,
 } from "@shared/retailers";
 import { copyForRegistry } from "@shared/registry-copy";
+import { NOTES_MAX, parseGiftIdea, RECIPIENT_MAX, recentRecipients, recipientKey, type GiftIdea } from "@shared/gift-ideas";
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
@@ -45,11 +52,15 @@ import {
   storeRegistries,
   useAddItem,
   useCreateCategory,
+  useDeleteGiftIdea,
   useDeleteItem,
+  useGiftIdeas,
   useRegistry,
+  useSaveGiftIdea,
   useUpdateItem,
 } from "@/lib/data";
 import { parsePrice } from "@/lib/format";
+import { GIFT_IDEAS } from "@/lib/last-registry";
 import { itemMatchKey, normalizeLink, parseSharedText, storeLabel, type ReadProduct } from "@/lib/product";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { USED_CONDITIONS, type Item, type ItemInput, type RegistrySummary, type UsedCondition } from "@/lib/types";
@@ -67,23 +78,32 @@ function isShortLink(raw: string) {
   }
 }
 
+/** `registryId` is GIFT_IDEAS for a gift idea. */
 export type EditorResult =
-  | { type: "added"; registryId: string; title: string }
+  | { type: "added"; registryId: string; title: string; /** Who a gift idea is for. */ recipient?: string }
   | { type: "saved"; registryId: string }
   | { type: "deleted"; registryId: string };
 
 interface Props {
   mode: "add" | "edit";
+  /** A registry's id, or GIFT_IDEAS (src/lib/last-registry.ts) for the owner's gift ideas. */
   registryId: string | null;
-  /** Offered as a choice when adding. Leave out to keep the registry fixed. */
+  /**
+   * Offered as a choice when adding, with Gift ideas after them. Leave out to
+   * keep the list fixed.
+   */
   registries?: RegistrySummary[];
   onRegistryChange?: (id: string) => void;
   item?: Item;
+  /** The gift idea to change, with `registryId` set to GIFT_IDEAS. */
+  idea?: GiftIdea;
   /** A link and maybe a name from a share or a deep link. */
   initialLink?: string | null;
   initialTitle?: string | null;
   /** Already read in Safari by the share extension, so there's nothing to load. */
   initialProduct?: ReadProduct | null;
+  /** Who a new gift idea starts out for, such as the person whose ideas the owner was looking at. */
+  initialRecipient?: string | null;
   onDone: (result: EditorResult) => void;
   /** Shown above the form, e.g. what was shared. */
   header?: ReactNode;
@@ -97,21 +117,30 @@ export function ItemEditor({
   registries,
   onRegistryChange,
   item,
+  idea,
   initialLink,
   initialTitle,
   initialProduct,
+  initialRecipient,
   onDone,
   header,
 }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const detail = useRegistry(registryId ?? undefined);
+  const forIdea = registryId === GIFT_IDEAS;
+  const detail = useRegistry(registryId && !forIdea ? registryId : undefined);
+  const giftIdeas = useGiftIdeas();
   const addItem = useAddItem();
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
   const createCategory = useCreateCategory();
+  const saveIdea = useSaveGiftIdea();
+  const deleteIdea = useDeleteGiftIdea();
 
-  const startingLink = item?.external_url ?? (initialLink ? normalizeLink(initialLink) : null) ?? "";
+  const startingLink =
+    item?.external_url ?? idea?.externalUrl ?? (initialLink ? normalizeLink(initialLink) : null) ?? "";
+  const startingImage = item?.image_url ?? idea?.imageUrl ?? null;
+  const startingPrice = item?.price ?? idea?.price ?? null;
   const [link, setLink] = useState(startingLink);
   // A page read in Safari usually has everything. Without a price, read the
   // link here too; that only fills in what's still empty.
@@ -121,14 +150,14 @@ export function ItemEditor({
   // Whether the item had a name when reading failed, which changes what's left to fill in.
   const [failedWithName, setFailedWithName] = useState(false);
   const [images, setImages] = useState<string[]>(
-    initialProduct?.images.length ? initialProduct.images : item?.image_url ? [item.image_url] : []
+    initialProduct?.images.length ? initialProduct.images : startingImage ? [startingImage] : []
   );
-  const [imageUrl, setImageUrl] = useState<string | null>(item?.image_url ?? initialProduct?.images[0] ?? null);
+  const [imageUrl, setImageUrl] = useState<string | null>(startingImage ?? initialProduct?.images[0] ?? null);
 
-  const [title, setTitle] = useState(item?.title ?? initialProduct?.title ?? initialTitle ?? "");
+  const [title, setTitle] = useState(item?.title ?? idea?.title ?? initialProduct?.title ?? initialTitle ?? "");
   const [titleTouched, setTitleTouched] = useState(mode === "edit");
   const [priceText, setPriceText] = useState(
-    item?.price != null ? String(item.price) : initialProduct?.price != null ? String(initialProduct.price) : ""
+    startingPrice != null ? String(startingPrice) : initialProduct?.price != null ? String(initialProduct.price) : ""
   );
   const [priceTouched, setPriceTouched] = useState(mode === "edit");
   const [quantity, setQuantity] = useState(item?.quantity_needed ?? 1);
@@ -138,6 +167,11 @@ export function ItemEditor({
   const [openToUsed, setOpenToUsed] = useState(item?.is_open_to_used ?? false);
   const [condition, setCondition] = useState<UsedCondition>(item?.minimum_condition ?? "like-new");
   const [notes, setNotes] = useState(item?.notes ?? "");
+  // A gift idea's own fields. Its note is kept apart from the note for guests,
+  // so switching the list to a registry never shows it to them.
+  const [recipient, setRecipient] = useState(idea?.recipient ?? initialRecipient ?? "");
+  const [ideaNotes, setIdeaNotes] = useState(idea?.notes ?? "");
+  const [ideaBought, setIdeaBought] = useState(Boolean(idea?.boughtAt));
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
@@ -153,9 +187,11 @@ export function ItemEditor({
   );
   const duplicate = useMemo(() => {
     const key = itemMatchKey(link);
-    if (!key) return null;
+    if (!key || forIdea) return null;
     return detail.data?.items.find((i) => i.id !== item?.id && itemMatchKey(i.external_url) === key) ?? null;
-  }, [link, detail.data?.items, item?.id]);
+  }, [link, detail.data?.items, item?.id, forIdea]);
+  // The people the owner saved ideas for, offered with one tap.
+  const recipients = useMemo(() => recentRecipients(giftIdeas.data ?? [], 6), [giftIdeas.data]);
 
   function startReading(raw: string) {
     const { url } = parseSharedText(raw);
@@ -207,10 +243,21 @@ export function ItemEditor({
     };
   }
 
+  function chooseList(id: string) {
+    onRegistryChange?.(id);
+    setCategoryId(null);
+    setConfirmedDuplicate(false);
+    setError(null);
+  }
+
   function save() {
     setError(null);
     if (!registryId) {
       setError("Pick a registry first.");
+      return;
+    }
+    if (forIdea) {
+      saveAsIdea();
       return;
     }
     if (!title.trim()) {
@@ -249,7 +296,68 @@ export function ItemEditor({
     }
   }
 
+  /** The same checks and wording as the website's gift idea dialog, from parseGiftIdea. */
+  function saveAsIdea() {
+    if (link.trim() && !normalizeLink(link)) {
+      setError("The link doesn't look right. Fix it or clear it.");
+      return;
+    }
+    const parsed = parseGiftIdea({
+      recipient,
+      title,
+      url: link.trim() ? normalizeLink(link) : null,
+      imageUrl,
+      price: parsePrice(priceText),
+      notes: ideaNotes,
+    });
+    if (parsed.error !== undefined) {
+      setError(parsed.error);
+      haptic("warning");
+      return;
+    }
+    if (mode === "add") {
+      saveIdea.mutate(
+        { fields: parsed.fields },
+        {
+          onSuccess: (saved) => {
+            haptic("success");
+            onDone({ type: "added", registryId: GIFT_IDEAS, title: saved.title, recipient: saved.recipient });
+          },
+          onError: (e) => setError(errorMessage(e)),
+        }
+      );
+    } else if (idea) {
+      saveIdea.mutate(
+        { fields: parsed.fields, id: idea.id, bought: ideaBought },
+        { onError: (e) => Alert.alert("Couldn't save your changes", errorMessage(e)) }
+      );
+      // The list updates right away; the save finishes in the background.
+      haptic("success");
+      onDone({ type: "saved", registryId: GIFT_IDEAS });
+    }
+  }
+
+  function confirmDeleteIdea() {
+    if (!idea) return;
+    // The website's gift idea dialog asks the same (src/components/gift-idea-dialog.tsx).
+    const question = `Delete “${idea.title}”? You can't undo this.`;
+    const run = () => {
+      deleteIdea.mutate(idea, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) });
+      haptic("success");
+      onDone({ type: "deleted", registryId: GIFT_IDEAS });
+    };
+    if (Platform.OS === "web") {
+      if (globalThis.confirm?.(question)) run();
+      return;
+    }
+    Alert.alert(question, undefined, [
+      { text: "Keep it", style: "cancel" },
+      { text: "Delete it", style: "destructive", onPress: run },
+    ]);
+  }
+
   function confirmDelete() {
+    if (forIdea) return confirmDeleteIdea();
     if (!item) return;
     // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
     const message = "This cannot be undone.";
@@ -283,11 +391,17 @@ export function ItemEditor({
     );
   }
 
-  const saving = addItem.isPending;
+  const saving = forIdea ? saveIdea.isPending : addItem.isPending;
   const store = storeLabel(link);
   const openUrl = normalizeLink(link);
   const saveTitle =
-    mode === "edit" ? "Save changes" : duplicate && confirmedDuplicate ? "Add it again" : "Add item";
+    mode === "edit"
+      ? "Save changes"
+      : forIdea
+        ? "Save idea"
+        : duplicate && confirmedDuplicate
+          ? "Add it again"
+          : "Add item";
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={64}>
@@ -301,25 +415,56 @@ export function ItemEditor({
       >
         {header}
 
-        {mode === "add" && registries && registries.length > 1 ? (
+        {mode === "add" && registries ? (
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-              Registry
+              Add to
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
               {registries.map((r) => (
-                <Chip
-                  key={r.id}
-                  label={r.title}
-                  selected={r.id === registryId}
-                  onPress={() => {
-                    onRegistryChange?.(r.id);
-                    setCategoryId(null);
-                    setConfirmedDuplicate(false);
-                  }}
-                />
+                <Chip key={r.id} label={r.title} selected={r.id === registryId} onPress={() => chooseList(r.id)} />
               ))}
+              <Chip label="Gift ideas" icon="lightbulb" selected={forIdea} onPress={() => chooseList(GIFT_IDEAS)} />
+              {registries.length === 0 ? (
+                <Chip label="+ New registry" selected={false} onPress={() => router.push("/new-registry")} />
+              ) : null}
             </ScrollView>
+          </View>
+        ) : null}
+
+        {/* Who a gift idea is for comes first: a shared link is read on its own. */}
+        {forIdea ? (
+          <View style={{ gap: spacing.md }}>
+            <View style={[styles.notice, { backgroundColor: theme.tintSoft }]}>
+              <Icon name="lock" size={16} color={theme.tint} />
+              <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
+                Only you can see your gift ideas. The person they&apos;re for never does.
+              </Text>
+            </View>
+            <View style={{ gap: spacing.sm }}>
+              <Field
+                label="Who's it for?"
+                value={recipient}
+                onChangeText={setRecipient}
+                placeholder="Mom, Sam, my brother…"
+                maxLength={RECIPIENT_MAX}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="done"
+              />
+              {recipients.length > 0 ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                  {recipients.map((name) => (
+                    <Chip
+                      key={name}
+                      label={name}
+                      selected={recipientKey(name) === recipientKey(recipient)}
+                      onPress={() => setRecipient(name)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
           </View>
         ) : null}
 
@@ -372,10 +517,10 @@ export function ItemEditor({
             </View>
           ) : null}
           <ReadStatus state={readState} store={store} failedWithName={failedWithName} />
-          {linkedRegistries ? (
+          {linkedRegistries && !forIdea ? (
             <StoreLinkStatus link={link} linkedRegistries={linkedRegistries} registryLinkStores={registryLinkStores} />
           ) : null}
-          {duplicate && mode === "add" ? (
+          {duplicate && mode === "add" && !forIdea ? (
             <View style={[styles.notice, { backgroundColor: theme.accentSoft }]}>
               <Icon name="error" size={16} color={theme.onAccentSoft} />
               <Text variant="footnote" style={{ flex: 1, color: theme.onAccentSoft }}>
@@ -421,13 +566,15 @@ export function ItemEditor({
         {/* Details */}
         <View style={{ gap: spacing.lg }}>
           <Field
-            label="Item name"
+            label={forIdea ? "What is it?" : "Item name"}
             value={title}
             onChangeText={(text) => {
               setTitle(text);
               setTitleTouched(true);
             }}
-            placeholder={readState === "reading" ? "Reading the page…" : "What is it?"}
+            placeholder={
+              readState === "reading" ? "Reading the page…" : forIdea ? "e.g., Wool scarf in green" : "What is it?"
+            }
             multiline
             style={{ minHeight: 44 }}
             returnKeyType="done"
@@ -451,20 +598,22 @@ export function ItemEditor({
                 leading={<Text tone="tertiary">$</Text>}
               />
             </View>
-            <View style={{ gap: 6 }}>
-              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-                Quantity
-              </Text>
-              {/* As tall as the price field, so the two line up. */}
-              <View style={{ height: 50, justifyContent: "center" }}>
-                <Stepper value={quantity} onChange={setQuantity} />
+            {forIdea ? null : (
+              <View style={{ gap: 6 }}>
+                <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                  Quantity
+                </Text>
+                {/* As tall as the price field, so the two line up. */}
+                <View style={{ height: 50, justifyContent: "center" }}>
+                  <Stepper value={quantity} onChange={setQuantity} />
+                </View>
               </View>
-            </View>
+            )}
           </View>
         </View>
 
         {/* Category */}
-        {registryId ? (
+        {registryId && !forIdea ? (
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
               Category
@@ -497,53 +646,79 @@ export function ItemEditor({
           </View>
         ) : null}
 
-        <Section>
-          <SwitchRow
-            icon="star"
-            label="Most wanted"
-            description="Guests see it tagged Most wanted."
-            value={mostWanted}
-            onValueChange={setMostWanted}
-          />
-          <Divider inset={52} />
-          <SwitchRow
-            icon="checkCircle"
-            label={copyForRegistry(detail.data?.registry).selfPurchaseButton}
-            value={bought}
-            onValueChange={setBought}
-          />
-          <Divider inset={52} />
-          <SwitchRow
-            icon="refresh"
-            label="Open to used"
-            description="Guests may give one secondhand."
-            value={openToUsed}
-            onValueChange={setOpenToUsed}
-          />
-          {openToUsed ? (
-            <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-                Minimum condition
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                {USED_CONDITIONS.map((c) => (
-                  <Chip key={c.id} label={c.label} selected={condition === c.id} onPress={() => setCondition(c.id)} />
-                ))}
-              </View>
-            </View>
-          ) : null}
-        </Section>
+        {forIdea ? (
+          <>
+            {mode === "edit" ? (
+              <Section>
+                <SwitchRow
+                  icon="checkCircle"
+                  label="Bought it"
+                  description="It stays in your gift ideas, marked as bought."
+                  value={ideaBought}
+                  onValueChange={setIdeaBought}
+                />
+              </Section>
+            ) : null}
+            <Field
+              label="Note (optional)"
+              value={ideaNotes}
+              onChangeText={setIdeaNotes}
+              placeholder="Their size, the color they liked, when to get it…"
+              maxLength={NOTES_MAX}
+              multiline
+            />
+          </>
+        ) : (
+          <>
+            <Section>
+              <SwitchRow
+                icon="star"
+                label="Most wanted"
+                description="Guests see it tagged Most wanted."
+                value={mostWanted}
+                onValueChange={setMostWanted}
+              />
+              <Divider inset={52} />
+              <SwitchRow
+                icon="checkCircle"
+                label={copyForRegistry(detail.data?.registry).selfPurchaseButton}
+                value={bought}
+                onValueChange={setBought}
+              />
+              <Divider inset={52} />
+              <SwitchRow
+                icon="refresh"
+                label="Open to used"
+                description="Guests may give one secondhand."
+                value={openToUsed}
+                onValueChange={setOpenToUsed}
+              />
+              {openToUsed ? (
+                <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
+                  <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                    Minimum condition
+                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                    {USED_CONDITIONS.map((c) => (
+                      <Chip key={c.id} label={c.label} selected={condition === c.id} onPress={() => setCondition(c.id)} />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+            </Section>
 
-        <Field
-          label="Note for guests (optional)"
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Size, color, or anything else that helps"
-          multiline
-        />
+            <Field
+              label="Note for guests (optional)"
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Size, color, or anything else that helps"
+              multiline
+            />
+          </>
+        )}
 
         {mode === "edit" ? (
-          <Button title="Remove item" variant="danger" icon="trash" onPress={confirmDelete} />
+          <Button title={forIdea ? "Delete idea" : "Remove item"} variant="danger" icon="trash" onPress={confirmDelete} />
         ) : null}
       </ScrollView>
 

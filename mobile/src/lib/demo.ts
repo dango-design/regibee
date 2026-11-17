@@ -11,6 +11,7 @@ import {
   demoPurchases,
   demoSuggestions,
 } from "@shared/demo-data";
+import type { GiftIdea, GiftIdeaFields } from "@shared/gift-ideas";
 import { GIFT_HOLD_DAYS, giftActivityAction } from "@shared/gifts";
 
 import type { Category, Gift, Item, Registry, RegistryDetail, RegistrySummary } from "@/lib/types";
@@ -32,6 +33,8 @@ export function setDemoActive(value: boolean) {
 interface Store {
   details: Map<string, RegistryDetail>;
   gifts: Map<string, Gift[]>;
+  /** Gift ideas for other people. The demo starts with none. */
+  ideas: GiftIdea[];
 }
 
 let store: Store | null = null;
@@ -110,7 +113,7 @@ function build(): Store {
     pendingSuggestions: demoSuggestions(day).filter((s) => s.status === "pending").length,
     reservationsHidden: false,
   };
-  return { details: new Map([["demo", detail]]), gifts: new Map([["demo", gifts]]) };
+  return { details: new Map([["demo", detail]]), gifts: new Map([["demo", gifts]]), ideas: [] };
 }
 
 function current() {
@@ -240,6 +243,40 @@ export const demo = {
     });
     current().gifts.set(id, []);
     return { id };
+  },
+  giftIdeas(): GiftIdea[] {
+    return [...current().ideas].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  /** Saves a new idea, or changes the one with this id. `bought` leaves it as it was when undefined. */
+  saveGiftIdea(fields: GiftIdeaFields, id?: string, bought?: boolean): GiftIdea {
+    const now = new Date().toISOString();
+    const values = {
+      recipient: fields.recipient,
+      title: fields.title,
+      externalUrl: fields.external_url,
+      imageUrl: fields.image_url,
+      price: fields.price,
+      notes: fields.notes,
+    };
+    if (id) {
+      const before = current().ideas.find((idea) => idea.id === id);
+      if (!before) throw new Error("That gift idea was deleted.");
+      const boughtAt = bought === undefined ? before.boughtAt : bought ? (before.boughtAt ?? now) : null;
+      const idea: GiftIdea = { ...before, ...values, boughtAt };
+      current().ideas = current().ideas.map((i) => (i.id === id ? idea : i));
+      return idea;
+    }
+    const idea: GiftIdea = { ...values, id: newId("idea"), boughtAt: bought ? now : null, createdAt: now };
+    current().ideas = [idea, ...current().ideas];
+    return idea;
+  },
+  setGiftIdeaBought(id: string, bought: boolean) {
+    current().ideas = current().ideas.map((idea) =>
+      idea.id === id ? { ...idea, boughtAt: bought ? new Date().toISOString() : null } : idea
+    );
+  },
+  deleteGiftIdea(id: string) {
+    current().ideas = current().ideas.filter((idea) => idea.id !== id);
   },
   createCategory(registryId: string, name: string, sortOrder: number): Category {
     const category: Category = { id: newId("cat"), registry_id: registryId, name, sort_order: sortOrder };

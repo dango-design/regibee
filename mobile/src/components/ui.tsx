@@ -194,7 +194,18 @@ export function Pill({
   );
 }
 
-export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  icon,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  /** Shown before the label. */
+  icon?: IconName;
+}) {
   const theme = useTheme();
   return (
     <Pressable
@@ -213,6 +224,7 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
         },
       ]}
     >
+      {icon ? <Icon name={icon} size={15} color={selected ? theme.onTint : theme.tint} /> : null}
       <RNText style={{ color: selected ? theme.onTint : theme.text, fontSize: 15, fontWeight: "500" }}>{label}</RNText>
     </Pressable>
   );
@@ -445,6 +457,8 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 12, fontWeight: "600" },
   chip: {
+    flexDirection: "row",
+    gap: 6,
     paddingHorizontal: 14,
     height: 36,
     borderRadius: radius.pill,

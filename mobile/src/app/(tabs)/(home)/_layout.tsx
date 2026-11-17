@@ -18,6 +18,7 @@ export default function HomeLayout() {
     >
       <Stack.Screen name="index" options={{ title: "My registries", headerLargeTitle: true }} />
       <Stack.Screen name="registry/[id]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
+      <Stack.Screen name="gift-ideas" options={{ title: "Gift ideas", headerBackButtonDisplayMode: "minimal" }} />
     </Stack>
   );
 }

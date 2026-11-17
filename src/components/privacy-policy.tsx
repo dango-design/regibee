@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 16, 2026",
+  effectiveDate: "November 17, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -340,8 +340,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
 
           <Section id="app">
             <P>
-              The app is for registry owners. It signs in to the same account and shows the same registries as the
-              website, under the same rules.
+              The app is for registry owners. It signs in to the same account and shows the same registries and
+              gift ideas as the website, under the same rules.
             </P>
             <List>
               <li>
@@ -349,7 +349,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 a product to Regibee or paste a link, the app reads the product&apos;s name, price and pictures on your
                 phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
                 store sees a visit from your phone just as if you&apos;d opened the page yourself. Nothing goes to
-                Regibee until you save the item.
+                Regibee until you save the item or gift idea.
               </li>
               <li>The app reads your clipboard only when you tap Paste.</li>
               <li>
@@ -361,8 +361,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Kept on your phone.</strong> Your sign-in session, a
-                copy of your registries so the app opens quickly, and the registry you last added to. Signing out
-                removes the session and the copy. Deleting the app removes everything it kept.
+                copy of your registries and gift ideas so the app opens quickly, and the list you last added to.
+                Signing out removes the session and the copy. Deleting the app removes everything it kept.
               </li>
               <li>
                 <strong className="font-semibold text-primary">The demo.</strong> &ldquo;Look around first&rdquo;

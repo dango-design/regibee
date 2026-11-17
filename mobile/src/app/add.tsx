@@ -3,14 +3,18 @@ import { useState } from "react";
 import { Platform, View } from "react-native";
 
 import { ItemEditor } from "@/components/item-editor";
-import { Button, EmptyState, IconButton, LoadingState } from "@/components/ui";
+import { IconButton, LoadingState } from "@/components/ui";
 import { useRegistries } from "@/lib/data";
-import { rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
+import { GIFT_IDEAS, rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
 import { useTheme } from "@/lib/theme";
 
-/** Add an item. Opened from a registry, or by a regibee://add?url=… link. */
+/**
+ * Add an item, or save a gift idea. Opened from a registry, from the Gift
+ * ideas screen (registryId GIFT_IDEAS), or by a regibee://add?url=… link,
+ * where the owner picks the list.
+ */
 export default function AddScreen() {
-  const params = useLocalSearchParams<{ registryId?: string; url?: string; title?: string }>();
+  const params = useLocalSearchParams<{ registryId?: string; url?: string; title?: string; recipient?: string }>();
   const theme = useTheme();
   const registries = useRegistries();
   const fallback = useDefaultRegistry(registries.data, params.registryId);
@@ -21,30 +25,25 @@ export default function AddScreen() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Stack.Screen
         options={{
+          title: registryId === GIFT_IDEAS ? "Save a gift idea" : "Add an item",
           headerLeft:
             Platform.OS === "ios"
               ? () => <IconButton icon="close" accessibilityLabel="Cancel" onPress={() => router.back()} />
               : undefined,
         }}
       />
-      {fallback === undefined ? (
+      {!registryId ? (
         <LoadingState />
-      ) : !registryId ? (
-        <EmptyState
-          icon="gift"
-          title="Make a registry first"
-          message="Items go on a registry. Create one, then add this."
-          action={<Button title="Create a registry" icon="add" onPress={() => router.replace("/new-registry")} />}
-        />
       ) : (
         <ItemEditor
           mode="add"
           registryId={registryId}
-          // Opened from a registry, the item goes there. Opened from a link, the owner picks.
+          // Opened from a registry or gift ideas, it goes there. Opened from a link, the owner picks.
           registries={params.registryId ? undefined : registries.data}
           onRegistryChange={setChosen}
           initialLink={params.url ?? null}
           initialTitle={params.title ?? null}
+          initialRecipient={params.recipient ?? null}
           onDone={(result) => {
             if (result.type === "added") rememberRegistry(result.registryId);
             router.back();
