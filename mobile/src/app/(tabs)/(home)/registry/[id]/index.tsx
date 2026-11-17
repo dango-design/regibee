@@ -1,3 +1,6 @@
+// A list's screen: the website's list page (src/app/(protected)/dashboard/registry/[registryId]/page.tsx),
+// from the same loader (src/lib/list-page.ts on the website).
+
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
@@ -14,18 +17,22 @@ import {
   View,
 } from "react-native";
 
+import { formatShortEventDate, eventTypeLabel } from "@shared/events";
 import {
   formatGiftDate,
   giftActivityFor,
   giftActivityTag,
   isOpenReservation,
-  readReservationPrivacy,
   reservationsHiddenText,
 } from "@shared/gifts";
 import { LIST_ACCESS, listAccess, listVisibility } from "@shared/list-access";
+import { copyForRegistry } from "@shared/registry-copy";
+import { getStore } from "@shared/retailers";
 
-import { Icon } from "@/components/icon";
+import { Icon, type IconName } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
+import { NavRow } from "@/components/nav-row";
+import { Notice } from "@/components/notice";
 import {
   Button,
   Chip,
@@ -37,23 +44,25 @@ import {
   LoadingState,
   Pill,
   ProgressBar,
+  Section,
   Text,
 } from "@/components/ui";
 import {
   errorMessage,
-  storeRegistries,
+  removeItemWording,
   useCancelGift,
   useDeleteItem,
-  useGifts,
+  useDismissEventPrompt,
+  useHidePlainLinks,
   useRegistry,
   useToggleItem,
+  useUnlinkEvent,
 } from "@/lib/data";
 import { formatDollars, formatEventDate, formatPrice, initials, plural } from "@/lib/format";
 import { occasionLabel } from "@/lib/occasion";
-import { copyForRegistry } from "@shared/registry-copy";
 import { registryShareUrl, SITE_URL } from "@/lib/supabase";
 import { fonts, radius, spacing, useTheme } from "@/lib/theme";
-import type { Gift, Item, RegistryDetail } from "@/lib/types";
+import type { CashFund, Gift, Item, RegistryDetail } from "@/lib/types";
 
 type Tab = "items" | "gifts";
 
@@ -61,7 +70,6 @@ export default function RegistryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const registry = useRegistry(id);
-  const gifts = useGifts(id);
   const [tab, setTab] = useState<Tab>("items");
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
 
@@ -79,32 +87,29 @@ export default function RegistryScreen() {
         haptic("success");
         toggleItem({ item, field: "is_parent_purchased" }, { onError: (e) => Alert.alert("Couldn't change it", errorMessage(e)) });
       },
-      remove: (item) =>
-        Alert.alert(`Delete “${item.title}”?`, "This cannot be undone.", [
+      remove: (item) => {
+        // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
+        const wording = removeItemWording(item);
+        Alert.alert(wording.title, wording.message, [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Remove item",
+            text: wording.button,
             style: "destructive",
-            onPress: () => removeItem(item, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) }),
+            onPress: () => removeItem(item, { onError: (e) => Alert.alert("Couldn't remove it", errorMessage(e)) }),
           },
-        ]),
+        ]);
+      },
     }),
     // mutate is stable, so the rows don't all redraw while a change saves.
     [toggleItem, removeItem]
   );
 
   const data = registry.data;
-  // Cancelled gifts stay in the list, faded, as on the website.
-  const allGifts = gifts.data ?? [];
-
   const sections = useMemo(() => (data ? itemSections(data, categoryFilter) : []), [data, categoryFilter]);
-  // One array for every row, kept while the registry row is unchanged, so
-  // changing an item doesn't redraw them all.
-  const registryRow = data?.registry;
-  const linkedStores = useMemo(
-    () => (registryRow ? (storeRegistries(registryRow)?.map((r) => r.store) ?? null) : null),
-    [registryRow]
-  );
+  // One array for every row, kept while the list is unchanged, so changing
+  // an item doesn't redraw them all.
+  const linkedRegistries = data?.linkedRegistries;
+  const linkedStores = useMemo(() => linkedRegistries?.map((r) => r.store) ?? null, [linkedRegistries]);
 
   if (!data) {
     return (
@@ -121,15 +126,17 @@ export default function RegistryScreen() {
   const r = data.registry;
   const shareUrl = registryShareUrl(r.slug);
   const selfPurchaseButton = copyForRegistry(r).selfPurchaseButton;
-
   const visibility = listVisibility(r);
+  const addItem = () => router.push({ pathname: "/add", params: { registryId: r.id } });
+  const addFund = () => router.push({ pathname: "/fund", params: { registryId: r.id } });
+  const openSettings = () => router.push({ pathname: "/registry/[id]/settings", params: { id: r.id } });
 
   function shareRegistry() {
     if (visibility === "private") {
-      Alert.alert(
-        "This list is private",
-        `${LIST_ACCESS.private.description} To share it, change who can open it in the list's settings on the website.`
-      );
+      Alert.alert("This list is private", `${LIST_ACCESS.private.description} To share it, change who can open it in Settings.`, [
+        { text: "Not now", style: "cancel" },
+        { text: "Settings", onPress: openSettings },
+      ]);
       return;
     }
     Share.share(
@@ -138,15 +145,14 @@ export default function RegistryScreen() {
   }
 
   function moreActions() {
-    const open = (path: string) => WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
     Alert.alert(r.title, undefined, [
-      { text: "Preview", onPress: () => open(`/r/${r.slug}`) },
-      {
-        text: data!.pendingSuggestions > 0 ? `Suggestions (${data!.pendingSuggestions})` : "Suggestions",
-        onPress: () => open(`/dashboard/registry/${r.id}?tab=suggestions`),
-      },
-      { text: "Settings", onPress: () => open(`/dashboard/registry/${r.id}/settings`) },
-      { text: "Cancel", style: "cancel" },
+      { text: "Preview", onPress: () => WebBrowser.openBrowserAsync(`${SITE_URL}/r/${r.slug}`) },
+      { text: "Add a gift fund", onPress: addFund },
+      ...(data!.showPlanEventButton
+        ? [{ text: "Plan an event", onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }) }]
+        : []),
+      { text: "Settings", onPress: openSettings },
+      { text: "Cancel", style: "cancel" as const },
     ]);
   }
 
@@ -154,22 +160,22 @@ export default function RegistryScreen() {
     <RegistryHeader
       detail={data}
       tab={tab}
-      giftCount={allGifts.length}
       onTab={(next) => {
         haptic();
         setTab(next);
       }}
       categoryFilter={categoryFilter}
       onCategory={setCategoryFilter}
+      onAddFund={addFund}
+      onSettings={openSettings}
     />
   );
 
   const refresh = (
     <RefreshControl
-      refreshing={registry.isRefetching || gifts.isRefetching}
+      refreshing={registry.isRefetching}
       onRefresh={() => {
         registry.refetch();
-        gifts.refetch();
       }}
       tintColor={theme.tint}
     />
@@ -184,11 +190,7 @@ export default function RegistryScreen() {
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
               <IconButton icon="more" accessibilityLabel="More" onPress={moreActions} />
-              <IconButton
-                icon="add"
-                accessibilityLabel="Add an item"
-                onPress={() => router.push({ pathname: "/add", params: { registryId: r.id } })}
-              />
+              <IconButton icon="add" accessibilityLabel="Add an item" onPress={addItem} />
             </View>
           ),
         }}
@@ -227,27 +229,37 @@ export default function RegistryScreen() {
             </View>
           )}
           ListEmptyComponent={
-            <EmptyState
-              icon="bag"
-              title={data.items.length === 0 ? "No items yet" : "Nothing in this category"}
-              message={data.items.length === 0 ? "Add items from any store to get started." : undefined}
-              action={
-                data.items.length === 0 ? (
-                  <View style={{ width: "100%", maxWidth: 320 }}>
-                    <Button
-                      title="Add item"
-                      icon="add"
-                      onPress={() => router.push({ pathname: "/add", params: { registryId: r.id } })}
-                    />
+            data.items.length === 0 && data.funds.length === 0 ? (
+              <EmptyState
+                icon="bag"
+                title="No items yet"
+                message={
+                  data.showChecklist
+                    ? "Add items manually or browse the checklist."
+                    : "Add items from any store to get started."
+                }
+                action={
+                  <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
+                    <Button title="Add item" icon="add" onPress={addItem} />
+                    {data.showChecklist ? (
+                      <Button
+                        title="Browse checklist"
+                        icon="checklist"
+                        variant="secondary"
+                        onPress={() => router.push({ pathname: "/registry/[id]/checklist", params: { id: r.id } })}
+                      />
+                    ) : null}
                   </View>
-                ) : null
-              }
-            />
+                }
+              />
+            ) : data.items.length === 0 ? undefined : (
+              <EmptyState icon="bag" title="Nothing in this category" />
+            )
           }
         />
       ) : (
         <SectionList
-          sections={allGifts.length > 0 ? [{ title: "gifts", data: allGifts }] : []}
+          sections={data.gifts.length > 0 ? [{ title: "gifts", data: data.gifts }] : []}
           keyExtractor={(gift) => gift.id}
           contentInsetAdjustmentBehavior="automatic"
           style={{ backgroundColor: theme.background }}
@@ -263,16 +275,19 @@ export default function RegistryScreen() {
                 index === section.data.length - 1 && styles.groupLast,
               ]}
             >
-              <GiftRow gift={gift} onPress={() => giftActions(gift, (g) => cancelGift.mutate(g, { onError: (e) => Alert.alert("Couldn't cancel it", errorMessage(e)) }))} />
+              <GiftRow
+                gift={gift}
+                onPress={() =>
+                  giftActions(gift, (g) =>
+                    cancelGift.mutate(g, { onError: (e) => Alert.alert("Couldn't cancel it", errorMessage(e)) })
+                  )
+                }
+              />
               {index < section.data.length - 1 ? <Divider inset={68} /> : null}
             </View>
           )}
           ListEmptyComponent={
-            gifts.isPending ? (
-              <LoadingState />
-            ) : gifts.isError ? (
-              <ErrorState message={errorMessage(gifts.error)} onRetry={() => gifts.refetch()} />
-            ) : data.reservationsHidden ? undefined : (
+            data.reservationsHidden ? undefined : (
               <EmptyState
                 icon="gift"
                 title="No gifts reserved yet"
@@ -308,22 +323,25 @@ function itemSections(detail: RegistryDetail, filter: string | "all") {
 function RegistryHeader({
   detail,
   tab,
-  giftCount,
   onTab,
   categoryFilter,
   onCategory,
+  onAddFund,
+  onSettings,
 }: {
   detail: RegistryDetail;
   tab: Tab;
-  giftCount: number;
   onTab: (tab: Tab) => void;
   categoryFilter: string;
   onCategory: (id: string) => void;
+  onAddFund: () => void;
+  onSettings: () => void;
 }) {
   const theme = useTheme();
   const r = detail.registry;
   // The same numbers as the website's registry page.
   const gifted = detail.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
+  const completion = detail.items.length > 0 ? gifted / detail.items.length : 0;
   const value = detail.items.reduce((sum, i) => sum + (i.price ?? 0), 0);
   const copy = copyForRegistry(r);
   const usedCategories = detail.categories.filter((c) => detail.items.some((i) => i.category_id === c.id));
@@ -337,59 +355,56 @@ function RegistryHeader({
         <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
           <Pill label={occasionLabel(r)} tone="accent" />
           {r.event_date ? <Pill label={`${copy.eventDateLabel}: ${formatEventDate(r.event_date)}`} tone="tint" icon="calendar" /> : null}
-          <Pill label={listAccess(listVisibility(r)).short} icon={listVisibility(r) === "private" ? "lock" : listVisibility(r) === "public" ? "public" : "link"} />
+          <Pill
+            label={listAccess(listVisibility(r)).short}
+            icon={listVisibility(r) === "private" ? "lock" : listVisibility(r) === "public" ? "public" : "link"}
+          />
+          {detail.role === "manager" ? <Pill label="Manager" icon="people" /> : null}
         </View>
       </View>
 
-      {detail.reservationsHidden ? <HiddenNotice detail={detail} /> : null}
+      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+        {detail.reservationsHidden ? <HiddenNotice detail={detail} onSettings={onSettings} /> : null}
+        <EventsBanner detail={detail} />
+        {tab === "items" ? <PlainLinksNotices detail={detail} /> : null}
+      </View>
 
       <View style={[styles.stats, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Stat label="Total items" value={String(detail.items.length)} />
         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <Stat label="Gifted" value={String(gifted)} />
         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+        <Stat label="Completion" value={`${Math.round(completion * 100)}%`} />
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <Stat label="Total value" value={formatDollars(value)} />
       </View>
       {detail.items.length > 0 ? (
         <View style={{ paddingHorizontal: spacing.lg }}>
-          <ProgressBar value={gifted / detail.items.length} color={theme.success} />
+          <ProgressBar value={completion} color={theme.success} />
         </View>
       ) : null}
 
-      {detail.funds.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
-          {detail.funds.map((fund) => (
-            <View key={fund.id} style={[styles.fund, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Icon name="fund" size={16} color={theme.success} />
-                <Text variant="footnote" numberOfLines={1} style={{ fontWeight: "600", flex: 1 }}>
-                  {fund.title}
-                </Text>
-              </View>
-              {fund.description ? (
-                <Text variant="caption" tone="tertiary" numberOfLines={2}>
-                  {fund.description}
-                </Text>
-              ) : null}
-              {/* The website's fund card says the same (src/components/cash-fund-card.tsx). */}
-              {fund.goal_amount ? (
-                <>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                    <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
-                    <Text variant="footnote">{formatDollars(fund.goal_amount)} goal</Text>
-                  </View>
-                  <ProgressBar value={fund.current_amount / fund.goal_amount} color={theme.success} />
-                  <Text variant="caption" tone="tertiary">
-                    {formatDollars(Math.max(0, fund.goal_amount - fund.current_amount))} remaining
-                  </Text>
-                </>
-              ) : fund.current_amount > 0 ? (
-                <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
-              ) : null}
-            </View>
-          ))}
-        </ScrollView>
-      ) : null}
+      <ListTools detail={detail} />
+
+      <View style={{ gap: spacing.sm }}>
+        <View style={styles.fundsHeader}>
+          <Text variant="headline" style={{ fontFamily: fonts.displayMedium }}>
+            Gift Funds
+          </Text>
+          <Button title="Add Fund" icon="add" size="small" variant="ghost" onPress={onAddFund} />
+        </View>
+        {detail.funds.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
+            {detail.funds.map((fund) => (
+              <FundCard key={fund.id} fund={fund} gifts={detail.gifts.filter((g) => g.cash_fund_id === fund.id)} />
+            ))}
+          </ScrollView>
+        ) : (
+          <Text variant="footnote" tone="tertiary" style={{ paddingHorizontal: spacing.lg }}>
+            Let guests give money toward something bigger, like a stroller or a honeymoon.
+          </Text>
+        )}
+      </View>
 
       <View style={[styles.segments, { backgroundColor: theme.surfaceAlt, marginHorizontal: spacing.lg }]}>
         {(["items", "gifts"] as const).map((t) => {
@@ -400,10 +415,20 @@ function RegistryHeader({
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               onPress={() => onTab(t)}
-              style={[styles.segment, selected && { backgroundColor: theme.surface, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 }]}
+              style={[
+                styles.segment,
+                selected && {
+                  backgroundColor: theme.surface,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 1 },
+                  elevation: 1,
+                },
+              ]}
             >
               <Text variant="subhead" style={{ fontWeight: selected ? "600" : "500", color: selected ? theme.text : theme.textSecondary }}>
-                {t === "items" ? `Items · ${detail.items.length + detail.funds.length}` : `Gifts · ${giftCount}`}
+                {t === "items" ? `Items · ${detail.items.length + detail.funds.length}` : `Gift Activity · ${detail.gifts.length}`}
               </Text>
             </Pressable>
           );
@@ -422,19 +447,184 @@ function RegistryHeader({
   );
 }
 
-/**
- * The website's notice, in its words (src/lib/gifts.ts). The website also says
- * when the next event's gifts are revealed; the app doesn't load events yet.
- */
-function HiddenNotice({ detail }: { detail: RegistryDetail }) {
+/** The checklist, the Suggestions Inbox and Store perks: the website's tabs and buttons beside the items. */
+function ListTools({ detail }: { detail: RegistryDetail }) {
+  const id = detail.registry.id;
+  const rows: { icon: IconName; label: string; detail?: string; badge?: number; onPress: () => void }[] = [];
+  if (detail.showChecklist) {
+    rows.push({
+      icon: "checklist",
+      label: "Checklist",
+      detail: `${detail.checklistProgress.matched} of ${detail.checklistProgress.total} added`,
+      onPress: () => router.push({ pathname: "/registry/[id]/checklist", params: { id } }),
+    });
+  }
+  rows.push({
+    icon: "inbox",
+    label: "Suggestions Inbox",
+    detail: detail.suggestions.length === 0 ? "Ideas guests send you" : undefined,
+    badge: detail.pendingSuggestions,
+    onPress: () => router.push({ pathname: "/registry/[id]/suggestions", params: { id } }),
+  });
+  if (detail.perkRows.length > 0) {
+    rows.push({
+      icon: "tag",
+      label: "Store perks",
+      badge: detail.readyPerkCount,
+      onPress: () => router.push({ pathname: "/registry/[id]/perks", params: { id } }),
+    });
+  }
+  rows.push({
+    icon: "settings",
+    label: "Settings",
+    onPress: () => router.push({ pathname: "/registry/[id]/settings", params: { id } }),
+  });
+
+  return (
+    <View style={{ paddingHorizontal: spacing.lg }}>
+      <Section>
+        {rows.map((row, index) => (
+          <View key={row.label}>
+            {index > 0 ? <Divider inset={52} /> : null}
+            <NavRow {...row} />
+          </View>
+        ))}
+      </Section>
+    </View>
+  );
+}
+
+/** The website's events banner on a list's page (src/components/registry-events-banner.tsx). */
+function EventsBanner({ detail }: { detail: RegistryDetail }) {
   const theme = useTheme();
-  const r = detail.registry;
+  const id = detail.registry.id;
+  const dismiss = useDismissEventPrompt(id);
+  const unlink = useUnlinkEvent(id);
+  const plan = () => router.push({ pathname: "/event-form", params: { registryId: id } });
+
+  if (detail.linkedEvents.length === 0) {
+    if (!detail.canPlanEvents || detail.eventPromptDismissed) return null;
+    return (
+      <Notice
+        icon="party"
+        title="Planning a party?"
+        message="Send invitations and track RSVPs, with this registry on the invitation."
+        action={{ title: "Plan an event", onPress: plan }}
+        secondary={{
+          title: "Dismiss",
+          onPress: () => dismiss.mutate(undefined, { onError: (e) => Alert.alert("Couldn't dismiss it", errorMessage(e)) }),
+        }}
+      />
+    );
+  }
+
+  return (
+    <Notice
+      icon="party"
+      tone="accent"
+      title={detail.linkedEvents.length === 1 ? "Linked event" : "Linked events"}
+      action={detail.canPlanEvents ? { title: "Plan another event", icon: "add", onPress: plan } : undefined}
+    >
+      <View style={{ gap: spacing.sm, paddingLeft: 46 }}>
+        {detail.linkedEvents.map((event) => {
+          const hosted = event.canManage;
+          const when = event.event_date ? formatShortEventDate(event.event_date) : eventTypeLabel(event.event_type);
+          return (
+            <View key={event.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <Pressable
+                accessibilityRole="link"
+                style={{ flex: 1 }}
+                onPress={() =>
+                  hosted
+                    ? router.push({ pathname: "/events/[eventId]", params: { eventId: event.id } })
+                    : WebBrowser.openBrowserAsync(`${SITE_URL}/e/${event.slug}`)
+                }
+              >
+                <Text variant="footnote" tone="secondary">
+                  <Text variant="footnote" style={{ color: theme.tint, fontWeight: "600" }}>
+                    {event.title}
+                  </Text>
+                  {` · ${when}`}
+                  {hosted ? "" : " · hosted by someone else"}
+                </Text>
+              </Pressable>
+              {!hosted ? (
+                <Button
+                  title="Unlink"
+                  size="small"
+                  variant="ghost"
+                  onPress={() =>
+                    Alert.alert(`Unlink “${event.title}”?`, "This list won't show on the event's invitation anymore.", [
+                      { text: "Keep it", style: "cancel" },
+                      {
+                        text: "Unlink",
+                        style: "destructive",
+                        onPress: () => unlink.mutate(event.id, { onError: (e) => Alert.alert("Couldn't unlink it", errorMessage(e)) }),
+                      },
+                    ])
+                  }
+                />
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+    </Notice>
+  );
+}
+
+/** The website's plain store links notice (src/components/plain-links-notice.tsx). */
+function PlainLinksNotices({ detail }: { detail: RegistryDetail }) {
+  const hide = useHidePlainLinks(detail.registry.id);
+  return (
+    <>
+      {detail.plainLinkGroups.map((group) => {
+        const store = getStore(group.storeId);
+        const count = group.items.length;
+        const one = count === 1;
+        const linked = detail.linkedRegistries?.find((l) => l.store === group.storeId);
+        const openUrl = linked?.url ?? store.registryPage?.openUrl ?? `https://www.${store.domain}`;
+        return (
+          <Notice
+            key={group.storeId}
+            icon="error"
+            tone="accent"
+            title={one ? `1 item has a plain ${store.name} link` : `${count} items have plain ${store.name} links`}
+            message={
+              one
+                ? `Gifts bought through it won't count toward your ${store.name} registry. Add it to your ${store.name} registry, then edit the item and paste its registry link.`
+                : `Gifts bought through them won't count toward your ${store.name} registry. Add them to your ${store.name} registry, then edit each item and paste its registry link.`
+            }
+            action={{ title: `Open my ${store.name} registry`, icon: "external", onPress: () => WebBrowser.openBrowserAsync(openUrl) }}
+            secondary={{
+              title: "Don't remind me",
+              onPress: () =>
+                hide.mutate(
+                  group.items.map((i) => i.id),
+                  { onError: (e) => Alert.alert("Couldn't save that", errorMessage(e)) }
+                ),
+            }}
+          >
+            <Text variant="footnote" tone="secondary" style={{ paddingLeft: 46 }}>
+              {group.items.map((i) => `• ${i.title}`).join("\n")}
+            </Text>
+          </Notice>
+        );
+      })}
+    </>
+  );
+}
+
+/** The website's notice, in its words (src/lib/gifts.ts). */
+function HiddenNotice({ detail, onSettings }: { detail: RegistryDetail; onSettings: () => void }) {
+  const theme = useTheme();
   const text = reservationsHiddenText({
     revealedCount: detail.revealedCount,
-    turnedOnByExchange: readReservationPrivacy(r.settings).hide_reservations_source === "exchange",
+    next: detail.nextReveal,
+    turnedOnByExchange: detail.turnedOnByExchange,
   });
   return (
-    <View style={[styles.hiddenNotice, { backgroundColor: theme.surfaceAlt, marginHorizontal: spacing.lg }]}>
+    <View style={[styles.hiddenNotice, { backgroundColor: theme.surfaceAlt }]}>
       <Icon name="eyeSlash" size={16} color={theme.textSecondary} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="footnote" style={{ fontWeight: "600" }}>
@@ -445,14 +635,14 @@ function HiddenNotice({ detail }: { detail: RegistryDetail }) {
             {text.revealed}
           </Text>
         ) : null}
+        {text.next ? (
+          <Text variant="footnote" tone="secondary">
+            {text.next}
+          </Text>
+        ) : null}
         <Text variant="footnote" tone="tertiary">
           {text.why}{" "}
-          <Text
-            variant="footnote"
-            accessibilityRole="link"
-            style={{ color: theme.tint, fontWeight: "600" }}
-            onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/dashboard/registry/${r.id}/settings`)}
-          >
+          <Text variant="footnote" accessibilityRole="link" style={{ color: theme.tint, fontWeight: "600" }} onPress={onSettings}>
             Change this in settings
           </Text>
         </Text>
@@ -461,13 +651,59 @@ function HiddenNotice({ detail }: { detail: RegistryDetail }) {
   );
 }
 
+/** A gift fund, as the website's fund card shows it (src/components/cash-fund-card.tsx). Tap to edit. */
+function FundCard({ fund, gifts }: { fund: CashFund; gifts: Gift[] }) {
+  const theme = useTheme();
+  const active = gifts.filter((g) => g.status !== "cancelled");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint="Opens the fund to edit it"
+      onPress={() => router.push({ pathname: "/fund", params: { registryId: fund.registry_id, fundId: fund.id } })}
+      style={({ pressed }) => [styles.fund, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }]}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Icon name="fund" size={16} color={theme.success} />
+        <Text variant="footnote" numberOfLines={1} style={{ fontWeight: "600", flex: 1 }}>
+          {fund.title}
+        </Text>
+      </View>
+      {fund.description ? (
+        <Text variant="caption" tone="tertiary" numberOfLines={2}>
+          {fund.description}
+        </Text>
+      ) : null}
+      {fund.goal_amount ? (
+        <>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+            <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
+            <Text variant="footnote">{formatDollars(fund.goal_amount)} goal</Text>
+          </View>
+          <ProgressBar value={fund.current_amount / fund.goal_amount} color={theme.success} />
+          <Text variant="caption" tone="tertiary">
+            {formatDollars(Math.max(0, fund.goal_amount - fund.current_amount))} remaining
+          </Text>
+        </>
+      ) : fund.current_amount > 0 ? (
+        <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
+      ) : null}
+      {active.length > 0 ? (
+        <Pill
+          tone="success"
+          label={`${active[0].buyer_name}${active.length > 1 ? ` + ${active.length - 1} other${active.length > 2 ? "s" : ""}` : ""} contributed`}
+        />
+      ) : null}
+    </Pressable>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, alignItems: "center", gap: 2 }}>
-      <Text variant="title" style={{ fontSize: 20 }}>
+      <Text variant="title" style={{ fontSize: 18 }} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
-      <Text variant="caption" tone="tertiary">
+      <Text variant="caption" tone="tertiary" numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -511,6 +747,11 @@ function GiftRow({ gift, onPress }: { gift: Gift; onPress: () => void }) {
             </Text>
           ) : null}
         </View>
+        {gift.buyer_email && !gift.hide_giver ? (
+          <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+            {gift.buyer_email}
+          </Text>
+        ) : null}
         {gift.message ? (
           <Text variant="footnote" tone="secondary" numberOfLines={3}>
             {gift.message}
@@ -586,8 +827,15 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   statDivider: { width: StyleSheet.hairlineWidth, height: 32 },
+  fundsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingLeft: spacing.lg + 4,
+    paddingRight: spacing.sm,
+  },
   fund: {
-    width: 200,
+    width: 220,
     padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,

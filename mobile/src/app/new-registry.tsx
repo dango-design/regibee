@@ -4,6 +4,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ProfileListingSwitch } from "@/components/profile-listing-switch";
 import { Button, Chip, Field, IconButton, Section, SwitchRow, Text } from "@/components/ui";
 import { errorMessage, useCreateRegistry } from "@/lib/data";
 import { formatEventDate, toYmd } from "@/lib/format";
@@ -25,6 +26,13 @@ export default function NewRegistryScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
+  const [listedOnProfile, setListedOnProfile] = useState(false);
+  const [description, setDescription] = useState("");
+  const [showPayments, setShowPayments] = useState(false);
+  const [venmo, setVenmo] = useState("");
+  const [paypal, setPaypal] = useState("");
+  const [zelle, setZelle] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
@@ -40,6 +48,12 @@ export default function NewRegistryScreen() {
         eventType: registryType === "personal" ? eventType : null,
         eventDate: date ? toYmd(date) : null,
         visibility,
+        listedOnProfile: visibility !== "private" && listedOnProfile,
+        description,
+        venmo,
+        paypal,
+        zelle,
+        zipCode,
       },
       {
         onSuccess: ({ id }) => {
@@ -155,7 +169,58 @@ export default function NewRegistryScreen() {
           <Text variant="footnote" tone="tertiary">
             {LIST_ACCESS[visibility].description}
           </Text>
+          <ProfileListingSwitch visibility={visibility} value={listedOnProfile} onValueChange={setListedOnProfile} />
         </View>
+
+        <Field
+          label="Message to guests (optional)"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Say hello to the people visiting your registry"
+          hint="Shown at the top of your registry page."
+          multiline
+        />
+
+        {showPayments ? (
+          <View style={{ gap: spacing.lg }}>
+            <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+              Payments and sales tax (optional)
+            </Text>
+            <Field label="Venmo" value={venmo} onChangeText={setVenmo} placeholder="@your-venmo" autoCapitalize="none" autoCorrect={false} />
+            <Field
+              label="PayPal"
+              value={paypal}
+              onChangeText={setPaypal}
+              placeholder="you@email.com or PayPal.me link"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Field
+              label="Zelle"
+              value={zelle}
+              onChangeText={setZelle}
+              placeholder="you@email.com or phone number"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Field
+              label="Zip code"
+              value={zipCode}
+              onChangeText={setZipCode}
+              placeholder="12345"
+              keyboardType="number-pad"
+              hint="When you add something you've already bought, we'll add estimated sales tax to its price. You can turn this off later in settings."
+            />
+          </View>
+        ) : (
+          <Button
+            title="Add payments and sales tax"
+            icon="card"
+            variant="secondary"
+            size="medium"
+            onPress={() => setShowPayments(true)}
+          />
+        )}
       </ScrollView>
       <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (

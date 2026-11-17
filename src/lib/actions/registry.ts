@@ -394,7 +394,7 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
   const notes = formData.get("notes") as string;
   const qty = quantityNeeded ? parseInt(quantityNeeded) : 1;
 
-  const { error } = await supabase.from("registry_items").insert({
+  const { data: added, error } = await supabase.from("registry_items").insert({
     registry_id: registryId,
     category_id: categoryId || null,
     title,
@@ -408,7 +408,7 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
     is_open_to_used: isOpenToUsed,
     minimum_condition: isOpenToUsed ? minimumCondition || null : null,
     notes: notes || null,
-  });
+  }).select("id").single();
 
   if (error) {
     return { error: error.message };
@@ -416,7 +416,8 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
 
   revalidatePath(`/dashboard/registry/${registryId}`);
   revalidatePath("/dashboard/saved");
-  return { success: true };
+  // The phone app opens the new item from its id.
+  return { success: true, id: added.id as string };
 }
 
 export async function updateRegistryItem(

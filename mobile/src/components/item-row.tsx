@@ -11,7 +11,13 @@ import { ItemImage } from "@/components/item-image";
 import { haptic, Pill, Text } from "@/components/ui";
 import { formatPrice } from "@/lib/format";
 import { spacing, useTheme } from "@/lib/theme";
-import type { Item } from "@/lib/types";
+import { USED_CONDITIONS, type Item } from "@/lib/types";
+
+/** "Open to very good used condition", as the website's item card tags it (src/components/ui/used-condition-tag.tsx). */
+function usedLabel(item: Item) {
+  const condition = USED_CONDITIONS.find((c) => c.id === (item.minimum_condition ?? "like-new"));
+  return `Open to ${(condition?.label ?? "Like new").toLowerCase()} used condition`;
+}
 
 export interface ItemActions {
   toggleMostWanted: (item: Item) => void;
@@ -36,6 +42,18 @@ function boughtAction(item: Item, selfPurchaseButton: string) {
   return item.quantity_fulfilled < item.quantity_needed ? selfPurchaseButton : null;
 }
 
+/** An item on the owner's other lists only comes off this one, as on the website. */
+function removeLabel(item: Item) {
+  return item.otherLists && item.otherLists.length > 0 ? "Remove from list" : "Remove item";
+}
+
+/** "Also on Baby Shower and 2 more lists", as the website's item card says it. */
+function alsoOn(lists: string[]) {
+  if (lists.length === 1) return `Also on ${lists[0]}`;
+  const more = lists.length - 1;
+  return `Also on ${lists[0]} and ${more} more ${more === 1 ? "list" : "lists"}`;
+}
+
 /** Long-press options on Android, where there's no native link menu. */
 function showActions(item: Item, actions: ItemActions, selfPurchaseButton: string) {
   haptic();
@@ -44,7 +62,7 @@ function showActions(item: Item, actions: ItemActions, selfPurchaseButton: strin
     { text: item.is_essential ? "Remove from most wanted" : "Mark most wanted", onPress: () => actions.toggleMostWanted(item) },
     ...(bought ? [{ text: bought, onPress: () => actions.toggleBought(item) }] : []),
     ...(item.external_url ? [{ text: "Shop", onPress: () => openLink(item) }] : []),
-    { text: "Remove item", style: "destructive" as const, onPress: () => actions.remove(item) },
+    { text: removeLabel(item), style: "destructive" as const, onPress: () => actions.remove(item) },
     { text: "Cancel", style: "cancel" as const },
   ]);
 }
@@ -98,7 +116,12 @@ export const ItemRow = memo(function ItemRow({
             {item.title}
           </Text>
         </View>
-        {s.tag ? <Pill label={s.tag.label} tone={TAG_TONE[s.tag.kind]} /> : null}
+        {s.tag || item.is_open_to_used ? (
+          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+            {s.tag ? <Pill label={s.tag.label} tone={TAG_TONE[s.tag.kind]} /> : null}
+            {item.is_open_to_used ? <Pill label={usedLabel(item)} /> : null}
+          </View>
+        ) : null}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           {item.price ? (
             <Text variant="footnote" style={{ fontWeight: "600" }}>
@@ -107,6 +130,16 @@ export const ItemRow = memo(function ItemRow({
           ) : null}
           <Text variant="footnote">{s.quantity}</Text>
         </View>
+        {item.notes ? (
+          <Text variant="footnote" tone="tertiary" numberOfLines={2}>
+            {item.notes}
+          </Text>
+        ) : null}
+        {item.otherLists && item.otherLists.length > 0 ? (
+          <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+            {alsoOn(item.otherLists)}
+          </Text>
+        ) : null}
         {registryStore ? (
           <Text variant="footnote" tone="tertiary" numberOfLines={1}>
             Counts toward your {registryStore.name} registry
@@ -135,7 +168,7 @@ export const ItemRow = memo(function ItemRow({
           />
         ) : null}
         {item.external_url ? <Link.MenuAction title="Shop" icon="safari" onPress={() => openLink(item)} /> : null}
-        <Link.MenuAction title="Remove item" icon="trash" destructive onPress={() => actions.remove(item)} />
+        <Link.MenuAction title={removeLabel(item)} icon="trash" destructive onPress={() => actions.remove(item)} />
       </Link.Menu>
     </Link>
   );

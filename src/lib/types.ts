@@ -1,5 +1,5 @@
-import type { RetailerRegistry } from "@/lib/retailers";
-import type { ListOccasion } from "@/lib/occasions";
+import type { RetailerRegistry } from "./retailers";
+import type { ListOccasion } from "./occasions";
 
 export interface PaymentMethods {
   venmo?: string;
