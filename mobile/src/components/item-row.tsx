@@ -102,8 +102,12 @@ export const ItemRow = memo(function ItemRow({
       // On iPhone the Link below opens it and adds the long-press menu.
       onPress={ios ? undefined : () => router.push(href)}
       onLongPress={ios ? undefined : () => showActions(item, actions, selfPurchaseButton)}
-      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? theme.surfaceAlt : theme.surface }]}
+      // On iPhone the Link below wraps this, and its trigger drops this
+      // Pressable's style, so the row's layout is on the View inside. The
+      // link shows its own highlight when pressed.
+      style={({ pressed }) => ({ backgroundColor: pressed && !ios ? theme.surfaceAlt : theme.surface })}
     >
+      <View style={styles.row}>
       <ItemImage uri={item.image_url} size={64} />
       <View style={{ flex: 1, gap: 4 }}>
         <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}>
@@ -145,6 +149,7 @@ export const ItemRow = memo(function ItemRow({
             Counts toward your {registryStore.name} registry
           </Text>
         ) : null}
+      </View>
       </View>
     </Pressable>
   );
