@@ -340,8 +340,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
 
           <Section id="app">
             <P>
-              The app is for registry owners. It signs in to the same account and shows the same registries and
-              gift ideas as the website, under the same rules.
+              The app signs in to the same account and does what your account can do on the website, under the
+              same rules: your registries, saved items and gift ideas, events, following and settings. For most
+              screens it asks regibee.com for what to show, and sends your changes there, with your sign-in.
             </P>
             <List>
               <li>
@@ -349,7 +350,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 a product to Regibee or paste a link, the app reads the product&apos;s name, price and pictures on your
                 phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
                 store sees a visit from your phone just as if you&apos;d opened the page yourself. Nothing goes to
-                Regibee until you save the item or gift idea.
+                Regibee until you save the item.
               </li>
               <li>The app reads your clipboard only when you tap Paste.</li>
               <li>
@@ -361,14 +362,20 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Kept on your phone.</strong> Your sign-in session, a
-                copy of your registries and gift ideas so the app opens quickly, and the list you last added to.
-                Signing out removes the session and the copy. Deleting the app removes everything it kept.
+                copy of what you last saw, such as your registries and events, so the app opens quickly, and the
+                registry you last added to. Signing out
+                removes the session and the copy. Deleting the app removes everything it kept.
               </li>
               <li>
                 <strong className="font-semibold text-primary">The demo.</strong> &ldquo;Look around first&rdquo;
                 shows a sample registry held in the app&apos;s memory. Nothing you do in it is saved or sent to us.
               </li>
-              <li>The app doesn&apos;t ask for your location, contacts, camera, photos or microphone.</li>
+              <li>
+                <strong className="font-semibold text-primary">Photos.</strong> When you tap Upload photo, your
+                phone&apos;s photo picker opens, and the app only gets the photo you choose. It shrinks it and uploads
+                it as the picture for an item, a registry or an invitation, the same as the website does.
+              </li>
+              <li>The app doesn&apos;t ask for your location, contacts, camera or microphone.</li>
             </List>
           </Section>
 

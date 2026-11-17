@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { PlanPicker } from "@/components/plan-picker";
-import { getManageableRegistries } from "@/lib/events-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { loadPlanPicker } from "@/lib/events-page";
 import { getSessionUser } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Start something new | Regibee" };
@@ -18,11 +17,10 @@ export default async function NewPlanPage() {
   // Guests (anonymous sessions) can only make a registry. Events need an account.
   if (user.is_anonymous) redirect("/dashboard/registry/new");
 
-  const [{ data: profile }, myLists] = await Promise.all([
-    supabaseAdmin.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-    getManageableRegistries(user.id),
-  ]);
-  const firstName = ((profile?.full_name as string | null) ?? "").trim().split(/\s+/)[0] ?? "";
+  // The phone app loads the same data (src/lib/events-page.ts).
+  const data = await loadPlanPicker();
+  if (!data) redirect("/login");
+  const { myName: firstName, myLists } = data;
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">

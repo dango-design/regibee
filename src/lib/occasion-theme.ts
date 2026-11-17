@@ -1,5 +1,5 @@
-import type { PersonalEventType, RegistryType } from "@/lib/types";
-import { listTint, type OccasionTint } from "@/lib/occasions";
+import type { PersonalEventType, RegistryType } from "./types";
+import { listTint, type OccasionTint } from "./occasions";
 
 // Each occasion's colors from the brand palette (src/styles/theme.css). Which
 // occasion gets which tint is in src/lib/occasions.ts: baby things are blush,
@@ -30,4 +30,4 @@ export function occasionTheme(registryType: RegistryType, eventType: PersonalEve
 }
 
 // The countdown is in occasions.ts, so the mobile app can use it too.
-export { countdownLabel } from "@/lib/occasions";
+export { countdownLabel } from "./occasions";

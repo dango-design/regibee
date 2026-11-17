@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DEFAULT_CHECKLIST, type ChecklistCategory, type ChecklistItem } from "@/lib/checklist-data";
 import { createClient } from "@/utils/supabase/client";
 import { addRegistryItem, toggleChecklistDismissed } from "@/lib/actions/registry";
+import { matchedChecklistItems } from "@/lib/checklist-matching";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   moon: Moon,
@@ -43,39 +44,8 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 type FilterMode = "all" | "essential" | "not-added";
 
-/** Match checklist items to registry items using keyword-based fuzzy matching */
-function buildMatchedChecklistItems(
-  checklistNames: string[],
-  registryTitles: string[]
-): Set<string> {
-  const matched = new Set<string>();
-  const lowerTitles = registryTitles.map((t) => t.toLowerCase());
-
-  for (const name of checklistNames) {
-    const lower = name.toLowerCase();
-    // Split on " / " or " & " to handle alternatives like "Glider / Rocker" or "Burp Cloths & Bibs"
-    const alternatives = lower.split(/\s*[\/&]\s*/);
-    // Keywords from each alternative (words >2 chars)
-    const altKeywords = alternatives.map((alt) =>
-      alt.split(/\s+/).filter((w) => w.length > 2)
-    );
-
-    const isMatched = lowerTitles.some(
-      (title) =>
-        title === lower ||
-        title.includes(lower) ||
-        lower.includes(title) ||
-        // Match if ALL keywords from ANY alternative appear in the title
-        altKeywords.some(
-          (keywords) =>
-            keywords.length > 0 && keywords.every((kw) => title.includes(kw))
-        )
-    );
-
-    if (isMatched) matched.add(lower);
-  }
-  return matched;
-}
+// The phone app matches the same way (src/lib/checklist-matching.ts).
+const buildMatchedChecklistItems = matchedChecklistItems;
 
 export default function ChecklistPage() {
   const params = useParams();

@@ -68,9 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     endDemo: () => {
       setDemoActive(false);
       setDemo(false);
-      queryClient.removeQueries({ queryKey: ["registries", DEMO_USER_ID] });
+      queryClient.removeQueries({ queryKey: ["dashboard", DEMO_USER_ID] });
       queryClient.removeQueries({ queryKey: ["registry"] });
-      queryClient.removeQueries({ queryKey: ["gifts"] });
     },
   };
 

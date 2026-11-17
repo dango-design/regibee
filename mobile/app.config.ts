@@ -61,6 +61,15 @@ const config: ExpoConfig = {
       },
     ],
     "expo-sqlite",
+    [
+      "expo-image-picker",
+      {
+        // Choosing a photo for an item or a list. The app never takes photos.
+        photosPermission: "Regibee uses the photo you choose as a picture for an item or a list.",
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     "@react-native-community/datetimepicker",
     // Before expo-share-intent, so it runs after it. See the plugin file.
     ["./plugins/with-share-extension-label", { target: "RegibeeShare", label: "Regibee" }],
@@ -75,10 +84,13 @@ const config: ExpoConfig = {
           NSExtensionActivationSupportsWebPageWithMaxCount: 1,
           NSExtensionActivationSupportsText: true,
         },
-        androidIntentFilters: ["text/*"],
         preprocessorInjectJS: readProductInSafari,
+        // Android shares go through the plugin below instead.
+        disableAndroid: true,
       },
     ],
+    // Shared text on Android, from any app. See the plugin file.
+    "./plugins/with-android-share-receiver",
   ],
   experiments: {
     typedRoutes: true,

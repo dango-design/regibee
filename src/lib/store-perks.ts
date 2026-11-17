@@ -10,7 +10,7 @@ import {
   STORES,
   type RetailerRegistry,
   type StoreId,
-} from "@/lib/retailers";
+} from "./retailers";
 
 interface WelcomeBoxRule {
   /** What the store calls it, as it reads mid-sentence. */

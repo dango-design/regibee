@@ -15,7 +15,7 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
   const theme = useTheme();
   // The website's dashboard card counts down the same way (src/lib/occasions.ts).
   const when = registry.event_date ? countdownLabel(registry.event_date, toYmd(), registry.registry_type ?? "baby") : null;
-  const progress = registry.itemCount > 0 ? registry.fulfilledCount / registry.itemCount : 0;
+  const progress = registry.totalItems > 0 ? registry.fulfilledItems / registry.totalItems : 0;
 
   return (
     <Card
@@ -24,7 +24,7 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
       accessibilityLabel={
         registry.reservationsHidden
           ? `${registry.title}. What's been reserved is hidden from you.`
-          : `${registry.title}. ${registry.fulfilledCount} of ${registry.itemCount} items gifted.`
+          : `${registry.title}. ${registry.fulfilledItems} of ${registry.totalItems} items gifted.`
       }
     >
       <View style={styles.top}>
@@ -62,7 +62,7 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
             </View>
           ) : (
             <Text variant="footnote" tone="secondary">
-              {`${registry.fulfilledCount} of ${plural(registry.itemCount, "item")} gifted`}
+              {`${registry.fulfilledItems} of ${plural(registry.totalItems, "item")} gifted`}
             </Text>
           )}
           <Text variant="footnote" tone="tertiary">
@@ -71,22 +71,22 @@ export function RegistryCard({ registry, onPress }: { registry: RegistrySummary;
         </View>
       </View>
 
-      {registry.recentGifts.length > 0 ? (
+      {registry.recentActivity.length > 0 ? (
         // The website's dashboard card lists the same three (src/lib/gifts.ts).
         <View style={{ gap: 6 }}>
           <Text variant="footnote" style={{ fontWeight: "600" }}>
             Recent activity
           </Text>
-          {registry.recentGifts.map((gift) => (
+          {registry.recentActivity.map((gift) => (
             <View key={gift.id} style={styles.activity}>
               <View style={[styles.activityAvatar, { backgroundColor: theme.tintSoft }]}>
                 <Text variant="caption" style={{ color: theme.tint, fontWeight: "700", fontSize: 10 }}>
-                  {initials(gift.buyer_name)}
+                  {initials(gift.name)}
                 </Text>
               </View>
               <Text variant="footnote" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
                 <Text variant="footnote" style={{ fontWeight: "600" }}>
-                  {gift.buyer_name}
+                  {gift.name}
                 </Text>{" "}
                 {gift.action}
               </Text>

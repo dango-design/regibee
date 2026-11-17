@@ -3,47 +3,63 @@ import { useState } from "react";
 import { Platform, View } from "react-native";
 
 import { ItemEditor } from "@/components/item-editor";
-import { IconButton, LoadingState } from "@/components/ui";
+import { Button, EmptyState, IconButton, LoadingState } from "@/components/ui";
 import { useRegistries } from "@/lib/data";
-import { GIFT_IDEAS, rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
-import { useTheme } from "@/lib/theme";
+import { rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
+import { spacing, useTheme } from "@/lib/theme";
 
 /**
- * Add an item, or save a gift idea. Opened from a registry, from the Gift
- * ideas screen (registryId GIFT_IDEAS), or by a regibee://add?url=… link,
- * where the owner picks the list.
+ * Add an item. Opened from a registry, or by a regibee://add?url=… link, where
+ * the owner picks a registry or Gift ideas, like one more list.
  */
 export default function AddScreen() {
-  const params = useLocalSearchParams<{ registryId?: string; url?: string; title?: string; recipient?: string }>();
+  const params = useLocalSearchParams<{ registryId?: string; url?: string; title?: string }>();
   const theme = useTheme();
   const registries = useRegistries();
   const fallback = useDefaultRegistry(registries.data, params.registryId);
   const [chosen, setChosen] = useState<string | null>(null);
   const registryId = chosen ?? fallback ?? null;
 
+  /** Opens the gift idea form (src/app/idea.tsx) with the link. */
+  function saveAsGiftIdea() {
+    router.replace({ pathname: "/idea", params: { url: params.url, title: params.title } });
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Stack.Screen
         options={{
-          title: registryId === GIFT_IDEAS ? "Save a gift idea" : "Add an item",
           headerLeft:
             Platform.OS === "ios"
               ? () => <IconButton icon="close" accessibilityLabel="Cancel" onPress={() => router.back()} />
               : undefined,
         }}
       />
-      {!registryId ? (
+      {fallback === undefined ? (
         <LoadingState />
+      ) : !registryId ? (
+        <EmptyState
+          icon="gift"
+          title="You don't have a registry yet"
+          message="Save this as a gift idea for someone else, which only you can see. Or create a registry, then add this."
+          action={
+            <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
+              <Button title="Save as a gift idea" icon="sparkles" onPress={saveAsGiftIdea} />
+              <Button title="Create a registry" icon="add" variant="secondary" onPress={() => router.replace("/new-registry")} />
+            </View>
+          }
+        />
       ) : (
         <ItemEditor
           mode="add"
           registryId={registryId}
-          // Opened from a registry or gift ideas, it goes there. Opened from a link, the owner picks.
+          // Opened from a registry, the item goes there. Opened from a link, the owner picks.
           registries={params.registryId ? undefined : registries.data}
           onRegistryChange={setChosen}
+          // Only offered when the owner picks the list.
+          onChooseGiftIdea={params.registryId ? undefined : saveAsGiftIdea}
           initialLink={params.url ?? null}
           initialTitle={params.title ?? null}
-          initialRecipient={params.recipient ?? null}
           onDone={(result) => {
             if (result.type === "added") rememberRegistry(result.registryId);
             router.back();

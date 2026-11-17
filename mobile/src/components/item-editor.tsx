@@ -1,12 +1,6 @@
 // The add and edit item form. Paste or share a link and it fills in the name,
 // price and pictures; everything stays editable.
-//
-// It also saves gift ideas for other people, as if they were one more list:
-// the "Add to" row offers Gift ideas after the registries. A gift idea asks
-// who it's for and keeps a note only the owner sees, and has none of a
-// registry item's fields for guests.
 
-import { router } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -29,7 +23,6 @@ import {
   type StoreId,
 } from "@shared/retailers";
 import { copyForRegistry } from "@shared/registry-copy";
-import { NOTES_MAX, parseGiftIdea, RECIPIENT_MAX, recentRecipients, recipientKey, type GiftIdea } from "@shared/gift-ideas";
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
@@ -42,6 +35,7 @@ import {
   Field,
   haptic,
   IconButton,
+  Pill,
   Section,
   Stepper,
   SwitchRow,
@@ -49,18 +43,19 @@ import {
 } from "@/components/ui";
 import {
   errorMessage,
-  storeRegistries,
+  estimateTax,
+  listNames,
+  removeItemWording,
   useAddItem,
   useCreateCategory,
-  useDeleteGiftIdea,
   useDeleteItem,
-  useGiftIdeas,
   useRegistry,
-  useSaveGiftIdea,
   useUpdateItem,
 } from "@/lib/data";
-import { parsePrice } from "@/lib/format";
-import { GIFT_IDEAS } from "@/lib/last-registry";
+import { formatGiftDate, giftActivityTag } from "@shared/gifts";
+import { guessCategory } from "@shared/item-categories";
+import { formatPrice, parsePrice } from "@/lib/format";
+import { pickPhoto, uploadListPhoto } from "@/lib/photos";
 import { itemMatchKey, normalizeLink, parseSharedText, storeLabel, type ReadProduct } from "@/lib/product";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { USED_CONDITIONS, type Item, type ItemInput, type RegistrySummary, type UsedCondition } from "@/lib/types";
@@ -78,32 +73,29 @@ function isShortLink(raw: string) {
   }
 }
 
-/** `registryId` is GIFT_IDEAS for a gift idea. */
 export type EditorResult =
-  | { type: "added"; registryId: string; title: string; /** Who a gift idea is for. */ recipient?: string }
+  | { type: "added"; registryId: string; title: string }
   | { type: "saved"; registryId: string }
   | { type: "deleted"; registryId: string };
 
 interface Props {
   mode: "add" | "edit";
-  /** A registry's id, or GIFT_IDEAS (src/lib/last-registry.ts) for the owner's gift ideas. */
   registryId: string | null;
-  /**
-   * Offered as a choice when adding, with Gift ideas after them. Leave out to
-   * keep the list fixed.
-   */
+  /** Offered as a choice when adding. Leave out to keep the registry fixed. */
   registries?: RegistrySummary[];
   onRegistryChange?: (id: string) => void;
+  /**
+   * Offers Gift ideas after the registries in the "Add to" row, like one more
+   * list. Picking it calls this, which opens the gift idea form (src/app/idea.tsx)
+   * with the link.
+   */
+  onChooseGiftIdea?: () => void;
   item?: Item;
-  /** The gift idea to change, with `registryId` set to GIFT_IDEAS. */
-  idea?: GiftIdea;
   /** A link and maybe a name from a share or a deep link. */
   initialLink?: string | null;
   initialTitle?: string | null;
   /** Already read in Safari by the share extension, so there's nothing to load. */
   initialProduct?: ReadProduct | null;
-  /** Who a new gift idea starts out for, such as the person whose ideas the owner was looking at. */
-  initialRecipient?: string | null;
   onDone: (result: EditorResult) => void;
   /** Shown above the form, e.g. what was shared. */
   header?: ReactNode;
@@ -116,31 +108,23 @@ export function ItemEditor({
   registryId,
   registries,
   onRegistryChange,
+  onChooseGiftIdea,
   item,
-  idea,
   initialLink,
   initialTitle,
   initialProduct,
-  initialRecipient,
   onDone,
   header,
 }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const forIdea = registryId === GIFT_IDEAS;
-  const detail = useRegistry(registryId && !forIdea ? registryId : undefined);
-  const giftIdeas = useGiftIdeas();
+  const detail = useRegistry(registryId ?? undefined);
   const addItem = useAddItem();
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
   const createCategory = useCreateCategory();
-  const saveIdea = useSaveGiftIdea();
-  const deleteIdea = useDeleteGiftIdea();
 
-  const startingLink =
-    item?.external_url ?? idea?.externalUrl ?? (initialLink ? normalizeLink(initialLink) : null) ?? "";
-  const startingImage = item?.image_url ?? idea?.imageUrl ?? null;
-  const startingPrice = item?.price ?? idea?.price ?? null;
+  const startingLink = item?.external_url ?? (initialLink ? normalizeLink(initialLink) : null) ?? "";
   const [link, setLink] = useState(startingLink);
   // A page read in Safari usually has everything. Without a price, read the
   // link here too; that only fills in what's still empty.
@@ -150,14 +134,14 @@ export function ItemEditor({
   // Whether the item had a name when reading failed, which changes what's left to fill in.
   const [failedWithName, setFailedWithName] = useState(false);
   const [images, setImages] = useState<string[]>(
-    initialProduct?.images.length ? initialProduct.images : startingImage ? [startingImage] : []
+    initialProduct?.images.length ? initialProduct.images : item?.image_url ? [item.image_url] : []
   );
-  const [imageUrl, setImageUrl] = useState<string | null>(startingImage ?? initialProduct?.images[0] ?? null);
+  const [imageUrl, setImageUrl] = useState<string | null>(item?.image_url ?? initialProduct?.images[0] ?? null);
 
-  const [title, setTitle] = useState(item?.title ?? idea?.title ?? initialProduct?.title ?? initialTitle ?? "");
+  const [title, setTitle] = useState(item?.title ?? initialProduct?.title ?? initialTitle ?? "");
   const [titleTouched, setTitleTouched] = useState(mode === "edit");
   const [priceText, setPriceText] = useState(
-    startingPrice != null ? String(startingPrice) : initialProduct?.price != null ? String(initialProduct.price) : ""
+    item?.price != null ? String(item.price) : initialProduct?.price != null ? String(initialProduct.price) : ""
   );
   const [priceTouched, setPriceTouched] = useState(mode === "edit");
   const [quantity, setQuantity] = useState(item?.quantity_needed ?? 1);
@@ -167,18 +151,21 @@ export function ItemEditor({
   const [openToUsed, setOpenToUsed] = useState(item?.is_open_to_used ?? false);
   const [condition, setCondition] = useState<UsedCondition>(item?.minimum_condition ?? "like-new");
   const [notes, setNotes] = useState(item?.notes ?? "");
-  // A gift idea's own fields. Its note is kept apart from the note for guests,
-  // so switching the list to a registry never shows it to them.
-  const [recipient, setRecipient] = useState(idea?.recipient ?? initialRecipient ?? "");
-  const [ideaNotes, setIdeaNotes] = useState(idea?.notes ?? "");
-  const [ideaBought, setIdeaBought] = useState(Boolean(idea?.boughtAt));
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(mode === "edit");
+  // The price before estimated sales tax was added, as the website's add dialog shows it.
+  const [taxInfo, setTaxInfo] = useState<{ original: string; rate: number } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showImageLink, setShowImageLink] = useState(false);
 
   const categories = detail.data?.categories ?? [];
   // Store registries are for baby registries only, as on the website.
-  const linkedRegistries = detail.data ? storeRegistries(detail.data.registry) : null;
+  const linkedRegistries = detail.data?.linkedRegistries ?? null;
+  // A list with a zip code adds estimated sales tax to what the owner bought.
+  const zipCode = detail.data?.zipCode ?? null;
+  const otherLists = item?.otherLists ?? [];
   // A registry link on any item shows the owner has a registry at that store,
   // even before they link it in settings, as on the website's dashboard.
   const registryLinkStores = useMemo(
@@ -187,11 +174,9 @@ export function ItemEditor({
   );
   const duplicate = useMemo(() => {
     const key = itemMatchKey(link);
-    if (!key || forIdea) return null;
+    if (!key) return null;
     return detail.data?.items.find((i) => i.id !== item?.id && itemMatchKey(i.external_url) === key) ?? null;
-  }, [link, detail.data?.items, item?.id, forIdea]);
-  // The people the owner saved ideas for, offered with one tap.
-  const recipients = useMemo(() => recentRecipients(giftIdeas.data ?? [], 6), [giftIdeas.data]);
+  }, [link, detail.data?.items, item?.id]);
 
   function startReading(raw: string) {
     const { url } = parseSharedText(raw);
@@ -218,13 +203,51 @@ export function ItemEditor({
     }
     setReadState("done");
     haptic("success");
-    if (product.title && (!titleTouched || !title.trim())) setTitle(product.title);
-    if (product.price != null && (!priceTouched || !priceText.trim())) setPriceText(String(product.price));
+    if (product.title && (!titleTouched || !title.trim())) {
+      setTitle(product.title);
+      // The website's add dialog guesses a category from the name.
+      if (mode === "add" && !categoryTouched) {
+        const guess = guessCategory(product.title, categories);
+        if (guess) setCategoryId(guess);
+      }
+    }
+    if (product.price != null && (!priceTouched || !priceText.trim())) {
+      setPriceText(product.price.toFixed(2));
+      setTaxInfo(null);
+      if (bought) addTax(product.price);
+    }
     if (product.images.length > 0) {
       setImages(product.images);
       if (!imageUrl || mode === "add") setImageUrl(product.images[0]);
     }
     if (source && product.url && isShortLink(source)) setLink(product.url);
+  }
+
+  /** Adds estimated sales tax to the price, as the website's add dialog does for what the owner bought. */
+  async function addTax(price: number) {
+    if (!zipCode || mode !== "add") return;
+    const result = await estimateTax(zipCode, price).catch(() => null);
+    if (!result) return;
+    setPriceText(result.priceWithTax);
+    setTaxInfo({ original: price.toFixed(2), rate: result.taxRate });
+  }
+
+  async function choosePhoto() {
+    if (!registryId) return;
+    const asset = await pickPhoto();
+    if (!asset) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadListPhoto(registryId, asset);
+      setImages((prev) => [url, ...prev.filter((u) => u !== url)]);
+      setImageUrl(url);
+      haptic("success");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setUploading(false);
+    }
   }
 
   function input(): ItemInput {
@@ -243,21 +266,10 @@ export function ItemEditor({
     };
   }
 
-  function chooseList(id: string) {
-    onRegistryChange?.(id);
-    setCategoryId(null);
-    setConfirmedDuplicate(false);
-    setError(null);
-  }
-
   function save() {
     setError(null);
     if (!registryId) {
       setError("Pick a registry first.");
-      return;
-    }
-    if (forIdea) {
-      saveAsIdea();
       return;
     }
     if (!title.trim()) {
@@ -296,83 +308,22 @@ export function ItemEditor({
     }
   }
 
-  /** The same checks and wording as the website's gift idea dialog, from parseGiftIdea. */
-  function saveAsIdea() {
-    if (link.trim() && !normalizeLink(link)) {
-      setError("The link doesn't look right. Fix it or clear it.");
-      return;
-    }
-    const parsed = parseGiftIdea({
-      recipient,
-      title,
-      url: link.trim() ? normalizeLink(link) : null,
-      imageUrl,
-      price: parsePrice(priceText),
-      notes: ideaNotes,
-    });
-    if (parsed.error !== undefined) {
-      setError(parsed.error);
-      haptic("warning");
-      return;
-    }
-    if (mode === "add") {
-      saveIdea.mutate(
-        { fields: parsed.fields },
-        {
-          onSuccess: (saved) => {
-            haptic("success");
-            onDone({ type: "added", registryId: GIFT_IDEAS, title: saved.title, recipient: saved.recipient });
-          },
-          onError: (e) => setError(errorMessage(e)),
-        }
-      );
-    } else if (idea) {
-      saveIdea.mutate(
-        { fields: parsed.fields, id: idea.id, bought: ideaBought },
-        { onError: (e) => Alert.alert("Couldn't save your changes", errorMessage(e)) }
-      );
-      // The list updates right away; the save finishes in the background.
-      haptic("success");
-      onDone({ type: "saved", registryId: GIFT_IDEAS });
-    }
-  }
-
-  function confirmDeleteIdea() {
-    if (!idea) return;
-    // The website's gift idea dialog asks the same (src/components/gift-idea-dialog.tsx).
-    const question = `Delete “${idea.title}”? You can't undo this.`;
-    const run = () => {
-      deleteIdea.mutate(idea, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) });
-      haptic("success");
-      onDone({ type: "deleted", registryId: GIFT_IDEAS });
-    };
-    if (Platform.OS === "web") {
-      if (globalThis.confirm?.(question)) run();
-      return;
-    }
-    Alert.alert(question, undefined, [
-      { text: "Keep it", style: "cancel" },
-      { text: "Delete it", style: "destructive", onPress: run },
-    ]);
-  }
-
   function confirmDelete() {
-    if (forIdea) return confirmDeleteIdea();
     if (!item) return;
     // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
-    const message = "This cannot be undone.";
+    const wording = removeItemWording(item);
     const run = () => {
-      deleteItem.mutate(item, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) });
+      deleteItem.mutate(item, { onError: (e) => Alert.alert("Couldn't remove it", errorMessage(e)) });
       haptic("success");
       onDone({ type: "deleted", registryId: item.registry_id });
     };
     if (Platform.OS === "web") {
-      if (globalThis.confirm?.(`Delete “${item.title}”? ${message}`)) run();
+      if (globalThis.confirm?.(`${wording.title} ${wording.message}`)) run();
       return;
     }
-    Alert.alert(`Delete “${item.title}”?`, message, [
+    Alert.alert(wording.title, wording.message, [
       { text: "Cancel", style: "cancel" },
-      { text: "Remove item", style: "destructive", onPress: run },
+      { text: wording.button, style: "destructive", onPress: run },
     ]);
   }
 
@@ -380,10 +331,11 @@ export function ItemEditor({
     const name = newCategory?.trim();
     if (!name || !registryId) return;
     createCategory.mutate(
-      { registryId, name, sortOrder: categories.length },
+      { registryId, name },
       {
         onSuccess: (category) => {
           setCategoryId(category.id);
+          setCategoryTouched(true);
           setNewCategory(null);
         },
         onError: (e) => setError(errorMessage(e)),
@@ -391,17 +343,11 @@ export function ItemEditor({
     );
   }
 
-  const saving = forIdea ? saveIdea.isPending : addItem.isPending;
+  const saving = addItem.isPending;
   const store = storeLabel(link);
   const openUrl = normalizeLink(link);
   const saveTitle =
-    mode === "edit"
-      ? "Save changes"
-      : forIdea
-        ? "Save idea"
-        : duplicate && confirmedDuplicate
-          ? "Add it again"
-          : "Add item";
+    mode === "edit" ? "Save changes" : duplicate && confirmedDuplicate ? "Add it again" : "Add item";
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={64}>
@@ -415,56 +361,37 @@ export function ItemEditor({
       >
         {header}
 
-        {mode === "add" && registries ? (
+        {mode === "edit" && otherLists.length > 0 ? (
+          <View style={[styles.notice, { backgroundColor: theme.tintSoft }]}>
+            <Icon name="info" size={16} color={theme.tint} />
+            <Text variant="footnote" style={{ flex: 1, color: theme.tint }}>
+              It&apos;s also on {listNames(otherLists)}, so changes show there too. Its category is only for this list.
+            </Text>
+          </View>
+        ) : null}
+
+        {mode === "add" && registries && (registries.length > 1 || onChooseGiftIdea) ? (
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
               Add to
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
               {registries.map((r) => (
-                <Chip key={r.id} label={r.title} selected={r.id === registryId} onPress={() => chooseList(r.id)} />
+                <Chip
+                  key={r.id}
+                  label={r.title}
+                  selected={r.id === registryId}
+                  onPress={() => {
+                    onRegistryChange?.(r.id);
+                    setCategoryId(null);
+                    setConfirmedDuplicate(false);
+                  }}
+                />
               ))}
-              <Chip label="Gift ideas" icon="lightbulb" selected={forIdea} onPress={() => chooseList(GIFT_IDEAS)} />
-              {registries.length === 0 ? (
-                <Chip label="+ New registry" selected={false} onPress={() => router.push("/new-registry")} />
+              {onChooseGiftIdea ? (
+                <Chip label="Gift ideas" icon="sparkles" selected={false} onPress={onChooseGiftIdea} />
               ) : null}
             </ScrollView>
-          </View>
-        ) : null}
-
-        {/* Who a gift idea is for comes first: a shared link is read on its own. */}
-        {forIdea ? (
-          <View style={{ gap: spacing.md }}>
-            <View style={[styles.notice, { backgroundColor: theme.tintSoft }]}>
-              <Icon name="lock" size={16} color={theme.tint} />
-              <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
-                Only you can see your gift ideas. The person they&apos;re for never does.
-              </Text>
-            </View>
-            <View style={{ gap: spacing.sm }}>
-              <Field
-                label="Who's it for?"
-                value={recipient}
-                onChangeText={setRecipient}
-                placeholder="Mom, Sam, my brother…"
-                maxLength={RECIPIENT_MAX}
-                autoCapitalize="words"
-                autoCorrect={false}
-                returnKeyType="done"
-              />
-              {recipients.length > 0 ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                  {recipients.map((name) => (
-                    <Chip
-                      key={name}
-                      label={name}
-                      selected={recipientKey(name) === recipientKey(recipient)}
-                      onPress={() => setRecipient(name)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-            </View>
           </View>
         ) : null}
 
@@ -517,10 +444,10 @@ export function ItemEditor({
             </View>
           ) : null}
           <ReadStatus state={readState} store={store} failedWithName={failedWithName} />
-          {linkedRegistries && !forIdea ? (
+          {linkedRegistries ? (
             <StoreLinkStatus link={link} linkedRegistries={linkedRegistries} registryLinkStores={registryLinkStores} />
           ) : null}
-          {duplicate && mode === "add" && !forIdea ? (
+          {duplicate && mode === "add" ? (
             <View style={[styles.notice, { backgroundColor: theme.accentSoft }]}>
               <Icon name="error" size={16} color={theme.onAccentSoft} />
               <Text variant="footnote" style={{ flex: 1, color: theme.onAccentSoft }}>
@@ -532,11 +459,12 @@ export function ItemEditor({
         </View>
 
         {/* Pictures */}
-        {images.length > 0 || imageUrl ? (
-          <View style={{ gap: spacing.sm }}>
+        <View style={{ gap: spacing.sm }}>
+          {images.length > 0 || imageUrl ? (
             <View style={{ alignItems: "center" }}>
               <ItemImage uri={imageUrl} size={180} rounded={radius.lg} />
             </View>
+          ) : null}
             {images.length > 1 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingVertical: 2 }}>
                 {images.map((uri) => (
@@ -560,21 +488,53 @@ export function ItemEditor({
                 ))}
               </ScrollView>
             ) : null}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" }}>
+            <Button
+              title={imageUrl ? "Change photo" : "Upload photo"}
+              icon="camera"
+              size="small"
+              variant="secondary"
+              loading={uploading}
+              onPress={choosePhoto}
+            />
+            {!showImageLink ? (
+              <Button title="Image link" icon="link" size="small" variant="ghost" onPress={() => setShowImageLink(true)} />
+            ) : null}
+            {imageUrl ? (
+              <Button
+                title="Remove"
+                size="small"
+                variant="ghost"
+                onPress={() => {
+                  setImageUrl(null);
+                  setShowImageLink(false);
+                }}
+              />
+            ) : null}
           </View>
-        ) : null}
+          {showImageLink ? (
+            <Field
+              label="Image link (optional)"
+              value={imageUrl ?? ""}
+              onChangeText={(text) => setImageUrl(text.trim() || null)}
+              placeholder="https://"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+          ) : null}
+        </View>
 
         {/* Details */}
         <View style={{ gap: spacing.lg }}>
           <Field
-            label={forIdea ? "What is it?" : "Item name"}
+            label="Item name"
             value={title}
             onChangeText={(text) => {
               setTitle(text);
               setTitleTouched(true);
             }}
-            placeholder={
-              readState === "reading" ? "Reading the page…" : forIdea ? "e.g., Wool scarf in green" : "What is it?"
-            }
+            placeholder={readState === "reading" ? "Reading the page…" : "What is it?"}
             multiline
             style={{ minHeight: 44 }}
             returnKeyType="done"
@@ -588,40 +548,57 @@ export function ItemEditor({
                 onChangeText={(text) => {
                   setPriceText(text.replace(/[^0-9.,]/g, ""));
                   setPriceTouched(true);
+                  setTaxInfo(null);
                 }}
                 onBlur={() => {
                   const value = parsePrice(priceText);
-                  if (value != null) setPriceText(value.toFixed(2));
+                  if (value == null) return;
+                  setPriceText(value.toFixed(2));
+                  if (bought && !taxInfo) addTax(value);
                 }}
+                hint={taxInfo ? `$${taxInfo.original} + ~${(taxInfo.rate * 100).toFixed(1)}% tax` : undefined}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 leading={<Text tone="tertiary">$</Text>}
               />
             </View>
-            {forIdea ? null : (
-              <View style={{ gap: 6 }}>
-                <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-                  Quantity
-                </Text>
-                {/* As tall as the price field, so the two line up. */}
-                <View style={{ height: 50, justifyContent: "center" }}>
-                  <Stepper value={quantity} onChange={setQuantity} />
-                </View>
+            <View style={{ gap: 6 }}>
+              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                Quantity
+              </Text>
+              {/* As tall as the price field, so the two line up. */}
+              <View style={{ height: 50, justifyContent: "center" }}>
+                <Stepper value={quantity} onChange={setQuantity} />
               </View>
-            )}
+            </View>
           </View>
         </View>
 
         {/* Category */}
-        {registryId && !forIdea ? (
+        {registryId ? (
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
               Category
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              <Chip label="No category" selected={categoryId === null} onPress={() => setCategoryId(null)} />
+              <Chip
+                label="No category"
+                selected={categoryId === null}
+                onPress={() => {
+                  setCategoryId(null);
+                  setCategoryTouched(true);
+                }}
+              />
               {categories.map((c) => (
-                <Chip key={c.id} label={c.name} selected={c.id === categoryId} onPress={() => setCategoryId(c.id)} />
+                <Chip
+                  key={c.id}
+                  label={c.name}
+                  selected={c.id === categoryId}
+                  onPress={() => {
+                    setCategoryId(c.id);
+                    setCategoryTouched(true);
+                  }}
+                />
               ))}
               {newCategory === null ? (
                 <Chip label="+ New category" selected={false} onPress={() => setNewCategory("")} />
@@ -646,79 +623,55 @@ export function ItemEditor({
           </View>
         ) : null}
 
-        {forIdea ? (
-          <>
-            {mode === "edit" ? (
-              <Section>
-                <SwitchRow
-                  icon="checkCircle"
-                  label="Bought it"
-                  description="It stays in your gift ideas, marked as bought."
-                  value={ideaBought}
-                  onValueChange={setIdeaBought}
-                />
-              </Section>
-            ) : null}
-            <Field
-              label="Note (optional)"
-              value={ideaNotes}
-              onChangeText={setIdeaNotes}
-              placeholder="Their size, the color they liked, when to get it…"
-              maxLength={NOTES_MAX}
-              multiline
-            />
-          </>
-        ) : (
-          <>
-            <Section>
-              <SwitchRow
-                icon="star"
-                label="Most wanted"
-                description="Guests see it tagged Most wanted."
-                value={mostWanted}
-                onValueChange={setMostWanted}
-              />
-              <Divider inset={52} />
-              <SwitchRow
-                icon="checkCircle"
-                label={copyForRegistry(detail.data?.registry).selfPurchaseButton}
-                value={bought}
-                onValueChange={setBought}
-              />
-              <Divider inset={52} />
-              <SwitchRow
-                icon="refresh"
-                label="Open to used"
-                description="Guests may give one secondhand."
-                value={openToUsed}
-                onValueChange={setOpenToUsed}
-              />
-              {openToUsed ? (
-                <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-                  <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-                    Minimum condition
-                  </Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                    {USED_CONDITIONS.map((c) => (
-                      <Chip key={c.id} label={c.label} selected={condition === c.id} onPress={() => setCondition(c.id)} />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-            </Section>
+        <Section>
+          <SwitchRow
+            icon="star"
+            label="Most wanted"
+            description="Guests see it tagged Most wanted."
+            value={mostWanted}
+            onValueChange={setMostWanted}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            icon="checkCircle"
+            label={copyForRegistry(detail.data?.registry).selfPurchaseButton}
+            value={bought}
+            onValueChange={setBought}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            icon="refresh"
+            label="Open to used"
+            description="Guests may give one secondhand."
+            value={openToUsed}
+            onValueChange={setOpenToUsed}
+          />
+          {openToUsed ? (
+            <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
+              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                Minimum condition
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                {USED_CONDITIONS.map((c) => (
+                  <Chip key={c.id} label={c.label} selected={condition === c.id} onPress={() => setCondition(c.id)} />
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </Section>
 
-            <Field
-              label="Note for guests (optional)"
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Size, color, or anything else that helps"
-              multiline
-            />
-          </>
-        )}
+        <Field
+          label="Note for guests (optional)"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Size, color, or anything else that helps"
+          multiline
+        />
 
-        {mode === "edit" ? (
-          <Button title={forIdea ? "Delete idea" : "Remove item"} variant="danger" icon="trash" onPress={confirmDelete} />
+        {mode === "edit" && item ? <ItemGifts item={item} /> : null}
+
+        {mode === "edit" && item ? (
+          <Button title={removeItemWording(item).button} variant="danger" icon="trash" onPress={confirmDelete} />
         ) : null}
       </ScrollView>
 
@@ -736,6 +689,51 @@ export function ItemEditor({
         <Button title={saveTitle} onPress={save} loading={saving} disabled={!registryId} />
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Guests' gifts of the item, as the website's "Gifts for …" window lists them (src/components/gift-detail-modal.tsx). */
+function ItemGifts({ item }: { item: Item }) {
+  const gifts = item.purchases;
+  if (gifts.length === 0) return null;
+  return (
+    <Section title={`Gifts for “${item.title}”`}>
+      {gifts.map((gift, index) => {
+        const tag = giftActivityTag(gift, item.is_parent_purchased);
+        return (
+          <View key={gift.id}>
+            {index > 0 ? <Divider inset={spacing.lg} /> : null}
+            <View style={{ padding: spacing.lg, gap: 4, opacity: gift.status === "cancelled" ? 0.5 : 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" }}>
+                <Text variant="subhead" style={{ fontWeight: "600" }}>
+                  {gift.buyer_name}
+                </Text>
+                <Pill label={tag.label} tone={tag.kind === "cancelled" ? "neutral" : tag.kind === "reserved" ? "tint" : "success"} />
+                {gift.quantity > 1 ? (
+                  <Text variant="footnote" tone="secondary">
+                    × {gift.quantity}
+                  </Text>
+                ) : null}
+                {gift.amount != null ? (
+                  <Text variant="footnote" style={{ fontWeight: "600" }}>
+                    {formatPrice(gift.amount)}
+                  </Text>
+                ) : null}
+              </View>
+              {gift.message ? (
+                <Text variant="footnote" tone="secondary">
+                  {gift.message}
+                </Text>
+              ) : null}
+              <Text variant="caption" tone="tertiary">
+                {gift.created_at ? formatGiftDate(gift.created_at) : ""}
+                {gift.buyer_email && !gift.hide_giver ? ` · ${gift.buyer_email}` : ""}
+              </Text>
+            </View>
+          </View>
+        );
+      })}
+    </Section>
   );
 }
 
