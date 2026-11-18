@@ -84,6 +84,12 @@ interface Props {
   /** Offered as a choice when adding. Leave out to keep the registry fixed. */
   registries?: RegistrySummary[];
   onRegistryChange?: (id: string) => void;
+  /**
+   * Offers Gift ideas after the registries in the "Add to" row, like one more
+   * list. Picking it calls this, which opens the gift idea form (src/app/idea.tsx)
+   * with the link.
+   */
+  onChooseGiftIdea?: () => void;
   item?: Item;
   /** A link and maybe a name from a share or a deep link. */
   initialLink?: string | null;
@@ -102,6 +108,7 @@ export function ItemEditor({
   registryId,
   registries,
   onRegistryChange,
+  onChooseGiftIdea,
   item,
   initialLink,
   initialTitle,
@@ -363,10 +370,10 @@ export function ItemEditor({
           </View>
         ) : null}
 
-        {mode === "add" && registries && registries.length > 1 ? (
+        {mode === "add" && registries && (registries.length > 1 || onChooseGiftIdea) ? (
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-              Registry
+              Add to
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
               {registries.map((r) => (
@@ -381,6 +388,9 @@ export function ItemEditor({
                   }}
                 />
               ))}
+              {onChooseGiftIdea ? (
+                <Chip label="Gift ideas" icon="sparkles" selected={false} onPress={onChooseGiftIdea} />
+              ) : null}
             </ScrollView>
           </View>
         ) : null}

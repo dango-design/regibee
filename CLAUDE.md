@@ -65,6 +65,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it.
 - Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email or to co-managers. Don't put gift ideas on a registry or give them a link.
 - The table has access rules for the signed-in owner, so the website, the extension and the phone app can read and write it as that user. Prefer that over the service-role client. Checks and grouping are in `src/lib/gift-ideas.ts`, which has no imports.
+- Wherever someone picks a list to add a product to, offer Gift ideas too, after their registries: the extension's "Add to" picker, the phone app's "Add to" row (`onChooseGiftIdea` in `mobile/src/components/item-editor.tsx`, which opens `mobile/src/app/idea.tsx` with the link), and the website's share page. Someone with no registry can still save a gift idea.
 
 ## Account levels
 

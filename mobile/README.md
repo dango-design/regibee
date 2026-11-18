@@ -4,7 +4,7 @@ The Regibee app, built with Expo (SDK 58) and React Native. It does what an acco
 
 ## What it does
 
-- **Share to Regibee from any app.** In the Amazon, Target or Walmart app, in Safari, Chrome or Instagram, tap Share and pick Regibee. The add form opens with the product's name, price and pictures filled in. It picks the registry you used last.
+- **Share to Regibee from any app.** In the Amazon, Target or Walmart app, in Safari, Chrome or Instagram, tap Share and pick Regibee. The add form opens with the product's name, price and pictures filled in. It picks the registry you used last. Its "Add to" row lists your registries, then Gift ideas, which opens the gift idea form with the link instead. Someone with no registry can save it as a gift idea.
 - **Reads products on the phone.** A page shared from Safari arrives already read: the share extension runs the Chrome extension's reader (`extension/src/product-reader.ts`) inside the page. A link shared from another app, or pasted, is opened in a hidden web view on the phone, and the same reader reads it. The page loads over the owner's own connection, so stores that block Regibee's server, Amazon above all, still work.
 - **Paste a link.** On iPhone it's Apple's own Paste button, so there's no "Allow Paste" prompt.
 - **Store registries.** An item whose link counts toward the owner's Amazon, Target or other store registry says so: "Amazon registry" in the list, and the same notices as the website in the editor, including a warning for a plain store link where the owner has a registry. The linked stores come from the registry's settings. An Open button by the link opens the page.

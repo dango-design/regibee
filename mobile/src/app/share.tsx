@@ -1,6 +1,8 @@
 // What another app shared to Regibee: a product link, usually with its name.
 // On iPhone, a page shared from Safari arrives already read (see
-// app.config.ts), so the form fills in at once.
+// app.config.ts), so the form fills in at once. It goes on one of the owner's
+// registries, or in their gift ideas, which the "Add to" row offers after the
+// registries, like one more list.
 
 import { router, Stack } from "expo-router";
 import { useShareIntentContext } from "expo-share-intent";
@@ -42,6 +44,15 @@ export default function ShareScreen() {
     resetShareIntent();
     if (router.canGoBack()) router.back();
     else router.replace("/");
+  }
+
+  /** Opens the gift idea form (src/app/idea.tsx) with what was shared. */
+  function saveAsGiftIdea() {
+    resetShareIntent();
+    router.replace({
+      pathname: "/idea",
+      params: { url: shared.url ?? undefined, title: shared.title ?? undefined },
+    });
   }
 
   const cancel = (
@@ -96,9 +107,14 @@ export default function ShareScreen() {
       ) : !registryId ? (
         <EmptyState
           icon="gift"
-          title="Make a registry first"
-          message="You don't have a registry to add this to yet. Make one, then share the product to Regibee again."
-          action={<Button title="Create a registry" icon="add" onPress={() => router.push("/new-registry")} />}
+          title="You don't have a registry yet"
+          message="Save this as a gift idea for someone else, which only you can see. Or make a registry, then share the product to Regibee again."
+          action={
+            <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
+              <Button title="Save as a gift idea" icon="sparkles" onPress={saveAsGiftIdea} />
+              <Button title="Create a registry" icon="add" variant="secondary" onPress={() => router.push("/new-registry")} />
+            </View>
+          }
         />
       ) : (
         <ItemEditor
@@ -108,34 +124,19 @@ export default function ShareScreen() {
           registryId={registryId}
           registries={registries.data}
           onRegistryChange={setChosen}
+          onChooseGiftIdea={saveAsGiftIdea}
           initialLink={shared.url}
           initialTitle={shared.title}
           initialProduct={shared.product}
           header={
-            <View style={{ gap: spacing.sm }}>
-              {shared.product ? (
-                <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
-                  <Icon name="checkCircle" size={16} color={theme.success} />
-                  <Text variant="footnote" tone="secondary">
-                    Read from the page you shared.
-                  </Text>
-                </View>
-              ) : null}
-              {/* The website's share page asks "For you" or "For someone else" (src/components/share-picker.tsx). */}
-              <Button
-                title="For someone else? Save as a gift idea"
-                icon="sparkles"
-                variant="secondary"
-                size="small"
-                onPress={() => {
-                  resetShareIntent();
-                  router.replace({
-                    pathname: "/idea",
-                    params: { url: shared.url ?? undefined, title: shared.title ?? undefined },
-                  });
-                }}
-              />
-            </View>
+            shared.product ? (
+              <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
+                <Icon name="checkCircle" size={16} color={theme.success} />
+                <Text variant="footnote" tone="secondary">
+                  Read from the page you shared.
+                </Text>
+              </View>
+            ) : null
           }
           onDone={(result) => {
             if (result.type !== "added") return;

@@ -69,8 +69,8 @@ function EmptyState({ saveButton }: { saveButton: React.ReactNode }) {
       </p>
       <ul className="mt-4 max-w-md space-y-1.5 text-left text-sm text-secondary">
         <li>• Paste its link into Save a gift idea.</li>
-        <li>• On Android, share it to Regibee from the store&apos;s app or your browser, then choose Gift idea.</li>
-        <li>• With the Regibee extension for Chrome, open it on the product&apos;s page and choose Gift idea.</li>
+        <li>• In the Regibee app, share it to Regibee from the store&apos;s app or your browser, then pick Gift ideas.</li>
+        <li>• With the Regibee extension for Chrome, open it on the product&apos;s page and pick Gift ideas under Add to.</li>
       </ul>
       <div className="mt-6">{saveButton}</div>
     </div>
