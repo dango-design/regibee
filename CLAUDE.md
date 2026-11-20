@@ -79,7 +79,9 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Both levels can do everything. Star only gets higher limits on what costs money or reaches people who never signed up:
   - Emails to addresses someone typed in: invitations, reminders, messages to guests, change notices, name draws, co-host and list-manager invites, and asking someone to make a list. Each account has a daily allowance, and all basic accounts share another. The numbers are in `src/lib/account-levels.ts`.
   - Photo uploads: 50 for basic, 500 for star. The numbers are in `can_upload_photo` in `20261116074752_account_levels.sql`.
+  - Emails a visitor sets off on a list, event or group gift: gift, RSVP and chip-in confirmations, owners' notices about them, suggestions, and the reminder and "reservation ended" emails that follow a reservation. Each page has a daily allowance, sized by its owner's level, and all basic owners' pages share another. Over it, the gift or RSVP still saves and only the email is skipped. The numbers are in `src/lib/account-levels.ts`, and the counting is in `20261117085323_visitor_email_limits.sql`.
 - A new feature that emails an address someone typed in must call `reserveEmails` (`src/lib/email-budget.ts`) before sending and `settleEmails` after. Emails to the account's own address, emails to guests who gave their own address, and the daily cron emails don't count.
+- A new email that goes out because a visitor did something on a list, event or group gift must pass `visitorEmailAllowance` (`src/lib/email-budget.ts`) to its sender as `allow`, as the gift and RSVP emails do.
 - Add a tester in the Supabase SQL Editor. Never put their address in a migration or any other file, since the repo is public:
 
   ```sql

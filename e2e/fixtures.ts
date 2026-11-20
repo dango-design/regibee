@@ -35,8 +35,11 @@ export async function makeStar(email: string) {
   if (error) throw error;
 }
 
-/** An owner with a confirmed account, and a public baby registry with one item. */
-export async function createRegistryWithItem() {
+/**
+ * An owner with a confirmed account, and a public baby registry with one
+ * item. The owner is a star unless `star` is false.
+ */
+export async function createRegistryWithItem({ star = true }: { star?: boolean } = {}) {
   const id = uniqueId();
   const ownerEmail = `owner-${id}@example.com`;
   const ownerPassword = `pw-${randomUUID()}`;
@@ -48,7 +51,7 @@ export async function createRegistryWithItem() {
     user_metadata: { full_name: "Remi Owner" },
   });
   if (userError || !created.user) throw userError ?? new Error("No user");
-  await makeStar(ownerEmail);
+  if (star) await makeStar(ownerEmail);
 
   const { data: registry, error: registryError } = await db
     .from("registries")

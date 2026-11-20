@@ -138,9 +138,10 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             </P>
             <P>
               When you use Regibee to email other people, such as invitations or messages to your guests, we keep
-              how many emails went out, when and what kind, but not who they went to. That lets us limit how many
-              one account sends in a day. Some accounts, such as people helping us test Regibee, have higher
-              limits.
+              how many emails went out, when and what kind, but not who they went to. We count the emails a list,
+              event or group gift sends when someone reserves a gift, RSVPs or chips in there the same way. That
+              lets us limit how many one account, or one page, sends in a day. Some accounts, such as people
+              helping us test Regibee, have higher limits.
             </P>
 
             <H3>Your profile</H3>

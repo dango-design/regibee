@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { requireAccount } from "@/lib/require-account";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { eventImageUrlPrefix } from "@/lib/event-images";
-import { noEmailsMessage, reserveEmails, settleEmails } from "@/lib/email-budget";
+import { noEmailsMessage, reserveEmails, settleEmails, visitorEmailAllowance } from "@/lib/email-budget";
 import { notEnoughLeftMessage, partlySentMessage } from "@/lib/account-levels";
 import {
   canManageRegistry,
@@ -1182,12 +1182,15 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
 
   after(async () => {
     const [registries, savedSheet] = await Promise.all([getEventRegistries(event.id), getSignupSheet(event.id)]);
+    // Both emails count against the event's visitor email limit.
+    const allow = visitorEmailAllowance({ pageId: event.id, ownerId: event.owner_id }, "rsvp");
     // What the guest signed up for, as it stands after this RSVP.
     const claims: GuestClaim[] = savedSheet ? (claimsByGuest(savedSheet).get(guest.id) ?? []) : [];
     const tasks: Promise<void>[] = [];
     if (guest.email) {
       tasks.push(
         confirmRsvpToGuest({
+          allow,
           event,
           registries,
           exchange,
@@ -1204,6 +1207,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
       const summary = summarizeRsvps(await getEventGuests(event.id));
       tasks.push(
         notifyHostOfRsvp({
+          allow,
           event,
           guestName: guest.name,
           status: input.status,

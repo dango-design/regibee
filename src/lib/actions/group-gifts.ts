@@ -374,7 +374,7 @@ export async function markGroupGiftBought(token: string): Promise<Result> {
     const purchaseId = gift.purchase_id;
     after(async () => {
       try {
-        await sendGiftConfirmedEmails(purchaseId);
+        await sendGiftConfirmedEmails(purchaseId, "organizer");
       } catch (err) {
         console.error("[email] Failed to send gift confirmed emails for a group gift:", err);
       }

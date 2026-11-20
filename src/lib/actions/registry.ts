@@ -14,7 +14,7 @@ import {
 } from "@/lib/email";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
-import { noEmailsMessage, reserveEmails, settleEmails } from "@/lib/email-budget";
+import { noEmailsMessage, reserveEmails, settleEmails, visitorEmailAllowance } from "@/lib/email-budget";
 import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
 import { canKeepOldLinks } from "@/lib/list-links";
 import { DEFAULT_LIST_VISIBILITY, parseListVisibility, visibilityColumns } from "@/lib/list-access";
@@ -731,7 +731,7 @@ export async function reserveItem(formData: FormData): Promise<ReserveItemResult
   // that gets released never reaches them.
   after(async () => {
     try {
-      if (alreadyBought) await sendGiftConfirmedEmails(purchaseId);
+      if (alreadyBought) await sendGiftConfirmedEmails(purchaseId, "visitor");
       else await sendReservationEmail(purchaseId);
       await sendReservationEndedEmails(released);
     } catch (err) {
@@ -802,7 +802,7 @@ export async function confirmGift(purchaseId: string): Promise<{ error?: string;
   if (changed) {
     after(async () => {
       try {
-        await sendGiftConfirmedEmails(purchaseId);
+        await sendGiftConfirmedEmails(purchaseId, "visitor");
       } catch (err) {
         console.error("[email] Failed to send gift confirmed emails:", err);
       }
@@ -1415,13 +1415,21 @@ export async function contributeToCashFund(formData: FormData) {
       const [{ data: fund }, registryInfo] = await Promise.all([
         supabaseAdmin
           .from("cash_funds")
-          .select("title")
+          .select("title, registry_id")
           .eq("id", fundId)
           .single(),
         getRegistryInfoForBuyer({ fundId }),
       ]);
       if (fund) {
+        // These count against the list's visitor email limit.
+        const { data: list } = await supabaseAdmin
+          .from("registries")
+          .select("owner_id")
+          .eq("id", fund.registry_id)
+          .single();
+        const allow = visitorEmailAllowance({ pageId: fund.registry_id, ownerId: list?.owner_id ?? null }, "gift");
         await notifyCashFundContribution({
+          allow,
           fundId,
           fundTitle: fund.title,
           buyerName,
@@ -1432,6 +1440,7 @@ export async function contributeToCashFund(formData: FormData) {
         if (buyerEmail && registryInfo) {
           const registryUrl = buildBuyerRegistryUrl({ siteUrl, slug: registryInfo.slug, buyerEmail });
           await confirmCashFundContribution({
+            allow,
             buyerEmail,
             buyerName,
             fundTitle: fund.title,
@@ -1485,10 +1494,17 @@ export async function suggestItem(formData: FormData) {
     return { error: error.message };
   }
 
-  // Send email notification after the response
+  // Send email notification after the response. It counts against the
+  // list's visitor email limit.
   after(async () => {
     try {
+      const { data: list } = await supabaseAdmin
+        .from("registries")
+        .select("owner_id")
+        .eq("id", registryId)
+        .single();
       await notifyNewSuggestion({
+        allow: visitorEmailAllowance({ pageId: registryId, ownerId: list?.owner_id ?? null }, "suggestion"),
         registryId,
         title,
         suggestedByName,

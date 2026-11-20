@@ -25,6 +25,27 @@ export const DAILY_EMAILS = { basic: 50, star: 500 } as const;
  */
 export const BASIC_SITE_DAILY_EMAILS = 60;
 
+/**
+ * How many emails one list, event or group gift can send in 24 hours because
+ * of what visitors did there: gift, RSVP and chip-in confirmations to the
+ * address they typed, a reservation's reminder and "ended" emails, and the
+ * notices its owners get about gifts, RSVPs, chip-ins and suggestions. The
+ * level is the page owner's. A gift or RSVP usually sends two emails, one to
+ * the visitor and one to the owner.
+ */
+export const DAILY_VISITOR_EMAILS = { basic: 20, star: 200 } as const;
+
+/**
+ * How many of those emails the pages of all basic owners together can send
+ * in 24 hours. With BASIC_SITE_DAILY_EMAILS, that leaves at least 10 of
+ * Resend's free 100 a day for sign-up emails and the daily reminders. Raise
+ * both if Resend moves to a paid plan.
+ */
+export const BASIC_SITE_DAILY_VISITOR_EMAILS = 30;
+
+/** What a visitor did, as logged in visitor_email_sends.kind. */
+export type VisitorEmailKind = "gift" | "suggestion" | "rsvp" | "pledge";
+
 /** What a send was for, as logged in email_sends.kind. */
 export type EmailKind =
   | "invitation"

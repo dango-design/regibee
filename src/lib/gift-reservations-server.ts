@@ -8,6 +8,7 @@ import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
 import { GIFT_HOLD_DAYS, giftLinkUrl } from "@/lib/gifts";
 import { classifyStoreLink, parseRetailerRegistries, registryStoreFor } from "@/lib/retailers";
 import { welcomeBoxUnlockedBy } from "@/lib/store-perks-server";
+import { visitorEmailAllowance } from "@/lib/email-budget";
 import {
   confirmItemCovered,
   confirmItemGiven,
@@ -78,7 +79,7 @@ async function loadGift(purchaseId: string) {
 
   const [registry, { data: settingsRow }] = await Promise.all([
     getRegistryInfoForBuyer({ itemId: item.id }),
-    supabaseAdmin.from("registries").select("registry_type, settings").eq("id", item.registry_id).single(),
+    supabaseAdmin.from("registries").select("owner_id, registry_type, settings").eq("id", item.registry_id).single(),
   ]);
   if (!registry) return null;
 
@@ -107,16 +108,23 @@ async function loadGift(purchaseId: string) {
     links,
     registryStoreName,
     storeName: registryStoreName || storeNameFor(item.external_url),
+    // Emails a visitor sets off here count against the item's home list,
+    // whose owner's level sets the limit.
+    visitorAllowance: visitorEmailAllowance(
+      { pageId: item.registry_id as string, ownerId: (settingsRow?.owner_id as string | undefined) ?? null },
+      "gift",
+    ),
   };
 }
 
-/** Sent right after a guest reserves an item. */
+/** Sent right after a guest reserves an item. Counts against the list's visitor email limit. */
 export async function sendReservationEmail(purchaseId: string) {
   const gift = await loadGift(purchaseId);
   if (!gift?.purchase.buyer_email) return;
   const { purchase, item, registry, links } = gift;
 
   await confirmItemReserved({
+    allow: gift.visitorAllowance,
     buyerEmail: purchase.buyer_email,
     buyerName: purchase.buyer_name,
     itemTitle: item.title,
@@ -137,11 +145,16 @@ export async function sendReservationEmail(purchaseId: string) {
  * Sent once a guest says they bought the item: to the owners, and to the
  * guest. For a Secret Santa's gift, the owners' email says "Secret Santa"
  * instead of the giver's name. The guest's own email is unchanged.
+ *
+ * `by` is who said so. A visitor's count against the list's visitor email
+ * limit. A group gift's organizer is signed in and emails nobody they typed
+ * in, so theirs don't.
  */
-export async function sendGiftConfirmedEmails(purchaseId: string) {
+export async function sendGiftConfirmedEmails(purchaseId: string, by: "visitor" | "organizer") {
   const gift = await loadGift(purchaseId);
   if (!gift) return;
   const { purchase, item, registry, links } = gift;
+  const allow = by === "visitor" ? gift.visitorAllowance : undefined;
 
   // A first gift from a store registry can unlock that store's welcome box.
   const welcomeBox = await welcomeBoxUnlockedBy(item.id).catch((err) => {
@@ -151,6 +164,7 @@ export async function sendGiftConfirmedEmails(purchaseId: string) {
 
   await Promise.all([
     notifyItemGiven({
+      allow,
       itemId: item.id,
       itemTitle: item.title,
       buyerName: purchase.buyer_name,
@@ -161,6 +175,7 @@ export async function sendGiftConfirmedEmails(purchaseId: string) {
     }),
     purchase.buyer_email
       ? confirmItemGiven({
+          allow,
           buyerEmail: purchase.buyer_email,
           buyerName: purchase.buyer_name,
           itemTitle: item.title,
@@ -174,11 +189,17 @@ export async function sendGiftConfirmedEmails(purchaseId: string) {
   ]);
 }
 
-/** Tells a guest their reservation ran out and the item went back on the list. */
+/**
+ * Tells a guest their reservation ran out and the item went back on the list.
+ * Counts against the list's visitor email limit, like the reminder, since a
+ * visitor typed the address. Otherwise reservations saved after the limit
+ * would still email every address on them.
+ */
 async function sendReservationEndedEmail(purchaseId: string) {
   const gift = await loadGift(purchaseId);
   if (!gift?.purchase.buyer_email) return;
   await notifyItemReservationEnded({
+    allow: gift.visitorAllowance,
     buyerEmail: gift.purchase.buyer_email,
     buyerName: gift.purchase.buyer_name,
     itemTitle: gift.item.title,
@@ -191,7 +212,7 @@ async function sendReservationEndedEmail(purchaseId: string) {
  * Sent when a guest sends the owners money for an item they bought
  * themselves: to the owners, and to the guest with a link to undo it. For a
  * Secret Santa's gift, the owners' email says "Secret Santa" instead of the
- * giver's name.
+ * giver's name. Counts against the list's visitor email limit.
  */
 export async function sendCoverGiftEmails(purchaseId: string) {
   const gift = await loadGift(purchaseId);
@@ -201,6 +222,7 @@ export async function sendCoverGiftEmails(purchaseId: string) {
 
   await Promise.all([
     notifyItemCovered({
+      allow: gift.visitorAllowance,
       itemId: item.id,
       itemTitle: item.title,
       buyerName: purchase.buyer_name,
@@ -211,6 +233,7 @@ export async function sendCoverGiftEmails(purchaseId: string) {
     }),
     purchase.buyer_email
       ? confirmItemCovered({
+          allow: gift.visitorAllowance,
           buyerEmail: purchase.buyer_email,
           buyerName: purchase.buyer_name,
           itemTitle: item.title,
@@ -309,6 +332,7 @@ export async function processGiftReservations(now = new Date()) {
     const gift = await loadGift(row.id);
     if (!gift?.purchase.buyer_email) continue;
     await remindItemReservation({
+      allow: gift.visitorAllowance,
       buyerEmail: gift.purchase.buyer_email,
       buyerName: gift.purchase.buyer_name,
       itemTitle: gift.item.title,
