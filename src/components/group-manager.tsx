@@ -17,6 +17,7 @@ import {
 } from "@/lib/actions/groups";
 import { startGroupExchange } from "@/lib/actions/events";
 import { formatShortEventDate, isEmail, parseGuestList } from "@/lib/events";
+import { emailLabel } from "@/lib/guest-emails";
 import { memberCountLabel, type GroupEvent, type GroupMember, type Person } from "@/lib/groups";
 import { initialsFor } from "@/lib/initials";
 
@@ -40,7 +41,8 @@ const DEFAULT_ACTIONS: GroupManagerActions = {
 
 export interface GroupManagerProps {
   group: { id: string; name: string };
-  members: Pick<GroupMember, "id" | "name" | "email">[];
+  /** email_hidden: someone added from a follow whose email the owner isn't shown (src/lib/guest-emails.ts). */
+  members: (Pick<GroupMember, "id" | "name" | "email"> & { email_hidden?: boolean })[];
   events: GroupEvent[];
   /** The owner's lists shared with this group. */
   sharedLists: { id: string; slug: string; title: string }[];
@@ -268,7 +270,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-primary">{member.name}</span>
-                      <span className="block truncate text-xs text-tertiary">{member.email ?? "No email"}</span>
+                      <span className="block truncate text-xs text-tertiary">{emailLabel(member)}</span>
                     </span>
                     <Button
                       variant="ghost"

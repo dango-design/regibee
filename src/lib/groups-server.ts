@@ -2,7 +2,18 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { isUuid } from "@/lib/extension";
 import { LISTED_REGISTRY_COLUMNS, type ListedRegistry } from "@/lib/registry-listing";
 import type { PersonSummary } from "@/lib/follows";
-import type { Group, GroupEvent, GroupMember, GroupSummary } from "@/lib/groups";
+import { isEmail } from "@/lib/events";
+import {
+  MAX_GROUP_MEMBERS,
+  MAX_GROUPS_PER_OWNER,
+  newPeople,
+  readGroupName,
+  type Group,
+  type GroupEvent,
+  type GroupMember,
+  type GroupSummary,
+  type Person,
+} from "@/lib/groups";
 
 // Reads for groups. The group tables have no access rules for the API roles
 // (see 20261111223600_groups.sql), so everything goes through the
@@ -181,4 +192,69 @@ export async function sharedRegistrySlugsFrom(
       .map((row) => row.registries?.slug)
       .filter((slug): slug is string => Boolean(slug)),
   );
+}
+
+/** Checks a list of people before it's saved: names, emails and the size limit. */
+export function checkPeople(people: Person[]): string | null {
+  for (const person of people) {
+    if (!person.name.trim()) return "Every person needs a name.";
+    if (person.name.trim().length > 100) return "Keep names under 100 characters.";
+    if (person.email && !isEmail(person.email.trim())) return `"${person.email}" doesn't look like an email address.`;
+  }
+  return null;
+}
+
+/** A group member row, with the account link only when there is one. */
+export function memberRow(groupId: string, person: Person) {
+  return {
+    group_id: groupId,
+    name: person.name,
+    email: person.email,
+    ...(person.profile_id ? { profile_id: person.profile_id } : {}),
+  };
+}
+
+/**
+ * Makes a group owned by `ownerId` with these people in it. "New group" and
+ * "Save as a group" both use it. People's account links are kept, so only
+ * pass ones the server set (src/lib/guest-emails.ts). Returns the new
+ * group's id.
+ */
+export async function createGroupFor(
+  ownerId: string,
+  name: string,
+  people: Person[] = [],
+): Promise<{ error: null; id: string } | { error: string }> {
+  const checked = readGroupName(name);
+  if ("error" in checked) return { error: checked.error };
+  const problem = checkPeople(people);
+  if (problem) return { error: problem };
+  const members = newPeople([], people);
+  if (members.length > MAX_GROUP_MEMBERS) return { error: `A group can have up to ${MAX_GROUP_MEMBERS} people.` };
+
+  const { count } = await supabaseAdmin
+    .from("groups")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", ownerId);
+  if ((count ?? 0) >= MAX_GROUPS_PER_OWNER) {
+    return { error: `You can have up to ${MAX_GROUPS_PER_OWNER} groups. Delete one you don't use first.` };
+  }
+
+  const { data: group, error } = await supabaseAdmin
+    .from("groups")
+    .insert({ owner_id: ownerId, name: checked.name })
+    .select("id")
+    .single();
+  if (error || !group) return { error: "The group wasn't made. Try again." };
+
+  if (members.length > 0) {
+    const { error: membersError } = await supabaseAdmin
+      .from("group_members")
+      .insert(members.map((m) => memberRow(group.id, m)));
+    if (membersError) {
+      await supabaseAdmin.from("groups").delete().eq("id", group.id);
+      return { error: "The group wasn't made. Try again." };
+    }
+  }
+  return { error: null, id: group.id };
 }

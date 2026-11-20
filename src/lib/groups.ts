@@ -48,6 +48,12 @@ export interface GroupEvent {
 export interface Person {
   name: string;
   email: string | null;
+  /**
+   * The account the email came from, for someone invited from a follow
+   * (src/lib/guest-emails.ts). Only the server sets it, never from what the
+   * browser sends.
+   */
+  profile_id?: string | null;
 }
 
 /**
@@ -61,7 +67,8 @@ export function personKey(person: Person): string {
 
 /**
  * The people in `incoming` who aren't on `existing` yet, each once, in the
- * order given. Names and emails are trimmed and emails lowercased.
+ * order given. Names and emails are trimmed and emails lowercased. Someone's
+ * account link comes along when they have one.
  */
 export function newPeople(existing: Person[], incoming: Person[]): Person[] {
   const seen = new Set(existing.map(personKey));
@@ -69,7 +76,8 @@ export function newPeople(existing: Person[], incoming: Person[]): Person[] {
   for (const raw of incoming) {
     const name = raw.name.trim();
     if (!name) continue;
-    const person = { name, email: raw.email?.trim().toLowerCase() || null };
+    const person: Person = { name, email: raw.email?.trim().toLowerCase() || null };
+    if (raw.profile_id) person.profile_id = raw.profile_id;
     const key = personKey(person);
     if (seen.has(key)) continue;
     seen.add(key);

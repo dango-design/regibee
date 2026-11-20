@@ -84,6 +84,15 @@ export interface EventGuest {
   giftee_id: string | null;
   /** Answers to the event's RSVP questions, by question id. Read with storedAnswers. */
   answers?: RsvpAnswers;
+  /**
+   * The guest's account, when the host invited someone they follow. The email
+   * came from that account. Only the server sees it (src/lib/guest-emails.ts).
+   */
+  profile_id?: string | null;
+  /** On the host's page: the guest has an email from their account that this host isn't shown. */
+  email_hidden?: boolean;
+  /** On the host's page: the email came from the guest's account, so the host can't change it. */
+  from_account?: boolean;
   created_at: string;
 }
 
