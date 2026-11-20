@@ -99,7 +99,9 @@ export function DashboardRegistryCard({
             className={cx("size-5 motion-safe:group-hover/card:animate-wiggle", theme.icon)}
           />
         </span>
-        {eventDate && (
+        {/* Only while the date is ahead: once it's gone by, the pill would
+            repeat the date shown under the title. */}
+        {eventDate && eventDate >= today && (
           <span className={cx("rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium", theme.text)}>
             {countdownLabel(eventDate, today, registryType)}
           </span>
