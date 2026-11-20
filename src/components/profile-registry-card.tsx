@@ -23,13 +23,13 @@ export function ProfileRegistryCard({
   return (
     <Link
       href={`${basePath}/r/${registry.slug}`}
-      className="group flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm transition hover:border-primary hover:shadow-md motion-safe:hover:-translate-y-0.5"
+      className="group clickable-card flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10">
         <RegistryIcon
           registryType={registry.registry_type}
           eventType={registry.event_type}
-          className="h-5 w-5 text-brand-600"
+          className="h-5 w-5 text-brand-600 motion-safe:group-hover:animate-wiggle"
         />
       </span>
       <span className="min-w-0 flex-1">

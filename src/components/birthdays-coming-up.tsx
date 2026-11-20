@@ -34,10 +34,10 @@ export function BirthdaysComingUp({
             <li key={birthday.key}>
               <Link
                 href={`${basePath}${birthday.href}`}
-                className="group flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm transition hover:border-primary hover:shadow-md motion-safe:hover:-translate-y-0.5"
+                className="group clickable-card flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10">
-                  <Cake className="h-5 w-5 text-brand-600" aria-hidden />
+                  <Cake className="h-5 w-5 text-brand-600 motion-safe:group-hover:animate-wiggle" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   {birthday.parentName && (

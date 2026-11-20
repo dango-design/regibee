@@ -91,6 +91,11 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
   `delete from public.star_emails where email = lower('…')` removes one. Either takes effect on the account's next send or upload.
 - The phone app and the extension don't send emails or upload photos, so the levels don't change them.
 
+## Clickable cards
+
+- A card that opens one thing, like a registry, an event or an item to edit, opens it from a click anywhere on the card, not only from its title or button. Its other buttons keep doing their own thing.
+- Use the `clickable-card`, `card-link` and `card-action` classes in `src/app/globals.css`, which explain how. `DashboardRegistryCard` is an example. Don't wrap a card that holds buttons in a link: HTML doesn't allow it.
+
 ## Visual tests (Chromatic)
 
 - `.github/workflows/chromatic.yml` runs Chromatic on every push. It snapshots only the stories the commit affects.

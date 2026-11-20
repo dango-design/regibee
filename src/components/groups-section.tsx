@@ -98,16 +98,19 @@ export function GroupsSection({
             <li key={group.id}>
               <Link
                 href={`${basePath}/dashboard/groups/${group.id}`}
-                className="flex items-center gap-3 rounded-xl border border-secondary p-4 hover:border-primary"
+                className="group clickable-card flex items-center gap-3 rounded-xl border border-secondary bg-primary p-4"
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                  <Users aria-hidden="true" className="size-4.5 text-brand-600" />
+                  <Users aria-hidden="true" className="size-4.5 text-brand-600 motion-safe:group-hover:animate-hop" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-primary">{group.name}</span>
                   <span className="block text-sm text-tertiary">{memberCountLabel(group.memberCount)}</span>
                 </span>
-                <ChevronRight aria-hidden="true" className="size-4 text-tertiary" />
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-4 text-tertiary transition group-hover:text-primary motion-safe:group-hover:translate-x-0.5"
+                />
               </Link>
             </li>
           ))}

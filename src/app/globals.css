@@ -48,6 +48,89 @@
   transition-timing-function: inherit;
 }
 
+/* Cards you can click anywhere on. A card that opens one page, like a
+   registry on the dashboard, opens it wherever someone clicks, not only on
+   its title or its button.
+   - The card gets `clickable-card`. It lifts on hover and dips when pressed.
+   - Its main link, usually the title, gets `card-link`. An ::after layer
+     stretches that link over the whole card. It's still one ordinary link,
+     so Cmd-click, right-click and screen readers work as usual. Keyboard
+     focus on it rings the whole card.
+   - The card's other buttons and links get `card-action`, which puts them
+     above that layer so they keep doing their own thing.
+   A card that is itself one <a> needs only `clickable-card`.
+   Don't wrap a card that holds buttons in an <a>: HTML doesn't allow buttons
+   inside links. And a Button can't be the `card-link`: it's `relative`, so
+   the layer would only cover the button. Where the button is the main
+   action, add an empty <a aria-hidden="true" tabIndex={-1}> with
+   `card-link absolute inset-0` that goes to the same place. `absolute` keeps
+   the empty link out of the card's flex layout, where it would add a gap.
+   Pointer users get the whole card; keyboard and screen reader users use the
+   button. */
+@utility clickable-card {
+  @apply relative cursor-pointer transition duration-150 ease-out hover:border-primary hover:shadow-md motion-safe:hover:-translate-y-0.5;
+
+  &:is(a):focus-visible,
+  &:has(.card-link:focus-visible) {
+    @apply outline-2 outline-offset-2 outline-focus-ring;
+  }
+
+  /* A press on one of the card's buttons doesn't press the card: the button
+     shows its own press. */
+  &:is(a):active,
+  &:has(.card-link:active) {
+    @apply motion-safe:translate-y-0 motion-safe:scale-[0.98];
+  }
+}
+
+@utility card-link {
+  /* The card shows the focus ring instead (see clickable-card). */
+  outline: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+}
+
+@utility card-action {
+  position: relative;
+  z-index: 2;
+}
+
+/* Small hover animations for icons on clickable cards, like
+   `motion-safe:group-hover/card:animate-wiggle`. They only run on hover, so
+   Chromatic's snapshots never catch them mid-move. */
+@theme {
+  --animate-wiggle: wiggle 0.5s ease-in-out;
+  --animate-hop: hop 0.45s ease-out;
+
+  @keyframes wiggle {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: -12deg;
+    }
+    75% {
+      rotate: 10deg;
+    }
+  }
+
+  @keyframes hop {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    40% {
+      translate: 0 -4px;
+    }
+  }
+}
+
 :root {
   --radius: 0.625rem;
 }
@@ -108,9 +191,10 @@ input[type="search"]::-webkit-search-cancel-button {
      the pressing variant above). The shared Button has its
      own pressed style and opts out with opacity-100: utilities win over base
      styles, so hidden things (opacity-0) stay hidden too. Each selector needs
-     more weight than preflight's `button { opacity: 1 }`. */
+     more weight than preflight's `button { opacity: 1 }`. Clickable cards
+     show their own press (see clickable-card), so they're left out. */
   @media (hover: none) {
-    :where(a[href], button, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"]):where(:not([data-rac], :disabled, [aria-disabled="true"])):active,
+    :where(a[href], button, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"]):where(:not([data-rac], :disabled, [aria-disabled="true"], .clickable-card, .card-link)):active,
     [data-rac][data-pressed]:where(:not([data-disabled], [aria-expanded="true"])) {
       opacity: 0.7;
     }

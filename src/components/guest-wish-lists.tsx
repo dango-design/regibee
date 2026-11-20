@@ -77,11 +77,20 @@ export function GuestWishLists({
           {lists.map((entry) => {
             const isRegibee = Boolean(entry.registry);
             const href = entry.registry ? hrefFor(entry.registry.slug) : entry.url;
+            const linkProps = isRegibee ? {} : { target: "_blank", rel: "noopener noreferrer nofollow" };
+            // Where a click on the row goes: nowhere on your own row.
+            const listHref = href && !entry.isYou ? href : null;
             return (
               <li
                 key={entry.guestId}
-                className="flex flex-col gap-3 rounded-xl bg-primary p-3 sm:flex-row sm:items-center sm:justify-between"
+                className={cx(
+                  "flex flex-col gap-3 rounded-xl bg-primary p-3 sm:flex-row sm:items-center sm:justify-between",
+                  listHref && "clickable-card",
+                )}
               >
+                {/* A click anywhere on the row opens the list. The button below
+                    is the real link for keyboards and screen readers. */}
+                {listHref && <a href={listHref} aria-hidden="true" tabIndex={-1} className="card-link absolute inset-0" {...linkProps} />}
                 <div className="flex min-w-0 items-start gap-3">
                   <span
                     aria-hidden="true"
@@ -114,12 +123,9 @@ export function GuestWishLists({
                     )}
                   </div>
                 </div>
-                {href && !entry.isYou && (
-                  <Button variant="outline" size="sm" className="shrink-0 max-sm:min-h-11" asChild>
-                    <a
-                      href={href}
-                      {...(isRegibee ? {} : { target: "_blank", rel: "noopener noreferrer nofollow" })}
-                    >
+                {listHref && (
+                  <Button variant="outline" size="sm" className="card-action shrink-0 max-sm:min-h-11" asChild>
+                    <a href={listHref} {...linkProps}>
                       <span className="inline-flex items-center gap-1.5">
                         See {entry.name.split(/\s+/)[0]}&apos;s list
                         {!isRegibee && <ExternalLink aria-hidden="true" className="size-3.5" />}
