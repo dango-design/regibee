@@ -6,7 +6,7 @@
 
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 
 import { looksLikeEmail } from "@shared/email-address";
@@ -224,19 +224,25 @@ function PeopleSearch() {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invite, setInvite] = useState<"idle" | "sending" | "sent">("idle");
+  // Counts searches, so an answer that arrives after a newer search started
+  // is ignored, as on the website.
+  const latest = useRef(0);
   const isEmailQuery = query.includes("@");
 
   async function search(text: string) {
+    const request = ++latest.current;
     setSearching(true);
     setError(null);
     setInvite("idle");
     try {
       const response = await searchPeople(text);
+      if (request !== latest.current) return;
       setResults({ query: text.trim(), kind: response.kind, list: response.results });
     } catch (e) {
+      if (request !== latest.current) return;
       setError(errorMessage(e));
     } finally {
-      setSearching(false);
+      if (request === latest.current) setSearching(false);
     }
   }
 
@@ -288,7 +294,16 @@ function PeopleSearch() {
             value={query}
             onChangeText={(text) => {
               setQuery(text);
-              if (!text.trim()) setResults(null);
+              // An email address is looked up only when it's whole, so what
+              // showed for the last one goes as soon as it changes. So does
+              // everything once the text is too short to search, as on the website.
+              if (text.includes("@") || text.trim().length < MIN_NAME_LENGTH) {
+                latest.current++;
+                setSearching(false);
+                setResults(null);
+                setError(null);
+                setInvite("idle");
+              }
             }}
             placeholder="Name or email address"
             autoCapitalize="none"
