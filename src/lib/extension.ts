@@ -1,6 +1,7 @@
 // Shared between the site and the browser extension (extension/). Keep this
 // file free of server-only imports: the extension bundles it too.
 
+import { normalizeGtin } from "@/lib/gtin";
 import {
   classifyStoreLink,
   detectStore,
@@ -63,6 +64,8 @@ export interface IdeaRequest {
     imageUrl: string | null;
     price: number | null;
     notes: string | null;
+    /** The page's barcode number. Missing from older versions. */
+    gtin?: string | null;
   };
 }
 
@@ -130,6 +133,8 @@ export interface ProductItem extends StoreItem {
   isOpenToUsed: boolean;
   minimumCondition: UsedCondition | null;
   notes: string | null;
+  /** The page's barcode number (src/lib/gtin.ts). Missing from older versions. */
+  gtin?: string | null;
 }
 
 export interface AddProductRequest {
@@ -306,6 +311,7 @@ export function parseProductItem(raw: unknown): (ProductItem & { key: string }) 
     // Like the add-item dialog: "like new" unless the owner picked another.
     minimumCondition: isOpenToUsed ? (condition ?? "like-new") : null,
     notes,
+    gtin: normalizeGtin(value.gtin),
     key,
   };
 }
@@ -321,6 +327,8 @@ export interface ReadProduct {
   price: number | null;
   /** Product pictures, best first. */
   images: string[];
+  /** The product's barcode number (src/lib/gtin.ts), or null. */
+  gtin: string | null;
 }
 
 const MAX_READ_IMAGES = 12;
@@ -357,7 +365,7 @@ export function parseReadProduct(raw: unknown): ReadProduct | null {
   const images = Array.isArray(value.images)
     ? [...new Set(value.images.map(httpsUrl).filter((u): u is string => Boolean(u)))].slice(0, MAX_READ_IMAGES)
     : [];
-  return { title, price, images };
+  return { title, price, images, gtin: normalizeGtin(value.gtin) };
 }
 
 // ── Regibee pages ↔ extension ───────────────────────────────────────────

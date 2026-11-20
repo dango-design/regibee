@@ -19,6 +19,7 @@ import {
 import { deleteGiftIdea, saveGiftIdea } from "@/lib/actions/gift-ideas";
 import { fetchProductDetails } from "@/lib/fetch-product";
 import { NOTES_MAX, RECIPIENT_MAX, TITLE_MAX, recipientKey, type GiftIdea } from "@/lib/gift-ideas";
+import { gtinForLink, type ReadGtin } from "@/lib/gtin";
 import { detectStore } from "@/lib/retailers";
 import { findSharedLink, nameFromProductUrl } from "@/lib/shared-link";
 import { cx } from "@/lib/utils/cx";
@@ -94,6 +95,9 @@ export function GiftIdeaDialog({
   // that finishes after that leaves the fresh form alone.
   const readNumber = useRef(0);
   const lastReadUrl = useRef<string | null>(null);
+  // A barcode number read here, and its link. It's sent only with that link
+  // (src/lib/gtin.ts).
+  const readGtin = useRef<ReadGtin | null>(null);
   const readSharedLink = useRef(false);
 
   const canPaste = typeof navigator !== "undefined" && typeof navigator.clipboard?.readText === "function";
@@ -141,6 +145,7 @@ export function GiftIdeaDialog({
       return;
     }
 
+    readGtin.current = { url: link, gtin: result.gtin ?? null };
     const filled: string[] = [];
     if (result.title && !currentTitle) {
       setTitle(result.title);
@@ -198,6 +203,7 @@ export function GiftIdeaDialog({
   const reset = () => {
     readNumber.current++;
     lastReadUrl.current = null;
+    readGtin.current = null;
     setRecipient(startRecipient);
     setUrl(idea?.externalUrl ?? "");
     setTitle(idea?.title ?? "");
@@ -226,7 +232,10 @@ export function GiftIdeaDialog({
     setSaving(true);
     let result: Awaited<ReturnType<typeof saveGiftIdea>>;
     try {
-      result = await saveAction({ recipient, title, url, imageUrl, price, notes }, idea?.id);
+      // read() adds https:// the same way, so a link that was read matches.
+      const link = url.trim() && !/^https?:\/\//i.test(url.trim()) ? `https://${url.trim()}` : url.trim();
+      const gtin = gtinForLink(readGtin.current, link) || null;
+      result = await saveAction({ recipient, title, url, imageUrl, price, notes, gtin }, idea?.id);
     } catch {
       result = { error: "The idea wasn't saved. Try again in a moment." };
     }

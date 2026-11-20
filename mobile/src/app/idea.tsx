@@ -39,6 +39,9 @@ export default function IdeaScreen() {
   const [images, setImages] = useState<string[]>(idea?.imageUrl ? [idea.imageUrl] : []);
   const [imageUrl, setImageUrl] = useState<string | null>(idea?.imageUrl ?? null);
   const [reading, setReading] = useState<string | null>(!idea && startingLink ? startingLink : null);
+  // The product's barcode number and the link it was read from. It's sent
+  // only with that link (src/lib/gtin.ts on the website).
+  const [readGtin, setReadGtin] = useState<{ url: string; gtin: string | null } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,11 +58,13 @@ export default function IdeaScreen() {
   }
 
   function onProduct(product: ReadProduct | null) {
+    const source = reading;
     setReading(null);
     if (!product) {
       setStatus(`We couldn't read the details from ${storeLabel(link) ?? "this link"}. Fill in the rest by hand.`);
       return;
     }
+    if (source) setReadGtin({ url: source, gtin: product.gtin });
     const filled: string[] = [];
     if (product.title && !title.trim()) {
       setTitle(product.title);
@@ -100,6 +105,7 @@ export default function IdeaScreen() {
           imageUrl,
           price: parsePrice(priceText),
           notes,
+          gtin: readGtin?.gtin && link === readGtin.url ? readGtin.gtin : null,
         },
       },
       {

@@ -174,6 +174,7 @@ function cleanInput(input: ItemInput) {
     is_open_to_used: input.is_open_to_used,
     minimum_condition: input.is_open_to_used ? (input.minimum_condition ?? "like-new") : null,
     notes: input.notes?.trim() || null,
+    gtin: input.gtin ?? null,
   };
 }
 
@@ -191,6 +192,8 @@ function itemForm(values: ReturnType<typeof cleanInput>, bought?: boolean) {
     isOpenToUsed: String(values.is_open_to_used),
     minimumCondition: values.minimum_condition ?? "",
     notes: values.notes ?? "",
+    // Without one, the server keeps the saved barcode if the link stays.
+    gtin: values.gtin ?? "",
   });
 }
 

@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 17, 2026",
+  effectiveDate: "November 19, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -175,7 +175,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 What you put on them: the title, date, description and photo, names such as the parents&apos; or the
                 guest of honor&apos;s, the items with their links, prices, pictures and notes, your categories and your
-                cash funds.
+                cash funds. When a store&apos;s page shows a product&apos;s barcode number (its UPC or EAN), we keep
+                that with the item too.
               </li>
               <li>
                 You choose who can open each registry. New registries start as &ldquo;Anyone with the link&rdquo;:
@@ -262,7 +263,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <H3>Your gift ideas</H3>
             <P>
               If you save gift ideas for other people, we keep what you save: the name you give the person, such as
-              &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note. Only you can see them.
+              &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note, and the product&apos;s
+              barcode number when the store&apos;s page shows it. Only you can see them.
               They aren&apos;t on any registry and have no link, we never show them to the person or anyone else, and
               we don&apos;t email anyone about them.
             </P>
@@ -347,8 +349,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <List>
               <li>
                 <strong className="font-semibold text-primary">Sharing and pasting products.</strong> When you share
-                a product to Regibee or paste a link, the app reads the product&apos;s name, price and pictures on your
-                phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
+                a product to Regibee or paste a link, the app reads the product&apos;s name, price, pictures and
+                barcode number on your phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
                 store sees a visit from your phone just as if you&apos;d opened the page yourself. Nothing goes to
                 Regibee until you save the item.
               </li>
@@ -395,8 +397,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">The page you&apos;re on, when you ask.</strong> It reads
                 a product page only when you click its toolbar button, use its &ldquo;Add to Regibee&rdquo; menu item
-                or press its shortcut. You can add the product to a registry or save it as a gift idea, which only you
-                can see.
+                or press its shortcut. It reads the product&apos;s name, price, pictures and barcode number. You can add
+                the product to a registry or save it as a gift idea, which only you can see.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Links you paste on regibee.com.</strong> When you paste

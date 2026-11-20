@@ -16,7 +16,16 @@ const PRODUCT_PAGE = `<!doctype html>
        "offers":{"@type":"Offer","price":"24.99","priceCurrency":"USD"}}
     </script>
   </head>
-  <body><h1>Wool Scarf</h1></body>
+  <body>
+    <h1>Wool Scarf</h1>
+    <!-- Target's page data has a barcode for each color. The link's item number picks this one. -->
+    <script id="__NEXT_DATA__" type="application/json">
+      {"props":{"product":{"children":[
+        {"tcin":"87654321","item":{"primary_barcode":"036000291452"}},
+        {"tcin":"12345678","item":{"primary_barcode":"012345678905"}}
+      ]}}}
+    </script>
+  </body>
 </html>`;
 
 test.describe.configure({ mode: "parallel" });
@@ -80,6 +89,8 @@ test("saves the product as a gift idea for someone", async ({ context, worker, e
       imageUrl: PICTURE,
       price: 24.99,
       notes: "She liked the green one.",
+      // The barcode number, as 14 digits (src/lib/gtin.ts).
+      gtin: "00012345678905",
     },
   });
   // Nothing went on the registry.

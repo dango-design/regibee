@@ -60,6 +60,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
 
+## Barcode numbers
+
+- Items and gift ideas have a `gtin` column: the product's barcode number (its UPC or EAN), saved as 14 digits. Nothing shows it yet. It's there so Regibee can later match the same product across stores.
+- The product readers fill it in when the page has one: `src/lib/product-page.ts` on the server, and `extension/src/product-reader.ts` in the extension and the phone app. The rules and their tests are in `src/lib/gtin.ts`. The extension's reader can't import, so it has its own copy: change both.
+- A barcode belongs to the link it was read from. The dialogs send it only with that link, and the server actions clear a saved one when the link changes without a new one (`gtinChange`). Swapping a store link for its registry link keeps it, since that's the same product.
+
 ## Gift ideas
 
 - A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it.

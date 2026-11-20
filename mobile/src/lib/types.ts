@@ -194,4 +194,6 @@ export interface ItemInput {
   is_open_to_used: boolean;
   minimum_condition: UsedCondition | null;
   notes: string | null;
+  /** The product's barcode number, read from `external_url`. Only sent, never shown. */
+  gtin?: string | null;
 }
