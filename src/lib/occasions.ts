@@ -425,13 +425,21 @@ export function nameLabelFor(audience: Audience): string | null {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Whole days from `today` to `eventDate`: 0 on the day, negative once it's
+ * passed. Both are YYYY-MM-DD strings, like `event_date`, so the result
+ * doesn't depend on the time of day.
+ */
+export function daysUntil(eventDate: string, today: string): number {
+  return Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
+}
+
 // "12 days to go", "Tomorrow" or "Today". Baby registries count down to the
 // due date instead ("Due in 12 days"). Once the date has gone by, it shows
 // the date itself with its year, like "Nov 3, 2026": wording like "Due date
-// passed" read as harsh. Both dates are YYYY-MM-DD strings, like
-// `event_date`, so the result doesn't depend on the time of day.
+// passed" read as harsh.
 export function countdownLabel(eventDate: string, today: string, registryType: "baby" | "personal"): string {
-  const days = Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
+  const days = daysUntil(eventDate, today);
   const baby = registryType === "baby";
   if (days < 0) {
     // Built as a local date and formatted without a time zone, so it shows

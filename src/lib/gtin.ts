@@ -40,7 +40,8 @@ export function normalizeGtin(raw: unknown): string | null {
 // ── Reading one from a page ─────────────────────────────────────────────
 // The server's reader (src/lib/product-page.ts) uses these. The extension's
 // reader (extension/src/product-reader.ts) can't import anything, so it has
-// its own copy of the same rules.
+// its own copy of the same rules. gtinFromDetailRows is for Amazon, which
+// only the extension reads: the server can't fetch Amazon's pages.
 
 type Json = Record<string, unknown>;
 
@@ -151,6 +152,25 @@ export function gtinFromStorePageData(data: unknown, pageUrl: string): string | 
     return node ? normalizeGtin(node.upc) : null;
   }
   return null;
+}
+
+/**
+ * The barcode in Amazon's product details, from the text of each row, such
+ * as "UPC : 819956000350" in a list or "UPC817010024533" from a table row
+ * whose cells have no space between them. Amazon puts invisible direction
+ * marks around the colon. A row can list several numbers, one per color or
+ * size, so this takes a barcode only when the details have just one.
+ */
+export function gtinFromDetailRows(rows: string[]): string | null {
+  const found: (string | null)[] = [];
+  for (const row of rows) {
+    const text = row.replace(/[\u200e\u200f]/g, " ");
+    // The label, then a few characters such as " : ", then one or more numbers.
+    for (const match of text.matchAll(/(?<![A-Za-z])(?:UPC|EAN|GTIN)(?![A-Za-z])[^\d]{0,12}((?:\d{8,14}[\s,;]*)+)/g)) {
+      for (const code of match[1].trim().split(/[\s,;]+/)) found.push(normalizeGtin(code));
+    }
+  }
+  return onlyOne(found);
 }
 
 /** A barcode a dialog read, and the link it read it from. */

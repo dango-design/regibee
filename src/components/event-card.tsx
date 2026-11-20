@@ -4,7 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { countdownLabel } from "@/lib/occasion-theme";
-import { eventTheme, eventTypeLabel, formatShortEventDate, type EventType, type RsvpSummary } from "@/lib/events";
+import {
+  eventTheme,
+  eventTypeLabel,
+  formatShortEventDate,
+  rsvpStatsText,
+  type EventType,
+  type RsvpSummary,
+} from "@/lib/events";
 import { cx } from "@/lib/utils/cx";
 
 export interface EventCardProps {
@@ -45,16 +52,7 @@ export function EventCard({
 }: EventCardProps) {
   const theme = eventTheme(eventType);
   const Heading = headingLevel === 2 ? "h2" : "h3";
-  const stats =
-    summary.guests === 0
-      ? "No guests yet"
-      : [
-          `${summary.attending} going`,
-          summary.maybe > 0 ? `${summary.maybe} maybe` : null,
-          `${summary.pending} no reply`,
-        ]
-          .filter(Boolean)
-          .join(" · ");
+  const stats = rsvpStatsText(summary);
 
   return (
     <Card className="group/card clickable-card gap-0 overflow-hidden py-0">

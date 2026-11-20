@@ -31,6 +31,7 @@ import {
 import { isUuid } from "@/lib/extension";
 import { gtinChange, normalizeGtin } from "@/lib/gtin";
 import { listsForItems } from "@/lib/list-items";
+import { addListCategory } from "@/lib/list-categories";
 import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
 import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
 import { MY_GIFTS_COOKIE, MY_GIFTS_COOKIE_OPTIONS, withGift } from "@/lib/my-gifts-cookie";
@@ -845,32 +846,14 @@ export async function createCategory(registryId: string, name: string) {
     redirect("/login");
   }
 
-  // Get max sort_order for this registry
-  const { data: existing } = await supabase
-    .from("categories")
-    .select("sort_order")
-    .eq("registry_id", registryId)
-    .order("sort_order", { ascending: false })
-    .limit(1);
-
-  const nextOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 0;
-
-  const { data, error } = await supabase
-    .from("categories")
-    .insert({
-      registry_id: registryId,
-      name,
-      sort_order: nextOrder,
-    })
-    .select("id, name, sort_order")
-    .single();
-
-  if (error) {
-    return { error: error.message };
+  // The extension makes categories the same way (src/lib/list-categories.ts).
+  const result = await addListCategory(supabase, registryId, name);
+  if ("error" in result) {
+    return { error: result.error };
   }
 
   revalidatePath(`/dashboard/registry/${registryId}`);
-  return { success: true, category: data };
+  return { success: true, category: result.category };
 }
 
 export async function updateCategory(

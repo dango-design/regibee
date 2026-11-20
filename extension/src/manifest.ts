@@ -4,7 +4,7 @@
 import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Change this when the extension does something new. Builds from main add a fourth part. */
-export const EXTENSION_VERSION = "0.2.0";
+export const EXTENSION_VERSION = "0.2.1";
 
 /** Set by .github/workflows/extension-publish.yml. Local builds have neither. */
 export interface BuildInfo {

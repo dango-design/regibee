@@ -6,6 +6,7 @@ import {
   USED_CONDITIONS,
   type AddProductResponse,
   type AddResponse,
+  type CategoryResponse,
   type ExtensionRegistry,
   type IdeaRequest,
   type IdeaResponse,
@@ -13,6 +14,7 @@ import {
   type ProductItem,
   type StoreItem,
 } from "@/lib/extension";
+import { categoryName, MAX_CATEGORY_NAME_LENGTH } from "@/lib/item-categories";
 import { classifyStoreLink, EXTENSION_STORES, getStore, storeItemKey, type StoreId, type StoreInfo } from "@/lib/retailers";
 import { REGIBEE_URL, VERSION_NAME } from "../config";
 import { readProductPage, type ProductPage } from "../product-reader";
@@ -670,6 +672,92 @@ function showProduct(ctx: ProductContext) {
   };
   fillCategories();
 
+  // "+ New category", as on the site's add-item dialog: it makes the
+  // category on the registry and picks it.
+  const newCategory = h("input", {
+    id: "new-category",
+    type: "text",
+    maxlength: MAX_CATEGORY_NAME_LENGTH,
+    autocomplete: "off",
+    placeholder: "e.g., Kitchen",
+  }) as HTMLInputElement;
+  const addCategoryButton = h("button", { type: "button", className: "button primary small", disabled: true }, "Add") as HTMLButtonElement;
+  const categoryError = h("p", { className: "error", role: "alert", hidden: true });
+  const categoryPicker = h(
+    "div",
+    { className: "field" },
+    h("label", { for: "category" }, "Category"),
+    category,
+    h("button", { type: "button", className: "link-button new-category", onclick: () => openNewCategory() }, "+ New category")
+  );
+  const newCategoryForm = h(
+    "div",
+    { className: "field", hidden: true },
+    h("label", { for: "new-category" }, "New category"),
+    h(
+      "div",
+      { className: "inline-form" },
+      newCategory,
+      addCategoryButton,
+      h("button", { type: "button", className: "button secondary small", onclick: () => closeNewCategory() }, "Cancel")
+    ),
+    categoryError
+  );
+  let addingCategory = false;
+  const openNewCategory = () => {
+    categoryPicker.hidden = true;
+    newCategoryForm.hidden = false;
+    newCategory.focus();
+  };
+  const closeNewCategory = () => {
+    newCategoryForm.hidden = true;
+    categoryPicker.hidden = false;
+    newCategory.value = "";
+    addCategoryButton.disabled = true;
+    categoryError.hidden = true;
+  };
+  newCategory.addEventListener("input", () => {
+    addCategoryButton.disabled = addingCategory || !categoryName(newCategory.value);
+  });
+  newCategory.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    void addCategory();
+  });
+  addCategoryButton.addEventListener("click", () => void addCategory());
+
+  /** Makes the typed category on the registry and picks it. False when it wasn't made. */
+  async function addCategory(): Promise<boolean> {
+    const name = categoryName(newCategory.value);
+    if (!name || addingCategory) return false;
+    addingCategory = true;
+    categoryError.hidden = true;
+    addCategoryButton.disabled = true;
+    addCategoryButton.textContent = "Adding…";
+    const result = await ask<CategoryResponse>({ type: "add-category", registryId, name });
+    addingCategory = false;
+    addCategoryButton.textContent = "Add";
+    if (!result.ok) {
+      if (result.notConnected) {
+        showConnect(true);
+        return false;
+      }
+      categoryError.textContent = result.error;
+      categoryError.hidden = false;
+      addCategoryButton.disabled = false;
+      newCategory.focus();
+      return false;
+    }
+    // A category with that name already on the registry comes back instead of a new one.
+    const added = result.data.category;
+    const list = registry();
+    if (!list.categories.some((c) => c.id === added.id)) list.categories = [...list.categories, added];
+    fillCategories();
+    category.value = added.id;
+    closeNewCategory();
+    return true;
+  }
+
   const essential = h("input", { type: "checkbox", id: "essential" }) as HTMLInputElement;
   const openToUsed = h("input", { type: "checkbox", id: "used" }) as HTMLInputElement;
   const condition = h(
@@ -810,6 +898,7 @@ function showProduct(ctx: ProductContext) {
     }
     registryId = value;
     fillCategories();
+    closeNewCategory();
     setMode("list");
     await ask({ type: "set-registry", registryId: value });
     await checkDuplicate();
@@ -847,6 +936,14 @@ function showProduct(ctx: ProductContext) {
     }
     const priceValue = readPrice();
     if (priceValue === undefined) return;
+    button.disabled = true;
+    button.textContent = "Adding…";
+    // A new category typed but not added yet: make it first, so the item goes in it.
+    if (!newCategoryForm.hidden && categoryName(newCategory.value) && !(await addCategory())) {
+      button.disabled = false;
+      button.textContent = "Add to Regibee";
+      return;
+    }
     const item: ProductItem = {
       url: product.url,
       title: name,
@@ -860,8 +957,6 @@ function showProduct(ctx: ProductContext) {
       notes: notes.value.trim() || null,
       gtin: product.gtin ?? null,
     };
-    button.disabled = true;
-    button.textContent = "Adding…";
     const result = await ask<AddProductResponse>({ type: "add-product", registryId, item });
     if (!result.ok) {
       if (result.notConnected) return showConnect(true);
@@ -971,7 +1066,8 @@ function showProduct(ctx: ProductContext) {
   const listBottom = h(
     "div",
     { className: "group" },
-    canAddToList && field("category", "Category", category),
+    canAddToList && categoryPicker,
+    canAddToList && newCategoryForm,
     h(
       "div",
       { className: "checks" },

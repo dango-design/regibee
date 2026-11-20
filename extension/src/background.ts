@@ -8,6 +8,7 @@ import {
   parseReadProduct,
   type AddProductResponse,
   type AddResponse,
+  type CategoryResponse,
   type CheckResponse,
   type ExtensionRegistry,
   type ExtensionSession,
@@ -72,6 +73,19 @@ async function rememberRecipient(name: string): Promise<void> {
   const { ideaRecipients = [] } = await load("ideaRecipients");
   const key = name.toLowerCase();
   await save({ ideaRecipients: [name, ...ideaRecipients.filter((n) => n.toLowerCase() !== key)].slice(0, 8) });
+}
+
+/** Adds a category the form just made to the saved lists, so the form offers it next time. */
+async function rememberCategory(registryId: string, category: CategoryResponse["category"]): Promise<void> {
+  const { registries: list } = await load("registries");
+  if (!list) return;
+  await save({
+    registries: list.map((r) =>
+      r.id === registryId && !r.categories.some((c) => c.id === category.id)
+        ? { ...r, categories: [...r.categories, category] }
+        : r
+    ),
+  });
 }
 
 async function currentRegistry(): Promise<ExtensionRegistry | null> {
@@ -371,6 +385,14 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
       // Automatic mode shouldn't add it again from the store's registry page.
       const key = storeItemKey(request.item.url);
       if (key) await markSeen(request.registryId, [key]);
+      return result;
+    }
+    case "add-category": {
+      const result = await api<CategoryResponse>("/api/extension/categories", {
+        method: "POST",
+        body: { registryId: request.registryId, name: request.name },
+      });
+      await rememberCategory(request.registryId, result.category);
       return result;
     }
     case "add-idea": {
