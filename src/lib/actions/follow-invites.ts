@@ -7,6 +7,7 @@ import { requireAccount } from "@/lib/require-account";
 import { getBlockState, getFollowStatus } from "@/lib/follows";
 import { getFollowInvite, newInviteToken, sha256 } from "@/lib/follow-invites";
 import { sendFollowInviteEmail } from "@/lib/email";
+import { noEmailsMessage, reserveEmails, settleEmails } from "@/lib/email-budget";
 import { looksLikeEmail, normalizeEmail } from "@/lib/email-address";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -90,11 +91,22 @@ export async function sendFollowInvite(rawEmail: string) {
     return { error: `You already invited this address in the last ${SAME_ADDRESS_GAP_DAYS} days.` };
   }
 
+  // The address was typed in, so the invite counts against the account's
+  // daily emails (see "Account levels" in CLAUDE.md). It's taken before
+  // anyone knows whether the email will go, and kept when it doesn't, so
+  // neither the answer nor what's left of the allowance says whether the
+  // address has an account.
+  const reservation = await reserveEmails(user.id, "follow_invite", 1);
+  if (reservation.granted === 0) return { error: noEmailsMessage(reservation) };
+
   const token = newInviteToken();
   const { error } = await supabaseAdmin
     .from("follow_invites")
     .insert({ inviter_id: user.id, email_hash: emailHash, token_hash: sha256(token) });
-  if (error) return { error: error.message };
+  if (error) {
+    await settleEmails(reservation, 0);
+    return { error: error.message };
+  }
 
   // An address can't be flooded by several people inviting it.
   let send = (toAddressThisWeek ?? 0) < MAX_INVITES_TO_ADDRESS_PER_WEEK;

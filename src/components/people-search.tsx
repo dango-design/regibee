@@ -243,7 +243,7 @@ export function PeopleSearch({
       )}
 
       {!searching && results.length > 0 && (
-        <ul className="flex flex-col gap-3">
+        <ul aria-label="Search results" className="flex flex-col gap-3">
           {results.map((person) =>
             person.state === "self" ? (
               <PersonCard key={person.public_id} person={person} detail="That's you" basePath={basePath} />
@@ -261,7 +261,7 @@ export function PeopleSearch({
       )}
 
       <p className="text-xs text-tertiary">
-        Only people who&apos;ve chosen to show up in search appear here. Email addresses are never shown.
+        Only people who let others find them appear here. Email addresses are never shown.
       </p>
     </div>
   );

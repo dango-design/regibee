@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 19, 2026",
+  effectiveDate: "November 20, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -151,9 +151,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               Profiles are hidden from search engines.
             </P>
             <P>
-              Signed-in people can find you on Regibee by name, or by typing your whole email address, only if you
-              turn that on. It&apos;s the &ldquo;Let friends find me&rdquo; box when you sign up, and two settings
-              on your Account page. Search never shows your email address.
+              Signed-in people can find you on Regibee by name if you turn that on, and by typing your whole email
+              address unless you turn that off. The &ldquo;Let friends find me&rdquo; box when you sign up covers
+              both, and each has its own setting on your Account page. Search never shows your email address.
             </P>
 
             <H3>Your gift profile</H3>
