@@ -11,6 +11,7 @@ import {
   Gift,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 type CategoryTheme = {
   Icon: LucideIcon;
@@ -52,7 +53,8 @@ interface ItemImageProps {
   imageUrl?: string | null;
   title: string;
   categoryName?: string | null;
-  size?: "sm" | "md";
+  /** "fill" takes the full width. Give it a height with className, like "h-48". */
+  size?: "sm" | "md" | "fill";
   className?: string;
 }
 
@@ -63,6 +65,10 @@ export function ItemImage({
   size = "sm",
   className = "",
 }: ItemImageProps) {
+  if (size === "fill") {
+    return <FillImage imageUrl={imageUrl} title={title} categoryName={categoryName} className={className} />;
+  }
+
   const sizeClass = size === "md" ? "size-20" : "size-16";
   const iconClass = size === "md" ? "h-9 w-9" : "h-7 w-7";
 
@@ -90,6 +96,68 @@ export function ItemImage({
       aria-hidden="true"
     >
       <Icon className={iconClass} style={{ color: fg }} />
+    </div>
+  );
+}
+
+/**
+ * An item's photo in a gift dialog, so guests still see what they're giving
+ * after they open it. `children` is a line under the photo, like the price.
+ * Shows nothing when there's neither.
+ */
+export function ItemPhotoPanel({
+  imageUrl,
+  title,
+  children,
+}: {
+  imageUrl?: string | null;
+  title: string;
+  children?: ReactNode;
+}) {
+  if (!imageUrl && !children) return null;
+  return (
+    <div className="overflow-hidden rounded-lg bg-secondary">
+      {imageUrl && <FillImage imageUrl={imageUrl} title={title} className="h-44 sm:h-56" />}
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A full-width photo. The whole photo shows, never cropped, because store
+ * photos come in every shape and cropping can cut off the product.
+ */
+function FillImage({
+  imageUrl,
+  title,
+  categoryName,
+  className,
+}: Pick<ItemImageProps, "imageUrl" | "title" | "categoryName" | "className">) {
+  if (imageUrl) {
+    return (
+      <div className={`flex w-full items-center justify-center overflow-hidden rounded-lg bg-secondary p-3 ${className}`}>
+        {/* Most store photos have a white background. Multiply blends that
+            white into the box's colour, so the photo doesn't sit in a white
+            rectangle. */}
+        <img
+          src={imageUrl}
+          alt={title}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-contain mix-blend-multiply"
+        />
+      </div>
+    );
+  }
+
+  const { Icon, bg, fg } = themeFor(categoryName);
+  return (
+    <div
+      className={`flex w-full items-center justify-center rounded-lg ${className}`}
+      style={{ backgroundColor: bg }}
+      aria-hidden="true"
+    >
+      <Icon className="h-12 w-12" style={{ color: fg }} />
     </div>
   );
 }

@@ -62,6 +62,12 @@ export const Pay: Story = {
   play: openWith(/gift this/i),
 };
 
+// An item with a photo shows it under the title.
+export const PayWithPhoto: Story = {
+  args: { item: { id: "5", title: "Panda Lovey", price: 24, quantity_needed: 1, image_url: "/hero/panda.svg" } },
+  play: openWith(/gift this/i),
+};
+
 // Needs more than one, so the amount follows how many the guest gives.
 export const PayMultiQuantity: Story = {
   args: {

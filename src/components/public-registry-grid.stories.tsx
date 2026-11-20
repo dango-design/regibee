@@ -190,6 +190,74 @@ export const CoverStates: Story = {
   },
 };
 
+// Each card leads with the item's photo at full width, uncropped. This guest
+// gave the bibs, so a panda sits on their photo. Other guests gave the socks,
+// so that photo fades. The plates have no photo and show their category's icon.
+export const WithPhotos: Story = {
+  args: {
+    parentName: "Remi & Max",
+    categories: [{ id: "nursery", name: "Feeding", sort_order: 0 }],
+    cashFunds: [],
+    myGifts: {},
+    coverCounts: {},
+    suggestButton: null,
+    myItemGifts: {
+      "2": { purchaseId: "p2", status: "purchased", reservedUntil: null, quantity: 1 },
+    },
+    items: [
+      {
+        ...base,
+        id: "1",
+        title: "Glass Baby Bottles, 4 Pack",
+        price: 34.99,
+        is_essential: true,
+        image_url: "/hero/bottle.svg",
+        external_url: "https://www.amazon.com/dp/B0EXAMPLE3",
+      },
+      {
+        ...base,
+        id: "2",
+        title: "Organic Cotton Bibs",
+        price: 18,
+        quantity_fulfilled: 1,
+        image_url: "/hero/bib.svg",
+        external_url: "https://www.etsy.com/listing/000000/organic-cotton-bibs",
+      },
+      {
+        ...base,
+        id: "3",
+        title: "Newborn Sock Set",
+        price: 12.5,
+        quantity_needed: 2,
+        quantity_fulfilled: 2,
+        image_url: "/hero/socks.svg",
+        external_url: null,
+      },
+      {
+        ...base,
+        id: "4",
+        title: "Panda Lovey",
+        price: 24,
+        notes: "The soft one, not the one with the rattle.",
+        image_url: "/hero/panda.svg",
+        external_url: null,
+      },
+      {
+        ...base,
+        id: "5",
+        title: "Silicone Suction Plates",
+        price: 21,
+        external_url: null,
+      },
+    ],
+  },
+};
+
+export const WithPhotosPhone: Story = {
+  ...WithPhotos,
+  globals: { viewport: { value: "mobile1" } },
+};
+
 // What a guest sees after opening a texted link: a 16px search box, so iOS
 // doesn't zoom in, and 44px filters and buttons. The categories hide behind
 // the floating list button, so "Suggest an item" moves up under the filters.

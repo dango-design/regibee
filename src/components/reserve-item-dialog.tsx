@@ -30,6 +30,7 @@ import {
   type MyItemGift,
 } from "@/lib/gifts";
 import { useGuestPrefill } from "@/components/guest-prefill-context";
+import { ItemPhotoPanel } from "@/components/item-image";
 
 // Giving an item: the guest fills in their details and presses one button,
 // Reserve and buy. That holds the item for GIFT_HOLD_DAYS. On the owners' own
@@ -82,6 +83,7 @@ export interface ReserveItemDialogProps {
     quantity_needed: number;
     quantity_fulfilled: number;
     external_url?: string | null;
+    image_url?: string | null;
   };
   parentName?: string;
   /** This visitor's gift on the item, if they have one. */
@@ -404,34 +406,39 @@ export function ReserveItemDialog({
                 No account required.
               </DialogDescription>
             </DialogHeader>
-            {(item.price || shopName) && (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary px-3 py-2 text-sm">
-                <span className="text-secondary">
-                  {item.price ? <span className="font-semibold text-primary">{formatPrice(item.price)}</span> : null}
-                  {item.price && shopName ? " · " : null}
-                  {shopName ? (registryStoreName ? `On their ${registryStoreName} registry` : `From ${shopName}`) : null}
-                </span>
-                {item.external_url && (
-                  <a
-                    href={item.external_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
-                  >
-                    See it
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                  </a>
-                )}
-              </div>
-            )}
+            <ItemPhotoPanel imageUrl={item.image_url} title={item.title}>
+              {item.price || shopName ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span className="text-secondary">
+                    {item.price ? <span className="font-semibold text-primary">{formatPrice(item.price)}</span> : null}
+                    {item.price && shopName ? " · " : null}
+                    {shopName ? (registryStoreName ? `On their ${registryStoreName} registry` : `From ${shopName}`) : null}
+                  </span>
+                  {item.external_url && (
+                    <a
+                      href={item.external_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
+                    >
+                      See it
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    </a>
+                  )}
+                </div>
+              ) : null}
+            </ItemPhotoPanel>
           </div>
         ) : (
-          <DialogHeader className="pr-8">
-            <DialogTitle>Tell {parentName} you bought it</DialogTitle>
-            <DialogDescription>
-              They&apos;ll see it&apos;s from {fromWhom}, and nobody else will buy it. No account required.
-            </DialogDescription>
-          </DialogHeader>
+          <div className="space-y-4">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Tell {parentName} you bought it</DialogTitle>
+              <DialogDescription>
+                They&apos;ll see it&apos;s from {fromWhom}, and nobody else will buy it. No account required.
+              </DialogDescription>
+            </DialogHeader>
+            <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
+          </div>
         )}
         <Input
           label="Your Name"
@@ -664,6 +671,7 @@ export function ReserveItemDialog({
             {gift && gift.quantity > 1 ? ` (×${gift.quantity})` : ""}. {parentName} can see it&apos;s from {fromWhom}.
           </DialogDescription>
         </DialogHeader>
+        <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
         {address && !registryStoreName && <ShipTo address={address} />}
         <div className="flex items-center justify-between gap-2">
           <button type="button" className={dangerTextButton} onClick={goToRelease}>
