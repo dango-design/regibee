@@ -11,56 +11,32 @@ import {
 } from "react";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  formatStepDate,
+  isFinishedDate,
+  stepFooterLabel,
+  stepNavReducer,
+  stepStatus,
+  type StepInfo,
+  type StepNav,
+  type StepNavAction,
+  type StepStatus,
+} from "@/lib/step-nav";
 import { cx } from "@/lib/utils/cx";
 
 // The steps of a create form, like a checkout page: a stack of sections with
 // one open at a time. Finishing a section closes it and opens the next one the
-// person hasn't been to yet. Every field stays in the page while its section
-// is closed, so closed sections still hold their values. The new registry form
-// (create-registry-form.tsx) and the new event form (event-form.tsx) use it.
+// person hasn't been to yet (src/lib/step-nav.ts, shared with the phone app's
+// mobile/src/components/steps.tsx). Every field stays in the page while its
+// section is closed, so closed sections still hold their values. The new
+// registry form (create-registry-form.tsx) and the new event form
+// (event-form.tsx) use it.
 
 /** How long a choice stays on screen before its section closes, so the person sees what they picked. */
 export const ADVANCE_DELAY_MS = 350;
 
-export type StepStatus = "open" | "done" | "skipped" | "incomplete" | "upcoming";
-
-/** What a form says about one of its steps. */
-export interface StepInfo {
-  /** False while a required field is empty. */
-  complete: boolean;
-  /** Optional steps say so, and their button says Skip while they're empty. */
-  optional: boolean;
-  hasContent: boolean;
-}
-
-export type StepNav<Id extends string> = { open: Id | null; visited: ReadonlySet<Id> };
-type NavAction<Id extends string> =
-  | { type: "finish"; id: Id }
-  | { type: "toggle"; id: Id }
-  | { type: "open"; id: Id };
-
-// The next step after `after` that hasn't been visited. If every later step
-// has been visited, go back to the first one that hasn't. Null means every
-// step has been visited.
-function nextUnvisited<Id extends string>(order: readonly Id[], after: Id, visited: ReadonlySet<Id>): Id | null {
-  const index = order.indexOf(after);
-  return order.slice(index + 1).find((id) => !visited.has(id)) ?? order.find((id) => !visited.has(id)) ?? null;
-}
-
-function navReducer<Id extends string>(order: readonly Id[], state: StepNav<Id>, action: NavAction<Id>): StepNav<Id> {
-  // Leaving the open step counts as visiting it, however the person left.
-  const visited = state.open ? new Set(state.visited).add(state.open) : state.visited;
-  switch (action.type) {
-    case "finish":
-      // A delayed advance can fire after the person has already moved on.
-      if (state.open !== action.id) return state;
-      return { open: nextUnvisited(order, action.id, visited), visited };
-    case "toggle":
-      return { open: state.open === action.id ? null : action.id, visited };
-    case "open":
-      return { open: action.id, visited };
-  }
-}
+export { formatStepDate, isFinishedDate };
+export type { StepInfo, StepNav, StepStatus };
 
 /**
  * Runs a stack of steps: which one is open, moving on after a choice, Enter
@@ -80,7 +56,7 @@ export function useStepSections<Id extends string>({
   canFinish?: (id: Id) => boolean;
 }) {
   const [nav, dispatch] = useReducer(
-    (state: StepNav<Id>, action: NavAction<Id>) => navReducer(order, state, action),
+    (state: StepNav<Id>, action: StepNavAction<Id>) => stepNavReducer(order, state, action),
     undefined,
     () => (typeof start === "function" ? start() : start),
   );
@@ -98,7 +74,7 @@ export function useStepSections<Id extends string>({
   };
   useEffect(() => cancelAdvance, []);
 
-  const move = (action: NavAction<Id>) => {
+  const move = (action: StepNavAction<Id>) => {
     cancelAdvance();
     hasInteracted.current = true;
     dispatch(action);
@@ -152,20 +128,10 @@ export function useStepSections<Id extends string>({
     finish(id);
   };
 
-  const statusOf = (id: Id): StepStatus => {
-    if (nav.open === id) return "open";
-    if (!nav.visited.has(id)) return "upcoming";
-    if (!steps[id].complete) return "incomplete";
-    if (steps[id].optional && !steps[id].hasContent) return "skipped";
-    return "done";
-  };
+  const statusOf = (id: Id): StepStatus => stepStatus(nav, id, steps[id]);
 
   /** "Skip" while an optional step is empty, and "Done" when no unvisited step is left after this one. */
-  const footerLabel = (id: Id) => {
-    if (steps[id].optional && !steps[id].hasContent) return "Skip";
-    const visited = new Set(nav.visited).add(id);
-    return nextUnvisited(order, id, visited) ? "Continue" : "Done";
-  };
+  const footerLabel = (id: Id) => stepFooterLabel(order, nav, id, steps[id]);
 
   /**
    * The props for a step's StepSection. Upcoming steps show no summary unless
@@ -393,20 +359,4 @@ export function ChoiceChip({
       {label}
     </button>
   );
-}
-
-// While someone types a year, a date input reports partial years such as
-// "0002", "0020" and "0202". Count the date as finished once the year has four
-// real digits.
-export function isFinishedDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number(value.slice(0, 4)) >= 1000;
-}
-
-/** "Mar 14, 2027", for a step's summary. */
-export function formatStepDate(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }

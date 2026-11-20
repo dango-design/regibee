@@ -17,7 +17,6 @@ import {
   EVENT_TYPE_OPTIONS,
   EXCHANGE_KINDS,
   exchangeKind,
-  formatEventTime,
   GIFT_NOTE_PRESETS,
   MAX_GIFT_NOTE_LENGTH,
   MAX_PARTY_SIZE_LIMIT,
@@ -31,17 +30,16 @@ import { RsvpQuestionsEditor } from "@/components/rsvp-questions-editor";
 import { defaultQuestions, storedQuestions, type RsvpQuestion } from "@/lib/rsvp-questions";
 import { changedParts, changeSummary } from "@/lib/event-updates";
 import { cx } from "@/lib/utils/cx";
+import { ChoiceChip, StepFooter, StepSection, useStepSections } from "@/components/step-sections";
 import {
-  ChoiceCard,
-  ChoiceChip,
-  StepFooter,
-  StepSection,
-  formatStepDate,
-  isFinishedDate,
-  useStepSections,
-  type StepInfo,
-} from "@/components/step-sections";
-import { offersGiftExchange } from "@/lib/occasions";
+  eventStepInfo,
+  eventStepSummaries,
+  eventStepTitle,
+  newEventSteps,
+  type EventStepId,
+  type EventStepValues,
+} from "@/lib/event-steps";
+import { isFinishedDate } from "@/lib/step-nav";
 
 type Values = Pick<
   EventDetails,
@@ -81,13 +79,6 @@ type LookupAction = (
 ) => Promise<{ error: string } | { error: null; registry: { id: string; title: string; honoree: string | null } }>;
 
 type ActionResult = { error: string | null };
-
-/**
- * A new event's steps, like the new registry form's (step-sections.tsx). The
- * event's name is the only thing it needs, so every later step can be
- * skipped. Editing an event shows every section at once instead.
- */
-type StepId = "what" | "details" | "when" | "gifts" | "exchange" | "invitation" | "rsvps";
 
 export interface EventFormProps {
   /** The event being edited. Without it, the form makes a new one. */
@@ -288,34 +279,36 @@ export function EventForm({
 
   // ── A new event's steps ──────────────────────────────────────
 
+  // The steps and what they say are shared with the phone app (src/lib/event-steps.ts).
+  // Editing an event shows every section at once instead.
   const hidesAddress = hidesAddressUntilSignup(eventType);
-  const steps: Record<StepId, StepInfo> = {
-    what: { complete: true, optional: false, hasContent: true },
-    details: { complete: Boolean(title.trim()), optional: false, hasContent: Boolean(title.trim()) },
-    when: {
-      complete: true,
-      optional: true,
-      hasContent: Boolean(startTime || endTime || locationName.trim() || locationAddress.trim()),
-    },
-    gifts: { complete: true, optional: true, hasContent: linked.length > 0 || Boolean(giftNote.trim()) },
-    exchange: { complete: true, optional: true, hasContent: exchangeOn },
-    invitation: { complete: true, optional: true, hasContent: Boolean(shownImage || hostedBy.trim() || message.trim()) },
-    rsvps: { complete: true, optional: false, hasContent: true },
+  const stepValues: EventStepValues = {
+    eventType,
+    title,
+    eventDate,
+    startTime,
+    endTime,
+    timeZone,
+    locationName,
+    locationAddress,
+    linkedTitles: linked.map((r) => r.title),
+    giftNote,
+    exchangeOn,
+    exchangeKind: kind,
+    budget,
+    hasPicture: Boolean(shownImage),
+    hostedBy,
+    message,
+    maxPartySize: Number(maxPartySize),
+    openRsvp,
+    rsvpBy,
   };
-  // Gifts among the guests only comes up for occasions that might have them.
-  const stepOrder: StepId[] = [
-    "what",
-    "details",
-    "when",
-    "gifts",
-    ...(exchangeOn || offersGiftExchange(eventType) ? (["exchange"] as const) : []),
-    "invitation",
-    "rsvps",
-  ];
+  const steps = eventStepInfo(stepValues);
+  const stepOrder = newEventSteps(eventType, exchangeOn);
 
   const { nav, move, advanceSoon, cancelAdvance, finish, footerLabel, sectionProps, createRef } = useStepSections({
     order: stepOrder,
-    start: { open: editing ? null : "what", visited: new Set<StepId>() },
+    start: { open: editing ? null : "what", visited: new Set<EventStepId>() },
     steps,
     canFinish: (id) => {
       if (id === "details" && !title.trim()) {
@@ -339,47 +332,16 @@ export function EventForm({
     }
   };
 
-  const timeText = formatEventTime({
-    event_date: eventDate || null,
-    start_time: startTime || null,
-    end_time: endTime || null,
-    time_zone: timeZone || null,
-  });
-  const people = Number(maxPartySize);
-  const summaries: Record<StepId, React.ReactNode> = {
-    what: typeOption.label,
-    details: steps.details.complete ? (
-      [title.trim(), eventDate ? formatStepDate(eventDate) : null].filter(Boolean).join(" · ")
-    ) : (
-      <span className="text-error-primary">Needs a name</span>
-    ),
-    when:
-      [
-        timeText,
-        hidesAddress
-          ? locationAddress.trim() && "Drop-off address added"
-          : locationName.trim() || locationAddress.trim().split("\n")[0],
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Skipped",
-    gifts: [linked.map((r) => r.title).join(", "), giftNote.trim()].filter(Boolean).join(" · ") || "Skipped",
-    exchange: exchangeOn
-      ? [EXCHANGE_KINDS.find((k) => k.value === kind)?.label, budget.trim() && `${budget.trim()} budget`]
-          .filter(Boolean)
-          .join(" · ")
-      : "Skipped",
-    invitation:
-      [shownImage && "Picture", hostedBy.trim() && `Hosted by ${hostedBy.trim()}`, message.trim()]
-        .filter(Boolean)
-        .join(" · ") || "Skipped",
-    rsvps: [
-      `${people === 1 ? "1 person" : `${people} people`} per RSVP`,
-      openRsvp ? "anyone with the link can RSVP" : "invited guests only",
-      rsvpBy && `reply by ${formatStepDate(rsvpBy)}`,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+  const stepSummaries = eventStepSummaries(stepValues, typeOption.label);
+  const summaries: Record<EventStepId, React.ReactNode> = {
+    ...stepSummaries,
+    details: stepSummaries.details || <span className="text-error-primary">Needs a name</span>,
   };
+  /** A step's header, title and summary. */
+  const stepProps = (id: EventStepId, options?: { showWhenUpcoming?: boolean }) => ({
+    title: eventStepTitle(id, eventType),
+    ...sectionProps(id, summaries[id], options),
+  });
 
   const formData = () => {
     const data = new FormData();
@@ -749,7 +711,7 @@ export function EventForm({
       // closed step. handleSubmit checks the name instead.
       <form onSubmit={handleSubmit} noValidate>
         <div className="space-y-3">
-          <StepSection title="What's the occasion?" {...sectionProps("what", summaries.what)}>
+          <StepSection {...stepProps("what")}>
             <div role="group" aria-label="Occasion" className="flex flex-wrap gap-2">
               {EVENT_TYPE_OPTIONS.map((option) => (
                 <ChoiceChip
@@ -765,7 +727,7 @@ export function EventForm({
             </div>
           </StepSection>
 
-          <StepSection title="Name and date" {...sectionProps("details", summaries.details)}>
+          <StepSection {...stepProps("details")}>
             <div className="space-y-4">
               <Input
                 ref={titleRef}
@@ -786,10 +748,7 @@ export function EventForm({
             <StepFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
           </StepSection>
 
-          <StepSection
-            title={hidesAddress ? "Time and drop-off" : "Time and place"}
-            {...sectionProps("when", summaries.when)}
-          >
+          <StepSection {...stepProps("when")}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
               <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
@@ -842,7 +801,7 @@ export function EventForm({
             />
           </StepSection>
 
-          <StepSection title="Gifts" {...sectionProps("gifts", summaries.gifts)}>
+          <StepSection {...stepProps("gifts")}>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-3">{registryFields(true)}</div>
               {giftNoteField}
@@ -851,7 +810,7 @@ export function EventForm({
           </StepSection>
 
           {stepOrder.includes("exchange") && (
-            <StepSection title="Gifts among the guests" {...sectionProps("exchange", summaries.exchange)}>
+            <StepSection {...stepProps("exchange")}>
               <div className="flex flex-col gap-4">{exchangeFields(true)}</div>
               <StepFooter
                 label={footerLabel("exchange")}
@@ -861,7 +820,7 @@ export function EventForm({
             </StepSection>
           )}
 
-          <StepSection title="Invitation" {...sectionProps("invitation", summaries.invitation)}>
+          <StepSection {...stepProps("invitation")}>
             <div className="flex flex-col gap-4">
               {pictureField}
               <Input
@@ -888,7 +847,7 @@ export function EventForm({
           </StepSection>
 
           {/* RSVPs shows the settings the event gets if the host skips it. */}
-          <StepSection title="RSVPs" {...sectionProps("rsvps", summaries.rsvps, { showWhenUpcoming: true })}>
+          <StepSection {...stepProps("rsvps", { showWhenUpcoming: true })}>
             <div className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
