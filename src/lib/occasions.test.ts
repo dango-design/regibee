@@ -14,6 +14,7 @@ import {
   listTint,
   listTitleFor,
   occasionFor,
+  offersGiftExchange,
   planNeedsEvent,
 } from "./occasions.ts";
 
@@ -121,4 +122,14 @@ test("a gift plan's label fits who it's for", () => {
   assert.equal(giftPlanLabel("link", "me", birthday, true).label, "Use a list you already have");
   assert.equal(giftPlanLabel("link", "someone", birthday, true).label, "Link their list");
   assert.equal(giftPlanLabel("link", "no_one", birthday).label, "Link a wishlist");
+});
+
+test("the new event form asks about gifts among the guests only when the occasion can have them", () => {
+  for (const id of ["gift_exchange", "christmas", "holiday", "potluck", "gathering", "other"]) {
+    assert.equal(offersGiftExchange(id), true, id);
+  }
+  for (const id of ["baby_shower", "wedding", "birthday", "kids_birthday", "graduation"]) {
+    assert.equal(offersGiftExchange(id), false, id);
+  }
+  assert.equal(offersGiftExchange("not_an_occasion"), false);
 });

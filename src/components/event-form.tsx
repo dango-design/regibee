@@ -17,6 +17,7 @@ import {
   EVENT_TYPE_OPTIONS,
   EXCHANGE_KINDS,
   exchangeKind,
+  formatEventTime,
   GIFT_NOTE_PRESETS,
   MAX_GIFT_NOTE_LENGTH,
   MAX_PARTY_SIZE_LIMIT,
@@ -30,6 +31,17 @@ import { RsvpQuestionsEditor } from "@/components/rsvp-questions-editor";
 import { defaultQuestions, storedQuestions, type RsvpQuestion } from "@/lib/rsvp-questions";
 import { changedParts, changeSummary } from "@/lib/event-updates";
 import { cx } from "@/lib/utils/cx";
+import {
+  ChoiceCard,
+  ChoiceChip,
+  StepFooter,
+  StepSection,
+  formatStepDate,
+  isFinishedDate,
+  useStepSections,
+  type StepInfo,
+} from "@/components/step-sections";
+import { offersGiftExchange } from "@/lib/occasions";
 
 type Values = Pick<
   EventDetails,
@@ -69,6 +81,13 @@ type LookupAction = (
 ) => Promise<{ error: string } | { error: null; registry: { id: string; title: string; honoree: string | null } }>;
 
 type ActionResult = { error: string | null };
+
+/**
+ * A new event's steps, like the new registry form's (step-sections.tsx). The
+ * event's name is the only thing it needs, so every later step can be
+ * skipped. Editing an event shows every section at once instead.
+ */
+type StepId = "what" | "details" | "when" | "gifts" | "exchange" | "invitation" | "rsvps";
 
 export interface EventFormProps {
   /** The event being edited. Without it, the form makes a new one. */
@@ -176,6 +195,8 @@ export function EventForm({
 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [titleError, setTitleError] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   // New events start in the browser's own time zone. Done after the first
   // render, so the server's HTML and the browser's agree.
@@ -265,6 +286,101 @@ export function EventForm({
     setImageFile(file);
   };
 
+  // ── A new event's steps ──────────────────────────────────────
+
+  const hidesAddress = hidesAddressUntilSignup(eventType);
+  const steps: Record<StepId, StepInfo> = {
+    what: { complete: true, optional: false, hasContent: true },
+    details: { complete: Boolean(title.trim()), optional: false, hasContent: Boolean(title.trim()) },
+    when: {
+      complete: true,
+      optional: true,
+      hasContent: Boolean(startTime || endTime || locationName.trim() || locationAddress.trim()),
+    },
+    gifts: { complete: true, optional: true, hasContent: linked.length > 0 || Boolean(giftNote.trim()) },
+    exchange: { complete: true, optional: true, hasContent: exchangeOn },
+    invitation: { complete: true, optional: true, hasContent: Boolean(shownImage || hostedBy.trim() || message.trim()) },
+    rsvps: { complete: true, optional: false, hasContent: true },
+  };
+  // Gifts among the guests only comes up for occasions that might have them.
+  const stepOrder: StepId[] = [
+    "what",
+    "details",
+    "when",
+    "gifts",
+    ...(exchangeOn || offersGiftExchange(eventType) ? (["exchange"] as const) : []),
+    "invitation",
+    "rsvps",
+  ];
+
+  const { nav, move, advanceSoon, cancelAdvance, finish, footerLabel, sectionProps, createRef } = useStepSections({
+    order: stepOrder,
+    start: { open: editing ? null : "what", visited: new Set<StepId>() },
+    steps,
+    canFinish: (id) => {
+      if (id === "details" && !title.trim()) {
+        setTitleError(true);
+        titleRef.current?.focus();
+        return false;
+      }
+      return true;
+    },
+  });
+
+  // A finished date moves on to the next step, once the event has a name.
+  const changeEventDate = (value: string) => {
+    setEventDate(value);
+    cancelAdvance();
+    if (!isFinishedDate(value)) return;
+    if (title.trim()) {
+      advanceSoon("details", 500);
+    } else {
+      titleRef.current?.focus();
+    }
+  };
+
+  const timeText = formatEventTime({
+    event_date: eventDate || null,
+    start_time: startTime || null,
+    end_time: endTime || null,
+    time_zone: timeZone || null,
+  });
+  const people = Number(maxPartySize);
+  const summaries: Record<StepId, React.ReactNode> = {
+    what: typeOption.label,
+    details: steps.details.complete ? (
+      [title.trim(), eventDate ? formatStepDate(eventDate) : null].filter(Boolean).join(" · ")
+    ) : (
+      <span className="text-error-primary">Needs a name</span>
+    ),
+    when:
+      [
+        timeText,
+        hidesAddress
+          ? locationAddress.trim() && "Drop-off address added"
+          : locationName.trim() || locationAddress.trim().split("\n")[0],
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Skipped",
+    gifts: [linked.map((r) => r.title).join(", "), giftNote.trim()].filter(Boolean).join(" · ") || "Skipped",
+    exchange: exchangeOn
+      ? [EXCHANGE_KINDS.find((k) => k.value === kind)?.label, budget.trim() && `${budget.trim()} budget`]
+          .filter(Boolean)
+          .join(" · ")
+      : "Skipped",
+    invitation:
+      [shownImage && "Picture", hostedBy.trim() && `Hosted by ${hostedBy.trim()}`, message.trim()]
+        .filter(Boolean)
+        .join(" · ") || "Skipped",
+    rsvps: [
+      `${people === 1 ? "1 person" : `${people} people`} per RSVP`,
+      openRsvp ? "anyone with the link can RSVP" : "invited guests only",
+      rsvpBy && `reply by ${formatStepDate(rsvpBy)}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  };
+
   const formData = () => {
     const data = new FormData();
     data.set("eventType", eventType);
@@ -298,7 +414,17 @@ export function EventForm({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!title.trim()) {
-      setError("Give your event a name.");
+      if (editing) {
+        setError("Give your event a name.");
+      } else {
+        // The name's step shows what's missing.
+        setTitleError(true);
+        if (nav.open === "details") {
+          titleRef.current?.focus();
+        } else {
+          move({ type: "open", id: "details" });
+        }
+      }
       return;
     }
     setSaving(true);
@@ -343,6 +469,483 @@ export function EventForm({
     router.push(`/dashboard/events/${created.id}${imageFailed ? "?image=failed" : ""}`);
   };
 
+  // ── Fields both layouts show ─────────────────────────────────
+
+  const partySizeOptions = Array.from({ length: MAX_PARTY_SIZE_LIMIT }, (_, i) => ({
+    value: String(i + 1),
+    label: i === 0 ? "1 (just the guest)" : String(i + 1),
+  }));
+  const changeAskKids = (value: boolean) => {
+    setAskKids(value);
+    setTouched((t) => ({ ...t, askKids: true }));
+  };
+  const changeQuestions = (next: RsvpQuestion[]) => {
+    setQuestions(next);
+    setTouched((t) => ({ ...t, questions: true }));
+  };
+
+  const pictureField = (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          pickImage(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      {shownImage ? (
+        <div className="flex flex-col items-start gap-3 sm:flex-row">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a local preview or an uploaded picture */}
+          <img
+            src={shownImage}
+            alt="Invitation preview"
+            className="max-h-72 w-auto max-w-full rounded-lg shadow-sm ring-1 ring-black/5"
+          />
+          <div className="flex gap-2 sm:flex-col">
+            <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
+              <span className="inline-flex items-center gap-1.5">
+                <ImagePlus className="size-4 shrink-0" />
+                Change
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setImageFile(null);
+                setImageUrl(null);
+              }}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Trash2 className="size-4 shrink-0" />
+                Remove
+              </span>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            pickImage(e.dataTransfer.files?.[0]);
+          }}
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-secondary px-4 py-10 text-center transition outline-none hover:border-brand-600 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-600"
+        >
+          <ImagePlus aria-hidden="true" className="size-8 text-brand-600" />
+          <span className="font-medium text-primary">Upload your invitation</span>
+          <span className="text-sm text-tertiary">JPEG, PNG, WebP or GIF. Click or drop a file here.</span>
+        </button>
+      )}
+    </>
+  );
+
+  /** The new event's steps leave out the longer explanations. */
+  const registryFields = (brief: boolean) => (
+    <>
+      {linked.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {linked.map((registry) => (
+            <li
+              key={registry.id}
+              className="flex items-center justify-between gap-3 rounded-lg border border-secondary px-3 py-2"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <Gift aria-hidden="true" className="size-4 shrink-0 text-brand-600" />
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-primary">{registry.title}</span>
+                  {registry.honoree && <span className="block truncate text-sm text-tertiary">{registry.honoree}</span>}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setLinked(linked.filter((l) => l.id !== registry.id))}
+                aria-label={`Unlink ${registry.title}`}
+                className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-tertiary hover:bg-secondary hover:text-primary max-sm:size-11"
+              >
+                <X aria-hidden="true" className="size-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {pickable.length > 0 && (
+        <NativeSelect
+          aria-label="Add one of your registries"
+          value=""
+          onChange={(e) => {
+            const picked = registries.find((r) => r.id === e.target.value);
+            if (picked) setLinked([...linked, { id: picked.id, title: picked.title }]);
+          }}
+          options={[
+            { value: "", label: linked.length > 0 ? "Add another of your registries…" : "Add one of your registries…" },
+            ...pickable.map((r) => ({ value: r.id, label: r.title })),
+          ]}
+        />
+      )}
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <Input
+            label="Or paste a registry link"
+            value={pasted}
+            onChange={(value) => {
+              setPasted(value);
+              setLinkError("");
+            }}
+            placeholder="regibee.com/r/remi-and-max-1a2b"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void addPastedLink();
+              }
+            }}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 shrink-0"
+          onClick={addPastedLink}
+          disabled={lookingUp || !pasted.trim()}
+        >
+          {lookingUp ? "Finding…" : "Link"}
+        </Button>
+      </div>
+      {brief && <p className="-mt-1 text-sm text-tertiary">Linking someone else&apos;s list emails them.</p>}
+      {linkError && (
+        <p role="alert" className="text-sm text-error-primary">
+          {linkError}
+        </p>
+      )}
+      {registries.length === 0 && linked.length === 0 && (
+        <p className="text-sm text-tertiary">
+          Don&apos;t have a registry yet?{" "}
+          <Link href="/dashboard/registry/new" className="font-medium text-brand-600 hover:underline">
+            Create one
+          </Link>{" "}
+          and link it here later.
+        </p>
+      )}
+    </>
+  );
+
+  const giftNoteField = (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium text-secondary">Gift note (optional)</p>
+      <div role="group" aria-label="Ready-made gift notes" className="flex flex-wrap gap-2">
+        {GIFT_NOTE_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => setGiftNote(preset.text)}
+            className="cursor-pointer rounded-full border border-secondary px-3 py-1 text-sm text-secondary transition hover:border-primary max-sm:min-h-11"
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      <TextArea
+        aria-label="Gift note"
+        value={giftNote}
+        onChange={setGiftNote}
+        maxLength={MAX_GIFT_NOTE_LENGTH}
+        rows={2}
+        placeholder="Instead of a card, bring a favorite children's book with a note inside."
+      />
+    </div>
+  );
+
+  const exchangeFields = (brief: boolean) => (
+    <>
+      <Checkbox
+        isSelected={exchangeOn}
+        isDisabled={drawn}
+        onChange={(value) => {
+          setExchangeOn(value);
+          setTouched((t) => ({ ...t, exchange: true }));
+        }}
+        label={<span className="font-normal">Guests give gifts to each other</span>}
+        hint={
+          drawn
+            ? "Names have been drawn. To turn this off, undo the draw on the event's page first."
+            : brief
+            ? undefined
+            : "Guests add a wish list or gift ideas when they RSVP."
+        }
+      />
+      {exchangeOn && (
+        <>
+          <div role="group" aria-label="How gifts work" className="grid gap-2 sm:grid-cols-2">
+            {EXCHANGE_KINDS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={kind === option.value}
+                disabled={drawn && kind !== option.value}
+                onClick={() => setKind(option.value)}
+                className={cx(
+                  "flex cursor-pointer flex-col gap-1 rounded-xl border p-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:cursor-not-allowed disabled:opacity-50",
+                  kind === option.value
+                    ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
+                    : "border-secondary hover:border-primary",
+                )}
+              >
+                <span className="font-medium text-primary">{option.label}</span>
+                <span className="text-sm text-tertiary">{option.hint}</span>
+              </button>
+            ))}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label={kind === "everyone" ? "Budget per gift (optional)" : "Budget (optional)"}
+              value={budget}
+              onChange={setBudget}
+              maxLength={40}
+              placeholder="$25"
+            />
+            {kind === "draw" && (
+              <Input
+                label="Draw names by (optional)"
+                type="date"
+                value={drawBy}
+                onChange={setDrawBy}
+                hint={brief ? undefined : "Guests see this, so they know when to join by."}
+              />
+            )}
+          </div>
+          {kind === "everyone" && !brief && (
+            <p className="text-sm text-tertiary">
+              Each list hides what&apos;s been reserved from its owner, and shows it to them the day after the
+              event, so they know who to thank.
+            </p>
+          )}
+          {kind === "draw" && (
+            <Checkbox
+              isSelected={mailed}
+              onChange={setMailed}
+              label={<span className="font-normal">There&apos;s no get-together: gifts are mailed</span>}
+              hint={
+              brief
+                ? undefined
+                : "Guests answer “I'm in” instead of RSVPing, and give a shipping address that only the person who draws them sees."
+            }
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+
+  if (!editing) {
+    return (
+      // noValidate, because the browser can't point at a required field in a
+      // closed step. handleSubmit checks the name instead.
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="space-y-3">
+          <StepSection title="What's the occasion?" {...sectionProps("what", summaries.what)}>
+            <div role="group" aria-label="Occasion" className="flex flex-wrap gap-2">
+              {EVENT_TYPE_OPTIONS.map((option) => (
+                <ChoiceChip
+                  key={option.value}
+                  selected={eventType === option.value}
+                  onClick={() => {
+                    chooseType(option.value);
+                    advanceSoon("what");
+                  }}
+                  label={option.label}
+                />
+              ))}
+            </div>
+          </StepSection>
+
+          <StepSection title="Name and date" {...sectionProps("details", summaries.details)}>
+            <div className="space-y-4">
+              <Input
+                ref={titleRef}
+                label="Event name"
+                value={title}
+                onChange={(value) => {
+                  setTitle(value);
+                  if (value.trim()) setTitleError(false);
+                }}
+                isRequired
+                isInvalid={titleError}
+                hint={titleError ? "Give your event a name." : undefined}
+                maxLength={120}
+                placeholder={typeOption.titlePlaceholder}
+              />
+              <Input label="Date (optional)" type="date" value={eventDate} onChange={changeEventDate} />
+            </div>
+            <StepFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
+          </StepSection>
+
+          <StepSection
+            title={hidesAddress ? "Time and drop-off" : "Time and place"}
+            {...sectionProps("when", summaries.when)}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
+              <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
+              <NativeSelect
+                label="Time zone"
+                value={timeZone}
+                onChange={(e) => setTimeZone(e.target.value)}
+                options={zoneOptions}
+                className="sm:col-span-2"
+              />
+              {hidesAddress ? (
+                <TextArea
+                  label="Drop-off address"
+                  value={locationAddress}
+                  onChange={setLocationAddress}
+                  maxLength={300}
+                  rows={2}
+                  placeholder={"123 Main St\nSan Francisco, CA 94102"}
+                  hint="Only people who sign up for a day see it."
+                  className="sm:col-span-2"
+                />
+              ) : (
+                <>
+                  <Input
+                    label="Place"
+                    value={locationName}
+                    onChange={setLocationName}
+                    maxLength={120}
+                    placeholder={`e.g., "Grandma's house"`}
+                    className="sm:col-span-2"
+                  />
+                  <TextArea
+                    label="Address"
+                    value={locationAddress}
+                    onChange={setLocationAddress}
+                    maxLength={300}
+                    rows={2}
+                    placeholder={"123 Main St\nSan Francisco, CA 94102"}
+                    hint="Only people with the event link see it."
+                    className="sm:col-span-2"
+                  />
+                </>
+              )}
+            </div>
+            <StepFooter
+              label={footerLabel("when")}
+              onClick={() => finish("when")}
+              primary={steps.when.hasContent}
+              enterHint={steps.when.hasContent}
+            />
+          </StepSection>
+
+          <StepSection title="Gifts" {...sectionProps("gifts", summaries.gifts)}>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-3">{registryFields(true)}</div>
+              {giftNoteField}
+            </div>
+            <StepFooter label={footerLabel("gifts")} onClick={() => finish("gifts")} primary={steps.gifts.hasContent} />
+          </StepSection>
+
+          {stepOrder.includes("exchange") && (
+            <StepSection title="Gifts among the guests" {...sectionProps("exchange", summaries.exchange)}>
+              <div className="flex flex-col gap-4">{exchangeFields(true)}</div>
+              <StepFooter
+                label={footerLabel("exchange")}
+                onClick={() => finish("exchange")}
+                primary={steps.exchange.hasContent}
+              />
+            </StepSection>
+          )}
+
+          <StepSection title="Invitation" {...sectionProps("invitation", summaries.invitation)}>
+            <div className="flex flex-col gap-4">
+              {pictureField}
+              <Input
+                label="Hosted by (optional)"
+                value={hostedBy}
+                onChange={setHostedBy}
+                maxLength={120}
+                placeholder='e.g., "Aunt Linda & Grandma Jo"'
+              />
+              <TextArea
+                label="Message to guests (optional)"
+                value={message}
+                onChange={setMessage}
+                maxLength={2000}
+                rows={3}
+                placeholder="Parking, dress code, what to bring: anything guests should know."
+              />
+            </div>
+            <StepFooter
+              label={footerLabel("invitation")}
+              onClick={() => finish("invitation")}
+              primary={steps.invitation.hasContent}
+            />
+          </StepSection>
+
+          {/* RSVPs shows the settings the event gets if the host skips it. */}
+          <StepSection title="RSVPs" {...sectionProps("rsvps", summaries.rsvps, { showWhenUpcoming: true })}>
+            <div className="flex flex-col gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
+                <NativeSelect
+                  label="People per RSVP"
+                  hint="Including the guest."
+                  value={maxPartySize}
+                  onChange={(e) => setMaxPartySize(e.target.value)}
+                  options={partySizeOptions}
+                />
+              </div>
+              <Checkbox
+                isSelected={openRsvp}
+                onChange={setOpenRsvp}
+                label={<span className="font-normal">Anyone with the event link can RSVP</span>}
+              />
+              <Checkbox
+                isSelected={askKids}
+                onChange={changeAskKids}
+                label={<span className="font-normal">Ask how many kids are coming</span>}
+              />
+              <Checkbox
+                isSelected={emailHost}
+                onChange={setEmailHost}
+                label={<span className="font-normal">Email me when someone RSVPs</span>}
+              />
+              <Checkbox
+                isSelected={remindDayBefore}
+                onChange={setRemindDayBefore}
+                label={<span className="font-normal">Email everyone going a reminder the day before</span>}
+              />
+              <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
+            </div>
+            <StepFooter label={footerLabel("rsvps")} onClick={() => finish("rsvps")} />
+          </StepSection>
+        </div>
+
+        <div ref={createRef} className="mt-6 space-y-3">
+          {error && (
+            <p role="alert" className="text-sm text-error-primary">
+              {error}
+            </p>
+          )}
+          <Button type="submit" className="w-full" disabled={saving}>
+            <span className="inline-flex items-center gap-1.5">
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              {saving ? "Creating…" : "Create event"}
+            </span>
+          </Button>
+          <p className="text-center text-xs text-tertiary">
+            Only the name is required. You can change all of this later.
+          </p>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <Section title="What are you celebrating?">
@@ -386,64 +989,7 @@ export function EventForm({
         title="Invitation"
         description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
       >
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          className="hidden"
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(e) => {
-            pickImage(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-        {shownImage ? (
-          <div className="flex flex-col items-start gap-3 sm:flex-row">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a local preview or an uploaded picture */}
-            <img
-              src={shownImage}
-              alt="Invitation preview"
-              className="max-h-72 w-auto max-w-full rounded-lg shadow-sm ring-1 ring-black/5"
-            />
-            <div className="flex gap-2 sm:flex-col">
-              <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
-                <span className="inline-flex items-center gap-1.5">
-                  <ImagePlus className="size-4 shrink-0" />
-                  Change
-                </span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setImageFile(null);
-                  setImageUrl(null);
-                }}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Trash2 className="size-4 shrink-0" />
-                  Remove
-                </span>
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              pickImage(e.dataTransfer.files?.[0]);
-            }}
-            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-secondary px-4 py-10 text-center transition outline-none hover:border-brand-600 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-600"
-          >
-            <ImagePlus aria-hidden="true" className="size-8 text-brand-600" />
-            <span className="font-medium text-primary">Upload your invitation</span>
-            <span className="text-sm text-tertiary">JPEG, PNG, WebP or GIF. Click or drop a file here.</span>
-          </button>
-        )}
+        {pictureField}
       </Section>
 
       <Section title="When">
@@ -512,10 +1058,7 @@ export function EventForm({
             hint="Including the guest. 2 lets each guest bring one person."
             value={maxPartySize}
             onChange={(e) => setMaxPartySize(e.target.value)}
-            options={Array.from({ length: MAX_PARTY_SIZE_LIMIT }, (_, i) => ({
-              value: String(i + 1),
-              label: i === 0 ? "1 (just the guest)" : String(i + 1),
-            }))}
+            options={partySizeOptions}
           />
         </div>
         <Checkbox
@@ -526,10 +1069,7 @@ export function EventForm({
         />
         <Checkbox
           isSelected={askKids}
-          onChange={(value) => {
-            setAskKids(value);
-            setTouched((t) => ({ ...t, askKids: true }));
-          }}
+          onChange={changeAskKids}
           label={<span className="font-normal">Ask how many kids are coming</span>}
           hint="Guests say how many of their party are kids, and you see both counts."
         />
@@ -544,13 +1084,7 @@ export function EventForm({
           label={<span className="font-normal">Email everyone going a reminder the day before</span>}
           hint="With the time, the place and anything they signed up to bring."
         />
-        <RsvpQuestionsEditor
-          questions={questions}
-          onChange={(next) => {
-            setQuestions(next);
-            setTouched((t) => ({ ...t, questions: true }));
-          }}
-        />
+        <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
       </Section>
 
       <Section title="Gifts" description="What guests see about gifts, under the details on the invitation.">
@@ -562,189 +1096,17 @@ export function EventForm({
               They get an email saying you linked it. Linking doesn&apos;t let you change their registry.
             </p>
           </div>
-          {linked.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {linked.map((registry) => (
-                <li
-                  key={registry.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-secondary px-3 py-2"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Gift aria-hidden="true" className="size-4 shrink-0 text-brand-600" />
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-primary">{registry.title}</span>
-                      {registry.honoree && <span className="block truncate text-sm text-tertiary">{registry.honoree}</span>}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setLinked(linked.filter((l) => l.id !== registry.id))}
-                    aria-label={`Unlink ${registry.title}`}
-                    className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-tertiary hover:bg-secondary hover:text-primary max-sm:size-11"
-                  >
-                    <X aria-hidden="true" className="size-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {pickable.length > 0 && (
-            <NativeSelect
-              aria-label="Add one of your registries"
-              value=""
-              onChange={(e) => {
-                const picked = registries.find((r) => r.id === e.target.value);
-                if (picked) setLinked([...linked, { id: picked.id, title: picked.title }]);
-              }}
-              options={[
-                { value: "", label: linked.length > 0 ? "Add another of your registries…" : "Add one of your registries…" },
-                ...pickable.map((r) => ({ value: r.id, label: r.title })),
-              ]}
-            />
-          )}
-          <div className="flex items-end gap-2">
-            <div className="min-w-0 flex-1">
-              <Input
-                label="Or paste a registry link"
-                value={pasted}
-                onChange={(value) => {
-                  setPasted(value);
-                  setLinkError("");
-                }}
-                placeholder="regibee.com/r/remi-and-max-1a2b"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void addPastedLink();
-                  }
-                }}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 shrink-0"
-              onClick={addPastedLink}
-              disabled={lookingUp || !pasted.trim()}
-            >
-              {lookingUp ? "Finding…" : "Link"}
-            </Button>
-          </div>
-          {linkError && (
-            <p role="alert" className="text-sm text-error-primary">
-              {linkError}
-            </p>
-          )}
-          {registries.length === 0 && linked.length === 0 && (
-            <p className="text-sm text-tertiary">
-              Don&apos;t have a registry yet?{" "}
-              <Link href="/dashboard/registry/new" className="font-medium text-brand-600 hover:underline">
-                Create one
-              </Link>{" "}
-              and link it here later.
-            </p>
-          )}
+          {registryFields(false)}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-secondary">Gift note (optional)</p>
-          <div role="group" aria-label="Ready-made gift notes" className="flex flex-wrap gap-2">
-            {GIFT_NOTE_PRESETS.map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => setGiftNote(preset.text)}
-                className="cursor-pointer rounded-full border border-secondary px-3 py-1 text-sm text-secondary transition hover:border-primary max-sm:min-h-11"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <TextArea
-            aria-label="Gift note"
-            value={giftNote}
-            onChange={setGiftNote}
-            maxLength={MAX_GIFT_NOTE_LENGTH}
-            rows={2}
-            placeholder="Instead of a card, bring a favorite children's book with a note inside."
-          />
-        </div>
+        {giftNoteField}
       </Section>
 
       <Section
         title="Gifts among the guests"
         description="For a family Christmas or a Secret Santa, when the guests give gifts to each other."
       >
-        <Checkbox
-          isSelected={exchangeOn}
-          isDisabled={drawn}
-          onChange={(value) => {
-            setExchangeOn(value);
-            setTouched((t) => ({ ...t, exchange: true }));
-          }}
-          label={<span className="font-normal">Guests give gifts to each other</span>}
-          hint={
-            drawn
-              ? "Names have been drawn. To turn this off, undo the draw on the event's page first."
-              : "Guests add a wish list or gift ideas when they RSVP."
-          }
-        />
-        {exchangeOn && (
-          <>
-            <div role="group" aria-label="How gifts work" className="grid gap-2 sm:grid-cols-2">
-              {EXCHANGE_KINDS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={kind === option.value}
-                  disabled={drawn && kind !== option.value}
-                  onClick={() => setKind(option.value)}
-                  className={cx(
-                    "flex cursor-pointer flex-col gap-1 rounded-xl border p-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:cursor-not-allowed disabled:opacity-50",
-                    kind === option.value
-                      ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
-                      : "border-secondary hover:border-primary",
-                  )}
-                >
-                  <span className="font-medium text-primary">{option.label}</span>
-                  <span className="text-sm text-tertiary">{option.hint}</span>
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label={kind === "everyone" ? "Budget per gift (optional)" : "Budget (optional)"}
-                value={budget}
-                onChange={setBudget}
-                maxLength={40}
-                placeholder="$25"
-              />
-              {kind === "draw" && (
-                <Input
-                  label="Draw names by (optional)"
-                  type="date"
-                  value={drawBy}
-                  onChange={setDrawBy}
-                  hint="Guests see this, so they know when to join by."
-                />
-              )}
-            </div>
-            {kind === "everyone" && (
-              <p className="text-sm text-tertiary">
-                Each list hides what&apos;s been reserved from its owner, and shows it to them the day after the
-                event, so they know who to thank.
-              </p>
-            )}
-            {kind === "draw" && (
-              <Checkbox
-                isSelected={mailed}
-                onChange={setMailed}
-                label={<span className="font-normal">There&apos;s no get-together: gifts are mailed</span>}
-                hint="Guests answer “I'm in” instead of RSVPing, and give a shipping address that only the person who draws them sees."
-              />
-            )}
-          </>
-        )}
+        {exchangeFields(false)}
       </Section>
 
       {changes.length > 0 && (

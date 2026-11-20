@@ -436,3 +436,16 @@ export function countdownLabel(eventDate: string, today: string, registryType: "
   if (days === 1) return baby ? "Due tomorrow" : "Tomorrow";
   return baby ? `Due in ${days} days` : `${days} days to go`;
 }
+
+/**
+ * Whether the guests of a new event of this occasion might give each other
+ * gifts, so the new event form asks about it. That's when the occasion can be
+ * for everyone taking part or for no one in particular, the audiences whose
+ * gift plans include an exchange (giftPlansFor). A baby shower or a wedding
+ * doesn't ask, and can still turn it on when the event is edited.
+ */
+export function offersGiftExchange(id: string): boolean {
+  if (!isOccasionId(id)) return false;
+  const occasion = occasionFor(id);
+  return occasion.audiences.some((audience) => giftPlansFor(audience, occasion).includes("exchange"));
+}
