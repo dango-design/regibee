@@ -1928,7 +1928,7 @@ export async function startPlan(input: PlanInput): Promise<Result<{ href: string
   if (linkIds.length > 0) await saveRegistryLinks(saved, linkIds, user.id);
   if (input.gifts === "everyone") {
     await saveExchange(saved.id, { enabled: true, kind: "everyone", budget: null, draw_by: null, mailed: false });
-  } else if (input.gifts === "exchange" || defaults?.exchange) {
+  } else if (input.gifts === "exchange" || defaults?.exchange === "draw") {
     await saveExchange(saved.id, { enabled: true, kind: "draw", budget: null, draw_by: null, mailed: false });
   }
   // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.

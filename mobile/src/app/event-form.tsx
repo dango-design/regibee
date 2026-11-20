@@ -41,6 +41,7 @@ import {
   type QuestionKind,
   type RsvpQuestion,
 } from "@shared/rsvp-questions";
+import { startingExchange } from "@shared/occasions";
 import { hidesAddressUntilSignup } from "@shared/signups";
 
 import { DateField } from "@/components/date-field";
@@ -253,7 +254,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
   // A Secret Santa occasion draws names. Anything else, like a family
   // Christmas, starts with everyone giving everyone.
   const [kind, setKind] = useState<ExchangeKind>(
-    exchange ? exchangeKind(exchange) : data.event?.event_type === "gift_exchange" ? "draw" : "everyone",
+    exchange ? exchangeKind(exchange) : startingExchange(data.event?.event_type ?? "baby_shower").kind,
   );
   const [budget, setBudget] = useState(exchange?.budget ?? "");
   const [drawBy, setDrawBy] = useState(exchange?.draw_by ?? "");
@@ -286,9 +287,12 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
     setEventType(type);
     if (editing) return;
     const defaults = EVENT_TYPE_OPTIONS.find((o) => o.value === type)?.defaults ?? {};
+    // Christmas and a holiday party start with each guest linking their own
+    // wish list, and a gift exchange with drawing names.
     if (!touched.exchange) {
-      setExchangeOn(Boolean(defaults.exchange));
-      setKind(type === "gift_exchange" ? "draw" : "everyone");
+      const start = startingExchange(type);
+      setExchangeOn(start.on);
+      setKind(start.kind);
     }
     if (!touched.askKids) setAskKids(Boolean(defaults.askKids));
     if (!touched.questions) setQuestions(defaultQuestions(defaults.questions));
@@ -814,7 +818,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
           </View>
         </Group>
 
-        <Group title="Gifts among the guests" description="For a family Christmas or a Secret Santa, when the guests give gifts to each other.">
+        <Group title="Gifts among the guests" description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other.">
           <Section>
             <ToggleRow
               label="Guests give gifts to each other"

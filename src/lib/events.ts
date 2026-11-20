@@ -107,7 +107,8 @@ export interface EventTypeOption {
   defaults?: {
     giftNote?: string;
     askKids?: boolean;
-    exchange?: boolean;
+    /** Guests give each other gifts, this way (src/lib/occasions.ts, startingExchange). */
+    exchange?: ExchangeKind;
     /** A new event starts with this sign-up sheet (src/lib/signups.ts). */
     signup?: "potluck" | "meal_train";
     /** A new event's RSVP asks these (src/lib/rsvp-questions.ts). */

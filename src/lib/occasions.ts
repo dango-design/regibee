@@ -46,6 +46,9 @@ export interface Occasion {
   audiences: Audience[];
   /**
    * What a new event of this kind starts with. The host can change all of it.
+   * `exchange` starts the guests giving each other gifts: "draw" draws names
+   * (a Secret Santa), and "everyone" has each guest link their own wish list
+   * when they RSVP (src/lib/events.ts, ExchangeKind).
    * `signup` starts a sign-up sheet from that preset (src/lib/signups.ts).
    * `questions` are what the RSVP asks besides how many are coming
    * (src/lib/rsvp-questions.ts).
@@ -53,7 +56,7 @@ export interface Occasion {
   defaults?: {
     giftNote?: string;
     askKids?: boolean;
-    exchange?: boolean;
+    exchange?: "draw" | "everyone";
     signup?: "potluck" | "meal_train";
     questions?: ("meal" | "diet" | "plus_ones")[];
   };
@@ -116,7 +119,7 @@ export const OCCASIONS = [
     titleFor: (name) => (name.trim() ? `${name.trim()} Secret Santa` : "Secret Santa"),
     list: CHRISTMAS_LIST,
     audiences: ["everyone"],
-    defaults: { exchange: true },
+    defaults: { exchange: "draw" },
   },
   {
     id: "christmas",
@@ -126,8 +129,23 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Christmas"),
     list: CHRISTMAS_LIST,
     // A family Christmas where everyone gives everyone comes first: it's
-    // the event most families plan on Regibee once a year.
+    // the event most families plan on Regibee once a year. Each guest links
+    // their own wish list.
     audiences: ["everyone", "no_one", "me", "us", "child"],
+    defaults: { exchange: "everyone" },
+  },
+  {
+    // A party for the winter holidays, whatever each family celebrates. Like a
+    // family Christmas, everyone gives everyone from their own wish lists. A
+    // party for no one in particular, like a work one, can draw names instead.
+    id: "holiday_party",
+    label: "Holiday party",
+    tint: "mint",
+    titlePlaceholder: "The Chens' Holiday Party",
+    titleFor: (name) => named(name, "Holiday Party"),
+    list: WISHLIST,
+    audiences: ["everyone", "no_one"],
+    defaults: { exchange: "everyone" },
   },
   {
     id: "bridal_shower",
@@ -402,6 +420,30 @@ export function giftPlanRows(
  */
 export function planNeedsEvent(gifts: GiftPlan): boolean {
   return gifts !== "new_list";
+}
+
+/**
+ * The gift plan the picker starts with, already picked, for who it's for.
+ * Christmas and a holiday party for everyone taking part start with everyone
+ * giving everyone, so each guest links their own wish list. Null when nothing
+ * starts picked. The host can pick another plan, or none.
+ */
+export function startingGiftPlan(audience: Audience, occasion?: Pick<Occasion, "defaults"> | null): GiftPlan | null {
+  const exchange = occasion?.defaults?.exchange;
+  const plan: GiftPlan | null = exchange === "everyone" ? "everyone" : exchange === "draw" ? "exchange" : null;
+  return plan && giftPlansFor(audience, occasion).includes(plan) ? plan : null;
+}
+
+/**
+ * Whether the event form's "Gifts among the guests" starts on for a new event
+ * of this occasion, and which kind it starts on: Christmas and a holiday party
+ * start with everyone giving everyone, a gift exchange with drawing names.
+ * The kind is what the form shows once the host turns it on, so it's
+ * "everyone" for occasions that start off.
+ */
+export function startingExchange(id: string): { on: boolean; kind: "draw" | "everyone" } {
+  const exchange = isOccasionId(id) ? occasionFor(id).defaults?.exchange : undefined;
+  return { on: Boolean(exchange), kind: exchange ?? "everyone" };
 }
 
 /** The note a "No gifts" plan puts on the invitation. */
