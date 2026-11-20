@@ -79,6 +79,29 @@ export const Reserve: Story = {
   play: openWith(/gift this/i),
 };
 
+// An item with a photo keeps showing it in the dialog, with the price and
+// store under it.
+export const ReserveWithPhoto: Story = {
+  args: {
+    item: {
+      id: "5",
+      title: "Glass Baby Bottles, 4 Pack",
+      price: 34.99,
+      quantity_needed: 1,
+      quantity_fulfilled: 0,
+      external_url: "https://www.amazon.com/dp/B0EXAMPLE3",
+      image_url: "/hero/bottle.svg",
+    },
+  },
+  play: openWith(/gift this/i),
+};
+
+// The same item on a phone, where the dialog opens from the bottom.
+export const ReserveWithPhotoOnAPhone: Story = {
+  ...ReserveWithPhoto,
+  globals: { viewport: { value: "mobile1" } },
+};
+
 // On the owners' store registry, the one button also opens the store, which
 // has their address.
 export const ReserveOnStoreRegistry: Story = {

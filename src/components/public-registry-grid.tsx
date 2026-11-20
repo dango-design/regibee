@@ -590,58 +590,58 @@ function PublicItemCard({
     >
       <CardContent className="flex h-full flex-col justify-between gap-4 p-4">
         <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <div className="relative shrink-0">
-              {/* A fulfilled item fades its image, not the whole card, so its text keeps 4.5:1 contrast. */}
-              <ItemImage
-                imageUrl={item.image_url}
-                title={item.title}
-                categoryName={categoryName}
-                className={looksDone ? "opacity-60" : ""}
+          {/* The photo is the first thing guests look at, so it gets the
+              card's full width. */}
+          <div className="relative">
+            {/* A fulfilled item fades its image, not the whole card, so its text keeps 4.5:1 contrast. */}
+            <ItemImage
+              size="fill"
+              imageUrl={item.image_url}
+              title={item.title}
+              categoryName={categoryName}
+              className={cn("h-44", looksDone && "opacity-60")}
+            />
+            {itemPurchased && (
+              <img
+                src="/hero/panda.svg"
+                alt=""
+                className="absolute bottom-2 right-2 h-10 w-10"
+                style={{ animation: "celebration-bounce 1.2s ease-in-out infinite" }}
               />
-              {itemPurchased && (
-                <img
-                  src="/hero/panda.svg"
-                  alt=""
-                  className="absolute -bottom-2 -right-2 h-8 w-8"
-                  style={{ animation: "celebration-bounce 1.2s ease-in-out infinite" }}
-                />
-              )}
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col gap-2 items-start">
-              <h3 className="font-medium text-sm leading-tight">{item.title}</h3>
-              <div className="flex flex-wrap items-center gap-x-2.5">
-                {item.price && (
-                  <span className="text-sm font-semibold">
-                    {formatPrice(item.price)}
-                  </span>
-                )}
-                <span className="text-xs text-secondary">
-                  {item.is_parent_purchased
-                    ? `${availableToGift} of ${item.quantity_needed} available to gift`
-                    : `${remaining} of ${item.quantity_needed} still needed`}
-                </span>
-              </div>
-              {store && (
-                <span className="inline-flex items-center gap-1 text-xs text-tertiary">
-                  <Store className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  From {store.name}
-                </span>
-              )}
-              {item.notes && (
-                <p className="text-sm text-secondary whitespace-pre-line">
-                  {item.notes}
-                </p>
-              )}
-              {claimedBy && claimedBy.length > 0 && (
-                <p className="flex items-start gap-1.5 text-xs font-medium text-brand-secondary">
-                  <Users className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  {`${myItemGift ? "Also reserved" : "Reserved"} by ${joinNames(claimedBy)}`}
-                </p>
-              )}
-            </div>
+            )}
           </div>
-          {/* Tags sit below the image because the column beside it is too narrow for them in a three-column grid. */}
+          <div className="flex min-w-0 flex-col gap-2 items-start">
+            <h3 className="font-medium text-sm leading-tight">{item.title}</h3>
+            <div className="flex flex-wrap items-center gap-x-2.5">
+              {item.price && (
+                <span className="text-sm font-semibold">
+                  {formatPrice(item.price)}
+                </span>
+              )}
+              <span className="text-xs text-secondary">
+                {item.is_parent_purchased
+                  ? `${availableToGift} of ${item.quantity_needed} available to gift`
+                  : `${remaining} of ${item.quantity_needed} still needed`}
+              </span>
+            </div>
+            {store && (
+              <span className="inline-flex items-center gap-1 text-xs text-tertiary">
+                <Store className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                From {store.name}
+              </span>
+            )}
+            {item.notes && (
+              <p className="text-sm text-secondary whitespace-pre-line">
+                {item.notes}
+              </p>
+            )}
+            {claimedBy && claimedBy.length > 0 && (
+              <p className="flex items-start gap-1.5 text-xs font-medium text-brand-secondary">
+                <Users className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {`${myItemGift ? "Also reserved" : "Reserved"} by ${joinNames(claimedBy)}`}
+              </p>
+            )}
+          </div>
           <div className="flex w-full min-w-0 flex-wrap gap-2.5 empty:hidden">
             {item.is_parent_purchased ? (
               <Tag variant="parent-purchased">{selfPurchasedLabel}</Tag>

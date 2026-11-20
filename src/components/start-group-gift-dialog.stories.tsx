@@ -38,6 +38,11 @@ export const FromAnEventOnAPhone: Story = {
   globals: { viewport: { value: "mobile1" } },
 };
 
+/** An item with a photo shows it under the title. */
+export const WithPhoto: Story = {
+  args: { item: { id: "2", title: "Glass Baby Bottles, 4 Pack", price: 34.99, image_url: "/hero/bottle.svg" } },
+};
+
 /** Starting one needs an account. People who chip in don't. */
 export const SignedOut: Story = {
   args: { signedIn: false },

@@ -25,6 +25,7 @@ import {
 import { paymentNote } from "@/lib/payment-links";
 import { SECRET_GIVER_NAME, type MyItemGift } from "@/lib/gifts";
 import { useGuestPrefill } from "@/components/guest-prefill-context";
+import { ItemPhotoPanel } from "@/components/item-image";
 import type { PaymentMethods } from "@/lib/types";
 import { formatPrice } from "@/lib/money";
 
@@ -51,6 +52,7 @@ interface CoverItemDialogProps {
     title: string;
     price: number | null;
     quantity_needed: number;
+    image_url?: string | null;
   };
   /** How many are left for guests to give. */
   availableToGift?: number;
@@ -234,6 +236,7 @@ export function CoverItemDialog({
             {coverFlavor || `${parentName} already bought this one.`} Give it by sending them the money for it.
           </DialogDescription>
         </DialogHeader>
+        <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
 
         <section className="space-y-3" aria-labelledby="cover-pay-heading">
           <div className="rounded-lg bg-secondary px-4 py-3">
@@ -336,6 +339,7 @@ export function CoverItemDialog({
             {gift && gift.quantity > 1 ? ` (×${gift.quantity})` : ""}. {parentName} can see it&apos;s from {fromWhom}.
           </DialogDescription>
         </DialogHeader>
+        <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
         <div className="flex items-center justify-between gap-2">
           <button type="button" className={dangerTextButton} onClick={goToRelease}>
             Undo this gift

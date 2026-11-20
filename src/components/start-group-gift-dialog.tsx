@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ItemPhotoPanel } from "@/components/item-image";
 import { startGroupGift } from "@/lib/actions/group-gifts";
 import { formatPrice } from "@/lib/money";
 import { PAYBACK_NOTE_MAX, groupGiftPath, parseGroupGiftAmount } from "@/lib/group-gifts";
@@ -21,7 +22,7 @@ import { PAYBACK_NOTE_MAX, groupGiftPath, parseGroupGiftAmount } from "@/lib/gro
 export interface StartGroupGiftDialogProps {
   /** The list it's started from. */
   registryId: string;
-  item: { id: string; title: string; price: number | null };
+  item: { id: string; title: string; price: number | null; image_url?: string | null };
   /** Whose list it is, like "Dorothy". */
   recipientName: string;
   /** Starting one needs an account. Signed-out visitors are asked to sign in. */
@@ -111,6 +112,7 @@ export function StartGroupGiftDialog({
               you back, and you buy it. {recipientName} sees it&apos;s from you and others, never who chipped in.
             </DialogDescription>
           </DialogHeader>
+          <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
 
           {signedIn ? (
             <form
