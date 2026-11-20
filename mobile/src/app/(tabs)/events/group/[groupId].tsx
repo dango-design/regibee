@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 
 import { formatShortEventDate, isEmail, parseGuestList } from "@shared/events";
+import { emailLabel } from "@shared/guest-emails";
 
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, ErrorState, Field, haptic, IconButton, LoadingState, Section, Text } from "@/components/ui";
@@ -181,9 +182,9 @@ export default function GroupScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="subhead">{member.name}</Text>
-                  {member.email ? (
+                  {member.email || member.email_hidden ? (
                     <Text variant="caption" tone="tertiary">
-                      {member.email}
+                      {emailLabel(member)}
                     </Text>
                   ) : null}
                 </View>

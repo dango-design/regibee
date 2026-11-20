@@ -50,6 +50,16 @@ export interface EventPageHostInvite {
   expires_at: string;
 }
 
+/** Someone the host follows, to add to the guest list (inviteFollowedPeople). */
+export interface InvitablePerson {
+  publicId: string;
+  name: string;
+  /** They follow the host back, so the host will see their email. */
+  mutual: boolean;
+  /** Already on this event's guest list. */
+  onList: boolean;
+}
+
 export interface EventPageData {
   event: EventDetails & { remind_day_before?: boolean | null; rsvp_questions?: unknown };
   /** The viewer made the event. Co-hosts can do almost everything else. */
@@ -82,6 +92,8 @@ export interface EventPageData {
   messages: EventMessage[];
   time: string | null;
   typeLabel: string;
+  /** People the viewer follows, to add to the guest list. Builds before it had it get nothing. */
+  followedPeople?: InvitablePerson[];
 }
 
 export interface EventFormData {
@@ -101,7 +113,11 @@ export interface PlanPickerData {
 
 export interface GroupPageData {
   group: { id: string; name: string };
-  members: { id: string; name: string; email: string | null }[];
+  /**
+   * email is null and email_hidden is set for someone added from a follow
+   * whom the owner doesn't follow both ways (src/lib/guest-emails.ts).
+   */
+  members: { id: string; name: string; email: string | null; email_hidden?: boolean; from_account?: boolean }[];
   events: GroupEvent[];
   sharedLists: { id: string; slug: string; title: string }[];
 }

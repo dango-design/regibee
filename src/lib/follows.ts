@@ -163,3 +163,59 @@ export async function listFollowingFeed(userId: string) {
 
   return { people, registries };
 }
+
+/**
+ * Of `ids`, the accounts `userId` follows that also follow `userId`, both
+ * approved. A host sees the email of a guest invited from a follow only when
+ * the two follow each other (src/lib/guest-emails.ts).
+ */
+export async function mutualFollowIds(userId: string, ids: (string | null | undefined)[]): Promise<Set<string>> {
+  const others = [...new Set(ids.filter((id): id is string => Boolean(id) && id !== userId))];
+  if (others.length === 0) return new Set();
+  const [{ data: following }, { data: followers }] = await Promise.all([
+    supabaseAdmin
+      .from("follows")
+      .select("followee_id")
+      .eq("follower_id", userId)
+      .eq("status", "approved")
+      .in("followee_id", others),
+    supabaseAdmin
+      .from("follows")
+      .select("follower_id")
+      .eq("followee_id", userId)
+      .eq("status", "approved")
+      .in("follower_id", others),
+  ]);
+  const followBack = new Set((followers || []).map((row) => row.follower_id as string));
+  return new Set((following || []).map((row) => row.followee_id as string).filter((id) => followBack.has(id)));
+}
+
+/** Someone the user follows, with approval, who they can invite to an event. */
+export interface FollowedAccount {
+  /** Their profile id. Stays on the server. */
+  id: string;
+  public_id: string;
+  full_name: string | null;
+  /** They follow the user back, approved. */
+  mutual: boolean;
+}
+
+/** Everyone who approved the user's follow, by name. */
+export async function listFollowedAccounts(userId: string): Promise<FollowedAccount[]> {
+  const { data } = await supabaseAdmin
+    .from("follows")
+    .select("person:profiles!follows_followee_id_fkey(id, public_id, full_name)")
+    .eq("follower_id", userId)
+    .eq("status", "approved");
+  const people = ((data || []) as unknown as { person: { id: string; public_id: string; full_name: string | null } | null }[])
+    .map((row) => row.person)
+    .filter((person): person is NonNullable<typeof person> => Boolean(person));
+  if (people.length === 0) return [];
+  const mutual = await mutualFollowIds(
+    userId,
+    people.map((person) => person.id),
+  );
+  return people
+    .map((person) => ({ ...person, mutual: mutual.has(person.id) }))
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+}
