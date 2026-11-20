@@ -80,6 +80,27 @@ test("a Christmas party for no one in particular links one of your own wishlists
   expect((await linkedRegistries(eventId)).map((r) => r.id)).toEqual([registry.id]);
 });
 
+test("a holiday party starts with each guest linking their own wish list", async ({ page }) => {
+  const hal = await createAccount("Hal Host");
+  await signIn(page, hal);
+  await openPicker(page);
+  await chooseOccasion(page, "Holiday party");
+  await expect(page.getByRole("button", { name: "Everyone taking part" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  // Everyone gives everyone starts picked. The host can pick another plan, or none.
+  await expect(page.getByRole("button", { name: /Everyone gives everyone/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByLabel("Event name")).toHaveValue("Holiday Party");
+  await expect(page.getByText(/guests link their wish lists when they RSVP/)).toBeVisible();
+  await page.getByRole("button", { name: "Make the event" }).click();
+
+  const eventId = await eventIdFrom(page);
+  const { data: event } = await db.from("events").select("event_type, title").eq("id", eventId).single();
+  expect(event).toEqual({ event_type: "holiday_party", title: "Holiday Party" });
+  const { data: exchange } = await db.from("gift_exchanges").select("kind").eq("event_id", eventId).single();
+  expect(exchange?.kind).toBe("everyone");
+});
+
 test("a kid's birthday makes the child's wishlist and the invitation together", async ({ page }) => {
   const parent = await createAccount("Pat Parent");
   await signIn(page, parent);

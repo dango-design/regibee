@@ -50,6 +50,23 @@ export const GiftsForAParty: Story = {
 };
 
 /**
+ * A holiday party, like a family Christmas, starts with everyone giving
+ * everyone already picked: each guest links their own wish list when they
+ * RSVP. The host can pick Draw names instead, or unpick it and skip.
+ */
+export const HolidayParty: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Holiday party" }));
+    await expect(canvas.getByRole("heading", { name: "Who's the holiday party for?" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Everyone taking part" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(canvas.getByRole("button", { name: "Next" }));
+    await expect(canvas.getByRole("button", { name: /Everyone gives everyone/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(canvas.getByRole("button", { name: "Next" })).toBeVisible();
+  },
+};
+
+/**
  * Gifts are optional. With nothing picked the button says Skip, and clicking
  * a picked card again unpicks it. Skipping makes the event with nothing
  * about gifts.

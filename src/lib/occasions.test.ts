@@ -15,6 +15,8 @@ import {
   listTitleFor,
   occasionFor,
   planNeedsEvent,
+  startingExchange,
+  startingGiftPlan,
 } from "./occasions.ts";
 
 const MIGRATIONS = new URL("../../supabase/migrations/", import.meta.url);
@@ -89,6 +91,54 @@ test("gift plans fit who it's for", () => {
   assert.ok(!giftPlansFor("someone", occasionFor("baby_shower")).includes("signup"));
   assert.equal(planNeedsEvent("new_list"), false);
   assert.equal(planNeedsEvent("ask"), true);
+});
+
+test("Christmas and a holiday party start with each guest linking their own wish list", () => {
+  for (const id of ["christmas", "holiday_party"] as const) {
+    const occasion = occasionFor(id);
+    // The picker asks who it's for, with everyone taking part first...
+    assert.equal(occasion.audiences[0], "everyone", id);
+    // ...and starts with everyone giving everyone picked, which the host can change.
+    assert.equal(startingGiftPlan("everyone", occasion), "everyone", id);
+    assert.ok(giftPlansFor("everyone", occasion).includes("exchange"), `${id} can draw names instead`);
+    // The event form starts with guests giving each other gifts, the same way.
+    assert.deepEqual(startingExchange(id), { on: true, kind: "everyone" }, id);
+  }
+  // Christmas for one person is their own list, so nothing starts picked.
+  for (const audience of ["no_one", "me", "us", "child"] as const) {
+    assert.equal(startingGiftPlan(audience, occasionFor("christmas")), null, audience);
+  }
+  assert.equal(startingGiftPlan("no_one", occasionFor("holiday_party")), null);
+});
+
+test("other occasions start the way they did", () => {
+  // A gift exchange draws names.
+  assert.equal(startingGiftPlan("everyone", occasionFor("gift_exchange")), "exchange");
+  assert.deepEqual(startingExchange("gift_exchange"), { on: true, kind: "draw" });
+  // "Other holiday", like a Lunar New Year dinner, has no exchange to start with.
+  assert.equal(occasionFor("holiday").label, "Other holiday");
+  assert.deepEqual(startingExchange("holiday"), { on: false, kind: "everyone" });
+  for (const { id } of OCCASIONS) {
+    if (id === "christmas" || id === "holiday_party" || id === "gift_exchange") continue;
+    const occasion = occasionFor(id);
+    assert.deepEqual(startingExchange(id), { on: false, kind: "everyone" }, id);
+    for (const audience of occasion.audiences) assert.equal(startingGiftPlan(audience, occasion), null, `${id} for ${audience}`);
+  }
+  // An unknown type starts with nothing.
+  assert.deepEqual(startingExchange("not_an_occasion"), { on: false, kind: "everyone" });
+});
+
+test("a holiday party is its own occasion, next to Christmas", () => {
+  const ids = OCCASIONS.map((o) => o.id) as string[];
+  assert.equal(ids.indexOf("holiday_party"), ids.indexOf("christmas") + 1);
+  const party = occasionFor("holiday_party");
+  assert.equal(party.label, "Holiday party");
+  assert.equal(party.tint, "mint");
+  assert.equal(party.titleFor("The Chens"), "The Chens' Holiday Party");
+  assert.equal(party.titleFor(""), "Holiday Party");
+  assert.deepEqual(giftPlansFor("everyone", party), ["everyone", "exchange", "later"]);
+  // A work holiday party, for no one in particular, can draw names or share a sign-up sheet.
+  assert.deepEqual(giftPlansFor("no_one", party), ["link", "exchange", "signup", "no_gifts", "later"]);
 });
 
 test("gift lists come first, and every audience with gifts has one", () => {
