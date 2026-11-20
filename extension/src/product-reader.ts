@@ -286,20 +286,21 @@ export function readProductPage(): ProductPage {
     }
     return null;
   };
-  // Amazon lists it in the product details, as "UPC : 819956000350", when it
-  // lists it at all. Several numbers there are for several colors, so take
-  // only a single one.
+  // Amazon lists it in the product details, when it lists it at all: in a
+  // list ("UPC : 819956000350") or, on newer pages, in tables inside
+  // #productDetails_expanderTables_depthRightSections. This is
+  // gtinFromDetailRows in src/lib/gtin.ts, which has the tests. Each row is
+  // read on its own, so a number never runs into the next row's label.
+  // Several numbers are for several colors or sizes, so take a single one only.
   const gtinFromAmazonDetails = (): string | null => {
     if (!/(^|\.)amazon\.com$/i.test(location.hostname)) return null;
     const found: (string | null)[] = [];
-    const sections = document.querySelectorAll(
-      "#detailBullets_feature_div, #productDetails_detailBullets_sections1, #productDetails_techSpec_section_1, #productDetails_techSpec_section_2"
-    );
-    for (const section of sections) {
+    const rows = document.querySelectorAll('#detailBullets_feature_div li, [id^="productDetails_"] tr, [id^="productDetails_"] li');
+    for (const row of rows) {
       // Amazon puts invisible direction marks around the colon.
-      const text = (section.textContent ?? "").replace(/[\u200e\u200f]/g, " ");
-      for (const match of text.matchAll(/\b(?:UPC|EAN|GTIN)\b[^\d]{0,12}((?:\d{8,14}\s*)+)/g)) {
-        for (const code of match[1].trim().split(/\s+/)) found.push(toGtin(code));
+      const text = (row.textContent ?? "").replace(/[\u200e\u200f]/g, " ");
+      for (const match of text.matchAll(/(?<![A-Za-z])(?:UPC|EAN|GTIN)(?![A-Za-z])[^\d]{0,12}((?:\d{8,14}[\s,;]*)+)/g)) {
+        for (const code of match[1].trim().split(/[\s,;]+/)) found.push(toGtin(code));
       }
     }
     return onlyOne(found);

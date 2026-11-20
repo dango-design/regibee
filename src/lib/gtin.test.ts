@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gtinChange, gtinForLink, normalizeGtin } from "./gtin.ts";
+import { gtinChange, gtinForLink, gtinFromDetailRows, normalizeGtin } from "./gtin.ts";
 
 // A bassinet's UPC, as Target and Walmart show it.
 const UPC = "819956000350";
@@ -74,4 +74,37 @@ test("an edit without a barcode clears the saved one when the link changes", () 
   assert.deepEqual(gtinChange(undefined, "https://a.example/1", null), { gtin: null });
   // A barcode that doesn't check out counts as none.
   assert.deepEqual(gtinChange("819956000351", "https://a.example/1", "https://b.example/2"), { gtin: null });
+});
+
+// Amazon's product details, as the text of each row.
+
+test("reads a UPC from Amazon's details table", () => {
+  // The newer layout: a table row, label and number in their own cells.
+  assert.equal(gtinFromDetailRows(["Item model number UPSPACE12", "UPC 817010024533"]), "00817010024533");
+  // The same row when its cells have no space between them.
+  assert.equal(gtinFromDetailRows(["UPC817010024533"]), "00817010024533");
+});
+
+test("reads a UPC from Amazon's details list, with its direction marks", () => {
+  assert.equal(gtinFromDetailRows(["UPC \u200f : \u200e 819956000350"]), "00819956000350");
+  assert.equal(gtinFromDetailRows(["EAN : 0819956000350"]), "00819956000350");
+});
+
+test("takes nothing when the details list several barcodes", () => {
+  assert.equal(gtinFromDetailRows(["UPC 819956000350 819956003504"]), null);
+  assert.equal(gtinFromDetailRows(["UPC 819956000350, 819956003504"]), null);
+  assert.equal(gtinFromDetailRows(["UPC 819956000350", "EAN 0819956003504"]), null);
+});
+
+test("the same barcode twice counts once", () => {
+  assert.equal(gtinFromDetailRows(["UPC 819956000350", "EAN 0819956000350"]), "00819956000350");
+});
+
+test("ignores rows that aren't a barcode", () => {
+  assert.equal(gtinFromDetailRows(["ASIN B07FYN5FS9", "Item model number 12345678", "Best Sellers Rank #1,234"]), null);
+  // A word that only contains the letters isn't the label.
+  assert.equal(gtinFromDetailRows(["CUPCAKE 819956000350"]), null);
+  // A number that fails the check digit.
+  assert.equal(gtinFromDetailRows(["UPC 819956000351"]), null);
+  assert.equal(gtinFromDetailRows([]), null);
 });
