@@ -858,6 +858,7 @@ function showProduct(ctx: ProductContext) {
       isOpenToUsed: openToUsed.checked,
       minimumCondition: openToUsed.checked ? (condition.value as ProductItem["minimumCondition"]) : null,
       notes: notes.value.trim() || null,
+      gtin: product.gtin ?? null,
     };
     button.disabled = true;
     button.textContent = "Adding…";
@@ -915,6 +916,7 @@ function showProduct(ctx: ProductContext) {
       imageUrl: images[imageIndex] ?? null,
       price: priceValue,
       notes: ideaNotes.value.trim() || null,
+      gtin: product.gtin ?? null,
     };
     ideaButton.disabled = true;
     ideaButton.textContent = "Saving…";

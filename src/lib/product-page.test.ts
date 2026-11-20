@@ -184,3 +184,98 @@ test("the server fetches public addresses", () => {
     assert.equal(isBlockedAddress(address), false, address);
   }
 });
+
+// Barcode numbers (src/lib/gtin.ts). They're saved as 14 digits.
+
+test("reads the barcode from a JSON-LD product", () => {
+  const html = page(
+    `<title>Bassinet</title>
+     ${jsonLd({ "@type": "Product", name: "Bassinet", gtin12: "819956000350", offers: { price: 179.99 } })}`,
+  );
+  assert.equal(readProductPage(html, PAGE_URL).gtin, "00819956000350");
+});
+
+test("reads the barcode from the offer when the product has none", () => {
+  const html = page(
+    `<title>Bassinet</title>
+     ${jsonLd({ "@type": "Product", name: "Bassinet", offers: [{ price: 179.99, gtin13: "0819956000350" }] })}`,
+  );
+  assert.equal(readProductPage(html, PAGE_URL).gtin, "00819956000350");
+});
+
+test("of a product's variants, takes the one the link picks", () => {
+  const variants = {
+    "@type": "ProductGroup",
+    name: "Bassinet",
+    hasVariant: [
+      { "@type": "Product", name: "Tan", gtin: "819956002729", offers: { url: "https://shop.example/products/bassinet?variant=1", price: 179.99 } },
+      { "@type": "Product", name: "Charcoal", gtin: "819956000350", offers: { url: "https://shop.example/products/bassinet?variant=2", price: 179.99 } },
+    ],
+  };
+  const html = page(`<title>Bassinet</title>${jsonLd(variants)}`);
+  assert.equal(readProductPage(html, "https://shop.example/products/bassinet?variant=2").gtin, "00819956000350");
+  // Without a variant in the link, there's no telling which.
+  assert.equal(readProductPage(html, "https://shop.example/products/bassinet").gtin, undefined);
+});
+
+test("reads the barcode from schema.org attributes on the page", () => {
+  const html = page(`<title>Bassinet</title>`, `<div itemscope itemtype="https://schema.org/Product"><meta itemprop="gtin13" content="0819956000350"></div>`);
+  assert.equal(readProductPage(html, PAGE_URL).gtin, "00819956000350");
+});
+
+test("leaves out a barcode that doesn't check out", () => {
+  const html = page(`<title>Bassinet</title>${jsonLd({ "@type": "Product", name: "Bassinet", gtin: "819956000351" })}`);
+  assert.equal("gtin" in readProductPage(html, PAGE_URL), false);
+});
+
+function nextData(data: unknown): string {
+  return `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(data)}</script>`;
+}
+
+test("takes Target's barcode for the color in the link", () => {
+  // Trimmed from Target's page data: each color is a child with its own TCIN.
+  const html = page(
+    `<title>Beside Me Dreamer Bassinet : Target</title>`,
+    nextData({
+      props: {
+        product: {
+          tcin: "77459740",
+          children: [
+            { tcin: "94817382", item: { primary_barcode: "819956003504" } },
+            { tcin: "77459747", item: { primary_barcode: "819956000350" } },
+          ],
+        },
+      },
+    }),
+  );
+  assert.equal(readProductPage(html, "https://www.target.com/p/beside-me-dreamer/-/A-77459747").gtin, "00819956000350");
+  assert.equal(readProductPage(html, "https://www.target.com/p/-/A-77459740?preselect=94817382").gtin, "00819956003504");
+  // The parent listing has no barcode of its own.
+  assert.equal(readProductPage(html, "https://www.target.com/p/-/A-77459740").gtin, undefined);
+});
+
+test("takes Walmart's barcode for the item in the link", () => {
+  const html = page(
+    `<title>Beside Me Dreamer Bassinet - Walmart.com</title>`,
+    nextData({ props: { pageProps: { initialData: { data: { product: { usItemId: "530466558", upc: "819956000350" } } } } } }),
+  );
+  assert.equal(readProductPage(html, "https://www.walmart.com/ip/Beside-Me-Dreamer/530466558").gtin, "00819956000350");
+  assert.equal(readProductPage(html, "https://www.walmart.com/ip/530466558?selected=true").gtin, "00819956000350");
+  assert.equal(readProductPage(html, "https://www.walmart.com/ip/Another-Bassinet/111111111").gtin, undefined);
+});
+
+test("of a product's offers for each variant, takes the one the link picks", () => {
+  const html = page(
+    `<title>Bassinet</title>
+     ${jsonLd({
+       "@type": "Product",
+       name: "Bassinet",
+       offers: [
+         { url: "https://shop.example/products/bassinet?variant=1", price: 179.99, gtin: "819956002729" },
+         { url: "https://shop.example/products/bassinet?variant=2", price: 179.99, gtin: "819956000350" },
+       ],
+     })}`,
+  );
+  assert.equal(readProductPage(html, "https://shop.example/products/bassinet?variant=1").gtin, "00819956002729");
+  assert.equal(readProductPage(html, "https://shop.example/products/bassinet").gtin, undefined);
+});

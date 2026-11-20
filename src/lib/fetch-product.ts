@@ -109,6 +109,7 @@ async function readLink(url: string, secureUrl: string, startedWithExtension: ()
         price: product.price != null ? product.price.toFixed(2) : undefined,
         imageUrl: product.images[0],
         imageUrls: product.images.length > 0 ? product.images : undefined,
+        ...(product.gtin ? { gtin: product.gtin } : {}),
       };
     }
   }
@@ -121,7 +122,7 @@ interface Options {
 }
 
 /**
- * A product link's name, price and pictures. At a store the extension reads,
+ * A product link's name, price, pictures and barcode number. At a store the extension reads,
  * the extension reads it when it's installed. Otherwise, or when it couldn't,
  * the server fetches the page. Asking for a link that's already being read
  * gives that read's answer.

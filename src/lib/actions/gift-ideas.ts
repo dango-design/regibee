@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAccount } from "@/lib/require-account";
 import { isUuid } from "@/lib/extension";
 import { parseGiftIdea, type GiftIdeaInput } from "@/lib/gift-ideas";
+import { gtinChange, normalizeGtin } from "@/lib/gtin";
 
 // Saving, changing and deleting gift ideas from the website. These run as the
 // signed-in account, so the table's access rules keep each account to its
@@ -21,11 +22,25 @@ export async function saveGiftIdea(input: GiftIdeaInput, id?: string): Promise<G
   const parsed = parseGiftIdea(input);
   if (parsed.error !== undefined) return { error: parsed.error };
 
+  // A barcode belongs to the link it was read from (src/lib/gtin.ts).
+  const gtin = normalizeGtin(input?.gtin);
+
   if (id !== undefined) {
     if (!isUuid(id)) return { error: "That gift idea doesn't exist." };
+    // Without a new barcode, the saved one stays only if the link does.
+    let savedLink: string | null = null;
+    if (!gtin) {
+      const { data: saved } = await supabase
+        .from("gift_ideas")
+        .select("external_url")
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .maybeSingle();
+      savedLink = (saved?.external_url as string | null | undefined) ?? null;
+    }
     const { data, error: updateError } = await supabase
       .from("gift_ideas")
-      .update(parsed.fields)
+      .update({ ...parsed.fields, ...gtinChange(gtin, savedLink, parsed.fields.external_url) })
       .eq("id", id)
       .eq("owner_id", user.id)
       .select("id")
@@ -41,7 +56,7 @@ export async function saveGiftIdea(input: GiftIdeaInput, id?: string): Promise<G
 
   const { data, error: insertError } = await supabase
     .from("gift_ideas")
-    .insert({ ...parsed.fields, owner_id: user.id })
+    .insert({ ...parsed.fields, ...(gtin ? { gtin } : {}), owner_id: user.id })
     .select("id")
     .single();
   if (insertError || !data) {

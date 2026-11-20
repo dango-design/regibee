@@ -130,6 +130,11 @@ export function ItemEditor({
   // link here too; that only fills in what's still empty.
   const readHere = mode === "add" && Boolean(startingLink) && (!initialProduct || initialProduct.price == null);
   const [readingUrl, setReadingUrl] = useState<string | null>(readHere ? startingLink : null);
+  // The product's barcode number and the link it was read from. It's sent
+  // only while the item keeps that link (src/lib/gtin.ts on the website).
+  const [readGtin, setReadGtin] = useState<{ url: string; gtin: string | null } | null>(
+    initialProduct?.gtin && startingLink ? { url: startingLink, gtin: initialProduct.gtin } : null
+  );
   const [readState, setReadState] = useState<ReadState>(readHere ? "reading" : initialProduct ? "done" : "idle");
   // Whether the item had a name when reading failed, which changes what's left to fill in.
   const [failedWithName, setFailedWithName] = useState(false);
@@ -203,6 +208,9 @@ export function ItemEditor({
     }
     setReadState("done");
     haptic("success");
+    // A short link is swapped for the page it led to, below.
+    const readFrom = source && product.url && isShortLink(source) ? product.url : source;
+    if (readFrom) setReadGtin({ url: readFrom, gtin: product.gtin });
     if (product.title && (!titleTouched || !title.trim())) {
       setTitle(product.title);
       // The website's add dialog guesses a category from the name.
@@ -263,6 +271,7 @@ export function ItemEditor({
       is_open_to_used: openToUsed,
       minimum_condition: openToUsed ? condition : null,
       notes,
+      gtin: readGtin?.gtin && link === readGtin.url ? readGtin.gtin : null,
     };
   }
 

@@ -15,6 +15,11 @@ export interface ProductPage {
   images: string[];
   /** False when nothing on the page says it's a product. */
   isProduct: boolean;
+  /**
+   * The product's barcode number as 14 digits (src/lib/gtin.ts), or null.
+   * Missing from versions before it was added.
+   */
+  gtin?: string | null;
 }
 
 export function readProductPage(): ProductPage {
@@ -184,5 +189,131 @@ export function readProductPage(): ProductPage {
       document.querySelector('[itemtype*="schema.org/Product"]')
   );
 
-  return { url: location.href, title: title.slice(0, 300), price, images, isProduct };
+  // The barcode number: the UPC on US packaging or the EAN on European
+  // packaging. These are the rules in src/lib/gtin.ts, which has the tests.
+  // Saved as 14 digits, so a product's UPC and EAN come out the same.
+  const toGtin = (raw: unknown): string | null => {
+    let text: string;
+    if (typeof raw === "number" && Number.isSafeInteger(raw) && raw > 0) text = String(raw);
+    else if (typeof raw === "string") text = raw.replace(/[\s-]/g, "");
+    else return null;
+    if (!/^\d{8,14}$/.test(text)) return null;
+    const gtin = text.padStart(14, "0");
+    if (/^0+$/.test(gtin)) return null;
+    let total = 0;
+    for (let i = 0; i < 13; i++) total += Number(gtin[i]) * (i % 2 === 0 ? 3 : 1);
+    return (10 - (total % 10)) % 10 === Number(gtin[13]) ? gtin : null;
+  };
+  const isObject = (value: unknown): value is Json => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  const asList = (value: unknown): unknown[] => (Array.isArray(value) ? value : value == null ? [] : [value]);
+  const ownGtin = (node: unknown): string | null => {
+    if (!isObject(node)) return null;
+    for (const key of ["gtin", "gtin14", "gtin13", "gtin12", "gtin8"]) {
+      const gtin = toGtin(node[key]);
+      if (gtin) return gtin;
+    }
+    return null;
+  };
+  const onlyOne = (gtins: (string | null)[]): string | null => {
+    const found = [...new Set(gtins.filter((g): g is string => Boolean(g)))];
+    return found.length === 1 ? found[0] : null;
+  };
+  const variantOf = (raw: unknown): string | null => {
+    if (typeof raw !== "string") return null;
+    try {
+      return new URL(raw, location.href).searchParams.get("variant");
+    } catch {
+      return null;
+    }
+  };
+  // Structured data: on the product, on its offers, or on each color or size.
+  const gtinFromStructuredData = (node: Json | null): string | null => {
+    if (!node) return null;
+    const own = ownGtin(node);
+    if (own) return own;
+    const offers = asList(node.offers).filter(isObject);
+    const variants = asList(node.hasVariant).filter(isObject);
+    const variantGtin = (v: Json) => ownGtin(v) ?? onlyOne(asList(v.offers).map(ownGtin));
+    const wanted = variantOf(location.href);
+    if (wanted) {
+      const offer = offers.find((o) => variantOf(o.url) === wanted);
+      if (offer && ownGtin(offer)) return ownGtin(offer);
+      const linked = variants.find((v) =>
+        [v.url, v["@id"], ...asList(v.offers).map((o) => (isObject(o) ? o.url : null))].some((u) => variantOf(u) === wanted)
+      );
+      if (linked && variantGtin(linked)) return variantGtin(linked);
+    }
+    return onlyOne(offers.map(ownGtin)) ?? onlyOne(variants.map(variantGtin));
+  };
+  // Target's and Walmart's page data lists each color or size with its own
+  // barcode. Take the one with the item number in the address. A page the
+  // store changed without reloading keeps its old data, and then nothing matches.
+  const findIn = (data: unknown, match: (node: Json) => boolean): Json | null => {
+    const stack: unknown[] = [data];
+    let looked = 0;
+    while (stack.length > 0 && looked < 200_000) {
+      const node = stack.pop();
+      looked++;
+      if (Array.isArray(node)) {
+        for (const child of node) stack.push(child);
+      } else if (isObject(node)) {
+        if (match(node)) return node;
+        for (const child of Object.values(node)) stack.push(child);
+      }
+    }
+    return null;
+  };
+  const gtinFromStorePageData = (): string | null => {
+    const raw = document.getElementById("__NEXT_DATA__")?.textContent;
+    if (!raw) return null;
+    let data: unknown;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (/(^|\.)target\.com$/i.test(location.hostname)) {
+      const tcin = new URLSearchParams(location.search).get("preselect") ?? location.pathname.match(/\/A-(\d+)/)?.[1];
+      if (!tcin) return null;
+      const node = findIn(data, (n) => String(n.tcin) === tcin && isObject(n.item) && "primary_barcode" in n.item);
+      return node && isObject(node.item) ? toGtin(node.item.primary_barcode) : null;
+    }
+    if (/(^|\.)walmart\.com$/i.test(location.hostname)) {
+      const id = location.pathname.match(/^\/ip\/(?:[^/]+\/)?(\d+)\/?$/)?.[1];
+      if (!id) return null;
+      const node = findIn(data, (n) => String(n.usItemId) === id && "upc" in n);
+      return node ? toGtin(node.upc) : null;
+    }
+    return null;
+  };
+  // Amazon lists it in the product details, as "UPC : 819956000350", when it
+  // lists it at all. Several numbers there are for several colors, so take
+  // only a single one.
+  const gtinFromAmazonDetails = (): string | null => {
+    if (!/(^|\.)amazon\.com$/i.test(location.hostname)) return null;
+    const found: (string | null)[] = [];
+    const sections = document.querySelectorAll(
+      "#detailBullets_feature_div, #productDetails_detailBullets_sections1, #productDetails_techSpec_section_1, #productDetails_techSpec_section_2"
+    );
+    for (const section of sections) {
+      // Amazon puts invisible direction marks around the colon.
+      const text = (section.textContent ?? "").replace(/[\u200e\u200f]/g, " ");
+      for (const match of text.matchAll(/\b(?:UPC|EAN|GTIN)\b[^\d]{0,12}((?:\d{8,14}\s*)+)/g)) {
+        for (const code of match[1].trim().split(/\s+/)) found.push(toGtin(code));
+      }
+    }
+    return onlyOne(found);
+  };
+  const gtinFromAttributes = (): string | null =>
+    onlyOne(
+      [...document.querySelectorAll('[itemprop^="gtin"]')].map((el) => toGtin(el.getAttribute("content") ?? el.textContent))
+    );
+  let gtin: string | null = null;
+  try {
+    gtin = gtinFromStorePageData() ?? gtinFromAmazonDetails() ?? gtinFromStructuredData(ld) ?? gtinFromAttributes();
+  } catch {
+    // A barcode is a bonus. Never lose the rest of the product over it.
+  }
+
+  return { url: location.href, title: title.slice(0, 300), price, images, isProduct, gtin };
 }

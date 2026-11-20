@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authenticateExtension, jsonError, readJson } from "@/lib/extension-server";
 import { parseGiftIdea } from "@/lib/gift-ideas";
+import { normalizeGtin } from "@/lib/gtin";
 import type { IdeaResponse } from "@/lib/extension";
 
 // POST { idea } → saves a gift idea for someone else, from the popup's form on
@@ -16,9 +17,11 @@ export async function POST(request: Request) {
   const parsed = parseGiftIdea(body?.idea);
   if (parsed.error !== undefined) return jsonError(parsed.error, 400);
 
+  // The page's barcode number, which newer versions of the extension send.
+  const gtin = normalizeGtin((body?.idea as Record<string, unknown> | undefined)?.gtin);
   const { data, error } = await supabase
     .from("gift_ideas")
-    .insert({ ...parsed.fields, owner_id: user.id })
+    .insert({ ...parsed.fields, ...(gtin ? { gtin } : {}), owner_id: user.id })
     .select("id, title, recipient")
     .single();
   if (error || !data) {

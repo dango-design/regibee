@@ -67,6 +67,11 @@ export interface GiftIdeaInput {
   /** A number, or what was typed in the price field, like "$1,299.99". */
   price?: number | string | null;
   notes?: string | null;
+  /**
+   * The product's barcode number, read from `url`. The server action checks
+   * it (src/lib/gtin.ts); parseGiftIdea leaves it alone.
+   */
+  gtin?: string | null;
 }
 
 /** The columns to write, checked and cleaned up. */
