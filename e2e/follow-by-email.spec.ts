@@ -6,12 +6,16 @@
 // same whether or not the address has an account.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createRegistryWithItem, db, reserveGift, signIn, uniqueEmail } from "./fixtures";
+import { createAccount, createRegistryWithItem, db, reserveGift, signIn, uniqueEmail, waitForReact } from "./fixtures";
 import { linkIn, waitForEmail } from "./mailbox";
 
-/** Lets people find the account by its email, as sign-up's ticked box does. */
-async function findableByEmail(userId: string) {
-  const { error } = await db.from("profiles").update({ findable_by_email: true }).eq("id", userId);
+/**
+ * Whether people can find the account by its email. Every account can be
+ * found unless its owner switched it off (20261120213206_email_search_for_everyone.sql),
+ * but accounts made here start with it off, so tests set it.
+ */
+async function findableByEmail(userId: string, findable = true) {
+  const { error } = await db.from("profiles").update({ findable_by_email: findable }).eq("id", userId);
   if (error) throw error;
 }
 
@@ -28,8 +32,18 @@ async function followStatus(followerId: string, followeeId: string) {
 /** Types into Find people and presses Enter, which looks up an email address. */
 async function lookUp(page: Page, text: string) {
   const box = page.getByRole("searchbox", { name: "Find people" });
+  // Before React takes over, Enter would submit the form as a page load.
+  await waitForReact(box);
   await box.fill(text);
   await box.press("Enter");
+}
+
+/**
+ * One person in the search's results. Once someone asks to follow, the
+ * Following page lists them again further down, so this stays in the results.
+ */
+function searchResult(page: Page, name: string) {
+  return page.getByRole("list", { name: "Search results" }).getByRole("listitem").filter({ hasText: name });
 }
 
 test("someone types a friend's exact email, asks to follow, and the friend approves it", async ({ page, browser }) => {
@@ -42,7 +56,7 @@ test("someone types a friend's exact email, asks to follow, and the friend appro
 
   // Capitals and spaces around the address don't matter.
   await lookUp(page, `  ${fran.email.toUpperCase()} `);
-  const result = page.getByRole("listitem").filter({ hasText: "Fran Findable" });
+  const result = searchResult(page, "Fran Findable");
   await expect(result).toBeVisible();
   await expect(result).toContainText("Approves every follower");
   // The result shows the name, never the address.
@@ -81,8 +95,9 @@ test("someone types a friend's exact email, asks to follow, and the friend appro
 
 test("an address that isn't findable offers an invite, the same whether or not it has an account", async ({ page }) => {
   const sid = await createAccount("Sid Inviter");
-  // Hal has an account but hasn't let people find him by email.
+  // Hal has an account but switched off being found by email.
   const hal = await createAccount("Hal Hidden");
+  await findableByEmail(hal.id, false);
   const nobody = uniqueEmail("nobody");
 
   await signIn(page, sid);
@@ -118,7 +133,7 @@ test("searching your own email shows you, without a Follow button", async ({ pag
   await signIn(page, sid);
   await page.goto("/dashboard/following");
   await lookUp(page, sid.email);
-  const result = page.getByRole("listitem").filter({ hasText: "Sid Self" });
+  const result = searchResult(page, "Sid Self");
   await expect(result).toContainText("That's you");
   await expect(result.getByRole("button")).toHaveCount(0);
 });
