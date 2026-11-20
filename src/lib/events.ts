@@ -3,9 +3,9 @@
 // browser. The tables are in supabase/migrations/015_events.sql and the server
 // actions are in src/lib/actions/events.ts.
 
-import { themeForTint, type OccasionTheme } from "@/lib/occasion-theme";
-import { OCCASIONS, OCCASION_IDS, occasionFor, type OccasionId } from "@/lib/occasions";
-import type { QuestionKind, RsvpAnswers, RsvpQuestion } from "@/lib/rsvp-questions";
+import { themeForTint, type OccasionTheme } from "./occasion-theme";
+import { OCCASIONS, OCCASION_IDS, occasionFor, type OccasionId } from "./occasions";
+import type { QuestionKind, RsvpAnswers, RsvpQuestion } from "./rsvp-questions";
 
 /** Every event type: the occasions in src/lib/occasions.ts, in order. */
 export const EVENT_TYPES = OCCASION_IDS;

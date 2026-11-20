@@ -43,5 +43,5 @@ Docs: https://docs.expo.dev/eas/index.md
 ## Regibee
 
 - Read [README.md](README.md) and the root [CLAUDE.md](../CLAUDE.md) first. The app uses the production database, like the website. Use "Look around first" (the demo) to try changes without touching real data.
-- Every database read and write is in `src/lib/data.ts`, with a demo branch in `src/lib/demo.ts`. Add both when you add one.
+- Reads and changes live in `src/lib/*-data.ts`: lists in `data.ts`, list settings in `settings-data.ts`, Saved in `saved-data.ts`, events and groups in `events-data.ts`, following and account settings in `people-data.ts`. Most call the website's page loaders and server actions through `src/lib/api.ts` (see "Mobile app" in the root CLAUDE.md). Lists also have a demo branch in `src/lib/demo.ts`: add one when you add a list change. The demo has no Saved, Events or Following.
 - `npm run check` must pass: product reader up to date, types, and a full iOS and Android bundle.

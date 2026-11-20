@@ -1,5 +1,5 @@
-// Reads a product's name, price and pictures from a store's page, for the add
-// and edit item dialogs' autofill. src/lib/actions/scrape.ts fetches the page
+// Reads a product's name, price, pictures and barcode number from a store's
+// page, for the add and edit item dialogs' autofill. src/lib/actions/scrape.ts fetches the page
 // and calls this. It's kept apart from the fetching, with no "@/" imports, so
 // `npm test` can run it on saved pages (product-page.test.ts).
 //
@@ -7,12 +7,15 @@
 
 import { isIP } from "node:net";
 import * as cheerio from "cheerio";
+import { gtinFromStorePageData, gtinFromStructuredData, normalizeGtin } from "./gtin.ts";
 
 export interface ProductDetails {
   title?: string;
   imageUrl?: string;
   imageUrls?: string[];
   price?: string;
+  /** The product's barcode number (src/lib/gtin.ts), when the page has one. */
+  gtin?: string;
   error?: string;
 }
 
@@ -343,6 +346,7 @@ export function readProductPage(html: string, pageUrl: string): ProductDetails {
   }
 
   const primaryImageUrl = imageCandidates[0];
+  const gtin = readGtin($, pageUrl);
 
   // If we got nothing useful, return a helpful error
   if (!title && !primaryImageUrl && !price) {
@@ -357,5 +361,55 @@ export function readProductPage(html: string, pageUrl: string): ProductDetails {
     imageUrl: primaryImageUrl,
     imageUrls: imageCandidates.length > 0 ? imageCandidates : undefined,
     price: price || undefined,
+    ...(gtin ? { gtin } : {}),
   };
+}
+
+/**
+ * The product's barcode number. Target's and Walmart's page data comes first,
+ * since it has one for the color or size the link picks. Then the structured
+ * data most shops add for search engines, then schema.org attributes on the
+ * page itself.
+ */
+function readGtin($: cheerio.CheerioAPI, pageUrl: string): string | null {
+  const pageData = $("script#__NEXT_DATA__").first().text();
+  if (pageData) {
+    try {
+      const gtin = gtinFromStorePageData(JSON.parse(pageData), pageUrl);
+      if (gtin) return gtin;
+    } catch {
+      // Not JSON after all.
+    }
+  }
+
+  const products: unknown[] = [];
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach(visit);
+    const value = node as Record<string, unknown>;
+    const types = ([] as unknown[]).concat(value["@type"]);
+    if (types.some((t) => typeof t === "string" && /^(Product|ProductGroup|IndividualProduct)$/i.test(t))) {
+      products.push(value);
+    }
+    visit(value["@graph"]);
+  };
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      visit(JSON.parse($(el).text()));
+    } catch {
+      // Ignore invalid JSON-LD
+    }
+  });
+  for (const product of products) {
+    const gtin = gtinFromStructuredData(product, pageUrl);
+    if (gtin) return gtin;
+  }
+
+  const marked = new Set<string>();
+  $('[itemprop^="gtin"]').each((_, el) => {
+    const node = $(el);
+    const gtin = normalizeGtin(node.attr("content") ?? node.text());
+    if (gtin) marked.add(gtin);
+  });
+  return marked.size === 1 ? [...marked][0] : null;
 }

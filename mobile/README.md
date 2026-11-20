@@ -1,32 +1,35 @@
 # Regibee for iPhone and Android
 
-The Regibee app for registry owners, built with Expo (SDK 58) and React Native. Guests don't need it: they keep using the registry link on the website.
+The Regibee app, built with Expo (SDK 58) and React Native. It does what an account can do on the website. Guests don't need it: they keep using the registry and event links on the website.
 
 ## What it does
 
-- **Share to Regibee from any app.** In the Amazon, Target or Walmart app, in Safari, Chrome or Instagram, tap Share and pick Regibee. The add form opens with the product's name, price and pictures filled in. It picks the registry you used last.
+- **Share to Regibee from any app.** In the Amazon, Target or Walmart app, in Safari, Chrome or Instagram, tap Share and pick Regibee. The add form opens with the product's name, price and pictures filled in. It picks the registry you used last. Its "Add to" row lists your registries, then Gift ideas, which opens the gift idea form with the link instead. Someone with no registry can save it as a gift idea.
 - **Reads products on the phone.** A page shared from Safari arrives already read: the share extension runs the Chrome extension's reader (`extension/src/product-reader.ts`) inside the page. A link shared from another app, or pasted, is opened in a hidden web view on the phone, and the same reader reads it. The page loads over the owner's own connection, so stores that block Regibee's server, Amazon above all, still work.
 - **Paste a link.** On iPhone it's Apple's own Paste button, so there's no "Allow Paste" prompt.
 - **Store registries.** An item whose link counts toward the owner's Amazon, Target or other store registry says so: "Amazon registry" in the list, and the same notices as the website in the editor, including a warning for a plain store link where the owner has a registry. The linked stores come from the registry's settings. An Open button by the link opens the page.
 - **Catches duplicates.** A link already on the registry, matched on the store's product ID the same way as the website and extension, gets a warning first.
-- **Manage registries.** See every registry you own or help manage, with progress, value and the latest gift. Add, edit and delete items. Mark them most wanted, bought it yourself, or open to used. Filter by category and make new categories. Long-press an item on iPhone for quick actions.
-- **Gift activity.** See who reserved or bought what, with their messages and funds' totals. Email a giver, or cancel a reservation. An owner who turned on "Hide what's been reserved from me" on the website sees nothing reserved, pledged or given, the same as on the website.
-- **Make a registry.** Baby registries start with the website's 10 categories.
-- **Fast.** Registries are cached on the phone (SQLite), so the app opens straight onto the last data it saw and refreshes in the background. Changes show at once and roll back if they fail.
-- **Look around first.** The sign-in screen offers the website's demo registry, kept in memory. Nothing in the demo is saved.
-- **Delete account.** On the Account tab, as Apple requires. A native confirmation lists what goes, then the account is deleted, the cache cleared and the app signed out.
+- **Registries.** Every registry you own or help manage, with the website's notices: gifts this week, follow requests, and the prompt to put a list on your profile. On a list: items (including ones placed from your other lists), gift funds, gift activity, the Suggestions Inbox, the baby checklist, Store perks, linked events and the plain store links notice. Add, edit and remove items, with photo upload and estimated sales tax. Long-press an item on iPhone for quick actions.
+- **List settings.** Photo, details, who can open it and a new link, "Hide what's been reserved from me", a child's gift profile, sharing with groups, categories, location, payment methods, shipping address, store registries, managers and invite links, and deleting the list.
+- **Saved.** Every item on your lists in one place, which lists each is on, and putting items on more lists or taking them off. Gift ideas for other people, which only you can see. A product shared from another app can go to a gift idea instead of a list.
+- **Events.** Start something new (a list, an event, or both), the event form, and an event's page: invitation picture, gifts, guests and RSVPs, invitations and reminders, gift exchanges, sign-up sheets, messages to guests and co-hosts. Groups of guests, with their yearly gift exchange.
+- **Following.** Find people by name or email, invite them, see birthdays coming up and the lists of people who approved your follow.
+- **Account.** Your profile and which lists show on it, your gift profile, follow requests, followers, blocked people, birthday emails, and deleting the account (as Apple requires).
+- **Fast.** What you last saw is cached on the phone (SQLite), so the app opens straight onto it and refreshes in the background. Most list changes show at once and roll back if they fail.
+- **Look around first.** The sign-in screen offers the website's demo registry, kept in memory. Nothing in the demo is saved. Saved, Events and Following need an account.
 - Light and dark mode, Regibee's colors and fonts, SF Symbols on iPhone and Material Symbols on Android, native tabs and sheets, and haptics.
 
-The website still does events, following, profile settings, co-managers, cash fund setup, guest suggestions and registry settings. The app links to those pages.
+Other people's registries, profiles and invitations open on the website, as guests see them.
 
 ## How it fits together
 
-- It signs in to the same Supabase project as the website, with email and password, and reads and writes the tables directly as the signed-in user. The access rules (RLS) apply exactly as on the website. It only has the public anon key. See "Keys and access rules" in the root [CLAUDE.md](../CLAUDE.md).
-- Deleting the account needs the service-role key, so `src/lib/account.ts` calls the website's `/api/account` with the session's access token instead. The confirmation's wording comes from `src/lib/account-deletion-summary.ts`, shared with the website.
-- `src/lib/data.ts` holds every query and change, written to match the website's server actions in `src/lib/actions/registry.ts`. Change one, check the other.
-- The store link rules (`src/lib/retailers.ts`), the demo data (`src/lib/demo-data.ts`) and the gift hold rules (`src/lib/gifts.ts`) come straight from the website, through the `@shared/*` path. `metro.config.js` lets Metro read that folder. Only files without imports can be shared this way.
+- It signs in to the same Supabase project as the website, with email and password, and only has the public anon key. The access rules (RLS) apply exactly as on the website. See "Keys and access rules" in the root [CLAUDE.md](../CLAUDE.md).
+- Most screens run the website's own code on the website's server, through `src/lib/api.ts`: `loadPage("listPage", id)` gets what the website's list page loads, and `runAction("registry.updateRegistry", …)` runs the website's server action. The app sends its access token, and the server acts as that user. So the app follows the website's rules, sends the website's emails and counts against the same email limits. See "Mobile app" in the root CLAUDE.md for how the routes work. This needs the website (`EXPO_PUBLIC_SITE_URL`, regibee.com by default) to have the `/api/app` routes deployed.
+- Reads and changes are in `src/lib/*-data.ts`, one file per area. A few things still go straight to the database as the user: "Most wanted", cancelling a gift, gift ideas, and photo uploads to storage.
+- Deleting the account needs the service-role key, so `src/lib/account.ts` calls the website's `/api/account` with the session's access token. The confirmation's wording comes from `src/lib/account-deletion-summary.ts`, shared with the website.
+- Rules and wording the website keeps in `src/lib/` (store links, gift holds, events, sign-ups, the checklist, the loaders' types and more) come straight from the website, through the `@shared/*` path. `metro.config.js` lets Metro read that folder. A shared file may only import other shared files, with relative paths.
 - The product reader is built from the extension's source into `src/generated/product-reader.json` by `npm run product-reader`. Run it after changing `extension/src/product-reader.ts`. `npm run check` fails when it's out of date.
-- Sharing uses [`expo-share-intent`](https://github.com/achorein/expo-share-intent). On iPhone its share extension opens the app (the extension has no screen of its own), and `src/app/+native-intent.ts` sends that link to the share screen. On Android the app is a share target for text, and comes to the front on whatever screen it was on. `ShareRouter` in `src/app/_layout.tsx` then opens the share screen, once for each share. The library only reads text labeled as plain text and reports anything else as an error, which `ShareRouter` shows instead of doing nothing. `plugins/with-share-extension-label.js` keeps the share sheet label "Regibee".
+- Sharing uses [`expo-share-intent`](https://github.com/achorein/expo-share-intent). On iPhone its share extension opens the app (the extension has no screen of its own), and `src/app/+native-intent.ts` sends that link to the share screen. On Android, shared text goes to a small activity with no screen, `ShareReceiverActivity` (`plugins/with-android-share-receiver.js`). It passes the share to the app in Regibee's own task. Some apps, Amazon among them, open the app they share to inside their own task, and if that were the app itself, a second copy of it would take over Expo Router's router and break navigation until a restart. The app comes to the front on whatever screen it was on. `ShareRouter` in `src/app/_layout.tsx` then opens the share screen, once for each share. A share without text, such as a file, can't be added. The library reports most of those as an error, which `ShareRouter` shows instead of doing nothing. `plugins/with-share-extension-label.js` keeps the iPhone share sheet label "Regibee".
 
 ## Setup
 
@@ -38,6 +41,8 @@ cp .env.local.example .env.local
 ```
 
 Fill in `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`. It's the website's `NEXT_PUBLIC_SUPABASE_ANON_KEY` (from `vercel env pull`). Like the website, the app uses the production database, so anything you do while signed in changes real data. Use the demo to try things.
+
+To try it against a local copy instead, point `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` at local Supabase (`supabase status`), run the website locally against the same database, and set `EXPO_PUBLIC_SITE_URL` to it, such as `http://localhost:3000`. The iPhone simulator reaches your Mac at localhost. Delete `.env.local` when you're done, so a later run doesn't point at a database that's stopped.
 
 ## Run it
 

@@ -587,11 +587,14 @@ const MINUS = '<path d="M5 12h14"/>';
 const PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>';
 const LOCK = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
 const IDEAS_URL = `${REGIBEE_URL}/dashboard/saved/ideas`;
+/** The "Add to" picker's value for gift ideas. Registry ids are uuids, so it can't clash. */
+const IDEAS_CHOICE = "ideas";
 
 /**
  * The "Add to Regibee" form for the product on the page, like the site's
- * add-item dialog. A switch at the top saves it as a gift idea for someone
- * else instead, which only the owner can see.
+ * add-item dialog. The "Add to" picker at the top lists the owner's
+ * registries and, last, their gift ideas for other people, which only the
+ * owner can see. Picking Gift ideas swaps in who it's for and a private note.
  */
 function showProduct(ctx: ProductContext) {
   const { user, product, registries } = ctx;
@@ -783,12 +786,34 @@ function showProduct(ctx: ProductContext) {
     }
   };
 
-  const registryField = registrySelect(registries, registryId, "Registry", async (id) => {
-    registryId = id;
+  // Where it goes: one of the owner's registries, or their gift ideas, which
+  // the picker offers like one more list.
+  const listSelect = h(
+    "select",
+    {
+      id: "list",
+      onchange: (e: Event) => void chooseList((e.target as HTMLSelectElement).value),
+    },
+    canAddToList &&
+      h(
+        "optgroup",
+        { label: "For you" },
+        ...registries.map((r) => h("option", { value: r.id, selected: mode === "list" && r.id === registryId }, r.title))
+      ),
+    h("optgroup", { label: "For someone else" }, h("option", { value: IDEAS_CHOICE, selected: mode === "idea" }, "Gift ideas"))
+  ) as HTMLSelectElement;
+
+  async function chooseList(value: string) {
+    if (value === IDEAS_CHOICE) {
+      setMode("idea");
+      return;
+    }
+    registryId = value;
     fillCategories();
-    await ask({ type: "set-registry", registryId: id });
+    setMode("list");
+    await ask({ type: "set-registry", registryId: value });
     await checkDuplicate();
-  });
+  }
 
   button.addEventListener("click", async () => {
     error.hidden = true;
@@ -833,6 +858,7 @@ function showProduct(ctx: ProductContext) {
       isOpenToUsed: openToUsed.checked,
       minimumCondition: openToUsed.checked ? (condition.value as ProductItem["minimumCondition"]) : null,
       notes: notes.value.trim() || null,
+      gtin: product.gtin ?? null,
     };
     button.disabled = true;
     button.textContent = "Adding…";
@@ -890,6 +916,7 @@ function showProduct(ctx: ProductContext) {
       imageUrl: images[imageIndex] ?? null,
       price: priceValue,
       notes: ideaNotes.value.trim() || null,
+      gtin: product.gtin ?? null,
     };
     ideaButton.disabled = true;
     ideaButton.textContent = "Saving…";
@@ -908,30 +935,9 @@ function showProduct(ctx: ProductContext) {
   const field = (id: string, label: string, control: Node, extra?: string) =>
     h("div", { className: `field${extra ? ` ${extra}` : ""}` }, h("label", { for: id }, label), control);
 
-  // ── Which kind of save, and the fields that go with each ──
+  // ── The fields that go with each kind of list ──
   const heading = h("h1", { className: "sr-only" });
-  const modeOption = (value: ProductMode, label: string) =>
-    h(
-      "label",
-      { className: "segment" },
-      h("input", {
-        type: "radio",
-        name: "product-mode",
-        value,
-        checked: mode === value,
-        onchange: () => setMode(value),
-      }),
-      h("span", {}, label)
-    );
-  const modeSwitch =
-    canAddToList &&
-    h(
-      "fieldset",
-      { className: "segmented" },
-      h("legend", { className: "sr-only" }, "Save it"),
-      modeOption("list", "For my registry"),
-      modeOption("idea", "Gift idea")
-    );
+  const listField = field("list", "Add to", listSelect);
 
   const quantityField = field(
     "quantity",
@@ -965,7 +971,7 @@ function showProduct(ctx: ProductContext) {
   const listBottom = h(
     "div",
     { className: "group" },
-    canAddToList && h("div", { className: "row" }, registryField, field("category", "Category", category)),
+    canAddToList && field("category", "Category", category),
     h(
       "div",
       { className: "checks" },
@@ -1001,7 +1007,7 @@ function showProduct(ctx: ProductContext) {
       h(
         "div",
         { className: "form-scroll" },
-        modeSwitch,
+        listField,
         h("div", { className: "product-top" }, gallery, field("title", "Name", title, "grow")),
         ideaTop,
         listTop,

@@ -29,6 +29,7 @@ import {
   type RetailerRegistry,
 } from "@/lib/retailers";
 import { isUuid } from "@/lib/extension";
+import { gtinChange, normalizeGtin } from "@/lib/gtin";
 import { listsForItems } from "@/lib/list-items";
 import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
 import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
@@ -392,9 +393,11 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
   const isOpenToUsed = formData.get("isOpenToUsed") === "true";
   const minimumCondition = formData.get("minimumCondition") as string;
   const notes = formData.get("notes") as string;
+  // The product's barcode number, when the dialog read one from this link.
+  const gtin = normalizeGtin(formData.get("gtin"));
   const qty = quantityNeeded ? parseInt(quantityNeeded) : 1;
 
-  const { error } = await supabase.from("registry_items").insert({
+  const { data: added, error } = await supabase.from("registry_items").insert({
     registry_id: registryId,
     category_id: categoryId || null,
     title,
@@ -408,7 +411,8 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
     is_open_to_used: isOpenToUsed,
     minimum_condition: isOpenToUsed ? minimumCondition || null : null,
     notes: notes || null,
-  });
+    ...(gtin ? { gtin } : {}),
+  }).select("id").single();
 
   if (error) {
     return { error: error.message };
@@ -416,7 +420,8 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
 
   revalidatePath(`/dashboard/registry/${registryId}`);
   revalidatePath("/dashboard/saved");
-  return { success: true };
+  // The phone app opens the new item from its id.
+  return { success: true, id: added.id as string };
 }
 
 export async function updateRegistryItem(
@@ -457,6 +462,16 @@ export async function updateRegistryItem(
     if (authError || !manager) return { error: authError || "Not authorized" };
   }
 
+  // A barcode belongs to the link it was read from (src/lib/gtin.ts). Without
+  // a new one, it stays only if the link does. Older versions of the phone
+  // app never send one.
+  const sentGtin = formData.get("gtin");
+  let savedLink: string | null = null;
+  if (!normalizeGtin(sentGtin)) {
+    const { data: saved } = await supabase.from("registry_items").select("external_url").eq("id", itemId).maybeSingle();
+    savedLink = (saved?.external_url as string | null | undefined) ?? null;
+  }
+
   const { data: updated, error } = await supabase
     .from("registry_items")
     .update({
@@ -470,6 +485,7 @@ export async function updateRegistryItem(
       is_open_to_used: isOpenToUsed,
       minimum_condition: isOpenToUsed ? minimumCondition || null : null,
       notes: notes || null,
+      ...gtinChange(sentGtin, savedLink, externalUrl || null),
     })
     .eq("id", itemId)
     .select("id");

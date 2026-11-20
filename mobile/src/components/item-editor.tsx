@@ -35,6 +35,7 @@ import {
   Field,
   haptic,
   IconButton,
+  Pill,
   Section,
   Stepper,
   SwitchRow,
@@ -42,14 +43,19 @@ import {
 } from "@/components/ui";
 import {
   errorMessage,
-  storeRegistries,
+  estimateTax,
+  listNames,
+  removeItemWording,
   useAddItem,
   useCreateCategory,
   useDeleteItem,
   useRegistry,
   useUpdateItem,
 } from "@/lib/data";
-import { parsePrice } from "@/lib/format";
+import { formatGiftDate, giftActivityTag } from "@shared/gifts";
+import { guessCategory } from "@shared/item-categories";
+import { formatPrice, parsePrice } from "@/lib/format";
+import { pickPhoto, uploadListPhoto } from "@/lib/photos";
 import { itemMatchKey, normalizeLink, parseSharedText, storeLabel, type ReadProduct } from "@/lib/product";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { USED_CONDITIONS, type Item, type ItemInput, type RegistrySummary, type UsedCondition } from "@/lib/types";
@@ -78,6 +84,12 @@ interface Props {
   /** Offered as a choice when adding. Leave out to keep the registry fixed. */
   registries?: RegistrySummary[];
   onRegistryChange?: (id: string) => void;
+  /**
+   * Offers Gift ideas after the registries in the "Add to" row, like one more
+   * list. Picking it calls this, which opens the gift idea form (src/app/idea.tsx)
+   * with the link.
+   */
+  onChooseGiftIdea?: () => void;
   item?: Item;
   /** A link and maybe a name from a share or a deep link. */
   initialLink?: string | null;
@@ -96,6 +108,7 @@ export function ItemEditor({
   registryId,
   registries,
   onRegistryChange,
+  onChooseGiftIdea,
   item,
   initialLink,
   initialTitle,
@@ -117,6 +130,11 @@ export function ItemEditor({
   // link here too; that only fills in what's still empty.
   const readHere = mode === "add" && Boolean(startingLink) && (!initialProduct || initialProduct.price == null);
   const [readingUrl, setReadingUrl] = useState<string | null>(readHere ? startingLink : null);
+  // The product's barcode number and the link it was read from. It's sent
+  // only while the item keeps that link (src/lib/gtin.ts on the website).
+  const [readGtin, setReadGtin] = useState<{ url: string; gtin: string | null } | null>(
+    initialProduct?.gtin && startingLink ? { url: startingLink, gtin: initialProduct.gtin } : null
+  );
   const [readState, setReadState] = useState<ReadState>(readHere ? "reading" : initialProduct ? "done" : "idle");
   // Whether the item had a name when reading failed, which changes what's left to fill in.
   const [failedWithName, setFailedWithName] = useState(false);
@@ -141,10 +159,18 @@ export function ItemEditor({
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(mode === "edit");
+  // The price before estimated sales tax was added, as the website's add dialog shows it.
+  const [taxInfo, setTaxInfo] = useState<{ original: string; rate: number } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showImageLink, setShowImageLink] = useState(false);
 
   const categories = detail.data?.categories ?? [];
   // Store registries are for baby registries only, as on the website.
-  const linkedRegistries = detail.data ? storeRegistries(detail.data.registry) : null;
+  const linkedRegistries = detail.data?.linkedRegistries ?? null;
+  // A list with a zip code adds estimated sales tax to what the owner bought.
+  const zipCode = detail.data?.zipCode ?? null;
+  const otherLists = item?.otherLists ?? [];
   // A registry link on any item shows the owner has a registry at that store,
   // even before they link it in settings, as on the website's dashboard.
   const registryLinkStores = useMemo(
@@ -182,13 +208,54 @@ export function ItemEditor({
     }
     setReadState("done");
     haptic("success");
-    if (product.title && (!titleTouched || !title.trim())) setTitle(product.title);
-    if (product.price != null && (!priceTouched || !priceText.trim())) setPriceText(String(product.price));
+    // A short link is swapped for the page it led to, below.
+    const readFrom = source && product.url && isShortLink(source) ? product.url : source;
+    if (readFrom) setReadGtin({ url: readFrom, gtin: product.gtin });
+    if (product.title && (!titleTouched || !title.trim())) {
+      setTitle(product.title);
+      // The website's add dialog guesses a category from the name.
+      if (mode === "add" && !categoryTouched) {
+        const guess = guessCategory(product.title, categories);
+        if (guess) setCategoryId(guess);
+      }
+    }
+    if (product.price != null && (!priceTouched || !priceText.trim())) {
+      setPriceText(product.price.toFixed(2));
+      setTaxInfo(null);
+      if (bought) addTax(product.price);
+    }
     if (product.images.length > 0) {
       setImages(product.images);
       if (!imageUrl || mode === "add") setImageUrl(product.images[0]);
     }
     if (source && product.url && isShortLink(source)) setLink(product.url);
+  }
+
+  /** Adds estimated sales tax to the price, as the website's add dialog does for what the owner bought. */
+  async function addTax(price: number) {
+    if (!zipCode || mode !== "add") return;
+    const result = await estimateTax(zipCode, price).catch(() => null);
+    if (!result) return;
+    setPriceText(result.priceWithTax);
+    setTaxInfo({ original: price.toFixed(2), rate: result.taxRate });
+  }
+
+  async function choosePhoto() {
+    if (!registryId) return;
+    const asset = await pickPhoto();
+    if (!asset) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadListPhoto(registryId, asset);
+      setImages((prev) => [url, ...prev.filter((u) => u !== url)]);
+      setImageUrl(url);
+      haptic("success");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setUploading(false);
+    }
   }
 
   function input(): ItemInput {
@@ -204,6 +271,7 @@ export function ItemEditor({
       is_open_to_used: openToUsed,
       minimum_condition: openToUsed ? condition : null,
       notes,
+      gtin: readGtin?.gtin && link === readGtin.url ? readGtin.gtin : null,
     };
   }
 
@@ -252,19 +320,19 @@ export function ItemEditor({
   function confirmDelete() {
     if (!item) return;
     // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
-    const message = "This cannot be undone.";
+    const wording = removeItemWording(item);
     const run = () => {
-      deleteItem.mutate(item, { onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)) });
+      deleteItem.mutate(item, { onError: (e) => Alert.alert("Couldn't remove it", errorMessage(e)) });
       haptic("success");
       onDone({ type: "deleted", registryId: item.registry_id });
     };
     if (Platform.OS === "web") {
-      if (globalThis.confirm?.(`Delete “${item.title}”? ${message}`)) run();
+      if (globalThis.confirm?.(`${wording.title} ${wording.message}`)) run();
       return;
     }
-    Alert.alert(`Delete “${item.title}”?`, message, [
+    Alert.alert(wording.title, wording.message, [
       { text: "Cancel", style: "cancel" },
-      { text: "Remove item", style: "destructive", onPress: run },
+      { text: wording.button, style: "destructive", onPress: run },
     ]);
   }
 
@@ -272,10 +340,11 @@ export function ItemEditor({
     const name = newCategory?.trim();
     if (!name || !registryId) return;
     createCategory.mutate(
-      { registryId, name, sortOrder: categories.length },
+      { registryId, name },
       {
         onSuccess: (category) => {
           setCategoryId(category.id);
+          setCategoryTouched(true);
           setNewCategory(null);
         },
         onError: (e) => setError(errorMessage(e)),
@@ -301,10 +370,19 @@ export function ItemEditor({
       >
         {header}
 
-        {mode === "add" && registries && registries.length > 1 ? (
+        {mode === "edit" && otherLists.length > 0 ? (
+          <View style={[styles.notice, { backgroundColor: theme.tintSoft }]}>
+            <Icon name="info" size={16} color={theme.tint} />
+            <Text variant="footnote" style={{ flex: 1, color: theme.tint }}>
+              It&apos;s also on {listNames(otherLists)}, so changes show there too. Its category is only for this list.
+            </Text>
+          </View>
+        ) : null}
+
+        {mode === "add" && registries && (registries.length > 1 || onChooseGiftIdea) ? (
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-              Registry
+              Add to
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
               {registries.map((r) => (
@@ -319,6 +397,9 @@ export function ItemEditor({
                   }}
                 />
               ))}
+              {onChooseGiftIdea ? (
+                <Chip label="Gift ideas" icon="sparkles" selected={false} onPress={onChooseGiftIdea} />
+              ) : null}
             </ScrollView>
           </View>
         ) : null}
@@ -387,11 +468,12 @@ export function ItemEditor({
         </View>
 
         {/* Pictures */}
-        {images.length > 0 || imageUrl ? (
-          <View style={{ gap: spacing.sm }}>
+        <View style={{ gap: spacing.sm }}>
+          {images.length > 0 || imageUrl ? (
             <View style={{ alignItems: "center" }}>
               <ItemImage uri={imageUrl} size={180} rounded={radius.lg} />
             </View>
+          ) : null}
             {images.length > 1 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingVertical: 2 }}>
                 {images.map((uri) => (
@@ -415,8 +497,42 @@ export function ItemEditor({
                 ))}
               </ScrollView>
             ) : null}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" }}>
+            <Button
+              title={imageUrl ? "Change photo" : "Upload photo"}
+              icon="camera"
+              size="small"
+              variant="secondary"
+              loading={uploading}
+              onPress={choosePhoto}
+            />
+            {!showImageLink ? (
+              <Button title="Image link" icon="link" size="small" variant="ghost" onPress={() => setShowImageLink(true)} />
+            ) : null}
+            {imageUrl ? (
+              <Button
+                title="Remove"
+                size="small"
+                variant="ghost"
+                onPress={() => {
+                  setImageUrl(null);
+                  setShowImageLink(false);
+                }}
+              />
+            ) : null}
           </View>
-        ) : null}
+          {showImageLink ? (
+            <Field
+              label="Image link (optional)"
+              value={imageUrl ?? ""}
+              onChangeText={(text) => setImageUrl(text.trim() || null)}
+              placeholder="https://"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+          ) : null}
+        </View>
 
         {/* Details */}
         <View style={{ gap: spacing.lg }}>
@@ -441,11 +557,15 @@ export function ItemEditor({
                 onChangeText={(text) => {
                   setPriceText(text.replace(/[^0-9.,]/g, ""));
                   setPriceTouched(true);
+                  setTaxInfo(null);
                 }}
                 onBlur={() => {
                   const value = parsePrice(priceText);
-                  if (value != null) setPriceText(value.toFixed(2));
+                  if (value == null) return;
+                  setPriceText(value.toFixed(2));
+                  if (bought && !taxInfo) addTax(value);
                 }}
+                hint={taxInfo ? `$${taxInfo.original} + ~${(taxInfo.rate * 100).toFixed(1)}% tax` : undefined}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 leading={<Text tone="tertiary">$</Text>}
@@ -470,9 +590,24 @@ export function ItemEditor({
               Category
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              <Chip label="No category" selected={categoryId === null} onPress={() => setCategoryId(null)} />
+              <Chip
+                label="No category"
+                selected={categoryId === null}
+                onPress={() => {
+                  setCategoryId(null);
+                  setCategoryTouched(true);
+                }}
+              />
               {categories.map((c) => (
-                <Chip key={c.id} label={c.name} selected={c.id === categoryId} onPress={() => setCategoryId(c.id)} />
+                <Chip
+                  key={c.id}
+                  label={c.name}
+                  selected={c.id === categoryId}
+                  onPress={() => {
+                    setCategoryId(c.id);
+                    setCategoryTouched(true);
+                  }}
+                />
               ))}
               {newCategory === null ? (
                 <Chip label="+ New category" selected={false} onPress={() => setNewCategory("")} />
@@ -542,8 +677,10 @@ export function ItemEditor({
           multiline
         />
 
-        {mode === "edit" ? (
-          <Button title="Remove item" variant="danger" icon="trash" onPress={confirmDelete} />
+        {mode === "edit" && item ? <ItemGifts item={item} /> : null}
+
+        {mode === "edit" && item ? (
+          <Button title={removeItemWording(item).button} variant="danger" icon="trash" onPress={confirmDelete} />
         ) : null}
       </ScrollView>
 
@@ -561,6 +698,51 @@ export function ItemEditor({
         <Button title={saveTitle} onPress={save} loading={saving} disabled={!registryId} />
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Guests' gifts of the item, as the website's "Gifts for …" window lists them (src/components/gift-detail-modal.tsx). */
+function ItemGifts({ item }: { item: Item }) {
+  const gifts = item.purchases;
+  if (gifts.length === 0) return null;
+  return (
+    <Section title={`Gifts for “${item.title}”`}>
+      {gifts.map((gift, index) => {
+        const tag = giftActivityTag(gift, item.is_parent_purchased);
+        return (
+          <View key={gift.id}>
+            {index > 0 ? <Divider inset={spacing.lg} /> : null}
+            <View style={{ padding: spacing.lg, gap: 4, opacity: gift.status === "cancelled" ? 0.5 : 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" }}>
+                <Text variant="subhead" style={{ fontWeight: "600" }}>
+                  {gift.buyer_name}
+                </Text>
+                <Pill label={tag.label} tone={tag.kind === "cancelled" ? "neutral" : tag.kind === "reserved" ? "tint" : "success"} />
+                {gift.quantity > 1 ? (
+                  <Text variant="footnote" tone="secondary">
+                    × {gift.quantity}
+                  </Text>
+                ) : null}
+                {gift.amount != null ? (
+                  <Text variant="footnote" style={{ fontWeight: "600" }}>
+                    {formatPrice(gift.amount)}
+                  </Text>
+                ) : null}
+              </View>
+              {gift.message ? (
+                <Text variant="footnote" tone="secondary">
+                  {gift.message}
+                </Text>
+              ) : null}
+              <Text variant="caption" tone="tertiary">
+                {gift.created_at ? formatGiftDate(gift.created_at) : ""}
+                {gift.buyer_email && !gift.hide_giver ? ` · ${gift.buyer_email}` : ""}
+              </Text>
+            </View>
+          </View>
+        );
+      })}
+    </Section>
   );
 }
 

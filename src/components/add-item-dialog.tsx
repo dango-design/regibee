@@ -21,7 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { addRegistryItem, createCategory } from "@/lib/actions/registry";
 import { fetchProductDetails } from "@/lib/fetch-product";
+import { gtinForLink, type ReadGtin } from "@/lib/gtin";
 import { estimateTax } from "@/lib/actions/tax";
+import { guessCategory } from "@/lib/item-categories";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 import { copyFor } from "@/lib/registry-copy";
 import { detectStore, type RetailerRegistry, type StoreId } from "@/lib/retailers";
@@ -175,6 +177,9 @@ export function AddItemDialog({
   const lastReadUrl = useRef<string | null>(null);
   // The link the picture choices came from.
   const picturesFrom = useRef<string | null>(null);
+  // The product's barcode number and the link it was read from. It's saved
+  // only if the item keeps that link (src/lib/gtin.ts).
+  const readGtin = useRef<ReadGtin | null>(null);
 
   // Reading the clipboard needs a secure page and a browser that allows it.
   // Only the open dialog asks, so this never runs during server rendering.
@@ -219,33 +224,8 @@ export function AddItemDialog({
     }
   };
 
-  const inferCategory = (productTitle: string): string | undefined => {
-    const keywords: Record<string, string[]> = {
-      "nursery & sleep": ["crib", "bassinet", "blanket", "swaddle", "mattress", "monitor", "mobile", "rocker", "glider", "rocking", "nightlight", "sound machine", "white noise", "sleep sack", "sheet", "pillow", "nursery", "cradle", "moses basket"],
-      "feeding": ["bottle", "nursing", "breast pump", "formula", "bib", "highchair", "high chair", "sippy", "pacifier", "sterilizer", "warmer", "feeding", "breastfeed", "nipple", "lactation", "burp cloth"],
-      "diapering": ["diaper", "wipe", "changing pad", "changing table", "pail", "rash cream", "nappy", "potty"],
-      "gear & travel": ["stroller", "car seat", "carrier", "wrap", "sling", "travel", "pack n play", "playard", "play yard", "jogger", "wagon", "backpack carrier", "bike seat", "gate", "baby gate"],
-      "bath": ["bath", "tub", "towel", "washcloth", "shampoo", "soap", "lotion", "grooming"],
-      "clothing": ["onesie", "bodysuit", "pajama", "sleeper", "outfit", "romper", "dress", "sock", "shoe", "bootie", "hat", "mitten", "jacket", "coat", "clothing", "clothes", "gown"],
-      "health & safety": ["thermometer", "medicine", "nasal", "aspirator", "humidifier", "first aid", "safety", "baby proof", "outlet cover", "cabinet lock", "corner guard", "sunscreen", "vitamin"],
-      "toys & books": ["toy", "book", "rattle", "teether", "play mat", "playmat", "activity", "stuffed", "plush", "puzzle", "block", "game", "doll", "figurine", "reading"],
-      "maternity & postpartum": ["maternity", "postpartum", "nursing bra", "belly band", "recovery", "prenatal", "postnatal", "mama", "mom"],
-      "gifts & extras": ["gift card", "gift basket", "keepsake", "memory book", "photo", "frame", "ornament"],
-    };
-
-    const lower = productTitle.toLowerCase();
-    for (const [categoryName, words] of Object.entries(keywords)) {
-      for (const word of words) {
-        if (lower.includes(word)) {
-          const match = categories.find(
-            (c) => c.name.toLowerCase() === categoryName
-          );
-          if (match) return match.id;
-        }
-      }
-    }
-    return undefined;
-  };
+  // The phone app guesses the same way (src/lib/item-categories.ts).
+  const inferCategory = (productTitle: string): string | undefined => guessCategory(productTitle, categories);
 
   /**
    * Reads the link and fills in what the owner hasn't. `knownTitle` is a name
@@ -309,6 +289,7 @@ export function AddItemDialog({
       setScrapeIsError(true);
       if (options.fromTap) (currentTitle || guessedTitle ? priceRef : titleRef).current?.focus();
     } else {
+      readGtin.current = { url, gtin: result.gtin ?? null };
       // The tax added to the price shows under the price field.
       let filledAny = false;
       if (result.title && !currentTitle) {
@@ -381,6 +362,7 @@ export function AddItemDialog({
     readNumber.current++;
     lastReadUrl.current = null;
     picturesFrom.current = null;
+    readGtin.current = null;
     setScraping(false);
     setScrapeStatus("");
     setScrapeIsError(false);
@@ -430,6 +412,7 @@ export function AddItemDialog({
         formData.set(field, `http://${val}`);
       }
     }
+    formData.set("gtin", gtinForLink(readGtin.current, formData.get("externalUrl") as string | null));
     const result = await addRegistryItem(registryId, formData);
     if (result?.error) {
       setError(result.error);

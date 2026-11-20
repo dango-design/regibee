@@ -25,6 +25,7 @@ import {
   updateRegistryItem,
 } from "@/lib/actions/registry";
 import { fetchProductDetails } from "@/lib/fetch-product";
+import { gtinForLink, type ReadGtin } from "@/lib/gtin";
 import { estimateTax } from "@/lib/actions/tax";
 import { copyFor } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
@@ -158,6 +159,10 @@ export function EditItemDialog({
   }, [open]);
   // The link last read, so leaving the field doesn't read the same link again.
   const lastReadUrl = useRef<string | null>(null);
+  // A barcode number read here, and its link. It's sent only with that link.
+  // Without one, the server keeps the saved barcode if the link stays
+  // (src/lib/gtin.ts).
+  const readGtin = useRef<ReadGtin | null>(null);
 
   const normalizeUrl = (url: string) => {
     if (!url) return url;
@@ -225,6 +230,7 @@ export function EditItemDialog({
       setScrapeStatus(readLinkMessages.failed(store, Boolean(title.trim())));
       setScrapeIsError(true);
     } else {
+      readGtin.current = { url, gtin: result.gtin ?? null };
       // The tax added to the price shows under the price field.
       let filledAny = false;
       if (result.title && !title) {
@@ -264,6 +270,7 @@ export function EditItemDialog({
         formData.set(field, `http://${val}`);
       }
     }
+    formData.set("gtin", gtinForLink(readGtin.current, formData.get("externalUrl") as string | null));
     const result = await updateRegistryItem(item.id, registryId, formData);
     if (result?.error) {
       setError(result.error);
@@ -283,6 +290,7 @@ export function EditItemDialog({
   const dropRead = () => {
     readNumber.current++;
     lastReadUrl.current = null;
+    readGtin.current = null;
     setScraping(false);
   };
 

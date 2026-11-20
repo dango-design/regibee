@@ -1,4 +1,5 @@
-// Turning a shared or pasted link into a product: name, price and pictures.
+// Turning a shared or pasted link into a product: name, price, pictures and
+// barcode number.
 
 import { detectStore, storeItemKey } from "@shared/retailers";
 
@@ -9,6 +10,8 @@ export interface ReadProduct {
   price: number | null;
   images: string[];
   isProduct: boolean;
+  /** The product's barcode number. The website's server action checks it (src/lib/gtin.ts). */
+  gtin: string | null;
 }
 
 const MAX_TITLE_LENGTH = 300;
@@ -39,7 +42,8 @@ export function parseReadProduct(raw: unknown): ReadProduct | null {
     : [];
   const url = typeof value.url === "string" ? value.url : "";
   if (!title && images.length === 0) return null;
-  return { url, title, price, images, isProduct: value.isProduct === true };
+  const gtin = typeof value.gtin === "string" && /^\d{14}$/.test(value.gtin) ? value.gtin : null;
+  return { url, title, price, images, isProduct: value.isProduct === true, gtin };
 }
 
 const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi;

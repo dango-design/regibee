@@ -2,12 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { EventForm } from "@/components/event-form";
-import {
-  getEventForManager,
-  getEventRegistries,
-  getGiftExchange,
-  getManageableRegistries,
-} from "@/lib/events-server";
+import { loadEventForm } from "@/lib/events-page";
 import { getViewer } from "@/lib/viewer";
 
 export const metadata = { title: "Edit event | Regibee" };
@@ -17,15 +12,10 @@ export default async function EditEventPage({ params }: { params: Promise<{ even
   if (!viewer) redirect("/login");
 
   const { eventId } = await params;
-  const found = await getEventForManager(eventId, viewer.id);
-  if (!found) notFound();
-  const { event } = found;
-
-  const [registries, linked, exchange] = await Promise.all([
-    getManageableRegistries(viewer.id),
-    getEventRegistries(event.id),
-    getGiftExchange(event.id),
-  ]);
+  // The phone app loads the same data (src/lib/events-page.ts).
+  const data = await loadEventForm(eventId);
+  if (!data?.event) notFound();
+  const { event, registries, linkedRegistries, exchange } = data;
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
@@ -43,7 +33,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ even
           eventId={event.id}
           initial={event}
           registries={registries}
-          linkedRegistries={linked.map((r) => ({ id: r.id, title: r.title, honoree: r.honoree }))}
+          linkedRegistries={linkedRegistries}
           exchange={exchange}
         />
       </div>

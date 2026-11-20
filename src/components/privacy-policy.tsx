@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 17, 2026",
+  effectiveDate: "November 19, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -176,7 +176,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 What you put on them: the title, date, description and photo, names such as the parents&apos; or the
                 guest of honor&apos;s, the items with their links, prices, pictures and notes, your categories and your
-                cash funds.
+                cash funds. When a store&apos;s page shows a product&apos;s barcode number (its UPC or EAN), we keep
+                that with the item too.
               </li>
               <li>
                 You choose who can open each registry. New registries start as &ldquo;Anyone with the link&rdquo;:
@@ -263,7 +264,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <H3>Your gift ideas</H3>
             <P>
               If you save gift ideas for other people, we keep what you save: the name you give the person, such as
-              &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note. Only you can see them.
+              &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note, and the product&apos;s
+              barcode number when the store&apos;s page shows it. Only you can see them.
               They aren&apos;t on any registry and have no link, we never show them to the person or anyone else, and
               we don&apos;t email anyone about them.
             </P>
@@ -341,14 +343,15 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
 
           <Section id="app">
             <P>
-              The app is for registry owners. It signs in to the same account and shows the same registries as the
-              website, under the same rules.
+              The app signs in to the same account and does what your account can do on the website, under the
+              same rules: your registries, saved items and gift ideas, events, following and settings. For most
+              screens it asks regibee.com for what to show, and sends your changes there, with your sign-in.
             </P>
             <List>
               <li>
                 <strong className="font-semibold text-primary">Sharing and pasting products.</strong> When you share
-                a product to Regibee or paste a link, the app reads the product&apos;s name, price and pictures on your
-                phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
+                a product to Regibee or paste a link, the app reads the product&apos;s name, price, pictures and
+                barcode number on your phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
                 store sees a visit from your phone just as if you&apos;d opened the page yourself. Nothing goes to
                 Regibee until you save the item.
               </li>
@@ -362,14 +365,20 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Kept on your phone.</strong> Your sign-in session, a
-                copy of your registries so the app opens quickly, and the registry you last added to. Signing out
+                copy of what you last saw, such as your registries and events, so the app opens quickly, and the
+                registry you last added to. Signing out
                 removes the session and the copy. Deleting the app removes everything it kept.
               </li>
               <li>
                 <strong className="font-semibold text-primary">The demo.</strong> &ldquo;Look around first&rdquo;
                 shows a sample registry held in the app&apos;s memory. Nothing you do in it is saved or sent to us.
               </li>
-              <li>The app doesn&apos;t ask for your location, contacts, camera, photos or microphone.</li>
+              <li>
+                <strong className="font-semibold text-primary">Photos.</strong> When you tap Upload photo, your
+                phone&apos;s photo picker opens, and the app only gets the photo you choose. It shrinks it and uploads
+                it as the picture for an item, a registry or an invitation, the same as the website does.
+              </li>
+              <li>The app doesn&apos;t ask for your location, contacts, camera or microphone.</li>
             </List>
           </Section>
 
@@ -389,8 +398,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">The page you&apos;re on, when you ask.</strong> It reads
                 a product page only when you click its toolbar button, use its &ldquo;Add to Regibee&rdquo; menu item
-                or press its shortcut. You can add the product to a registry or save it as a gift idea, which only you
-                can see.
+                or press its shortcut. It reads the product&apos;s name, price, pictures and barcode number. You can add
+                the product to a registry or save it as a gift idea, which only you can see.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Links you paste on regibee.com.</strong> When you paste

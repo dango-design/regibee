@@ -1,7 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { appAccessToken, appUserClient } from "@/lib/app-request";
 
 export async function createClient() {
+  // A request from the phone app (src/app/api/app) acts as the app's user,
+  // from its access token, instead of the website's cookies.
+  const accessToken = appAccessToken();
+  if (accessToken) return appUserClient(accessToken);
+
   const cookieStore = await cookies();
 
   return createServerClient(

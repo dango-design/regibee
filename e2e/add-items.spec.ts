@@ -32,7 +32,7 @@ test.beforeAll(async () => {
     <meta property="og:title" content="Hatch Rest Sound Machine">
     <meta property="og:image" content="${shopUrl}/images/rest.png">
     <script type="application/ld+json">
-      {"@context":"https://schema.org","@type":"Product","name":"Hatch Rest Sound Machine","offers":{"@type":"Offer","price":"59.99","priceCurrency":"USD"}}
+      {"@context":"https://schema.org","@type":"Product","name":"Hatch Rest Sound Machine","gtin12":"012345678905","offers":{"@type":"Offer","price":"59.99","priceCurrency":"USD"}}
     </script>
   </head>
   <body><h1>Hatch Rest Sound Machine</h1></body>
@@ -77,7 +77,7 @@ async function openAddItem(page: Page) {
   return { registry, dialog };
 }
 
-test("a product link fills in the item's name, price and picture", async ({ page }) => {
+test("a product link fills in the item's name, price and picture, and saves its barcode", async ({ page }) => {
   const { registry, dialog } = await openAddItem(page);
   const link = `${shopUrl}/products/hatch-rest-sound-machine`;
 
@@ -93,11 +93,46 @@ test("a product link fills in the item's name, price and picture", async ({ page
 
   const { data: item } = await db
     .from("registry_items")
-    .select("external_url, image_url, price")
+    .select("external_url, image_url, price, gtin")
     .eq("registry_id", registry.id)
     .eq("title", "Hatch Rest Sound Machine")
     .single();
-  expect(item).toEqual({ external_url: link, image_url: `${shopUrl}/images/rest.png`, price: 59.99 });
+  // The page's barcode number is saved as 14 digits (src/lib/gtin.ts).
+  expect(item).toEqual({ external_url: link, image_url: `${shopUrl}/images/rest.png`, price: 59.99, gtin: "00012345678905" });
+});
+
+test("an item's barcode stays only while it keeps the link it came from", async ({ page }) => {
+  const { owner, registry, item } = await createRegistryWithItem();
+  // The item was added from the sound machine's page, which has a barcode.
+  const BARCODE = "00012345678905";
+  await db
+    .from("registry_items")
+    .update({ external_url: `${shopUrl}/products/hatch-rest-sound-machine`, gtin: BARCODE })
+    .eq("id", item.id);
+  const gtinNow = async () =>
+    (await db.from("registry_items").select("gtin").eq("id", item.id).single()).data?.gtin as string | null;
+
+  await signIn(page, owner);
+  await page.goto(`/dashboard/registry/${registry.id}`);
+  const card = page.getByRole("heading", { name: item.title });
+  await waitForReact(card);
+
+  // Changing something else keeps it.
+  await card.click();
+  let dialog = page.getByRole("dialog", { name: "Edit item" });
+  await dialog.getByLabel("Price (optional)").fill("64.99");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+  expect(await gtinNow()).toBe(BARCODE);
+
+  // A link to another product drops it. That store won't let the server
+  // read its page, so there's no new barcode to take its place.
+  await card.click();
+  dialog = page.getByRole("dialog", { name: "Edit item" });
+  await dialog.getByLabel("Product link").fill(`${shopUrl}/products/organic-cotton-swaddle-set`);
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+  expect(await gtinNow()).toBeNull();
 });
 
 test("a store that won't let the server in still leaves the link and a name from it", async ({ page }) => {

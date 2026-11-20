@@ -6,9 +6,12 @@ import { ItemEditor } from "@/components/item-editor";
 import { Button, EmptyState, IconButton, LoadingState } from "@/components/ui";
 import { useRegistries } from "@/lib/data";
 import { rememberRegistry, useDefaultRegistry } from "@/lib/last-registry";
-import { useTheme } from "@/lib/theme";
+import { spacing, useTheme } from "@/lib/theme";
 
-/** Add an item. Opened from a registry, or by a regibee://add?url=… link. */
+/**
+ * Add an item. Opened from a registry, or by a regibee://add?url=… link, where
+ * the owner picks a registry or Gift ideas, like one more list.
+ */
 export default function AddScreen() {
   const params = useLocalSearchParams<{ registryId?: string; url?: string; title?: string }>();
   const theme = useTheme();
@@ -16,6 +19,11 @@ export default function AddScreen() {
   const fallback = useDefaultRegistry(registries.data, params.registryId);
   const [chosen, setChosen] = useState<string | null>(null);
   const registryId = chosen ?? fallback ?? null;
+
+  /** Opens the gift idea form (src/app/idea.tsx) with the link. */
+  function saveAsGiftIdea() {
+    router.replace({ pathname: "/idea", params: { url: params.url, title: params.title } });
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -32,9 +40,14 @@ export default function AddScreen() {
       ) : !registryId ? (
         <EmptyState
           icon="gift"
-          title="Make a registry first"
-          message="Items go on a registry. Create one, then add this."
-          action={<Button title="Create a registry" icon="add" onPress={() => router.replace("/new-registry")} />}
+          title="You don't have a registry yet"
+          message="Save this as a gift idea for someone else, which only you can see. Or create a registry, then add this."
+          action={
+            <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
+              <Button title="Save as a gift idea" icon="sparkles" onPress={saveAsGiftIdea} />
+              <Button title="Create a registry" icon="add" variant="secondary" onPress={() => router.replace("/new-registry")} />
+            </View>
+          }
         />
       ) : (
         <ItemEditor
@@ -43,6 +56,8 @@ export default function AddScreen() {
           // Opened from a registry, the item goes there. Opened from a link, the owner picks.
           registries={params.registryId ? undefined : registries.data}
           onRegistryChange={setChosen}
+          // Only offered when the owner picks the list.
+          onChooseGiftIdea={params.registryId ? undefined : saveAsGiftIdea}
           initialLink={params.url ?? null}
           initialTitle={params.title ?? null}
           onDone={(result) => {

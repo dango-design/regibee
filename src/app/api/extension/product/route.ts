@@ -57,6 +57,9 @@ export async function POST(request: Request) {
       is_open_to_used: item.isOpenToUsed,
       minimum_condition: item.minimumCondition,
       notes: item.notes,
+      // Older versions of the extension don't send one. Leave the column out
+      // then, so this still works before the migration that adds it has run.
+      ...(item.gtin ? { gtin: item.gtin } : {}),
     })
     .select("id, title")
     .single();
