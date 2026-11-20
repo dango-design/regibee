@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DashboardRegistryCard } from "@/components/dashboard-registry-card";
 import { PandaMark } from "@/components/panda-mark";
+import { UpcomingEvents } from "@/components/upcoming-events";
 import { loadDashboard, type DashboardCard } from "@/lib/dashboard-page";
 
 function RegistryCard({
@@ -46,7 +47,15 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { owned: registries, shared: sharedRegistries, giftsThisWeek, followRequestCount, showProfilePrompt, today } = data;
+  const {
+    owned: registries,
+    shared: sharedRegistries,
+    giftsThisWeek,
+    followRequestCount,
+    showProfilePrompt,
+    upcomingEvents,
+    today,
+  } = data;
   const hasNoRegistries = registries.length === 0 && sharedRegistries.length === 0;
 
   return (
@@ -115,6 +124,9 @@ export default async function DashboardPage() {
           </Button>
         </div>
       )}
+
+      {/* The Events tab is easy to miss, so the soonest events show here too. */}
+      <UpcomingEvents events={upcomingEvents} today={today} />
 
       {hasNoRegistries ? (
         <Card className="mt-8">
