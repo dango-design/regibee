@@ -269,6 +269,14 @@ export function summarizeRsvps(
   return summary;
 }
 
+/** "4 going · 1 maybe · 3 no reply", or "No guests yet". Event cards show it. */
+export function rsvpStatsText(summary: Pick<RsvpSummary, "guests" | "attending" | "maybe" | "pending">): string {
+  if (summary.guests === 0) return "No guests yet";
+  return [`${summary.attending} going`, summary.maybe > 0 ? `${summary.maybe} maybe` : null, `${summary.pending} no reply`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 const EMAIL_PATTERN = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]+$/;
 
 export function isEmail(value: string): boolean {

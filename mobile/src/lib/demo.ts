@@ -215,6 +215,8 @@ export const demo = {
         .filter((g) => g.status !== "cancelled" && Date.parse(g.created_at) >= weekAgo).length,
       followRequestCount: 0,
       showProfilePrompt: false,
+      // The app's home doesn't show "Coming up": Events has its own tab in the tab bar.
+      upcomingEvents: [],
       today: day,
     };
   },
