@@ -602,7 +602,9 @@ export function AddItemDialog({
                       if (result?.error) {
                         setCategoryError(result.error);
                       } else if (result?.category) {
-                        const next = [...categories, result.category];
+                        const next = categories.some((c) => c.id === result.category.id)
+                          ? categories
+                          : [...categories, result.category];
                         setCategories(next);
                         setCategoryId(result.category.id);
                         setAddingCategory(false);
