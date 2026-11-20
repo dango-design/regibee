@@ -1,6 +1,22 @@
-// Guessing an item's category from words in its name, for baby lists' starting
-// categories (Nursery & Sleep, Feeding and the rest). The website's add item
-// dialog and the phone app both use it. It has no imports, so the app shares it.
+// A list's categories: guessing an item's category from words in its name,
+// for baby lists' starting categories (Nursery & Sleep, Feeding and the
+// rest), and the rules for a new category's name. The website, the phone app
+// and the browser extension all use it. It has no imports, so they can share it.
+
+export const MAX_CATEGORY_NAME_LENGTH = 100;
+
+/** A new category's name with its spaces tidied, or null when there's no name. */
+export function categoryName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.replace(/\s+/g, " ").trim().slice(0, MAX_CATEGORY_NAME_LENGTH).trim();
+  return name || null;
+}
+
+/** The list's category with this name, whatever its capitals, if it has one. */
+export function categoryNamed<T extends { name: string }>(categories: T[], name: string): T | undefined {
+  const key = categoryName(name)?.toLowerCase();
+  return key ? categories.find((c) => categoryName(c.name)?.toLowerCase() === key) : undefined;
+}
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   "nursery & sleep": ["crib", "bassinet", "blanket", "swaddle", "mattress", "monitor", "mobile", "rocker", "glider", "rocking", "nightlight", "sound machine", "white noise", "sleep sack", "sheet", "pillow", "nursery", "cradle", "moses basket"],
