@@ -136,5 +136,5 @@ The privacy policy URL for both store listings is https://www.regibee.com/privac
 
 - **Store accounts.** The Google Play developer account is set up. iPhone still needs an Apple Developer account. The bundle id is `com.regibee.app` for both, set in `app.config.ts`. The first upload locks it, so change it before then if you want another.
 - **Public release on Play.** A personal Play developer account needs a closed test, with at least 12 testers opted in for 14 days in a row, before Google allows a public release. Internal testing doesn't count. An organization account skips this.
-- **Real phones.** Sharing from Amazon, Target, Walmart and Safari, and reading in the hidden web view, have only been checked in code and in a browser so far. Try each on an iPhone and an Android phone.
+- **Real phones.** On an Android phone, sharing from the Amazon and Target apps opens the add form, and a Target product filled in from the hidden web view (checked 19 Nov 2026 on the testing build, version code 3). Not yet tried on a phone: sharing from Walmart and Safari, whether an Amazon product fills in, and anything on an iPhone.
 - **App group.** The iPhone share extension shares data with the app through `group.com.regibee.app`. EAS sets it up when it manages your credentials.
