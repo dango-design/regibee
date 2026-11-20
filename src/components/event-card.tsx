@@ -25,7 +25,11 @@ export interface EventCardProps {
   headingLevel?: 2 | 3;
 }
 
-/** An event on the host's Events tab. */
+/**
+ * An event on the host's Events tab. A click anywhere on the card opens the
+ * event's page; the View button still opens the invitation (see clickable-card
+ * in globals.css).
+ */
 export function EventCard({
   title,
   eventType,
@@ -53,17 +57,26 @@ export function EventCard({
           .join(" · ");
 
   return (
-    <Card className="gap-0 overflow-hidden py-0">
-      <div className={cx("relative flex h-32 items-center justify-center", imageUrl ? "bg-secondary" : theme.bg)}>
+    <Card className="group/card clickable-card gap-0 overflow-hidden py-0">
+      <div
+        className={cx(
+          "relative flex h-32 items-center justify-center overflow-hidden",
+          imageUrl ? "bg-secondary" : theme.bg,
+        )}
+      >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- uploaded pictures from Supabase Storage
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-full w-full object-cover transition duration-300 ease-out motion-safe:group-hover/card:scale-105"
+          />
         ) : (
           <span className="flex size-12 items-center justify-center rounded-full bg-primary">
             {eventType === "meal_train" ? (
-              <CookingPot aria-hidden="true" className={cx("size-6", theme.icon)} />
+              <CookingPot aria-hidden="true" className={cx("size-6 motion-safe:group-hover/card:animate-hop", theme.icon)} />
             ) : (
-              <PartyPopper aria-hidden="true" className={cx("size-6", theme.icon)} />
+              <PartyPopper aria-hidden="true" className={cx("size-6 motion-safe:group-hover/card:animate-wiggle", theme.icon)} />
             )}
           </span>
         )}
@@ -78,7 +91,7 @@ export function EventCard({
           <p className={cx("text-xs font-semibold tracking-wide uppercase", theme.text)}>{eventTypeLabel(eventType)}</p>
           <div className="mt-1 flex items-start gap-2">
             <Heading className="min-w-0 flex-1 text-lg leading-snug font-semibold text-primary">
-              <Link href={manageHref} className="outline-focus-ring hover:underline focus-visible:outline-2">
+              <Link href={manageHref} className="card-link hover:underline">
                 {title}
               </Link>
             </Heading>
@@ -90,10 +103,10 @@ export function EventCard({
         </div>
         <p className="text-sm text-secondary">{stats}</p>
         <div className="mt-auto flex gap-2">
-          <Button size="sm" className="flex-1" asChild>
+          <Button size="sm" className="card-action flex-1" asChild>
             <Link href={manageHref}>Guests & RSVPs</Link>
           </Button>
-          <Button size="sm" variant="outline" asChild>
+          <Button size="sm" variant="outline" className="card-action" asChild>
             <a href={publicHref} target="_blank" rel="noopener noreferrer" aria-label={`View ${title} invitation`}>
               <span className="inline-flex items-center gap-1.5">
                 <ExternalLink className="size-4 shrink-0" />

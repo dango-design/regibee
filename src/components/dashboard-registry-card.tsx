@@ -64,7 +64,9 @@ function avatarTint(name: string) {
 /**
  * A registry on the owner's dashboard. The band across the top takes the
  * occasion's color and icon (src/lib/occasion-theme.ts) and counts down to the
- * event, so registries are easy to tell apart at a glance.
+ * event, so registries are easy to tell apart at a glance. A click anywhere on
+ * the card opens the registry; the button for its public page still opens that
+ * (see clickable-card in globals.css).
  */
 export function DashboardRegistryCard({
   title,
@@ -88,13 +90,13 @@ export function DashboardRegistryCard({
   const allDone = totalItems > 0 && fulfilledItems >= totalItems;
 
   return (
-    <Card className="gap-0 overflow-hidden py-0">
+    <Card className="group/card clickable-card gap-0 overflow-hidden py-0">
       <div className={cx("flex h-16 items-center justify-between gap-3 px-5", theme.bg)}>
         <span className="flex size-9 items-center justify-center rounded-full bg-primary">
           <RegistryIcon
             registryType={registryType}
             eventType={eventType}
-            className={cx("size-5", theme.icon)}
+            className={cx("size-5 motion-safe:group-hover/card:animate-wiggle", theme.icon)}
           />
         </span>
         {eventDate && (
@@ -109,7 +111,7 @@ export function DashboardRegistryCard({
           <div className="flex items-start justify-between gap-2">
             {/* tracking-normal: the base h2 style tightens letter spacing, but card titles keep the h3 look. */}
             <Heading className="font-display text-lg font-bold leading-snug tracking-normal">
-              <Link href={manageHref} className="hover:underline">
+              <Link href={manageHref} className="card-link hover:underline">
                 {title}
               </Link>
             </Heading>
@@ -144,7 +146,7 @@ export function DashboardRegistryCard({
               </span>
               {allDone ? (
                 <span className="inline-flex items-center gap-1 font-medium text-mint-800">
-                  <PartyPopper aria-hidden="true" className="h-3.5 w-3.5" />
+                  <PartyPopper aria-hidden="true" className="h-3.5 w-3.5 motion-safe:group-hover/card:animate-wiggle" />
                   All done
                 </span>
               ) : (
@@ -185,10 +187,10 @@ export function DashboardRegistryCard({
         )}
 
         <div className="mt-auto flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" asChild>
+          <Button variant="outline" size="sm" className="card-action flex-1" asChild>
             <Link href={manageHref}>Manage</Link>
           </Button>
-          <Button variant="outline" size="sm" className="h-auto" asChild>
+          <Button variant="outline" size="sm" className="card-action h-auto" asChild>
             <Link href={publicHref} target="_blank" aria-label="View public registry (opens in a new tab)">
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>

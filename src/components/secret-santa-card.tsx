@@ -36,7 +36,17 @@ export function SecretSantaCard({
       </div>
 
       {wishlistHref && (
-        <div className="flex flex-col gap-2 rounded-xl bg-primary p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="clickable-card flex flex-col gap-2 rounded-xl bg-primary p-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* A click anywhere here opens the wishlist. The button is the real
+              link for keyboards and screen readers. */}
+          <a
+            href={wishlistHref}
+            target={giftee.wishlistTitle ? undefined : "_blank"}
+            rel="noopener noreferrer"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="card-link absolute inset-0"
+          />
           <div className="min-w-0">
             <p className="font-medium text-primary">{giftee.wishlistTitle ?? `${giftee.name}'s wishlist`}</p>
             {giftee.wishlistTitle && (
@@ -45,7 +55,7 @@ export function SecretSantaCard({
               </p>
             )}
           </div>
-          <Button variant="outline" size="sm" className="shrink-0" asChild>
+          <Button variant="outline" size="sm" className="card-action shrink-0" asChild>
             <a href={wishlistHref} target={giftee.wishlistTitle ? undefined : "_blank"} rel="noopener noreferrer">
               <span className="inline-flex items-center gap-1.5">
                 See the wishlist

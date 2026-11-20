@@ -14,6 +14,7 @@ import { StoreRegistryLine } from "@/components/store-registry-line";
 import { ownerItemStatus } from "@/lib/gifts";
 import type { RetailerRegistry, StoreId } from "@/lib/retailers";
 import { formatPrice } from "@/lib/money";
+import { cx } from "@/lib/utils/cx";
 
 interface ItemCardProps {
   item: {
@@ -72,17 +73,19 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
     setToggling(false);
   };
 
+  // For the owner, a click anywhere on the card opens the item to edit. The
+  // title is the button that does it, so keyboards can too (see
+  // clickable-card in globals.css).
   return (
     <>
     <Card
       ref={cardRef}
-      className={`py-0 gap-0 rounded-2xl ${
-        isOwner ? "cursor-pointer transition hover:shadow-md motion-safe:hover:-translate-y-0.5" : ""
-      } ${
-        item.is_parent_purchased ? "bg-secondary" : ""
-      }`}
+      className={cx(
+        "py-0 gap-0 rounded-2xl",
+        isOwner && "group/card clickable-card",
+        item.is_parent_purchased && "bg-secondary",
+      )}
       style={isHighlighted ? { animation: "highlight-pulse 1.5s ease-in-out 3" } : undefined}
-      onClick={isOwner ? () => setEditOpen(true) : undefined}
     >
       <CardContent className="flex h-full flex-col justify-between gap-4 p-4">
         <div className="flex gap-3">
@@ -112,20 +115,37 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
 
           <div className="flex-1 min-w-0 flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2 min-w-0">
-              <h3 className="text-sm font-medium min-w-0 flex-1 break-words">{item.title}</h3>
+              <h3 className="text-sm font-medium min-w-0 flex-1 break-words">
+                {isOwner ? (
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    onClick={() => setEditOpen(true)}
+                    className="card-link block w-full cursor-pointer text-left hover:underline"
+                  >
+                    {item.title}
+                  </button>
+                ) : (
+                  item.title
+                )}
+              </h3>
               <div className="min-w-0 max-w-[45%] shrink">
                 {status.tag?.kind === "purchased-by-you" && (
                   <Tag variant="purchased-by-you" className="max-w-full overflow-hidden text-ellipsis block">{status.tag.label}</Tag>
                 )}
                 {status.tag && status.tag.kind !== "purchased-by-you" && (
                   hasGifts ? (
-                    <Tag
-                      variant={status.tag.kind}
-                      className="cursor-pointer hover:opacity-80 max-w-full overflow-hidden text-ellipsis block"
-                      onClick={(e) => { e.stopPropagation(); setGiftDetailOpen(true); }}
+                    // Opens who gave it, not the editor.
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      onClick={() => setGiftDetailOpen(true)}
+                      className="card-action block max-w-full cursor-pointer rounded-full outline-focus-ring hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
                     >
-                      {status.tag.label}
-                    </Tag>
+                      <Tag variant={status.tag.kind} className="max-w-full overflow-hidden text-ellipsis block">
+                        {status.tag.label}
+                      </Tag>
+                    </button>
                   ) : (
                     <Tag variant="gifted">{status.tag.label}</Tag>
                   )
@@ -174,10 +194,11 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
         </div>
 
         {isOwner && (
-          <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {item.external_url && (
               <Button
                 variant="outline"
+                className="card-action"
                 onClick={() => window.open(item.external_url!, '_blank', 'noopener,noreferrer')}
               >
                 <span className="inline-flex items-center gap-1.5">
@@ -189,6 +210,7 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
             {!isFulfilled && !item.is_parent_purchased && (
               <Button
                 variant="outline"
+                className="card-action"
                 onClick={handleToggleParentPurchased}
                 disabled={toggling}
               >
@@ -201,6 +223,7 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
             {item.is_parent_purchased && (
               <Button
                 variant="outline"
+                className="card-action"
                 onClick={handleToggleParentPurchased}
                 disabled={toggling}
               >
