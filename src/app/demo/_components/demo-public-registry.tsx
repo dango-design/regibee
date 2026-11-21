@@ -163,6 +163,7 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
               requestAction={demoOk}
               cancelAction={demoOk}
               basePath="/demo"
+              layout={isBaby ? "stacked" : "inline"}
             />
           )
         }

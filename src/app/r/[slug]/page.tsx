@@ -633,6 +633,7 @@ export default async function PublicRegistryPage({
                 name={owner.name}
                 state={ownerRelation.state}
                 returnTo={`/r/${slug}`}
+                layout={isBabyRegistry ? "stacked" : "inline"}
               />
             )
           }
@@ -671,6 +672,7 @@ export default async function PublicRegistryPage({
           {giftProfile && (
             <GiftProfileCard
               className="mx-auto mb-8 max-w-2xl"
+              layout="row"
               profile={giftProfile}
               name={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
               showBirthday={showBirthday}
