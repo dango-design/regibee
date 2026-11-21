@@ -101,7 +101,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <Button variant="outline" size="sm" className="shrink-0" asChild>
-            <Link href="/dashboard/account#follows">Review requests</Link>
+            <Link href="/dashboard/account#follow-requests">Review requests</Link>
           </Button>
         </div>
       )}
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <Button variant="outline" size="sm" className="shrink-0" asChild>
-            <Link href="/dashboard/account">Choose registries</Link>
+            <Link href="/dashboard/account#profile-registries">Choose registries</Link>
           </Button>
         </div>
       )}

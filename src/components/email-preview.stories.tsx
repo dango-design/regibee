@@ -580,8 +580,8 @@ export const FollowRequest: Story = {
     html: followRequestHtml({
       followerName: "Grandma Dorothy",
       profileUrl: "https://regibee.com/u/grandma-dorothy-r4d8w2nb6h",
-      reviewUrl: "https://regibee.com/dashboard/account#follows",
-      settingsUrl: "https://regibee.com/dashboard/account",
+      reviewUrl: "https://regibee.com/dashboard/account#follow-requests",
+      settingsUrl: "https://regibee.com/dashboard/account#profile",
     }),
   },
 };

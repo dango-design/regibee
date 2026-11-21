@@ -118,7 +118,7 @@ export function FollowInviteCard({
             />
           )}
           <Button variant="outline" asChild>
-            <Link href="/dashboard/account">Choose registries</Link>
+            <Link href="/dashboard/account#profile-registries">Choose registries</Link>
           </Button>
           {inviter && (
             <Button variant="outline" asChild>

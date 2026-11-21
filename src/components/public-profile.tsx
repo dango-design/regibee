@@ -94,7 +94,7 @@ export function PublicProfile({
           <p className="mt-3 text-tertiary">No registries to show yet.</p>
           {isOwnProfile && (
             <Link
-              href={`${basePath}/dashboard/account`}
+              href={`${basePath}/dashboard/account#profile-registries`}
               className="mt-2 text-sm font-medium text-brand-600 hover:underline"
             >
               Choose which registries to show

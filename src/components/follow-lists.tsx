@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ACCOUNT_SECTION_SCROLL_MARGIN, AccountSectionTitle } from "@/components/account-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { FollowBackButton, MutualBadge } from "@/components/follow-button";
 import {
   approveFollower,
@@ -52,6 +53,14 @@ function PersonRow({
   );
 }
 
+/** The cards, so an error shows in the one whose button caused it. */
+type CardName = "requests" | "followers" | "following" | "blocked";
+
+/**
+ * The Account page's follow requests, followers, people followed and blocked
+ * people, one card each. Each card is a section of the page, with its own id
+ * that the page's navigation links to.
+ */
 export function FollowLists({
   requests: initialRequests,
   followers: initialFollowers,
@@ -64,6 +73,7 @@ export function FollowLists({
   unblockAction = unblockUser,
   followAction = requestFollow,
   basePath = "",
+  onCountsChange,
 }: {
   requests: FollowPerson[];
   followers: FollowPerson[];
@@ -78,6 +88,8 @@ export function FollowLists({
   followAction?: typeof requestFollow;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
+  /** Hears how many requests are waiting and how many people are blocked, as they change. */
+  onCountsChange?: (counts: { requests: number; blocked: number }) => void;
 }) {
   const [requests, setRequests] = useState(initialRequests);
   const [followers, setFollowers] = useState(initialFollowers);
@@ -87,24 +99,41 @@ export function FollowLists({
   // Follow back button, since that's where the approver is looking.
   const [justApproved, setJustApproved] = useState<FollowPerson[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  // An error shows in the card whose button caused it, next to that button.
+  const [error, setError] = useState<{ card: CardName; message: string } | null>(null);
 
-  const act = async (key: string, action: () => ReturnType<typeof approveFollower>, onDone: () => void) => {
+  useEffect(() => {
+    onCountsChange?.({ requests: requests.length, blocked: blocked.length });
+  }, [onCountsChange, requests.length, blocked.length]);
+
+  const act = async (
+    key: string,
+    card: CardName,
+    action: () => ReturnType<typeof approveFollower>,
+    onDone: () => void,
+  ) => {
     setBusy(key);
-    setError("");
+    setError(null);
     const result = await action();
     if (result?.error) {
-      setError(result.error);
+      setError({ card, message: result.error });
     } else {
       onDone();
     }
     setBusy(null);
   };
 
+  const errorIn = (card: CardName) =>
+    error?.card === card && (
+      <p role="alert" className="text-sm text-error-primary">
+        {error.message}
+      </p>
+    );
+
   const without = <T extends PersonSummary>(list: T[], person: PersonSummary) =>
     list.filter((p) => p.public_id !== person.public_id);
 
-  const block = (person: PersonSummary) => {
+  const block = (person: PersonSummary, card: CardName) => {
     if (
       !confirm(
         `Block ${displayName(person)}? They'll be removed from your followers and the people you follow, and won't be able to ask to follow you.`,
@@ -112,7 +141,7 @@ export function FollowLists({
     ) {
       return;
     }
-    act(`block-${person.public_id}`, () => blockAction(person.public_id), () => {
+    act(`block-${person.public_id}`, card, () => blockAction(person.public_id), () => {
       setRequests((list) => without(list, person));
       setJustApproved((list) => without(list, person));
       setFollowers((list) => without(list, person));
@@ -147,81 +176,87 @@ export function FollowLists({
     />
   );
 
-  const blockButton = (person: PersonSummary) => (
-    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => block(person)}>
+  const blockButton = (person: PersonSummary, card: CardName) => (
+    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => block(person, card)}>
       Block
     </Button>
   );
 
   return (
     <>
-      {requests.length + justApproved.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Follow requests</CardTitle>
-            <CardDescription>
-              People you approve can see the private registries on your profile, and your birthday.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {justApproved.map((person) => (
-              <PersonRow
-                basePath={basePath}
-                key={person.public_id}
-                person={person}
-                mutual={isMutual(person)}
-                actions={
-                  <>
-                    <span className="self-center text-sm text-tertiary">Approved</span>
-                    {!isMutual(person) && followBack(person)}
-                  </>
-                }
-              />
-            ))}
-            {requests.map((person) => (
-              <PersonRow
-                basePath={basePath}
-                key={person.public_id}
-                person={person}
-                actions={
-                  <>
-                    <Button
-                      size="sm"
-                      disabled={busy !== null}
-                      onClick={() =>
-                        act(`approve-${person.public_id}`, () => approveAction(person.public_id), () => {
-                          setRequests(without(requests, person));
-                          setJustApproved((list) => [...list, { ...person, status: "approved" }]);
-                          setFollowers([{ ...person, status: "approved" }, ...followers]);
-                        })
-                      }
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy !== null}
-                      onClick={() =>
-                        act(`decline-${person.public_id}`, () => removeAction(person.public_id), () =>
-                          setRequests(without(requests, person)),
-                        )
-                      }
-                    >
-                      Decline
-                    </Button>
-                    {blockButton(person)}
-                  </>
-                }
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
+      {/* Always here, even with nothing waiting: links to follow requests
+          land on this card, and it says so when there are none. */}
+      <Card id="follow-requests" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
         <CardHeader>
-          <CardTitle>Followers</CardTitle>
+          <AccountSectionTitle sectionId="follow-requests">Follow requests</AccountSectionTitle>
+          <CardDescription>
+            People you approve can see the private registries on your profile, and your birthday.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {requests.length + justApproved.length === 0 && (
+            <p className="text-sm text-tertiary">
+              No follow requests right now. When someone asks to follow you, you can approve or decline them here.
+            </p>
+          )}
+          {justApproved.map((person) => (
+            <PersonRow
+              basePath={basePath}
+              key={person.public_id}
+              person={person}
+              mutual={isMutual(person)}
+              actions={
+                <>
+                  <span className="self-center text-sm text-tertiary">Approved</span>
+                  {!isMutual(person) && followBack(person)}
+                </>
+              }
+            />
+          ))}
+          {requests.map((person) => (
+            <PersonRow
+              basePath={basePath}
+              key={person.public_id}
+              person={person}
+              actions={
+                <>
+                  <Button
+                    size="sm"
+                    disabled={busy !== null}
+                    onClick={() =>
+                      act(`approve-${person.public_id}`, "requests", () => approveAction(person.public_id), () => {
+                        setRequests(without(requests, person));
+                        setJustApproved((list) => [...list, { ...person, status: "approved" }]);
+                        setFollowers([{ ...person, status: "approved" }, ...followers]);
+                      })
+                    }
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy !== null}
+                    onClick={() =>
+                      act(`decline-${person.public_id}`, "requests", () => removeAction(person.public_id), () =>
+                        setRequests(without(requests, person)),
+                      )
+                    }
+                  >
+                    Decline
+                  </Button>
+                  {blockButton(person, "requests")}
+                </>
+              }
+            />
+          ))}
+          {errorIn("requests")}
+        </CardContent>
+      </Card>
+
+      <Card id="followers" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+        <CardHeader>
+          <AccountSectionTitle sectionId="followers">Followers</AccountSectionTitle>
           <CardDescription>
             They can see your private registries and your birthday. Follow them back to see theirs.
             Mutual means you follow each other.
@@ -254,7 +289,7 @@ export function FollowLists({
                         ) {
                           return;
                         }
-                        act(`remove-${person.public_id}`, () => removeAction(person.public_id), () => {
+                        act(`remove-${person.public_id}`, "followers", () => removeAction(person.public_id), () => {
                           setFollowers(without(followers, person));
                           setJustApproved((list) => without(list, person));
                         });
@@ -262,18 +297,19 @@ export function FollowLists({
                     >
                       Remove
                     </Button>
-                    {blockButton(person)}
+                    {blockButton(person, "followers")}
                   </>
                 }
               />
             ))
           )}
+          {errorIn("followers")}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="following" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
         <CardHeader>
-          <CardTitle>Following</CardTitle>
+          <AccountSectionTitle sectionId="following">Following</AccountSectionTitle>
           <CardDescription>
             People whose registries you follow. See them all on your{" "}
             <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
@@ -313,7 +349,7 @@ export function FollowLists({
                             ? `Withdraw your request to follow ${displayName(person)}?`
                             : `Unfollow ${displayName(person)}? You'll stop seeing their private registries.`;
                         if (!confirm(question)) return;
-                        act(`cancel-${person.public_id}`, () => cancelAction(person.public_id), () =>
+                        act(`cancel-${person.public_id}`, "following", () => cancelAction(person.public_id), () =>
                           setFollowing(without(following, person)),
                         );
                       }}
@@ -325,13 +361,14 @@ export function FollowLists({
               />
             ))
           )}
+          {errorIn("following")}
         </CardContent>
       </Card>
 
       {blocked.length > 0 && (
-        <Card>
+        <Card id="blocked" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
           <CardHeader>
-            <CardTitle>Blocked</CardTitle>
+            <AccountSectionTitle sectionId="blocked">Blocked</AccountSectionTitle>
             <CardDescription>
               They can&apos;t ask to follow you or find you in search, and your profile is hidden from
               them while they&apos;re signed in.
@@ -349,7 +386,7 @@ export function FollowLists({
                     variant="outline"
                     disabled={busy !== null}
                     onClick={() =>
-                      act(`unblock-${person.public_id}`, () => unblockAction(person.public_id), () =>
+                      act(`unblock-${person.public_id}`, "blocked", () => unblockAction(person.public_id), () =>
                         setBlocked(without(blocked, person)),
                       )
                     }
@@ -359,11 +396,10 @@ export function FollowLists({
                 }
               />
             ))}
+            {errorIn("blocked")}
           </CardContent>
         </Card>
       )}
-
-      {error && <p className="text-sm text-error-primary">{error}</p>}
     </>
   );
 }

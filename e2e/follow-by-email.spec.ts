@@ -67,9 +67,9 @@ test("someone types a friend's exact email, asks to follow, and the friend appro
   await expect(result).toContainText("Waiting for approval");
   await expect.poll(() => followStatus(sid.id, fran.id)).toBe("pending");
 
-  // Fran gets an email about it, with a link to her Account page.
+  // Fran gets an email about it, with a link to the follow requests on her Account page.
   const email = await waitForEmail(fran.email, "Sid Searcher wants to follow you on Regibee");
-  expect(linkIn(email, /\/dashboard\/account#follows$/)).toBeTruthy();
+  const reviewLink = linkIn(email, /\/dashboard\/account#follow-requests$/);
 
   // Looking her up again shows the request still waiting.
   await page.reload();
@@ -80,10 +80,10 @@ test("someone types a friend's exact email, asks to follow, and the friend appro
   const franContext = await browser.newContext();
   const franPage = await franContext.newPage();
   await signIn(franPage, fran);
-  await franPage.goto("/dashboard/account#follows");
-  const requests = franPage.locator("#follows").filter({ hasText: "Follow requests" });
+  await franPage.goto(reviewLink);
+  const requests = franPage.locator("#follow-requests");
   await expect(requests).toContainText("Sid Searcher");
-  await franPage.getByRole("button", { name: "Approve" }).click();
+  await requests.getByRole("button", { name: "Approve" }).click();
   await expect.poll(() => followStatus(sid.id, fran.id)).toBe("approved");
   await franContext.close();
 
