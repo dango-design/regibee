@@ -34,6 +34,7 @@ import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-eve
 import { findSharedLink } from "@/lib/shared-link";
 import { getSessionUser } from "@/lib/viewer";
 import { loadListPage, type ListPageItem } from "@/lib/list-page";
+import { registrySettingsHref } from "@/lib/registry-settings-sections";
 
 export default async function RegistryManagePage({
   params,
@@ -81,7 +82,8 @@ export default async function RegistryManagePage({
   const allCategories = data.categories;
   const allItems = data.items;
   const otherListsByItem = new Map(allItems.map((item) => [item.id, item.otherLists.length > 0 ? item.otherLists : undefined]));
-  const settingsHref = `/dashboard/registry/${registryId}/settings`;
+  // Under hidden reservations, "Change this in settings" goes to that setting.
+  const settingsHref = registrySettingsHref(registryId, "reservations");
   const copy = copyForRegistry(registry);
 
   // Build purchase lookup maps for item/fund cards

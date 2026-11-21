@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { getRegistryGroupChoices, setRegistryGroups } from "@/lib/actions/groups";
 import { memberCountLabel, type GroupSummary } from "@/lib/groups";
@@ -74,9 +75,10 @@ export function RegistryGroupsCard({
   };
 
   return (
-    <Card>
+    // A section of the registry's settings page, which links to it as #groups.
+    <Card id="groups" className={SECTION_SCROLL_MARGIN}>
       <CardHeader>
-        <CardTitle>Share with a group</CardTitle>
+        <SectionTitle sectionId="groups">Share with a group</SectionTitle>
         <CardDescription>
           People in these groups who have a Regibee account see this list on their Following page, even when it&apos;s
           private. Anyone with the link can still open it.

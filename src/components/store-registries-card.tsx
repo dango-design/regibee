@@ -5,7 +5,8 @@ import { ChevronDown, Info, Link as LinkIcon, Package, Percent, RotateCcw } from
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { Label } from "@/components/base/input/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { updateRetailerRegistries } from "@/lib/actions/registry";
 import {
   getStore,
@@ -93,9 +94,11 @@ export function StoreRegistriesCard({
   };
 
   return (
-    <Card>
+    // A section of the registry's settings page. The add-item dialog and the
+    // store perks card link to it as #store-registries.
+    <Card id="store-registries" className={SECTION_SCROLL_MARGIN}>
       <CardHeader>
-        <CardTitle>Your store registries</CardTitle>
+        <SectionTitle sectionId="store-registries">Your store registries</SectionTitle>
         <CardDescription>
           Made a registry at Amazon, Target or another store? Link it here. When a
           guest buys through your registry link, the store counts the gift toward

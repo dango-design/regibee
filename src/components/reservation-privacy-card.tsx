@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { updateReservationPrivacy } from "@/lib/actions/registry";
 import type { ReservationPrivacy } from "@/lib/gifts";
@@ -61,9 +62,10 @@ export function ReservationPrivacyCard({
   const ownerHides = privacy.hide_reservations === true && !privacy.for_child;
 
   return (
-    <Card>
+    // A section of the registry's settings page, which links to it as #reservations.
+    <Card id="reservations" className={SECTION_SCROLL_MARGIN}>
       <CardHeader>
-        <CardTitle>What&apos;s been reserved</CardTitle>
+        <SectionTitle sectionId="reservations">What&apos;s been reserved</SectionTitle>
         <CardDescription>
           {isOwner
             ? "Choose whether you see what people reserve and pledge on this list."
