@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 19, 2026",
+  effectiveDate: "November 20, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -151,9 +151,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               Profiles are hidden from search engines.
             </P>
             <P>
-              Signed-in people can find you on Regibee by name, or by typing your whole email address, only if you
-              turn that on. It&apos;s the &ldquo;Let friends find me&rdquo; box when you sign up, and two settings
-              on your Account page. Search never shows your email address.
+              Signed-in people can find you on Regibee by name if you turn that on, and by typing your whole email
+              address unless you turn that off. The &ldquo;Let friends find me&rdquo; box when you sign up covers
+              both, and each has its own setting on your Account page. Search never shows your email address.
             </P>
 
             <H3>Your gift profile</H3>
@@ -250,6 +250,12 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 You can ask the person an event is for to make a gift list. We email them a link, and keep their name
                 and email address with the event.
               </li>
+              <li>
+                You can add people who approved your follow to your guest list without typing their email address.
+                We use the email address on their Regibee account to send their invitation and keep it with the
+                event. A host sees it only if they and that guest follow each other. Otherwise it shows as private,
+                on the guest list and on any group saved from it.
+              </li>
             </List>
 
             <H3>Your groups</H3>
@@ -276,6 +282,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               for people by name or email, we keep the time of each search, not what you typed, so we can limit
               how many searches one account makes. If you send a follow invite to an email address, we email it and keep
               only a scrambled form of the address, so the same address can&apos;t be invited again and again.
+              Someone whose follow you&apos;ve approved can add you to an event&apos;s guest list, and we send the
+              invitation to your account&apos;s email address. They see that address only if you follow each other.
             </P>
           </Section>
 

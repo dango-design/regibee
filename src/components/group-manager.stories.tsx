@@ -93,3 +93,14 @@ export const ExchangeUnderway: Story = {
     ],
   },
 };
+
+/**
+ * Saved from a guest list with someone invited from a follow. Uncle Oz doesn't
+ * follow the owner back, so his email stays private here too
+ * (src/lib/guest-emails.ts).
+ */
+export const PrivateEmail: Story = {
+  args: {
+    members: [...members, { id: "m5", name: "Uncle Oz", email: null, email_hidden: true }],
+  },
+};

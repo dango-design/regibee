@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check } from "lucide-react";
+import {
+  ACCOUNT_SECTION_SCROLL_MARGIN,
+  AccountNav,
+  AccountSectionTitle,
+  type AccountSection,
+} from "@/components/account-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -18,6 +24,7 @@ import type { GiftProfile } from "@/lib/gift-profile";
 import { occasionLabel } from "@/lib/registry-copy";
 import { LIST_ACCESS, listVisibility } from "@/lib/list-access";
 import { profilePath } from "@/lib/profile-link";
+import { cx } from "@/lib/utils/cx";
 import type { FollowPerson, PersonSummary } from "@/lib/follows";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 
@@ -140,6 +147,14 @@ export function AccountSettings({
   const [discoverable, setDiscoverable] = useState(Boolean(profile.discoverable));
   const [findableByEmail, setFindableByEmail] = useState(Boolean(profile.findable_by_email));
   const [emailRequests, setEmailRequests] = useState(profile.email_follow_requests ?? true);
+  // Follow requests waiting and people blocked, as they change on the page.
+  const [followCounts, setFollowCounts] = useState({
+    requests: follows?.requests.length ?? 0,
+    blocked: follows?.blocked?.length ?? 0,
+  });
+  const onFollowCountsChange = useCallback((counts: { requests: number; blocked: number }) => {
+    setFollowCounts((old) => (old.requests === counts.requests && old.blocked === counts.blocked ? old : counts));
+  }, []);
 
   // The link has the name in it, so it follows the saved name.
   const link = `${basePath}${profilePath({ public_id: profile.public_id, full_name: savedName })}`;
@@ -159,8 +174,26 @@ export function AccountSettings({
     setSaving(false);
   };
 
+  // The page's sections, in order. Their ids are on the cards below, and
+  // links from elsewhere use them, like /dashboard/account#follow-requests.
+  const sections: AccountSection[] = [
+    { id: "profile", label: "Your profile" },
+    ...(giftProfile ? [{ id: "gift-profile", label: "Gift profile" }] : []),
+    ...(follows
+      ? [
+          { id: "follow-requests", label: "Follow requests", waiting: followCounts.requests },
+          { id: "followers", label: "Followers" },
+          { id: "following", label: "Following" },
+          ...(followCounts.blocked > 0 ? [{ id: "blocked", label: "Blocked" }] : []),
+        ]
+      : []),
+    ...(birthdayEmails !== undefined ? [{ id: "birthday-emails", label: "Birthday emails" }] : []),
+    { id: "profile-registries", label: "Registries on your profile" },
+    { id: "delete-account", label: "Delete account" },
+  ];
+
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
+    <div className="container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl">
       <div className="flex items-center gap-2 mb-6">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`${basePath}/dashboard`} aria-label="Back to dashboard">
@@ -170,140 +203,147 @@ export function AccountSettings({
         <h1 className="text-2xl font-bold">Account</h1>
       </div>
 
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your profile</CardTitle>
-            <CardDescription>
-              One link to all the registries you choose below. Anyone with the link can see your name
-              and those registries.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* onSubmit, not action: React resets a form after its action runs, which
-                would put the checkboxes back. */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSave(new FormData(e.currentTarget));
-              }}
-              className="space-y-4"
-            >
-              <Input
-                label="Name"
-                name="fullName"
-                autoComplete="name"
-                defaultValue={profile.full_name ?? ""}
-                hint="Shown on your profile, and to people you ask to follow"
-                isRequired
-              />
-              <input type="hidden" name="discoverable" value={discoverable ? "true" : "false"} />
-              <Checkbox
-                isSelected={discoverable}
-                onChange={setDiscoverable}
-                label="Show me in people search"
-                hint="People signed in to Regibee can find you by name."
-              />
-              <input type="hidden" name="findableByEmail" value={findableByEmail ? "true" : "false"} />
-              <Checkbox
-                isSelected={findableByEmail}
-                onChange={setFindableByEmail}
-                label="Let people find me by my email address"
-                hint="Only someone who types your whole email address finds you this way. Your email is never shown."
-              />
-              <input type="hidden" name="emailFollowRequests" value={emailRequests ? "true" : "false"} />
-              <Checkbox
-                isSelected={emailRequests}
-                onChange={setEmailRequests}
-                label="Email me when someone asks to follow me"
-                hint="Includes invites sent to your email address. At most one email per person per day."
-              />
-              {error && <p className="text-sm text-error-primary">{error}</p>}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Saving..." : "Save"}
-                </Button>
-                {saved && (
-                  <span className="inline-flex items-center gap-1 text-sm text-tertiary">
-                    <Check className="h-4 w-4" />
-                    Saved
-                  </span>
-                )}
-              </div>
-            </form>
+      <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <AccountNav sections={sections} />
 
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-secondary pt-4">
-              <CopyLinkButton path={link} />
-              <Button variant="outline" asChild>
-                <Link href={link}>View profile</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {giftProfile && (
-          <Card id="gift-profile" className="scroll-mt-20">
+        <div className="space-y-6">
+          <Card id="profile" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
             <CardHeader>
-              <CardTitle>Gift profile</CardTitle>
+              <AccountSectionTitle sectionId="profile">Your profile</AccountSectionTitle>
               <CardDescription>
-                Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wish lists
-                and your profile, so anyone with those links sees them.
+                One link to all the registries you choose below. Anyone with the link can see your name
+                and those registries.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <GiftProfileForm initial={giftProfile} onSave={giftProfileAction} />
+              {/* onSubmit, not action: React resets a form after its action runs, which
+                  would put the checkboxes back. */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSave(new FormData(e.currentTarget));
+                }}
+                className="space-y-4"
+              >
+                <Input
+                  label="Name"
+                  name="fullName"
+                  autoComplete="name"
+                  defaultValue={profile.full_name ?? ""}
+                  hint="Shown on your profile, and to people you ask to follow"
+                  isRequired
+                />
+                <input type="hidden" name="discoverable" value={discoverable ? "true" : "false"} />
+                <Checkbox
+                  isSelected={discoverable}
+                  onChange={setDiscoverable}
+                  label="Show me in people search"
+                  hint="People signed in to Regibee can find you by name."
+                />
+                <input type="hidden" name="findableByEmail" value={findableByEmail ? "true" : "false"} />
+                <Checkbox
+                  isSelected={findableByEmail}
+                  onChange={setFindableByEmail}
+                  label="Let people find me by my email address"
+                  hint="Only someone who types your whole email address finds you this way. Your email is never shown."
+                />
+                <input type="hidden" name="emailFollowRequests" value={emailRequests ? "true" : "false"} />
+                <Checkbox
+                  isSelected={emailRequests}
+                  onChange={setEmailRequests}
+                  label="Email me when someone asks to follow me"
+                  hint="Includes invites sent to your email address. At most one email per person per day."
+                />
+                {error && <p className="text-sm text-error-primary">{error}</p>}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Saving..." : "Save"}
+                  </Button>
+                  {saved && (
+                    <span className="inline-flex items-center gap-1 text-sm text-tertiary">
+                      <Check className="h-4 w-4" />
+                      Saved
+                    </span>
+                  )}
+                </div>
+              </form>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-secondary pt-4">
+                <CopyLinkButton path={link} />
+                <Button variant="outline" asChild>
+                  <Link href={link}>View profile</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Requests come first: the dashboard notice links straight here. */}
-        {follows && (
-          <div id="follows" className="scroll-mt-20 space-y-6">
-            <FollowLists
-              requests={follows.requests}
-              followers={follows.followers}
-              following={follows.following}
-              blocked={follows.blocked}
-              basePath={basePath}
-              {...followActions}
-            />
-          </div>
-        )}
+          {giftProfile && (
+            <Card id="gift-profile" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+              <CardHeader>
+                <AccountSectionTitle sectionId="gift-profile">Gift profile</AccountSectionTitle>
+                <CardDescription>
+                  Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wish lists
+                  and your profile, so anyone with those links sees them.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GiftProfileForm initial={giftProfile} onSave={giftProfileAction} />
+              </CardContent>
+            </Card>
+          )}
 
-        {birthdayEmails !== undefined && (
-          <Card id="birthday-emails" className="scroll-mt-20">
+          {/* Follow requests, followers, following and blocked, each its own
+              section. #follows is what links used before the sections had
+              their own ids, and emails already sent still use it. */}
+          {follows && (
+            <div id="follows" className={cx("space-y-6", ACCOUNT_SECTION_SCROLL_MARGIN)}>
+              <FollowLists
+                requests={follows.requests}
+                followers={follows.followers}
+                following={follows.following}
+                blocked={follows.blocked}
+                basePath={basePath}
+                onCountsChange={onFollowCountsChange}
+                {...followActions}
+              />
+            </div>
+          )}
+
+          {birthdayEmails !== undefined && (
+            <Card id="birthday-emails" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+              <CardHeader>
+                <AccountSectionTitle sectionId="birthday-emails">Birthday emails</AccountSectionTitle>
+              </CardHeader>
+              <CardContent>
+                <BirthdayEmailsSetting initial={birthdayEmails} action={birthdayEmailsAction} />
+              </CardContent>
+            </Card>
+          )}
+
+          <Card id="profile-registries" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
             <CardHeader>
-              <CardTitle>Birthday emails</CardTitle>
+              <AccountSectionTitle sectionId="profile-registries">Registries on your profile</AccountSectionTitle>
+              <CardDescription>
+                Only the ones you check appear. Anyone with your link sees the public ones;
+                private ones only show to followers you approve. Registries you help manage for
+                someone else aren&apos;t included.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <BirthdayEmailsSetting initial={birthdayEmails} action={birthdayEmailsAction} />
+              {registries.length === 0 ? (
+                <p className="text-sm text-tertiary">You don&apos;t own any registries yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {registries.map((registry) => (
+                    <RegistryListingRow key={registry.id} registry={registry} action={listAction} />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Registries on your profile</CardTitle>
-            <CardDescription>
-              Only the ones you check appear. Anyone with your link sees the public ones;
-              private ones only show to followers you approve. Registries you help manage for
-              someone else aren&apos;t included.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {registries.length === 0 ? (
-              <p className="text-sm text-tertiary">You don&apos;t own any registries yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {registries.map((registry) => (
-                  <RegistryListingRow key={registry.id} registry={registry} action={listAction} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <DeleteAccountCard {...deleteAccountActions} />
+          <DeleteAccountCard {...deleteAccountActions} />
+        </div>
       </div>
     </div>
   );

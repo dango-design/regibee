@@ -13,7 +13,7 @@
 /**
  * How many emails to typed-in addresses an account can send in 24 hours:
  * invitations, reminders, messages to guests, change notices, name draws,
- * co-host and list-manager invites, and list requests.
+ * co-host and list-manager invites, list requests, and invites to follow.
  */
 export const DAILY_EMAILS = { basic: 50, star: 500 } as const;
 
@@ -55,7 +55,8 @@ export type EmailKind =
   | "exchange"
   | "co_host_invite"
   | "manager_invite"
-  | "list_request";
+  | "list_request"
+  | "follow_invite";
 
 const NONE_LEFT = "You've reached today's limit for emails. Try again tomorrow.";
 

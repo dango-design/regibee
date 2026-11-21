@@ -54,8 +54,9 @@ import {
 import { drawNames, orderedPair, type Pair } from "@/lib/gift-exchange";
 import { settingsAfterJoiningExchange } from "@/lib/gifts";
 import { newPeople, personKey, type Person } from "@/lib/groups";
-import { getGroupForOwner, getGroupMembers, listGroupEvents } from "@/lib/groups-server";
-import { createGroup } from "@/lib/actions/groups";
+import { createGroupFor, getGroupForOwner, getGroupMembers, listGroupEvents } from "@/lib/groups-server";
+import { listFollowedAccounts } from "@/lib/follows";
+import { displayName } from "@/lib/profile-link";
 import { getSessionUser } from "@/lib/viewer";
 import { confirmRsvpToGuest, notifyHostOfRsvp, sendEventChangeEmails, sendEventInvitations } from "@/lib/email";
 import {
@@ -102,6 +103,21 @@ function revalidateEvent(event: Pick<EventDetails, "id" | "slug">) {
   revalidatePath("/dashboard/events");
   revalidatePath(`/dashboard/events/${event.id}`);
   revalidatePath(`/e/${event.slug}`);
+}
+
+/**
+ * A new guest row. The account link comes along only when there is one, for
+ * someone invited from a follow (src/lib/guest-emails.ts), so the email
+ * stays private on the copy too.
+ */
+function guestRow(eventId: string, person: Person) {
+  return {
+    event_id: eventId,
+    name: person.name,
+    email: person.email,
+    token: generateGuestToken(),
+    ...(person.profile_id ? { profile_id: person.profile_id } : {}),
+  };
 }
 
 // ── Reading the event form ───────────────────────────────────
@@ -667,6 +683,62 @@ export async function addEventGuests(
   return { error: null, added: toAdd.length, alreadyListed };
 }
 
+/**
+ * "Invite people you follow": adds people who approved the host's follow to
+ * the guest list, with the email on each one's account, so the host doesn't
+ * type it. The host sees that email only when the two follow each other
+ * (src/lib/guest-emails.ts). Skips anyone already on the list. Like adding
+ * guests, it sends nothing: "Send invitations" does.
+ */
+export async function inviteFollowedPeople(
+  eventId: string,
+  publicIds: string[],
+): Promise<Result<{ added: number; alreadyListed: number }>> {
+  const access = await requireEventManager(eventId);
+  if (access.error !== null) return { error: access.error };
+  const wanted = new Set(
+    (Array.isArray(publicIds) ? publicIds : []).filter((id) => typeof id === "string").slice(0, MAX_GUESTS_PER_EVENT),
+  );
+  if (wanted.size === 0) return { error: "Choose someone to invite." };
+
+  // Only people who approved this host's follow, whatever the browser sent.
+  const people = (await listFollowedAccounts(access.user.id)).filter((person) => wanted.has(person.public_id));
+  if (people.length === 0) return { error: "You can only invite people you follow." };
+
+  const [existing, accounts] = await Promise.all([
+    getEventGuests(eventId),
+    Promise.all(people.map((person) => supabaseAdmin.auth.admin.getUserById(person.id))),
+  ]);
+  const knownEmails = new Set(existing.map((g) => g.email?.toLowerCase()).filter(Boolean));
+  const knownAccounts = new Set(existing.map((g) => g.profile_id).filter(Boolean));
+  const toAdd: Person[] = [];
+  let alreadyListed = 0;
+  people.forEach((person, index) => {
+    const email = accounts[index].data.user?.email?.trim().toLowerCase() || null;
+    if (knownAccounts.has(person.id) || (email && knownEmails.has(email))) {
+      alreadyListed += 1;
+      return;
+    }
+    knownAccounts.add(person.id);
+    if (email) knownEmails.add(email);
+    toAdd.push({ name: displayName(person).slice(0, 100), email, profile_id: person.id });
+  });
+
+  if (existing.length + toAdd.length > MAX_GUESTS_PER_EVENT) {
+    return { error: `An event can have up to ${MAX_GUESTS_PER_EVENT} guests.` };
+  }
+  if (toAdd.length > 0) {
+    const { error } = await supabaseAdmin.from("event_guests").insert(toAdd.map((g) => guestRow(eventId, g)));
+    if (error) {
+      console.error("[events] Failed to invite people they follow:", error);
+      return { error: "Those people weren't added. Try again." };
+    }
+  }
+
+  revalidateEvent(access.event);
+  return { error: null, added: toAdd.length, alreadyListed };
+}
+
 export async function updateEventGuest(
   eventId: string,
   guestId: string,
@@ -678,11 +750,21 @@ export async function updateEventGuest(
   const name = changes.name.trim().slice(0, 100);
   const email = changes.email?.trim().toLowerCase() || null;
   if (!name) return { error: "Add a name." };
-  if (email && !isEmail(email)) return { error: "That email address doesn't look right." };
+
+  // An email from the guest's account is theirs: the host can rename them,
+  // but not change or see it (src/lib/guest-emails.ts).
+  const { data: current } = await supabaseAdmin
+    .from("event_guests")
+    .select("profile_id")
+    .eq("id", guestId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  const fromAccount = Boolean((current as { profile_id?: string | null } | null)?.profile_id);
+  if (!fromAccount && email && !isEmail(email)) return { error: "That email address doesn't look right." };
 
   const { error } = await supabaseAdmin
     .from("event_guests")
-    .update({ name, email })
+    .update(fromAccount ? { name } : { name, email })
     .eq("id", guestId)
     .eq("event_id", eventId);
   if (error) {
@@ -1340,17 +1422,20 @@ export async function copyGuestsFromEvent(
   const existing = await getEventGuests(eventId);
   const emails = new Set(existing.map((g) => g.email?.toLowerCase()).filter(Boolean));
   const names = new Set(existing.filter((g) => !g.email).map((g) => g.name.toLowerCase()));
+  const accounts = new Set(existing.map((g) => g.profile_id).filter(Boolean));
 
   const toAdd = source.filter((g) =>
-    g.email ? !emails.has(g.email.toLowerCase()) : !names.has(g.name.toLowerCase()),
+    g.profile_id && accounts.has(g.profile_id)
+      ? false
+      : g.email
+        ? !emails.has(g.email.toLowerCase())
+        : !names.has(g.name.toLowerCase()),
   );
   if (existing.length + toAdd.length > MAX_GUESTS_PER_EVENT) {
     return { error: `An event can have up to ${MAX_GUESTS_PER_EVENT} guests.` };
   }
   if (toAdd.length > 0) {
-    const { error } = await supabaseAdmin.from("event_guests").insert(
-      toAdd.map((g) => ({ event_id: eventId, name: g.name, email: g.email, token: generateGuestToken() })),
-    );
+    const { error } = await supabaseAdmin.from("event_guests").insert(toAdd.map((g) => guestRow(eventId, g)));
     if (error) return { error: "The guests weren't added. Try again." };
   }
   revalidateEvent(access.event);
@@ -1427,12 +1512,14 @@ async function copyEventForNextYear(
 
   // The new guest ids for the old guests, to carry exclusions over. Copied
   // guests match by position. A new list matches by email, or by name.
-  const people = opts.guests ? newPeople([], opts.guests) : oldGuests.map((g) => ({ name: g.name, email: g.email }));
+  const people: Person[] = opts.guests
+    ? newPeople([], opts.guests)
+    : oldGuests.map((g) => ({ name: g.name, email: g.email, profile_id: g.profile_id }));
   const newIds = new Map<string, string>();
   if (people.length > 0) {
     const { data: inserted } = await supabaseAdmin
       .from("event_guests")
-      .insert(people.map((g) => ({ event_id: copy.id, name: g.name, email: g.email, token: generateGuestToken() })))
+      .insert(people.map((g) => guestRow(copy.id, g)))
       .select("id, name, email");
     const rows = (inserted || []) as { id: string; name: string; email: string | null }[];
     if (opts.guests) {
@@ -1510,11 +1597,15 @@ export async function saveGuestListAsGroup(eventId: string, name: string): Promi
   if (access.error !== null) return { error: access.error };
   const guests = await getEventGuests(eventId);
   if (guests.length === 0) return { error: "Add guests first." };
-  const created = await createGroup(
+  // The group keeps each guest's account link, so an email the host can't
+  // see on the guest list stays private on the group's page too.
+  const created = await createGroupFor(
+    access.user.id,
     name,
-    guests.map((g) => ({ name: g.name, email: g.email })),
+    guests.map((g) => ({ name: g.name, email: g.email, profile_id: g.profile_id })),
   );
   if (created.error !== null) return { error: created.error };
+  revalidatePath(`/dashboard/groups/${created.id}`);
   // The event remembers the group only when its owner made it, so a
   // co-host's group never gets a hold on someone else's event.
   if (!access.event.group_id && access.event.owner_id === access.user.id) {
@@ -1540,9 +1631,7 @@ export async function inviteGroupToEvent(
     return { error: `An event can have up to ${MAX_GUESTS_PER_EVENT} guests.` };
   }
   if (toAdd.length > 0) {
-    const { error } = await supabaseAdmin.from("event_guests").insert(
-      toAdd.map((g) => ({ event_id: eventId, name: g.name, email: g.email, token: generateGuestToken() })),
-    );
+    const { error } = await supabaseAdmin.from("event_guests").insert(toAdd.map((g) => guestRow(eventId, g)));
     if (error) return { error: "The guests weren't added. Try again." };
   }
   if (!access.event.group_id && access.event.owner_id === access.user.id) {
@@ -1604,7 +1693,7 @@ export async function startGroupExchange(groupId: string): Promise<Result<{ id: 
   }
   await supabaseAdmin.from("gift_exchanges").insert({ event_id: event.id });
   await supabaseAdmin.from("event_guests").insert(
-    newPeople([], members).map((m) => ({ event_id: event.id, name: m.name, email: m.email, token: generateGuestToken() })),
+    newPeople([], members).map((m) => guestRow(event.id, m)),
   );
   revalidatePath("/dashboard/events");
   revalidatePath(`/dashboard/groups/${groupId}`);
@@ -1928,7 +2017,7 @@ export async function startPlan(input: PlanInput): Promise<Result<{ href: string
   if (linkIds.length > 0) await saveRegistryLinks(saved, linkIds, user.id);
   if (input.gifts === "everyone") {
     await saveExchange(saved.id, { enabled: true, kind: "everyone", budget: null, draw_by: null, mailed: false });
-  } else if (input.gifts === "exchange" || defaults?.exchange) {
+  } else if (input.gifts === "exchange" || defaults?.exchange === "draw") {
     await saveExchange(saved.id, { enabled: true, kind: "draw", budget: null, draw_by: null, mailed: false });
   }
   // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.

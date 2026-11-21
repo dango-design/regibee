@@ -70,6 +70,7 @@ export type BackgroundRequest =
   // From the popup's "Add to Regibee" form on a product page.
   | { type: "check-url"; registryId: string; url: string }
   | { type: "add-product"; registryId: string; item: ProductItem }
+  | { type: "add-category"; registryId: string; name: string }
   | { type: "add-idea"; idea: IdeaRequest["idea"] }
   | { type: "set-product-mode"; mode: ProductMode }
   // Swaps in a registry link for an item already on Regibee with a plain one.

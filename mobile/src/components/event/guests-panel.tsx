@@ -10,8 +10,10 @@ import { Alert, Pressable, Share, StyleSheet, View } from "react-native";
 
 import type { EventPageData } from "@shared/events-page-types";
 import { exchangeKind, isEmail, parseGuestList, RSVP_LABELS, summarizeRsvps, type EventGuest, type ParsedGuest, type RsvpStatus } from "@shared/events";
+import { canEmail, emailLabel } from "@shared/guest-emails";
 import { answerLines, mealCounts, storedAnswers } from "@shared/rsvp-questions";
 
+import { InviteFollowed } from "@/components/event/invite-followed";
 import { Button, Card, Chip, Divider, Field, haptic, Pill, Stepper, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useRunEventAction } from "@/lib/events-data";
@@ -58,7 +60,7 @@ function guestListCsv(data: EventPageData) {
     ],
     ...guests.map((g) => [
       g.name,
-      g.email,
+      g.email ?? (g.email_hidden ? "Private" : null),
       RSVP_LABELS[g.rsvp_status],
       coming(g) ? g.party_size : "",
       ...(askKids ? [coming(g) ? g.kids_count : ""] : []),
@@ -90,20 +92,24 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   // The name for "Save as a group", while it's being typed.
   const [groupDraft, setGroupDraft] = useState<string | null>(null);
+  const [pickingFollowed, setPickingFollowed] = useState(false);
+  // Builds of the website before it sent these get none.
+  const followedPeople = data.followedPeople ?? [];
 
   // When the panel opened, for "at most one reminder a day".
   const [now] = useState(() => Date.now());
   // Matches sendEventInvites: guests who already replied, including people
-  // who added themselves from the event link, don't need the invitation.
-  const uninvited = guests.filter((g) => g.email && !g.invited_at && g.rsvp_status === "pending");
+  // who added themselves from the event link, don't need the invitation. A
+  // guest whose email is private still gets it (src/lib/guest-emails.ts).
+  const uninvited = guests.filter((g) => canEmail(g) && !g.invited_at && g.rsvp_status === "pending");
   const remindable = guests.filter(
     (g) =>
-      g.email &&
+      canEmail(g) &&
       g.invited_at &&
       g.rsvp_status === "pending" &&
       (!g.reminded_at || now - Date.parse(g.reminded_at) >= 24 * 60 * 60 * 1000)
   );
-  const withoutEmail = guests.filter((g) => !g.email).length;
+  const withoutEmail = guests.filter((g) => !canEmail(g)).length;
   const shown = filter === "all" ? guests : guests.filter((g) => g.rsvp_status === filter);
   const pastePreview = useMemo(() => parseGuestList(pasted), [pasted]);
   const meals = mealCounts(
@@ -201,6 +207,17 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
       })),
       { text: "Cancel", style: "cancel" as const },
     ]);
+  }
+
+  function inviteFollowed(publicIds: string[]) {
+    attempt(
+      "followed",
+      () => run<{ added: number; alreadyListed: number }>("events.inviteFollowedPeople", event.id, publicIds),
+      (r) => {
+        setPickingFollowed(false);
+        return addedText(r.added, r.alreadyListed);
+      }
+    );
   }
 
   function chooseCopySource() {
@@ -338,8 +355,17 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
             <Button title="Add" icon="add" size="medium" loading={busy === "add"} onPress={addOne} />
           </>
         )}
-        {data.groups.length > 0 || data.copySources.length > 0 ? (
+        {followedPeople.length > 0 || data.groups.length > 0 || data.copySources.length > 0 ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {followedPeople.length > 0 ? (
+              <Button
+                title="Invite people you follow"
+                icon="personAdd"
+                size="small"
+                variant="secondary"
+                onPress={() => setPickingFollowed(true)}
+              />
+            ) : null}
             {data.groups.length > 0 ? (
               <Button title="Invite a group…" icon="people" size="small" variant="secondary" loading={busy === "group"} onPress={chooseGroup} />
             ) : null}
@@ -356,6 +382,15 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
           </View>
         ) : null}
       </Card>
+
+      {pickingFollowed ? (
+        <InviteFollowed
+          people={followedPeople}
+          busy={busy === "followed"}
+          onInvite={inviteFollowed}
+          onClose={() => setPickingFollowed(false)}
+        />
+      ) : null}
 
       {message ? (
         <Text variant="footnote" tone={message.error ? "danger" : "success"} accessibilityLiveRegion="polite">
@@ -502,7 +537,7 @@ function GuestRow({
           ) : null}
         </View>
         <Text variant="footnote" tone="tertiary" numberOfLines={1}>
-          {guest.email ?? "No email"}
+          {emailLabel(guest)}
           {" · "}
           {guest.invited_at
             ? `Invited ${formatShortDate(guest.invited_at)}${guest.reminded_at ? `, reminded ${formatShortDate(guest.reminded_at)}` : ""}`
@@ -559,14 +594,15 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
       setError("Add the guest's name.");
       return;
     }
-    if (email.trim() && !isEmail(email.trim())) {
+    // An email from the guest's account is theirs to change, not the host's.
+    if (!guest.from_account && email.trim() && !isEmail(email.trim())) {
       setError("That email address doesn't look right.");
       return;
     }
     attempt(
       "save",
       async () => {
-        if (name.trim() !== guest.name || (email.trim() || null) !== guest.email) {
+        if (name.trim() !== guest.name || (!guest.from_account && (email.trim() || null) !== guest.email)) {
           await run("events.updateEventGuest", data.event.id, guest.id, { name: name.trim(), email: email.trim() || null });
         }
         if (rsvp !== guest.rsvp_status || party !== guest.party_size) {
@@ -587,7 +623,23 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
             : "Not invited yet"}
       </Text>
       <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" />
-      <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+      {guest.from_account ? (
+        <View style={{ gap: 2 }}>
+          <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+            Email
+          </Text>
+          <Text variant="callout" tone={guest.email ? undefined : "tertiary"}>
+            {guest.email ?? "Private"}
+          </Text>
+          <Text variant="footnote" tone="tertiary">
+            {guest.email_hidden
+              ? "From their Regibee account. It stays private, and invitations still reach it."
+              : "From their Regibee account. Only they can change it."}
+          </Text>
+        </View>
+      ) : (
+        <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+      )}
       <View style={{ gap: spacing.sm }}>
         <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
           RSVP
@@ -623,7 +675,7 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
             }}
           />
           <Button title="Share" icon="share" size="small" variant="secondary" onPress={() => Share.share({ message: link })} />
-          {guest.email ? (
+          {canEmail(guest) ? (
             <Button
               title={guest.invited_at ? "Send invitation again" : "Send invitation"}
               icon="send"

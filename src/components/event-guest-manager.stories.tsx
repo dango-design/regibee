@@ -34,6 +34,7 @@ const meta: Meta<typeof EventGuestManager> = {
       removeGuest: ok,
       copyGuests: fn(async () => ({ error: null, added: 3, alreadyListed: 1 })),
       inviteGroup: fn(async () => ({ error: null, added: 4, alreadyListed: 2 })),
+      inviteFollowed: fn(async () => ({ error: null, added: 2, alreadyListed: 0 })),
       saveAsGroup: fn(async () => ({ error: null, groupId: "group-1" })),
     },
     eventTitle: sampleEvent.title,
@@ -142,5 +143,77 @@ export const WithAnswers: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Chicken: 1 · Fish: 1 · Vegetarian: 1")).toBeVisible();
+  },
+};
+
+/** People the host follows, as the event page gets them (loadEventPage). */
+const followedPeople = [
+  { publicId: "dorothy1a2b", name: "Dorothy Gale", mutual: true, onList: false },
+  { publicId: "glinda3c4d5", name: "Glinda Upland", mutual: true, onList: true },
+  { publicId: "oz6e7f8g9h2", name: "Oz Diggs", mutual: false, onList: false },
+];
+
+/**
+ * "Invite people you follow" picks people without typing their emails. Each
+ * row says whether the host will see the email: only when they follow each
+ * other.
+ */
+export const InvitingPeopleYouFollow: Story = {
+  args: { followedPeople },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Invite people you follow" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    await expect(dialog.getByText("Their email stays private")).toBeInTheDocument();
+    await expect(dialog.getByText("Already on the guest list")).toBeInTheDocument();
+    await userEvent.click(dialog.getByText("Oz Diggs", { exact: true }));
+    await expect(dialog.getByRole("button", { name: "Add 1 guest" })).toBeEnabled();
+  },
+};
+
+/**
+ * Guests invited from a follow. Oz doesn't follow the host back, so his email
+ * shows as private, and invitations still reach it. Dorothy does, so hers
+ * shows. Neither email can be changed from here.
+ */
+export const PrivateEmail: Story = {
+  args: {
+    followedPeople,
+    guests: [
+      ...sampleGuests,
+      {
+        ...sampleGuests[0],
+        id: "guest-oz",
+        name: "Oz Diggs",
+        email: null,
+        email_hidden: true,
+        from_account: true,
+        token: "token-oz",
+        rsvp_status: "pending",
+        invited_at: null,
+        responded_at: null,
+        rsvp_note: null,
+      },
+      {
+        ...sampleGuests[0],
+        id: "guest-dorothy",
+        name: "Dorothy Gale",
+        email: "dorothy@example.com",
+        from_account: true,
+        token: "token-dorothy",
+        rsvp_status: "pending",
+        invited_at: null,
+        responded_at: null,
+        rsvp_note: null,
+      },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/Email private/)).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Edit Oz Diggs" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    await expect(dialog.getByText(/It stays private, and invitations still reach it/)).toBeInTheDocument();
+    await expect(dialog.getByRole("button", { name: "Send invitation" })).toBeInTheDocument();
   },
 };

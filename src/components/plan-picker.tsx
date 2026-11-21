@@ -19,6 +19,7 @@ import {
   nameLabelFor,
   occasionFor,
   planNeedsEvent,
+  startingGiftPlan,
   type Audience,
   type GiftPlan,
   type OccasionId,
@@ -213,11 +214,13 @@ export function PlanPicker({
   const chooseOccasion = (id: OccasionId) => {
     const chosen = occasionFor(id);
     const only = chosen.audiences.length === 1 ? chosen.audiences[0] : null;
+    const audience = only ?? (chosen.audiences.includes(state.audience as never) ? state.audience : chosen.audiences[0]);
     const changes: Partial<PlanPickerState> = {
       occasion: id,
-      audience: only ?? (chosen.audiences.includes(state.audience as never) ? state.audience : chosen.audiences[0]),
+      audience,
       invitation: !LIST_FIRST.includes(id),
-      gifts: null,
+      // Christmas and a holiday party start with each guest linking their own wish list.
+      gifts: audience ? startingGiftPlan(audience, chosen) : null,
     };
     if (only === "everyone") {
       // A gift exchange occasion is a Secret Santa: names are drawn.
@@ -230,7 +233,7 @@ export function PlanPicker({
   };
 
   const chooseAudience = (audience: Audience) => {
-    update({ audience, name: audience === "me" ? state.name || myName : state.name, gifts: null });
+    update({ audience, name: audience === "me" ? state.name || myName : state.name, gifts: startingGiftPlan(audience, occasion) });
   };
 
   const afterWho = () => {

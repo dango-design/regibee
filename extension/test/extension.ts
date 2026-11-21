@@ -8,6 +8,10 @@ import { test as base, chromium, type BrowserContext, type Page, type Worker } f
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type {
+  AddProductRequest,
+  AddProductResponse,
+  CategoryRequest,
+  CategoryResponse,
   CheckResponse,
   ExtensionRegistry,
   ExtensionSession,
@@ -29,6 +33,9 @@ export const REGISTRY: ExtensionRegistry = {
   storeRegistries: [],
   categories: [],
 };
+
+/** The id the made-up API gives a new category. */
+export const NEW_CATEGORY_ID = "00000000-0000-4000-8000-0000000000c1";
 
 export interface ApiCall {
   method: string;
@@ -107,9 +114,9 @@ export async function tabIdFor(worker: Worker, url: string): Promise<number> {
 /**
  * Signs the extension in with a made-up session and answers its calls to
  * Regibee's API: one registry, with the items `existing` picks from each
- * check already on it, and saving gift ideas. `registries` and
- * `ideaRecipients` change what the account has. Any other call gets an error.
- * Returns the calls, so tests can check them.
+ * check already on it, adding a product, making a category and saving gift
+ * ideas. `registries` and `ideaRecipients` change what the account has. Any
+ * other call gets an error. Returns the calls, so tests can check them.
  */
 export async function connect(
   context: BrowserContext,
@@ -140,6 +147,20 @@ export async function connect(
       const { idea } = call.body as IdeaRequest;
       const saved: IdeaResponse = { added: { id: "00000000-0000-4000-8000-0000000000aa", title: idea.title, recipient: idea.recipient } };
       return route.fulfill({ json: saved });
+    }
+    if (call.method === "POST" && call.path === "/api/extension/product") {
+      const { item } = call.body as AddProductRequest;
+      const added: AddProductResponse = { added: { id: "00000000-0000-4000-8000-0000000000bb", title: item.title } };
+      return route.fulfill({ json: added });
+    }
+    if (call.method === "POST" && call.path === "/api/extension/categories") {
+      // Like the server, a name the registry already has gets that category back.
+      const { registryId, name } = call.body as CategoryRequest;
+      const same = registries
+        .find((r) => r.id === registryId)
+        ?.categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      const made: CategoryResponse = { category: same ?? { id: NEW_CATEGORY_ID, name } };
+      return route.fulfill({ json: made });
     }
     if (call.method === "POST" && call.path === "/api/extension/items/check") {
       const check: CheckResponse = { existing: existing((call.body as { urls: string[] }).urls), plain: [] };

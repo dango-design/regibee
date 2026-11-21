@@ -25,6 +25,7 @@ import {
   type ExchangeKind,
   type GiftExchange,
 } from "@/lib/events";
+import { startingExchange } from "@/lib/occasions";
 import { hidesAddressUntilSignup } from "@/lib/signups";
 import { RsvpQuestionsEditor } from "@/components/rsvp-questions-editor";
 import { defaultQuestions, storedQuestions, type RsvpQuestion } from "@/lib/rsvp-questions";
@@ -168,7 +169,7 @@ export function EventForm({
   // A Secret Santa occasion draws names. Anything else, like a family
   // Christmas, starts with everyone giving everyone.
   const [kind, setKind] = useState<ExchangeKind>(
-    exchange ? exchangeKind(exchange) : initial.event_type === "gift_exchange" ? "draw" : "everyone",
+    exchange ? exchangeKind(exchange) : startingExchange(initial.event_type ?? "baby_shower").kind,
   );
   const [budget, setBudget] = useState(exchange?.budget ?? "");
   const [drawBy, setDrawBy] = useState(exchange?.draw_by ?? "");
@@ -220,9 +221,12 @@ export function EventForm({
     setEventType(type);
     if (editing) return;
     const defaults = EVENT_TYPE_OPTIONS.find((o) => o.value === type)?.defaults ?? {};
+    // Christmas and a holiday party start with each guest linking their own
+    // wish list, and a gift exchange with drawing names.
     if (!touched.exchange) {
-      setExchangeOn(Boolean(defaults.exchange));
-      setKind(type === "gift_exchange" ? "draw" : "everyone");
+      const start = startingExchange(type);
+      setExchangeOn(start.on);
+      setKind(start.kind);
     }
     if (!touched.askKids) setAskKids(Boolean(defaults.askKids));
     if (!touched.questions) setQuestions(defaultQuestions(defaults.questions));
@@ -1063,7 +1067,7 @@ export function EventForm({
 
       <Section
         title="Gifts among the guests"
-        description="For a family Christmas or a Secret Santa, when the guests give gifts to each other."
+        description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other."
       >
         {exchangeFields(false)}
       </Section>

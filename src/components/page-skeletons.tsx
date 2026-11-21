@@ -301,7 +301,7 @@ function CheckboxSkeleton() {
 /** Matches AccountSettings in src/components/account-settings.tsx. */
 export function AccountSkeleton() {
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8" aria-busy="true">
+    <div className="container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl" aria-busy="true">
       <LoadingMessage>Loading your account</LoadingMessage>
       <div className="mb-6 flex items-center gap-2">
         <Button variant="ghost" size="sm" asChild>
@@ -312,34 +312,46 @@ export function AccountSkeleton() {
         <h1 className="text-2xl font-bold">Account</h1>
       </div>
 
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your profile</CardTitle>
-            <div className="space-y-1.5">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-1/2" />
+      {/* Like the page (src/components/account-settings.tsx): its sections
+          in a row under the top bar, or a column on the left from lg. */}
+      <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="-mx-4 mb-6 flex gap-1 overflow-hidden border-b border-secondary px-4 py-2 lg:mx-0 lg:mb-0 lg:flex-col lg:gap-0.5 lg:border-0 lg:p-0">
+          {["w-24", "w-24", "w-32", "w-20", "w-20", "w-28", "w-40", "w-28"].map((width, index) => (
+            <div key={index} className="flex min-h-9 shrink-0 items-center px-3 lg:min-h-10">
+              <Skeleton className={`h-4 ${width}`} />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FieldSkeleton />
-            <CheckboxSkeleton />
-            <CheckboxSkeleton />
-            <CheckboxSkeleton />
-            <Skeleton className="h-10 w-32 rounded-lg" />
-          </CardContent>
-        </Card>
+          ))}
+        </div>
 
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-full" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-1/3" />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your profile</CardTitle>
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FieldSkeleton />
+              <CheckboxSkeleton />
+              <CheckboxSkeleton />
+              <CheckboxSkeleton />
+              <Skeleton className="h-10 w-32 rounded-lg" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-1/3" />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

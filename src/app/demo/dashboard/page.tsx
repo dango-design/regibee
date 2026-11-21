@@ -4,8 +4,12 @@ import Link from "next/link";
 import { Plus, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardRegistryCard } from "@/components/dashboard-registry-card";
+import { UpcomingEvents } from "@/components/upcoming-events";
 import { demoOwnRegistries, demoRegistryPath } from "@/lib/demo-registries";
 import { DEMO_FOLLOWS } from "@/lib/demo-people";
+import { demoEvents, isDemoHost } from "@/lib/demo-events";
+import { formatEventTime, summarizeRsvps } from "@/lib/events";
+import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { addDays } from "@/lib/demo-data";
 import { giftActivityAction } from "@/lib/gifts";
 import { useDemoToday } from "../demo-today";
@@ -21,6 +25,37 @@ export default function DemoDashboardPage() {
     .flatMap((r) => r.purchases)
     .filter((p) => p.status !== "cancelled" && p.created_at >= weekAgo).length;
   const requestCount = DEMO_FOLLOWS.requests.length;
+  // What the Events tab lists (../dashboard/events/page.tsx): events Remi &
+  // Max host, then other people's that link their registries.
+  const ownIds = new Set(registries.map((r) => r.id));
+  const events = demoEvents(today);
+  const upcomingEvents = pickUpcomingEvents(
+    [
+      ...events.filter(isDemoHost).map((event) => ({
+        id: event.id,
+        slug: event.slug,
+        title: event.title,
+        eventType: event.event_type,
+        eventDate: event.event_date,
+        time: formatEventTime(event),
+        role: "host" as const,
+        summary: summarizeRsvps(event.guests),
+      })),
+      ...events
+        .filter((e) => !isDemoHost(e) && e.registryId && ownIds.has(e.registryId))
+        .map((event) => ({
+          id: event.id,
+          slug: event.slug,
+          title: event.title,
+          eventType: event.event_type,
+          eventDate: event.event_date,
+          time: null,
+          role: "celebrating" as const,
+          summary: null,
+        })),
+    ],
+    today,
+  );
 
   return (
     <DemoOwnerShell tabs>
@@ -64,10 +99,12 @@ export default function DemoDashboardPage() {
               </div>
             </div>
             <Button variant="outline" size="sm" className="shrink-0" asChild>
-              <Link href="/demo/dashboard/account#follows">Review requests</Link>
+              <Link href="/demo/dashboard/account#follow-requests">Review requests</Link>
             </Button>
           </div>
         )}
+
+        <UpcomingEvents events={upcomingEvents} today={today} basePath="/demo" />
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {registries.map((registry) => {

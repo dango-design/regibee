@@ -68,7 +68,7 @@ export function AccountMenu({ account, basePath, demo }: { account: NavAccount; 
             <Dropdown.Item id="profile" href={account.profilePath} icon={UserRound} label="Your profile" />
             <Dropdown.Item
               id="requests"
-              href={`${basePath}/dashboard/account#follows`}
+              href={`${basePath}/dashboard/account#follow-requests`}
               icon={UserPlus}
               label="Follow requests"
               addon={count > 0 ? String(count) : undefined}

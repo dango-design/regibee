@@ -44,6 +44,7 @@ export default async function ManageEventPage({
     invites,
     copySources,
     groups,
+    followedPeople,
     listRequests,
     signupSheet,
     signupsByGuest,
@@ -148,6 +149,7 @@ export default async function ManageEventPage({
             everyoneGives={exchangeKind(exchange) === "everyone"}
             copySources={copySources}
             groups={groups}
+            followedPeople={followedPeople}
             eventTitle={event.title}
             signups={signupsByGuest}
             questions={questions}

@@ -15,7 +15,10 @@ import { GuestMessages } from "@/components/guest-messages";
 import { SignupSheetManager, SignupSheetStarter, type SignupActions } from "@/components/signup-sheet-manager";
 import { addDays } from "@/lib/demo-data";
 import { DEMO_ME_ID, demoEvents, findDemoEvent, isDemoHost, type DemoEvent } from "@/lib/demo-events";
-import { DEMO_ME } from "@/lib/demo-people";
+import { DEMO_FOLLOWS, DEMO_ME, findDemoPerson } from "@/lib/demo-people";
+import { showEmailTo } from "@/lib/guest-emails";
+import type { InvitablePerson } from "@/lib/events-page-types";
+import { displayName } from "@/lib/profile-link";
 import { demoRegistryPath, findDemoRegistry } from "@/lib/demo-registries";
 import { MESSAGE_AUDIENCES, messageRecipients, type EventMessage, type MessageAudience } from "@/lib/event-updates";
 import {
@@ -49,6 +52,27 @@ export const DEMO_NOT_SAVED = "This is a demo, so nothing is saved. Sign up free
 
 const DAY = 24 * 60 * 60 * 1000;
 const ok = { error: null };
+
+// People Remi & Max follow who approved them, and those who follow them back,
+// like listFollowedAccounts. A demo guest's profile_id is the person's public id.
+const DEMO_FOLLOWED = DEMO_FOLLOWS.following.filter((p) => p.status === "approved");
+const DEMO_MUTUAL = new Set(
+  DEMO_FOLLOWED.filter((p) => DEMO_FOLLOWS.followers.some((f) => f.public_id === p.public_id && f.status === "approved")).map(
+    (p) => p.public_id,
+  ),
+);
+
+/** "Invite people you follow" for the demo's guest list. Like loadEventPage's followedPeople. */
+function demoFollowedPeople(guests: EventGuest[]): InvitablePerson[] {
+  return DEMO_FOLLOWED.map((person) => ({
+    publicId: person.public_id,
+    name: displayName(person),
+    mutual: DEMO_MUTUAL.has(person.public_id),
+    onList: guests.some(
+      (g) => g.profile_id === person.public_id || g.email === findDemoPerson(person.public_id)?.email,
+    ),
+  }));
+}
 const now = () => new Date().toISOString();
 /** Ids for rows made in the demo. */
 const newId = (prefix: string, i = 0) => `${prefix}-${Date.now()}-${i}`;
@@ -61,7 +85,7 @@ type SetGuests = React.Dispatch<React.SetStateAction<EventGuest[]>>;
  * adding, inviting, reminding and changing RSVPs all show on the page.
  */
 function guestActions(guests: EventGuest[], setGuests: SetGuests, today: string): GuestManagerActions {
-  const add = (eventId: string, list: { name: string; email: string | null }[]) => {
+  const add = (eventId: string, list: { name: string; email: string | null; profile_id?: string }[]) => {
     const known = new Set(guests.map((g) => g.email).filter(Boolean));
     const fresh = list.filter((g) => !g.email || !known.has(g.email.toLowerCase()));
     setGuests((current) => [
@@ -85,6 +109,7 @@ function guestActions(guests: EventGuest[], setGuests: SetGuests, today: string)
         invited_at: null,
         reminded_at: null,
         added_by_guest: false,
+        profile_id: g.profile_id ?? null,
         created_at: now(),
       })),
     ]);
@@ -151,6 +176,15 @@ function guestActions(guests: EventGuest[], setGuests: SetGuests, today: string)
     },
     // The demo has no groups to invite, and doesn't save new ones.
     inviteGroup: async () => ({ ...ok, added: 0, alreadyListed: 0 }),
+    inviteFollowed: async (eventId, publicIds) =>
+      add(
+        eventId,
+        DEMO_FOLLOWED.filter((p) => publicIds.includes(p.public_id)).map((p) => ({
+          name: displayName(p),
+          email: findDemoPerson(p.public_id)?.email ?? null,
+          profile_id: p.public_id,
+        })),
+      ),
     saveAsGroup: async () => ({ error: "Groups aren't saved in the demo. Sign up to keep this guest list." }),
   };
 }
@@ -302,7 +336,8 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
   const owner = hosts.find((h) => h.isOwner);
 
   // The host never sees who drew whom, or what guests told only their Secret Santa.
-  const shownGuests = guests.map(guestForHost);
+  // An email from a follow shows only when Remi & Max follow them both ways.
+  const shownGuests = guests.map((g) => showEmailTo(guestForHost(g), DEMO_ME_ID, DEMO_MUTUAL));
   const status = exchange ? exchangeStatus(guests, exchange) : null;
   const signupsByGuest = sheet
     ? Object.fromEntries([...claimsByGuest(sheet)].map(([id, claims]) => [id, claims.map(describeClaim)]))
@@ -458,6 +493,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
               everyoneGives={exchangeKind(exchange) === "everyone"}
               copySources={copySources}
               groups={[]}
+              followedPeople={demoFollowedPeople(guests)}
               eventTitle={event.title}
               signups={signupsByGuest}
               questions={event.rsvp_questions}

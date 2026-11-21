@@ -16,9 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { InviteFollowedDialog } from "@/components/invite-followed-dialog";
 import {
   addEventGuests,
   copyGuestsFromEvent,
+  inviteFollowedPeople,
   inviteGroupToEvent,
   removeEventGuest,
   saveGuestListAsGroup,
@@ -36,6 +38,8 @@ import {
   type ParsedGuest,
   type RsvpStatus,
 } from "@/lib/events";
+import { canEmail, emailLabel } from "@/lib/guest-emails";
+import type { InvitablePerson } from "@/lib/events-page-types";
 import { initialsFor } from "@/lib/initials";
 import { memberCountLabel, type GroupSummary } from "@/lib/groups";
 import { answerLabel, answerLines, mealCounts, storedAnswers, type RsvpQuestion } from "@/lib/rsvp-questions";
@@ -55,6 +59,10 @@ export interface GuestManagerActions {
     sourceEventId: string,
   ) => Promise<ActionResult & { added?: number; alreadyListed?: number }>;
   inviteGroup: (eventId: string, groupId: string) => Promise<ActionResult & { added?: number; alreadyListed?: number }>;
+  inviteFollowed: (
+    eventId: string,
+    publicIds: string[],
+  ) => Promise<ActionResult & { added?: number; alreadyListed?: number }>;
   saveAsGroup: (eventId: string, name: string) => Promise<ActionResult & { groupId?: string }>;
 }
 
@@ -67,6 +75,7 @@ const DEFAULT_ACTIONS: GuestManagerActions = {
   removeGuest: removeEventGuest,
   copyGuests: copyGuestsFromEvent,
   inviteGroup: inviteGroupToEvent,
+  inviteFollowed: inviteFollowedPeople,
   saveAsGroup: saveGuestListAsGroup,
 };
 
@@ -92,6 +101,8 @@ export interface EventGuestManagerProps {
   copySources?: { id: string; title: string; guestCount: number }[];
   /** The host's groups, to invite all at once (src/lib/groups.ts). */
   groups?: GroupSummary[];
+  /** People the host follows, to invite without typing their email. */
+  followedPeople?: InvitablePerson[];
   /** The name "Save as a group" suggests: the event's title. */
   eventTitle?: string;
   /**
@@ -158,7 +169,7 @@ function downloadCsv(
     ],
     ...guests.map((g) => [
       g.name,
-      g.email,
+      g.email ?? (g.email_hidden ? "Private" : null),
       RSVP_LABELS[g.rsvp_status],
       coming(g) ? g.party_size : "",
       ...(askKids ? [coming(g) ? g.kids_count : ""] : []),
@@ -196,6 +207,7 @@ export function EventGuestManager({
   everyoneGives = false,
   copySources = [],
   groups = [],
+  followedPeople = [],
   eventTitle = "",
   signups,
   questions = [],
@@ -214,19 +226,21 @@ export function EventGuestManager({
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState(false);
+  const [pickingFollowed, setPickingFollowed] = useState(false);
 
   const now = Date.now();
   // Matches sendEventInvites: guests who already replied, including people
-  // who added themselves from the event link, don't need the invitation.
-  const uninvited = guests.filter((g) => g.email && !g.invited_at && g.rsvp_status === "pending");
+  // who added themselves from the event link, don't need the invitation. A
+  // guest whose email is private still gets it (src/lib/guest-emails.ts).
+  const uninvited = guests.filter((g) => canEmail(g) && !g.invited_at && g.rsvp_status === "pending");
   const remindable = guests.filter(
     (g) =>
-      g.email &&
+      canEmail(g) &&
       g.invited_at &&
       g.rsvp_status === "pending" &&
       (!g.reminded_at || now - Date.parse(g.reminded_at) >= 24 * 60 * 60 * 1000),
   );
-  const withoutEmail = guests.filter((g) => !g.email).length;
+  const withoutEmail = guests.filter((g) => !canEmail(g)).length;
   const shown = filter === "all" ? guests : guests.filter((g) => g.rsvp_status === filter);
   const editingGuest = guests.find((g) => g.id === editingId) ?? null;
 
@@ -315,6 +329,22 @@ export function EventGuestManager({
       `${added === 1 ? "Added 1 guest" : `Added ${added} guests`}${skipped ? `. ${skipped} already on the list.` : ""}`,
     );
     router.refresh();
+  };
+
+  const inviteFollowed = async (publicIds: string[]) => {
+    setAddError("");
+    const result = await actions.inviteFollowed(eventId, publicIds);
+    if (result.error) {
+      toast.error(result.error);
+      return false;
+    }
+    const added = result.added ?? 0;
+    const skipped = result.alreadyListed ?? 0;
+    toast.success(
+      `${added === 1 ? "Added 1 guest" : `Added ${added} guests`}${skipped ? `. ${skipped} already on the list.` : ""}`,
+    );
+    router.refresh();
+    return true;
   };
 
   const inviteGroup = async (groupId: string) => {
@@ -528,6 +558,16 @@ export function EventGuestManager({
             </Button>
           </form>
         )}
+        {followedPeople.length > 0 && (
+          <div className="mt-3 border-t border-secondary pt-3">
+            <Button variant="outline" onClick={() => setPickingFollowed(true)} disabled={adding}>
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="size-4" />
+                Invite people you follow
+              </span>
+            </Button>
+          </div>
+        )}
         {groups.length > 0 && (
           <div className="mt-3 border-t border-secondary pt-3">
             <NativeSelect
@@ -674,7 +714,7 @@ export function EventGuestManager({
                     )}
                   </div>
                   <p className="truncate text-sm text-tertiary">
-                    {guest.email ?? "No email"}
+                    {emailLabel(guest)}
                     {" · "}
                     {guest.added_by_guest
                       ? "RSVPed from the event link"
@@ -721,6 +761,14 @@ export function EventGuestManager({
           actions={actions}
           onClose={() => setEditingId(null)}
           onSaved={() => router.refresh()}
+        />
+      )}
+
+      {pickingFollowed && (
+        <InviteFollowedDialog
+          people={followedPeople}
+          onInvite={inviteFollowed}
+          onClose={() => setPickingFollowed(false)}
         />
       )}
 
@@ -838,7 +886,9 @@ function GuestDialog({
   const [copied, setCopied] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  const detailsChanged = name.trim() !== guest.name || (email.trim().toLowerCase() || null) !== guest.email;
+  // An email from the guest's account is theirs to change, not the host's.
+  const detailsChanged =
+    name.trim() !== guest.name || (!guest.from_account && (email.trim().toLowerCase() || null) !== guest.email);
   const rsvpChanged =
     status !== guest.rsvp_status ||
     ((status === "yes" || status === "maybe") && Number(partySize) !== guest.party_size);
@@ -914,7 +964,20 @@ function GuestDialog({
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Name" value={name} onChange={setName} maxLength={100} />
-            <Input label="Email" type="email" value={email} onChange={setEmail} />
+            {guest.from_account ? (
+              <Input
+                label="Email"
+                value={guest.email ?? "Private"}
+                isDisabled
+                hint={
+                  guest.email_hidden
+                    ? "From their Regibee account. It stays private, and invitations still reach it."
+                    : "From their Regibee account. Only they can change it."
+                }
+              />
+            ) : (
+              <Input label="Email" type="email" value={email} onChange={setEmail} />
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <NativeSelect
@@ -950,7 +1013,7 @@ function GuestDialog({
                   {copied ? "Copied" : "Copy link"}
                 </span>
               </Button>
-              {guest.email && (
+              {canEmail(guest) && (
                 <Button variant="outline" size="sm" onClick={sendInvite} disabled={busy !== null}>
                   <span className="inline-flex items-center gap-1.5">
                     {busy === "send" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

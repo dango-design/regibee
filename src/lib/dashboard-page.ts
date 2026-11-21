@@ -8,10 +8,13 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { countFollowRequests } from "@/lib/follows";
+import { formatEventTime, summarizeRsvps } from "@/lib/events";
+import { listEventsForUser, listLinkedEventsForUser } from "@/lib/events-server";
+import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { getSessionUser } from "@/lib/viewer";
 import { giftActivityAction, giverNameForOwner, itemAsUnreserved, reservationsHiddenFrom } from "@/lib/gifts";
 import { itemsHiddenFromOwner, loadPlacements } from "@/lib/list-items";
-import type { DashboardCard, DashboardData } from "@/lib/dashboard-page-types";
+import type { DashboardCard, DashboardData, DashboardEvent } from "@/lib/dashboard-page-types";
 
 export type * from "@/lib/dashboard-page-types";
 
@@ -147,6 +150,43 @@ async function loadSharedRegistries(supabase: ServerClient, user: User) {
   return (data || []).filter((registry) => registry.owner_id !== user.id);
 }
 
+/**
+ * "Coming up": the soonest events the user hosts or co-hosts, and other
+ * people's events that link their lists, as the Events tab lists them.
+ */
+async function loadUpcomingEvents(userId: string, today: string): Promise<DashboardEvent[]> {
+  const [hosted, linked] = await Promise.all([listEventsForUser(userId), listLinkedEventsForUser(userId)]);
+  return pickUpcomingEvents(
+    [
+      ...hosted.map((event) => {
+        const { guests, attending, maybe, pending } = summarizeRsvps(event.event_guests);
+        return {
+          id: event.id,
+          slug: event.slug,
+          title: event.title,
+          eventType: event.event_type,
+          eventDate: event.event_date,
+          time: formatEventTime(event),
+          role: "host" as const,
+          summary: { guests, attending, maybe, pending },
+        };
+      }),
+      ...linked.map((event) => ({
+        id: event.id,
+        slug: event.slug,
+        title: event.title,
+        eventType: event.event_type,
+        eventDate: event.event_date,
+        // The tab's "Celebrating you" list shows only the date.
+        time: null,
+        role: "celebrating" as const,
+        summary: null,
+      })),
+    ],
+    today,
+  );
+}
+
 /** Loads the My registries tab for the signed-in user. Null when signed out. */
 export async function loadDashboard(): Promise<DashboardData | null> {
   // The top bar and the tabs look up the same user, and the lookup is cached
@@ -154,9 +194,13 @@ export async function loadDashboard(): Promise<DashboardData | null> {
   const [supabase, user] = await Promise.all([createClient(), getSessionUser()]);
   if (!user) return null;
 
-  // None of these three needs another's result, so they run at the same time.
+  // Dates are YYYY-MM-DD in UTC, like the Following tab's (following/page.tsx).
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+
+  // None of these needs another's result, so they run at the same time.
   // The page waits for the slowest one, not for all of them in a row.
-  const [{ data: registries }, sharedRegistries, followRequestCount] = await Promise.all([
+  const [{ data: registries }, sharedRegistries, followRequestCount, upcomingEvents] = await Promise.all([
     supabase
       .from("registries")
       .select(REGISTRY_CARD_FIELDS)
@@ -164,14 +208,19 @@ export async function loadDashboard(): Promise<DashboardData | null> {
       .order("created_at", { ascending: false }),
     loadSharedRegistries(supabase, user),
     user.is_anonymous ? 0 : countFollowRequests(user.id),
+    // Guests (anonymous sessions) can't plan events. A failure here leaves
+    // "Coming up" out rather than the whole tab.
+    user.is_anonymous
+      ? []
+      : loadUpcomingEvents(user.id, today).catch((error) => {
+          console.error("[dashboard] Failed to load upcoming events:", error);
+          return [];
+        }),
   ]);
 
   const owned = registries || [];
   const hiddenItemIds = await withPlacedItems([...owned, ...sharedRegistries], user.id);
 
-  // Dates are YYYY-MM-DD in UTC, like the Following tab's (following/page.tsx).
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
   const weekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
   // An item on several lists counts its gifts once.
   const giftsThisWeek = new Set(
@@ -197,6 +246,7 @@ export async function loadDashboard(): Promise<DashboardData | null> {
     // Until one of their registries is on their profile, the profile link has
     // nothing on it to share.
     showProfilePrompt: !user.is_anonymous && owned.length > 0 && !owned.some((registry) => registry.listed_on_profile),
+    upcomingEvents,
     today,
   };
 }

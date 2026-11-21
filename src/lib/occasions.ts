@@ -46,6 +46,9 @@ export interface Occasion {
   audiences: Audience[];
   /**
    * What a new event of this kind starts with. The host can change all of it.
+   * `exchange` starts the guests giving each other gifts: "draw" draws names
+   * (a Secret Santa), and "everyone" has each guest link their own wish list
+   * when they RSVP (src/lib/events.ts, ExchangeKind).
    * `signup` starts a sign-up sheet from that preset (src/lib/signups.ts).
    * `questions` are what the RSVP asks besides how many are coming
    * (src/lib/rsvp-questions.ts).
@@ -53,7 +56,7 @@ export interface Occasion {
   defaults?: {
     giftNote?: string;
     askKids?: boolean;
-    exchange?: boolean;
+    exchange?: "draw" | "everyone";
     signup?: "potluck" | "meal_train";
     questions?: ("meal" | "diet" | "plus_ones")[];
   };
@@ -116,7 +119,7 @@ export const OCCASIONS = [
     titleFor: (name) => (name.trim() ? `${name.trim()} Secret Santa` : "Secret Santa"),
     list: CHRISTMAS_LIST,
     audiences: ["everyone"],
-    defaults: { exchange: true },
+    defaults: { exchange: "draw" },
   },
   {
     id: "christmas",
@@ -126,8 +129,23 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Christmas"),
     list: CHRISTMAS_LIST,
     // A family Christmas where everyone gives everyone comes first: it's
-    // the event most families plan on Regibee once a year.
+    // the event most families plan on Regibee once a year. Each guest links
+    // their own wish list.
     audiences: ["everyone", "no_one", "me", "us", "child"],
+    defaults: { exchange: "everyone" },
+  },
+  {
+    // A party for the winter holidays, whatever each family celebrates. Like a
+    // family Christmas, everyone gives everyone from their own wish lists. A
+    // party for no one in particular, like a work one, can draw names instead.
+    id: "holiday_party",
+    label: "Holiday party",
+    tint: "mint",
+    titlePlaceholder: "The Chens' Holiday Party",
+    titleFor: (name) => named(name, "Holiday Party"),
+    list: WISHLIST,
+    audiences: ["everyone", "no_one"],
+    defaults: { exchange: "everyone" },
   },
   {
     id: "bridal_shower",
@@ -404,6 +422,30 @@ export function planNeedsEvent(gifts: GiftPlan): boolean {
   return gifts !== "new_list";
 }
 
+/**
+ * The gift plan the picker starts with, already picked, for who it's for.
+ * Christmas and a holiday party for everyone taking part start with everyone
+ * giving everyone, so each guest links their own wish list. Null when nothing
+ * starts picked. The host can pick another plan, or none.
+ */
+export function startingGiftPlan(audience: Audience, occasion?: Pick<Occasion, "defaults"> | null): GiftPlan | null {
+  const exchange = occasion?.defaults?.exchange;
+  const plan: GiftPlan | null = exchange === "everyone" ? "everyone" : exchange === "draw" ? "exchange" : null;
+  return plan && giftPlansFor(audience, occasion).includes(plan) ? plan : null;
+}
+
+/**
+ * Whether the event form's "Gifts among the guests" starts on for a new event
+ * of this occasion, and which kind it starts on: Christmas and a holiday party
+ * start with everyone giving everyone, a gift exchange with drawing names.
+ * The kind is what the form shows once the host turns it on, so it's
+ * "everyone" for occasions that start off.
+ */
+export function startingExchange(id: string): { on: boolean; kind: "draw" | "everyone" } {
+  const exchange = isOccasionId(id) ? occasionFor(id).defaults?.exchange : undefined;
+  return { on: Boolean(exchange), kind: exchange ?? "everyone" };
+}
+
 /** The note a "No gifts" plan puts on the invitation. */
 export const NO_GIFTS_NOTE = "No gifts, please. Your company is the best present.";
 
@@ -425,13 +467,28 @@ export function nameLabelFor(audience: Audience): string | null {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// "12 days to go", "Tomorrow", "Today" or "Event passed". Baby registries
-// count down to the due date instead. Both dates are YYYY-MM-DD strings, like
-// `event_date`, so the result doesn't depend on the time of day.
+/**
+ * Whole days from `today` to `eventDate`: 0 on the day, negative once it's
+ * passed. Both are YYYY-MM-DD strings, like `event_date`, so the result
+ * doesn't depend on the time of day.
+ */
+export function daysUntil(eventDate: string, today: string): number {
+  return Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
+}
+
+// "12 days to go", "Tomorrow" or "Today". Baby registries count down to the
+// due date instead ("Due in 12 days"). Once the date has gone by, it shows
+// the date itself with its year, like "Nov 3, 2026": wording like "Due date
+// passed" read as harsh.
 export function countdownLabel(eventDate: string, today: string, registryType: "baby" | "personal"): string {
-  const days = Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
+  const days = daysUntil(eventDate, today);
   const baby = registryType === "baby";
-  if (days < 0) return baby ? "Due date passed" : "Event passed";
+  if (days < 0) {
+    // Built as a local date and formatted without a time zone, so it shows
+    // the same calendar day everywhere, the phone app included.
+    const [y, m, d] = eventDate.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
   if (days === 0) return baby ? "Due today" : "Today";
   if (days === 1) return baby ? "Due tomorrow" : "Tomorrow";
   return baby ? `Due in ${days} days` : `${days} days to go`;

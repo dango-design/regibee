@@ -32,6 +32,9 @@ import {
   listOtherEventsForCopy,
 } from "@/lib/events-server";
 import { getGroupForOwner, getGroupMembers, listGroupEvents, listGroupRegistries, listGroupsForOwner } from "@/lib/groups-server";
+import { listFollowedAccounts, mutualFollowIds } from "@/lib/follows";
+import { displayName } from "@/lib/profile-link";
+import { showEmailTo } from "@/lib/guest-emails";
 import { MESSAGE_AUDIENCES, messageRecipients, type MessageAudience } from "@/lib/event-updates";
 import { storedQuestions } from "@/lib/rsvp-questions";
 import { claimsByGuest, describeClaim, hidesAddressUntilSignup, signupRowsForHost } from "@/lib/signups";
@@ -102,7 +105,7 @@ export async function loadEventPage(eventId: string): Promise<EventPageData | nu
   if (!found) return null;
   const { event, isOwner } = found;
 
-  const [allGuests, registries, exchange, exclusions, hosts, invites, copySources, groups, listRequests, signupSheet, messages] =
+  const [allGuests, registries, exchange, exclusions, hosts, invites, copySources, groups, listRequests, signupSheet, messages, followed] =
     await Promise.all([
       getEventGuests(event.id),
       getEventRegistries(event.id),
@@ -115,7 +118,15 @@ export async function loadEventPage(eventId: string): Promise<EventPageData | nu
       getPendingListRequests(event.id),
       getSignupSheet(event.id),
       getEventMessages(event.id, 5),
+      listFollowedAccounts(viewer.id),
     ]);
+  // A guest invited from a follow shows their email only to a host they
+  // follow both ways (src/lib/guest-emails.ts).
+  const mutualIds = await mutualFollowIds(
+    viewer.id,
+    allGuests.map((g) => g.profile_id),
+  );
+  const guestAccounts = new Set(allGuests.map((g) => g.profile_id).filter(Boolean));
   // Worked out before the guests are trimmed for the host, since it needs the pairs.
   const status = exchange ? exchangeStatus(allGuests, exchange) : null;
   // What each guest signed up for, as their row on the guest list shows it.
@@ -134,7 +145,7 @@ export async function loadEventPage(eventId: string): Promise<EventPageData | nu
     replyToEmail: viewer.email ?? null,
     // The host never sees who drew whom, or the wishlists and addresses guests
     // were told only their Secret Santa sees.
-    guests: allGuests.map(guestForHost),
+    guests: allGuests.map((g) => showEmailTo(guestForHost(g), viewer.id, mutualIds)),
     registries: registries.map((r) => ({ id: r.id, slug: r.slug, title: r.title, honoree: r.honoree })),
     exchange,
     exchangeStatus: status,
@@ -152,6 +163,12 @@ export async function loadEventPage(eventId: string): Promise<EventPageData | nu
     messages,
     time: formatEventTime(event),
     typeLabel: eventTypeLabel(event.event_type),
+    followedPeople: followed.map((person) => ({
+      publicId: person.public_id,
+      name: displayName(person),
+      mutual: person.mutual,
+      onList: guestAccounts.has(person.id),
+    })),
   };
 }
 
@@ -203,12 +220,16 @@ export async function loadGroupPage(groupId: string): Promise<GroupPageData | nu
     listGroupEvents(group.id),
     listGroupRegistries(group.id),
   ]);
+  const mutualIds = await mutualFollowIds(
+    viewer.id,
+    members.map((m) => m.profile_id),
+  );
   // Only events this person still hosts. A co-host who was removed doesn't
   // keep seeing the event here.
   const hosted = await Promise.all(groupEvents.map((e) => getEventForManager(e.id, viewer.id)));
   return {
     group: { id: group.id, name: group.name },
-    members: members.map((m) => ({ id: m.id, name: m.name, email: m.email })),
+    members: members.map((m) => showEmailTo({ id: m.id, name: m.name, email: m.email, profile_id: m.profile_id }, viewer.id, mutualIds)),
     events: groupEvents.filter((_, index) => hosted[index] !== null),
     sharedLists,
   };

@@ -2,6 +2,7 @@
 // the website's page and the phone app. Only types, and only relative type
 // imports of shareable files, so the app can share it through @shared/*.
 
+import type { EventType, RsvpSummary } from "./events";
 import type { PersonalEventType, RegistryType } from "./types";
 
 /** One list's card. */
@@ -31,6 +32,26 @@ export interface DashboardCard {
   reservationsHidden: boolean;
 }
 
+/** An event in "Coming up" (src/lib/upcoming-events.ts). */
+export interface DashboardEvent {
+  id: string;
+  slug: string;
+  title: string;
+  eventType: EventType;
+  /** YYYY-MM-DD, today or later. */
+  eventDate: string;
+  /** "2 – 5 PM PDT", or null without a time. */
+  time: string | null;
+  /**
+   * "host": the user hosts or co-hosts it, and it opens the event's page.
+   * "celebrating": someone else hosts it and it links one of the user's
+   * lists, like a shower a friend is throwing. It opens the invitation.
+   */
+  role: "host" | "celebrating";
+  /** RSVPs so far. Only for events the user hosts. */
+  summary: Pick<RsvpSummary, "guests" | "attending" | "maybe" | "pending"> | null;
+}
+
 export interface DashboardData {
   /** The user's own lists, newest first. */
   owned: DashboardCard[];
@@ -42,6 +63,11 @@ export interface DashboardData {
   followRequestCount: number;
   /** None of their lists is on their profile yet. */
   showProfilePrompt: boolean;
+  /**
+   * "Coming up": the next few dated events from today on, soonest first, that
+   * the user hosts or that celebrate them. Empty for guests.
+   */
+  upcomingEvents: DashboardEvent[];
   /** YYYY-MM-DD in UTC, for the cards' countdowns. */
   today: string;
 }

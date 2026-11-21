@@ -146,6 +146,17 @@ export type AddProductResponse =
   | { added: { id: string; title: string } }
   | { duplicate: { id: string; title: string } };
 
+/** "+ New category" on the product form, as on the site's add-item dialog. */
+export interface CategoryRequest {
+  registryId: string;
+  name: string;
+}
+
+/** The new category, or the registry's category that already had the name. */
+export interface CategoryResponse {
+  category: { id: string; name: string };
+}
+
 /** The lowest used condition an owner will accept, as the add-item dialog offers them. */
 export const USED_CONDITIONS = [
   { id: "like-new", label: "Like new" },

@@ -84,6 +84,15 @@ export interface EventGuest {
   giftee_id: string | null;
   /** Answers to the event's RSVP questions, by question id. Read with storedAnswers. */
   answers?: RsvpAnswers;
+  /**
+   * The guest's account, when the host invited someone they follow. The email
+   * came from that account. Only the server sees it (src/lib/guest-emails.ts).
+   */
+  profile_id?: string | null;
+  /** On the host's page: the guest has an email from their account that this host isn't shown. */
+  email_hidden?: boolean;
+  /** On the host's page: the email came from the guest's account, so the host can't change it. */
+  from_account?: boolean;
   created_at: string;
 }
 
@@ -107,7 +116,8 @@ export interface EventTypeOption {
   defaults?: {
     giftNote?: string;
     askKids?: boolean;
-    exchange?: boolean;
+    /** Guests give each other gifts, this way (src/lib/occasions.ts, startingExchange). */
+    exchange?: ExchangeKind;
     /** A new event starts with this sign-up sheet (src/lib/signups.ts). */
     signup?: "potluck" | "meal_train";
     /** A new event's RSVP asks these (src/lib/rsvp-questions.ts). */
@@ -267,6 +277,14 @@ export function summarizeRsvps(
     if (guest.invited_at) summary.invited += 1;
   }
   return summary;
+}
+
+/** "4 going · 1 maybe · 3 no reply", or "No guests yet". Event cards show it. */
+export function rsvpStatsText(summary: Pick<RsvpSummary, "guests" | "attending" | "maybe" | "pending">): string {
+  if (summary.guests === 0) return "No guests yet";
+  return [`${summary.attending} going`, summary.maybe > 0 ? `${summary.maybe} maybe` : null, `${summary.pending} no reply`]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 const EMAIL_PATTERN = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]+$/;

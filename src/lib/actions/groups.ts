@@ -3,16 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { requireAccount } from "@/lib/require-account";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { isEmail } from "@/lib/events";
-import { getGroupForOwner, getGroupMembers, listGroupsForOwner, listRegistryGroupIds } from "@/lib/groups-server";
 import {
-  MAX_GROUP_MEMBERS,
-  MAX_GROUPS_PER_OWNER,
-  newPeople,
-  readGroupName,
-  type GroupSummary,
-  type Person,
-} from "@/lib/groups";
+  checkPeople,
+  createGroupFor,
+  getGroupForOwner,
+  getGroupMembers,
+  listGroupsForOwner,
+  listRegistryGroupIds,
+  memberRow,
+} from "@/lib/groups-server";
+import { MAX_GROUP_MEMBERS, newPeople, readGroupName, type GroupSummary, type Person } from "@/lib/groups";
 
 // Changes to groups (see src/lib/groups.ts). Only a group's owner can change
 // it. The tables are server-only, so every change goes through the
@@ -33,56 +33,22 @@ function revalidateGroup(groupId: string) {
   revalidatePath(`/dashboard/groups/${groupId}`);
 }
 
-/** Checks a list of people before it's saved: names, emails and the size limit. */
-function checkPeople(people: Person[]): string | null {
-  for (const person of people) {
-    if (!person.name.trim()) return "Every person needs a name.";
-    if (person.name.trim().length > 100) return "Keep names under 100 characters.";
-    if (person.email && !isEmail(person.email.trim())) return `"${person.email}" doesn't look like an email address.`;
-  }
-  return null;
+/** What the browser sent, without an account link: only the server sets those. */
+function typedPeople(people: Person[]): Person[] {
+  return (Array.isArray(people) ? people : []).map((person) => ({
+    name: typeof person?.name === "string" ? person.name : "",
+    email: typeof person?.email === "string" ? person.email : null,
+  }));
 }
 
-/**
- * Makes a group with these people in it. Shared by "New group" and "Save
- * this guest list as a group". Returns the new group's id.
- */
+/** "New group": makes a group with these people in it. Returns the new group's id. */
 export async function createGroup(name: string, people: Person[] = []): Promise<Result<{ id: string }>> {
   const { user, error: authError } = await requireAccount();
   if (authError || !user) return { error: authError ?? "You need an account to do this." };
-  const checked = readGroupName(name);
-  if ("error" in checked) return { error: checked.error };
-  const problem = checkPeople(people);
-  if (problem) return { error: problem };
-  const members = newPeople([], people);
-  if (members.length > MAX_GROUP_MEMBERS) return { error: `A group can have up to ${MAX_GROUP_MEMBERS} people.` };
-
-  const { count } = await supabaseAdmin
-    .from("groups")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", user.id);
-  if ((count ?? 0) >= MAX_GROUPS_PER_OWNER) {
-    return { error: `You can have up to ${MAX_GROUPS_PER_OWNER} groups. Delete one you don't use first.` };
-  }
-
-  const { data: group, error } = await supabaseAdmin
-    .from("groups")
-    .insert({ owner_id: user.id, name: checked.name })
-    .select("id")
-    .single();
-  if (error || !group) return { error: "The group wasn't made. Try again." };
-
-  if (members.length > 0) {
-    const { error: membersError } = await supabaseAdmin
-      .from("group_members")
-      .insert(members.map((m) => ({ group_id: group.id, name: m.name, email: m.email })));
-    if (membersError) {
-      await supabaseAdmin.from("groups").delete().eq("id", group.id);
-      return { error: "The group wasn't made. Try again." };
-    }
-  }
-  revalidateGroup(group.id);
-  return { error: null, id: group.id };
+  const created = await createGroupFor(user.id, name, typedPeople(people));
+  if (created.error !== null) return { error: created.error };
+  revalidateGroup(created.id);
+  return { error: null, id: created.id };
 }
 
 export async function renameGroup(groupId: string, name: string): Promise<Result> {
@@ -117,6 +83,7 @@ export async function addGroupMembers(
 ): Promise<Result<{ added: number; alreadyListed: number }>> {
   const access = await requireGroupOwner(groupId);
   if (access.error !== null) return { error: access.error };
+  people = typedPeople(people);
   const problem = checkPeople(people);
   if (problem) return { error: problem };
 
@@ -128,7 +95,7 @@ export async function addGroupMembers(
   if (toAdd.length > 0) {
     const { error } = await supabaseAdmin
       .from("group_members")
-      .insert(toAdd.map((m) => ({ group_id: groupId, name: m.name, email: m.email })));
+      .insert(toAdd.map((m) => memberRow(groupId, m)));
     if (error) return { error: "Those people weren't added. Try again." };
   }
   revalidateGroup(groupId);
