@@ -99,7 +99,7 @@ export default function DemoDashboardPage() {
               </div>
             </div>
             <Button variant="outline" size="sm" className="shrink-0" asChild>
-              <Link href="/demo/dashboard/account#follows">Review requests</Link>
+              <Link href="/demo/dashboard/account#follow-requests">Review requests</Link>
             </Button>
           </div>
         )}

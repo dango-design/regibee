@@ -1,4 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Decorator, Meta, StoryObj } from "@storybook/react";
+import { expect, waitFor, within } from "storybook/test";
 import { AccountSettings, type AccountRegistry } from "./account-settings";
 
 const mockSave = async () => {
@@ -47,9 +48,17 @@ const registries: AccountRegistry[] = [
   },
 ];
 
+// The page goes to the section in the URL's #fragment when it first shows,
+// and Storybook keeps the URL between stories, so each story starts without one.
+const withoutSectionInUrl: Decorator = (Story) => {
+  if (window.location.hash) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return <Story />;
+};
+
 const meta: Meta<typeof AccountSettings> = {
   title: "Components/AccountSettings",
   component: AccountSettings,
+  decorators: [withoutSectionInUrl],
   args: {
     registries,
     saveAction: mockSave as never,
@@ -91,4 +100,42 @@ export const WithFollowers: Story = {
       following: [],
     },
   },
+};
+
+const withRequests = {
+  profile: { public_id: "k7m2p9qx4t", full_name: "Remi & Max", discoverable: true, findable_by_email: true },
+  follows: {
+    requests: [
+      { public_id: "r4d8w2nb6h", full_name: "Grandma Dorothy", status: "pending" as const },
+      { public_id: "s6g2t8vy3j", full_name: "Sam Ortiz", status: "pending" as const },
+    ],
+    followers: [{ public_id: "a3f9c2xz7e", full_name: "Alex Kim", status: "approved" as const }],
+    following: [],
+  },
+  giftProfile: {},
+  birthdayEmails: true,
+};
+
+// Arriving from the dashboard's Review requests button, or a follow request
+// email. Those emails used to link to #follows, which still lands here: the
+// Follow requests section is current in the navigation, and focus is on its
+// title, so Approve and Decline are the next things to Tab to.
+export const LandedOnFollowRequests: Story = {
+  args: withRequests,
+  globals: { viewport: { value: "desktop" } },
+  play: async ({ canvas }) => {
+    window.location.hash = "follows";
+    const nav = within(canvas.getByRole("navigation", { name: "Account sections" }));
+    await waitFor(() =>
+      expect(nav.getByRole("link", { name: "Follow requests 2 waiting" })).toHaveAttribute("aria-current", "location"),
+    );
+    await expect(canvas.getByRole("heading", { name: "Follow requests" })).toHaveFocus();
+    await expect(window.location.hash).toBe("#follow-requests");
+  },
+};
+
+// On a phone, the sections are a row of links under the top bar.
+export const Phone: Story = {
+  args: withRequests,
+  globals: { viewport: { value: "mobile1" } },
 };

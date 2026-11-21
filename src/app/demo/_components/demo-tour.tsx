@@ -145,7 +145,7 @@ const MORE: Stop[] = [
     body: "Search for people and see what's coming up.",
   },
   {
-    href: "/demo/dashboard/account#follows",
+    href: "/demo/dashboard/account#follow-requests",
     icon: Settings,
     title: "Approve follow requests",
     body: "And choose which registries your profile shows.",

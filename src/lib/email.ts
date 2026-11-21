@@ -636,8 +636,8 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
       html: followRequestHtml({
         followerName,
         profileUrl: `${siteUrl}${profilePath(follower)}`,
-        reviewUrl: `${siteUrl}/dashboard/account#follows`,
-        settingsUrl: `${siteUrl}/dashboard/account`,
+        reviewUrl: `${siteUrl}/dashboard/account#follow-requests`,
+        settingsUrl: `${siteUrl}/dashboard/account#profile`,
       }),
     });
   } catch (err) {

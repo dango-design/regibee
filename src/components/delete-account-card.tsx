@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ACCOUNT_SECTION_SCROLL_MARGIN, AccountSectionTitle } from "@/components/account-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import {
 import { Input } from "@/components/base/input/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { accountDeletionLines, type AccountDeletionSummary } from "@/lib/account-deletion-summary";
+import { cx } from "@/lib/utils/cx";
 
 // What the person types to confirm.
 const CONFIRM_WORD = "delete";
@@ -96,9 +98,9 @@ export function DeleteAccountCard({
 
   return (
     <>
-      <Card className="border-error-primary/50">
+      <Card id="delete-account" className={cx("border-error-primary/50", ACCOUNT_SECTION_SCROLL_MARGIN)}>
         <CardHeader>
-          <CardTitle>Delete account</CardTitle>
+          <AccountSectionTitle sectionId="delete-account">Delete account</AccountSectionTitle>
           <CardDescription>
             Deletes your account, your registries and events, and your profile. Registries other
             people help manage stay with them. This can&apos;t be undone.

@@ -237,7 +237,7 @@ export function FollowButton({
         </Button>
         <p className="text-xs text-tertiary">
           You blocked {name}.{" "}
-          <Link href={`${basePath}/dashboard/account#follows`} className="font-medium text-brand-600 hover:underline">
+          <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-600 hover:underline">
             Unblock
           </Link>
         </p>
