@@ -21,7 +21,7 @@ export default async function NewEventPage({
   const linked = registries.find((r) => r.id === registry)?.id ?? null;
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
+    <div className="container mx-auto max-w-xl px-4 py-8">
       <Link
         href="/dashboard/events"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-tertiary hover:text-primary max-sm:min-h-11"
@@ -30,9 +30,7 @@ export default async function NewEventPage({
         Events
       </Link>
       <h1 className="mt-4 text-3xl font-bold">Plan an event</h1>
-      <p className="mt-1 text-tertiary">
-        Add the details now. You&apos;ll add guests and send the invitation next.
-      </p>
+      <p className="mt-1 text-tertiary">You&apos;ll add guests and send the invitation next.</p>
       <div className="mt-6">
         <EventForm registries={registries} startRegistryId={linked} />
       </div>

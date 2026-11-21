@@ -9,6 +9,7 @@ import { demoOwnRegistries } from "@/lib/demo-registries";
 import { useDemoToday } from "../demo-today";
 import { DemoOwnerShell } from "./demo-shell";
 import { DEMO_NOT_SAVED } from "./demo-event-host";
+import { cx } from "@/lib/utils/cx";
 
 const notSaved = async () => ({ error: DEMO_NOT_SAVED });
 
@@ -45,7 +46,7 @@ export function DemoEventForm({ eventId, registryId }: { eventId?: string; regis
 
   return (
     <DemoOwnerShell>
-      <div className="container mx-auto max-w-2xl px-4 py-8">
+      <div className={cx("container mx-auto px-4 py-8", event ? "max-w-2xl" : "max-w-xl")}>
         <Link
           href={event ? `/demo/dashboard/events/${event.id}` : "/demo/dashboard/events"}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-tertiary hover:text-primary"
@@ -57,7 +58,7 @@ export function DemoEventForm({ eventId, registryId }: { eventId?: string; regis
         <p className="mt-1 text-tertiary">
           {event
             ? "Guests see your changes on the event page right away."
-            : "Add the details now. You'll add guests and send the invitation next."}
+            : "You'll add guests and send the invitation next."}
         </p>
         <DemoNotice />
         <div className="mt-6">
