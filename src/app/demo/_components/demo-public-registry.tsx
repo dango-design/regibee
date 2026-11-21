@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/follow-button";
 import { PublicRegistryGrid, type GiftActions } from "@/components/public-registry-grid";
 import { PublicRegistryHero } from "@/components/public-registry-hero";
+import { WishListHero } from "@/components/wish-list-hero";
+import { OwnerChip } from "@/components/owner-chip";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { SuggestItemDialog } from "@/components/suggest-item-dialog";
 import { DEMO_ME, demoFollowState, demoOk, demoProfilePath } from "@/lib/demo-people";
@@ -137,37 +139,61 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
   const ownedByDemoAccount = registry.owner.public_id === DEMO_ME.public_id;
   const followState = ownedByDemoAccount ? "none" : demoFollowState(registry.owner.public_id);
 
+  const fulfilledCount = items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
+  const owner = registry.listed_on_profile
+    ? { name: registry.owner.full_name, path: demoProfilePath(registry.owner) }
+    : null;
+
   return (
     <DemoGuestShell>
       <DemoGuestHeader />
-      <PublicRegistryHero
-        isBabyRegistry={isBaby}
-        title={registry.title}
-        names={registry.honoree_names}
-        eventDate={registry.event_date}
-        description={registry.description}
-        fulfilledItems={items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length}
-        totalItems={items.length}
-        owner={
-          registry.listed_on_profile
-            ? { name: registry.owner.full_name, path: demoProfilePath(registry.owner) }
-            : null
-        }
-        followButton={
-          followState !== "self" && (
-            <FollowButton
-              publicId={registry.owner.public_id}
-              name={registry.owner.full_name}
-              state={followState}
-              returnTo={`/demo/r/${registry.slug}`}
-              requestAction={demoOk}
-              cancelAction={demoOk}
-              basePath="/demo"
-              layout={isBaby ? "stacked" : "inline"}
-            />
-          )
-        }
-      />
+      {isBaby ? (
+        <PublicRegistryHero
+          isBabyRegistry
+          title={registry.title}
+          names={registry.honoree_names}
+          eventDate={registry.event_date}
+          description={registry.description}
+          fulfilledItems={fulfilledCount}
+          totalItems={items.length}
+          owner={owner}
+          followButton={
+            followState !== "self" && (
+              <FollowButton
+                publicId={registry.owner.public_id}
+                name={registry.owner.full_name}
+                state={followState}
+                returnTo={`/demo/r/${registry.slug}`}
+                requestAction={demoOk}
+                cancelAction={demoOk}
+                basePath="/demo"
+              />
+            )
+          }
+        />
+      ) : (
+        <WishListHero
+          title={registry.title}
+          description={registry.description}
+          fulfilledItems={fulfilledCount}
+          totalItems={items.length}
+          ownerName={owner?.name}
+          ownerChip={
+            owner && (
+              <OwnerChip
+                name={owner.name}
+                path={owner.path}
+                publicId={registry.owner.public_id}
+                state={followState === "self" ? null : followState}
+                returnTo={`/demo/r/${registry.slug}`}
+                requestAction={demoOk}
+                cancelAction={demoOk}
+                basePath="/demo"
+              />
+            )
+          }
+        />
+      )}
 
       <main className="container mx-auto px-4 py-8">
         <PublicRegistryGrid

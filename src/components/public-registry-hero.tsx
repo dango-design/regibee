@@ -23,8 +23,7 @@ export interface PublicRegistryHeroProps {
 /**
  * The top of a shared registry page: the photo or initials, title, date,
  * welcome message and progress. The share page (src/app/r/[slug]/page.tsx)
- * and the demo both use it. Baby registries get a tall header with
- * illustrations around it. Other lists get a shorter one (WishListHero).
+ * and the demo both use it.
  */
 export function PublicRegistryHero({
   isBabyRegistry,
@@ -39,23 +38,6 @@ export function PublicRegistryHero({
   followButton,
 }: PublicRegistryHeroProps) {
   const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
-
-  if (!isBabyRegistry) {
-    return (
-      <WishListHero
-        title={title}
-        photoUrl={photoUrl}
-        names={names}
-        eventDate={eventDate}
-        description={description}
-        fulfilledItems={fulfilledItems}
-        totalItems={totalItems}
-        progress={progress}
-        owner={owner}
-        followButton={followButton}
-      />
-    );
-  }
 
   return (
     // Baby registries reserve 400px for the decorative illustrations;
@@ -90,7 +72,11 @@ export function PublicRegistryHero({
         {eventDate && (
           <p className="flex items-center gap-2 text-secondary">
             <Calendar className="h-4 w-4" />
-            {formatEventDate(eventDate)}
+            {new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
           </p>
         )}
         {description && <p className="text-secondary whitespace-pre-line">{description}</p>}
@@ -118,83 +104,6 @@ export function PublicRegistryHero({
             {followButton}
           </div>
         )}
-      </div>
-    </section>
-  );
-}
-
-/** "December 25, 2026", for a YYYY-MM-DD date. */
-function formatEventDate(eventDate: string) {
-  return new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-/**
- * A wish list's header, centered like a baby registry's but shorter. The
- * date and "Shared by" share one line under the title, with the Follow
- * button at its end and its hint under it (FollowButton's inline layout).
- * The count and bar share a line too. No minimum height, so the page goes
- * straight on to the About card and the items.
- */
-function WishListHero({
-  title,
-  photoUrl,
-  names,
-  eventDate,
-  description,
-  fulfilledItems,
-  totalItems,
-  progress,
-  owner,
-  followButton,
-}: Omit<PublicRegistryHeroProps, "isBabyRegistry"> & { progress: number }) {
-  return (
-    <section className="bg-white px-4 pt-8 pb-2 sm:pt-10">
-      {/* As wide as the About card under it (max-w-2xl), so their edges line up. */}
-      <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
-        <RegistryAvatar photoUrl={photoUrl} names={names} className="mb-1" />
-        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl sm:leading-[44px]">{title}</h1>
-        {(eventDate || owner) && (
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-sm text-secondary">
-            {eventDate && (
-              <span className="inline-flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {formatEventDate(eventDate)}
-              </span>
-            )}
-            {/* On phones the line wraps after the date, so the dot would be
-                left hanging at its end. */}
-            {eventDate && owner && (
-              <span aria-hidden="true" className="hidden text-quaternary sm:inline">
-                ·
-              </span>
-            )}
-            {owner && (
-              <span>
-                Shared by{" "}
-                <Link href={owner.path} className="font-medium text-primary underline-offset-2 hover:underline">
-                  {owner.name}
-                </Link>
-              </span>
-            )}
-            {owner && followButton}
-          </div>
-        )}
-        {description && <p className="mt-1 whitespace-pre-line text-secondary">{description}</p>}
-        <div className="mt-1 flex w-full items-center gap-3 text-sm text-secondary">
-          <span className="shrink-0">
-            {fulfilledItems} of {totalItems} items gifted
-          </span>
-          <Progress value={progress} aria-label="Items gifted" className="min-w-12 flex-1" />
-          <span className="shrink-0 tabular-nums">{Math.round(progress)}%</span>
-        </div>
-        <p className="inline-flex items-center gap-1.5 text-xs text-tertiary">
-          <LockOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          Reserve a gift in 10 seconds — no sign-up required.
-        </p>
       </div>
     </section>
   );

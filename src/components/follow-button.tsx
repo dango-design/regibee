@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { SwitchHorizontal01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
-import { cx } from "@/lib/utils/cx";
 import { cancelFollow, requestFollow } from "@/lib/actions/follows";
 
 export type FollowButtonState = "signed-out" | "none" | "pending" | "approved" | "blocked";
@@ -196,7 +195,6 @@ export function FollowButton({
   cancelAction,
   followsYou = false,
   basePath = "",
-  layout = "stacked",
 }: {
   /** The id from the person's profile link. */
   publicId: string;
@@ -211,12 +209,6 @@ export function FollowButton({
   followsYou?: boolean;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
-  /**
-   * "stacked" puts the hint under the button. "inline" adds the button to the
-   * parent's flex row, like a "Shared by" line, and gives the hint a line of
-   * its own under that row. The parent needs `flex flex-wrap`.
-   */
-  layout?: "stacked" | "inline";
 }) {
   const { state, busy, error, toggle } = useFollow({
     publicId,
@@ -226,30 +218,24 @@ export function FollowButton({
     cancelAction,
   });
 
-  const inline = layout === "inline";
-  // Inline, the wrapper adds no box, so the button sits in the parent's row
-  // and the hint, at full width, wraps onto the next line.
-  const wrapperClass = inline ? "contents" : "flex flex-col items-center gap-1";
-  const hintClass = cx("text-xs text-tertiary", inline && "basis-full");
-
   if (state === "signed-out") {
     return (
-      <div className={wrapperClass}>
+      <div className="flex flex-col items-center gap-1">
         <Button size="sm" asChild>
           <Link href={`/login?redirect=${encodeURIComponent(returnTo)}`}>Follow</Link>
         </Button>
-        <p className={hintClass}>Log in to ask to follow {name}.</p>
+        <p className="text-xs text-tertiary">Log in to ask to follow {name}.</p>
       </div>
     );
   }
 
   if (state === "blocked") {
     return (
-      <div className={wrapperClass}>
+      <div className="flex flex-col items-center gap-1">
         <Button size="sm" variant="outline" disabled>
           Blocked
         </Button>
-        <p className={hintClass}>
+        <p className="text-xs text-tertiary">
           You blocked {name}.{" "}
           <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-600 hover:underline">
             Unblock
@@ -268,9 +254,9 @@ export function FollowButton({
   }[state];
 
   return (
-    <div className={wrapperClass}>
+    <div className="flex flex-col items-center gap-1">
       <FollowToggle state={state} busy={busy} onClick={toggle} followsYou={followsYou} />
-      <p className={hintClass}>
+      <p className="text-xs text-tertiary">
         {hint}
         {state === "pending" && (
           <>
@@ -279,7 +265,7 @@ export function FollowButton({
           </>
         )}
       </p>
-      {error && <p className={cx(hintClass, "text-error-primary")}>{error}</p>}
+      {error && <p className="text-xs text-error-primary">{error}</p>}
     </div>
   );
 }

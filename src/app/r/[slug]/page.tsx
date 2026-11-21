@@ -16,6 +16,8 @@ import { PoweredByFooter } from "@/components/site-footer";
 import { SuggestItemDialog } from "@/components/suggest-item-dialog";
 import { PublicRegistryGrid } from "@/components/public-registry-grid";
 import { PublicRegistryHero } from "@/components/public-registry-hero";
+import { WishListHero } from "@/components/wish-list-hero";
+import { OwnerChip } from "@/components/owner-chip";
 import { copyForRegistry, honoreeDisplayName } from "@/lib/registry-copy";
 import { FollowButton } from "@/components/follow-button";
 import { displayName, profilePath } from "@/lib/profile-link";
@@ -39,7 +41,6 @@ import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notic
 import { FellowGuestsNotice } from "@/components/fellow-guests-notice";
 import type { OpenGift } from "@/components/reserve-item-dialog";
 import { GuestPrefillProvider, type GuestPrefill } from "@/components/guest-prefill-context";
-import { GiftProfileCard } from "@/components/gift-profile-card";
 import { parseGiftProfile, withoutBirthday, type GiftProfile } from "@/lib/gift-profile";
 import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
 import { canManageRegistry } from "@/lib/events-server";
@@ -614,30 +615,57 @@ export default async function PublicRegistryPage({
       <Nav returnTo={`/r/${registry.slug}`} />
 
       <div id="main-content">
-        <PublicRegistryHero
-          isBabyRegistry={isBabyRegistry}
-          title={registry.title}
-          photoUrl={registry.photo_url}
-          names={registry.honoree_names || registry.parent_names}
-          eventDate={registry.event_date}
-          description={registry.description}
-          fulfilledItems={fulfilledItems}
-          totalItems={totalItems}
-          owner={owner && ownerRelation ? owner : null}
-          followButton={
-            owner &&
-            ownerRelation &&
-            !ownerRelation.isOwner && (
-              <FollowButton
-                publicId={owner.publicId}
-                name={owner.name}
-                state={ownerRelation.state}
-                returnTo={`/r/${slug}`}
-                layout={isBabyRegistry ? "stacked" : "inline"}
-              />
-            )
-          }
-        />
+        {isBabyRegistry ? (
+          <PublicRegistryHero
+            isBabyRegistry
+            title={registry.title}
+            photoUrl={registry.photo_url}
+            names={registry.honoree_names || registry.parent_names}
+            eventDate={registry.event_date}
+            description={registry.description}
+            fulfilledItems={fulfilledItems}
+            totalItems={totalItems}
+            owner={owner && ownerRelation ? owner : null}
+            followButton={
+              owner &&
+              ownerRelation &&
+              !ownerRelation.isOwner && (
+                <FollowButton
+                  publicId={owner.publicId}
+                  name={owner.name}
+                  state={ownerRelation.state}
+                  returnTo={`/r/${slug}`}
+                />
+              )
+            }
+          />
+        ) : (
+          // A wish list: no date, since one list usually serves many
+          // occasions. The owner's sizes and likes go in its summary card.
+          <WishListHero
+            title={registry.title}
+            photoUrl={registry.photo_url}
+            description={registry.description}
+            fulfilledItems={fulfilledItems}
+            totalItems={totalItems}
+            ownerName={owner?.name}
+            ownerChip={
+              owner &&
+              ownerRelation && (
+                <OwnerChip
+                  name={owner.name}
+                  path={owner.path}
+                  publicId={owner.publicId}
+                  state={ownerRelation.isOwner ? null : ownerRelation.state}
+                  returnTo={`/r/${slug}`}
+                />
+              )
+            }
+            giftProfile={giftProfile}
+            giftProfileName={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
+            showBirthday={showBirthday}
+          />
+        )}
 
         {/* Items. With no items or funds yet, the grid says so and still offers
             "Suggest an item". */}
@@ -667,15 +695,6 @@ export default async function PublicRegistryPage({
               eventTitle={fellowGuests.eventTitle}
               eventHref={`/e/${fellowGuests.eventSlug}`}
               ownerName={fellowGuests.listOwner ?? (registry.honoree_names?.trim() || registry.parent_names?.trim() || null)}
-            />
-          )}
-          {giftProfile && (
-            <GiftProfileCard
-              className="mx-auto mb-8 max-w-2xl"
-              layout="row"
-              profile={giftProfile}
-              name={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
-              showBirthday={showBirthday}
             />
           )}
           <GuestPrefillProvider value={guestPrefill}>

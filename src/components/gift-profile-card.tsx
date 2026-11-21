@@ -14,11 +14,6 @@ export interface GiftProfileCardProps {
   showBirthday?: boolean;
   /** Goes next to the heading, like an Edit link on your own profile. */
   action?: ReactNode;
-  /**
-   * "stacked" lists the details down the card. "row" puts them side by side
-   * and wraps, so a wide card stays short, like on a wish list's page.
-   */
-  layout?: "stacked" | "row";
   className?: string;
 }
 
@@ -68,14 +63,7 @@ function Row({
  * What someone likes and their sizes, for the people giving them gifts.
  * Renders nothing when there's nothing to show.
  */
-export function GiftProfileCard({
-  profile,
-  name,
-  showBirthday = false,
-  action,
-  layout = "stacked",
-  className,
-}: GiftProfileCardProps) {
+export function GiftProfileCard({ profile, name, showBirthday = false, action, className }: GiftProfileCardProps) {
   const birthday = showBirthday && profile.birthday ? formatBirthday(profile.birthday) : null;
   if (!hasGiftDetails(profile) && !birthday) return null;
 
@@ -89,7 +77,7 @@ export function GiftProfileCard({
         <h2 className="min-w-0 break-words font-semibold text-primary">About {name}</h2>
         {action}
       </div>
-      <dl className={layout === "row" ? "mt-3 flex flex-wrap gap-x-10 gap-y-3" : "mt-3 space-y-3"}>
+      <dl className="mt-3 space-y-3">
         {birthday && (
           <Row icon={Cake} label="Birthday">
             {birthday}
@@ -128,3 +116,6 @@ export function GiftProfileCard({
     </section>
   );
 }
+
+/** The likes or skip chips, for other places that show a gift profile. */
+export { Chips as GiftProfileChips };
