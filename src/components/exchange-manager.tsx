@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, Loader2, Shuffle, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { SelectField } from "@/components/base/select/select-field";
 import {
   addExchangeExclusion,
   drawExchangeNames,
@@ -298,15 +298,13 @@ function DrawManager({
           </ul>
         )}
         {!drawn && others.length > 0 && (
-          <NativeSelect
+          <SelectField
             aria-label="Add someone from the guest list"
             value=""
             disabled={busy}
-            onChange={(e) => e.target.value && run(() => actions.setParticipant(eventId, e.target.value, true))}
-            options={[
-              { value: "", label: "Add someone from the guest list…" },
-              ...others.map((g) => ({ value: g.id, label: g.name })),
-            ]}
+            onChange={(value) => value && run(() => actions.setParticipant(eventId, value, true))}
+            placeholder="Add someone from the guest list…"
+            options={others.map((g) => ({ value: g.id, label: g.name }))}
           />
         )}
         {!drawn && (
@@ -349,18 +347,18 @@ function DrawManager({
           {!drawn && participants.length >= 2 && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
-                <NativeSelect
+                <SelectField
                   aria-label="First person"
                   value={pairA}
-                  onChange={(e) => setPairA(e.target.value)}
+                  onChange={setPairA}
                   options={[{ value: "", label: "Choose someone…" }, ...participants.map((g) => ({ value: g.id, label: g.name }))]}
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <NativeSelect
+                <SelectField
                   aria-label="Second person"
                   value={pairB}
-                  onChange={(e) => setPairB(e.target.value)}
+                  onChange={setPairB}
                   options={[
                     { value: "", label: "…and someone else" },
                     ...participants.filter((g) => g.id !== pairA).map((g) => ({ value: g.id, label: g.name })),

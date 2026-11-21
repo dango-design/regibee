@@ -5,9 +5,9 @@
 
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { CRON_SECRET, createAccount, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
+import { chooseOption, CRON_SECRET, createAccount, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
 import { emailsTo, waitForEmail } from "./mailbox";
-import { dateIn, nextDate } from "../src/lib/event-updates";
+import { dateIn, MESSAGE_AUDIENCES, nextDate } from "../src/lib/event-updates";
 
 const WEDDING_QUESTIONS = [
   { id: "meal", kind: "meal", label: "Meal choice", required: true, options: ["Chicken", "Fish", "Vegetarian"] },
@@ -64,14 +64,14 @@ test("a wedding RSVP asks each person's meal and the plus-one's name, and the ho
   );
 
   await openRsvp(page, guests[0].rsvpPath, "Going");
-  await page.getByLabel("How many people, including you?").selectOption("2");
+  await chooseOption(page, "How many people, including you?", "2");
   // Required answers are checked before anything is sent.
   await page.getByRole("button", { name: "Send RSVP" }).click();
   await expect(page.getByRole("alert").filter({ hasText: 'Choose "Meal choice" for each person.' })).toBeVisible();
 
   await page.getByRole("textbox", { name: "Name of guest 2" }).fill("Sam");
-  await page.getByRole("combobox", { name: "For you" }).selectOption("Fish");
-  await page.getByRole("combobox", { name: "For Sam" }).selectOption("Chicken");
+  await chooseOption(page, /For you$/, "Fish");
+  await chooseOption(page, /For Sam$/, "Chicken");
   await page.getByLabel("Allergies or dietary needs (optional)").fill("No nuts");
   await page.getByRole("button", { name: "Send RSVP" }).click();
 
@@ -209,7 +209,7 @@ test("the host messages everyone going, and replies go to the host", async ({ pa
     await page.getByRole("button", { name: "Message everyone going" }).click();
     await expect(dialog).toBeVisible({ timeout: 1000 });
   }).toPass();
-  await expect(dialog.getByRole("combobox", { name: "Send to" })).toHaveValue("going");
+  await expect(dialog.getByRole("button", { name: /Send to$/ })).toContainText(MESSAGE_AUDIENCES.going.label);
   await dialog.getByRole("textbox", { name: "Message" }).fill("Parking is behind the building.");
   await dialog.getByRole("button", { name: "Send to 1 guest" }).click();
   await expect(dialog).toBeHidden();

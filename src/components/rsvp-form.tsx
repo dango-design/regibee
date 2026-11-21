@@ -6,7 +6,7 @@ import { Check, CircleHelp, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { SelectField } from "@/components/base/select/select-field";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { submitRsvp, type RsvpInput } from "@/lib/actions/events";
 import type { ExchangeKind, RsvpStatus } from "@/lib/events";
@@ -414,12 +414,12 @@ export function RsvpForm({
           // Side by side only when both show. Alone, the dropdown keeps the full width.
           <div className={cx("grid gap-4", showPartySize && showKids && "sm:grid-cols-2")}>
             {showPartySize && (
-              <NativeSelect
+              <SelectField
                 label="How many people, including you?"
                 value={partySize}
-                onChange={(e) => {
-                  setPartySize(e.target.value);
-                  if (Number(kids) > Number(e.target.value)) setKids(e.target.value);
+                onChange={(value) => {
+                  setPartySize(value);
+                  if (Number(kids) > Number(value)) setKids(value);
                 }}
                 options={Array.from({ length: maxPartySize }, (_, i) => ({
                   value: String(i + 1),
@@ -428,10 +428,10 @@ export function RsvpForm({
               />
             )}
             {showKids && (
-              <NativeSelect
+              <SelectField
                 label="How many are kids?"
                 value={kids}
-                onChange={(e) => setKids(e.target.value)}
+                onChange={setKids}
                 options={Array.from({ length: (showPartySize ? Number(partySize) : 1) + 1 }, (_, i) => ({
                   value: String(i),
                   label: i === 0 ? "None" : String(i),
@@ -653,13 +653,13 @@ function QuestionFields({
               <legend className="mb-1.5 text-sm font-medium text-secondary">{label(question)}</legend>
               <div className={cx("grid gap-2", people > 1 && "sm:grid-cols-2")}>
                 {listOf(question.id, people).map((pick, i) => (
-                  <NativeSelect
+                  <SelectField
                     key={i}
                     // Alone, the group's legend says what it is. With others, each says who it's for.
                     aria-label={question.label}
                     label={people > 1 ? `For ${i === 0 ? "you" : names[i - 1]?.trim() || `guest ${i + 1}`}` : undefined}
                     value={pick}
-                    onChange={(e) => setAt(question.id, people, i, e.target.value)}
+                    onChange={(value) => setAt(question.id, people, i, value)}
                     options={[
                       { value: "", label: "Choose…" },
                       ...question.options.map((option) => ({ value: option, label: option })),

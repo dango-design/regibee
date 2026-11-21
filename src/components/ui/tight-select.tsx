@@ -1,14 +1,13 @@
 "use client";
 
-import type { ChangeEvent } from "react";
 import { ChevronDown } from "lucide-react";
+import { Button, ListBox, Select, SelectValue } from "react-aria-components";
+import { Popover } from "@/components/base/select/popover";
+import { SelectItem } from "@/components/base/select/select-item";
 
 /**
- * A native <select> renders its padding around the longest option, which
- * leaves awkward blank space between short selected labels and the chevron.
- * TightSelect sizes the visible pill to the current label by rendering it
- * in a sibling span and overlaying a transparent select on top for
- * interaction and a11y.
+ * A small pill dropdown for filters and sorting. The pill is as wide as the
+ * chosen label, and its menu is at least as wide as the pill.
  */
 export function TightSelect<T extends string>({
   value,
@@ -21,27 +20,23 @@ export function TightSelect<T extends string>({
   options: { value: T; label: string }[];
   ariaLabel: string;
 }) {
-  const current = options.find((o) => o.value === value)?.label ?? "";
   return (
-    <span className="relative inline-flex items-center rounded-md border border-primary bg-primary py-1.5 pl-3 pr-8 text-sm focus-within:ring-2 focus-within:ring-brand-500 focus-within:border-brand-500 max-sm:min-h-11">
-      <span className="pointer-events-none whitespace-nowrap">{current}</span>
-      <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 text-tertiary" />
-      <select
-        aria-label={ariaLabel}
-        value={value}
-        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-          onChange(e.target.value as T)
-        }
-        // The select is invisible, but iOS zooms in on focus when its text is
-        // under 16px.
-        className="absolute inset-0 cursor-pointer appearance-none bg-transparent text-transparent opacity-0 focus:outline-none max-sm:text-md"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </span>
+    <Select
+      aria-label={ariaLabel}
+      value={value}
+      onChange={(key) => key != null && onChange(String(key) as T)}
+    >
+      <Button className="relative inline-flex cursor-pointer items-center rounded-md border border-primary bg-primary py-1.5 pl-3 pr-8 text-sm outline-hidden focus-visible:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-500 data-pressed:bg-primary_hover max-sm:min-h-11">
+        <SelectValue className="whitespace-nowrap">{({ selectedText }) => selectedText}</SelectValue>
+        <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 h-4 w-4 text-tertiary" />
+      </Button>
+      <Popover size="sm" placement="bottom start" className="w-auto min-w-(--trigger-width)">
+        <ListBox className="outline-hidden">
+          {options.map((option) => (
+            <SelectItem key={option.value} id={option.value} label={option.label} />
+          ))}
+        </ListBox>
+      </Popover>
+    </Select>
   );
 }

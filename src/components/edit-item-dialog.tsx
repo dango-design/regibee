@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Loader2, ChevronDown, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { Link01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
-import { InputGroup, InputPrefix } from "@/components/base/input/input-group";
+import { InputGroup } from "@/components/base/input/input-group";
+import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -539,26 +540,7 @@ export function EditItemDialog({
               value={price}
               onChange={handlePriceChange}
               prefix={currencySymbols[currency] || "$"}
-              trailingAddon={
-                <InputPrefix position="trailing">
-                  <span className="relative inline-flex items-center">
-                    <select
-                      aria-label="Currency"
-                      className="appearance-none bg-transparent pr-5 text-primary outline-none cursor-pointer max-sm:-my-2.5 max-sm:py-2.5"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option>USD</option>
-                      <option>EUR</option>
-                      <option>GBP</option>
-                      <option>JPY</option>
-                      <option>CAD</option>
-                      <option>AUD</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-0 h-4 w-4 text-tertiary" />
-                  </span>
-                </InputPrefix>
-              }
+              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
             >
               <InputBase
                 type="number"
