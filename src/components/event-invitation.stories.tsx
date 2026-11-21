@@ -355,6 +355,16 @@ export const EveryoneGivesEveryone: Story = {
         maxPartySize={sampleExchangeEvent.max_party_size}
         askKids
         exchange={{ kind: "everyone", mailed: false, drawn: false }}
+        wishlist={{
+          current: {
+            url: "https://regibee.com/r/glindas-wishlist-8h3m",
+            title: "Glinda's Christmas List",
+            ownListId: "glindas-list",
+          },
+          giftIdeas: null,
+          account: { lists: [{ id: "glindas-list", title: "Glinda's Christmas List" }] },
+          saveAction: async () => ({ error: null }),
+        }}
         passed={false}
         submitAction={submitAction}
       />

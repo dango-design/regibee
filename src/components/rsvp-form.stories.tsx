@@ -54,32 +54,54 @@ export const PartyWithExchange: Story = {
 
 /**
  * Everyone gives everyone, for a guest signed in with lists of their own.
- * Choosing Going shows a menu of their lists, with their newest picked.
+ * The RSVP asks only whether they're coming. Once they send it, the next step
+ * asks for their wish list, with their lists to pick from.
  */
 export const EveryoneGivesEveryone: Story = {
   args: {
     exchange: { kind: "everyone", mailed: false, drawn: false },
-    myLists: [
-      { title: "Fiyero's Christmas List", url: "https://regibee.com/r/fiyeros-list-5j2c" },
-      { title: "Fiyero's Birthday Wishlist", url: "https://regibee.com/r/fiyero-birthday-9x1q" },
-    ],
+    wishlist: {
+      current: null,
+      giftIdeas: null,
+      account: {
+        lists: [
+          { id: "list-1", title: "Fiyero's Christmas List" },
+          { id: "list-2", title: "Fiyero's Birthday Wishlist" },
+        ],
+      },
+      saveAction: fn(async () => ({ error: null })),
+    },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Going" }));
-    await expect(canvas.getByLabelText(/^Your list/)).toHaveValue("https://regibee.com/r/fiyeros-list-5j2c");
+    await expect(canvas.getByText(/Once you send your RSVP, you.ll add your wish list/)).toBeVisible();
     await expect(canvas.queryByRole("checkbox", { name: /Join the gift exchange/ })).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Send RSVP" }));
+    await expect(canvas.getByRole("heading", { name: "Now add your wish list" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Use Fiyero's Christmas List" })).toBeVisible();
   },
 };
 
-/** Everyone gives everyone, for a guest with no Regibee list: they paste a link, or make one. */
-export const EveryoneGivesEveryoneNoList: Story = {
-  args: { exchange: { kind: "everyone", mailed: false, drawn: false } },
+/**
+ * Everyone gives everyone, for a guest who isn't signed in. After they send
+ * their RSVP, they can make a free account and a list, log in to use one they
+ * have, or paste a link from another store.
+ */
+export const EveryoneGivesEveryoneSignedOut: Story = {
+  args: {
+    exchange: { kind: "everyone", mailed: false, drawn: false },
+    wishlist: { current: null, giftIdeas: null, account: null, saveAction: fn(async () => ({ error: null })) },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Maybe" }));
-    await expect(canvas.getByLabelText(/Link to your wish list/)).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "Make one on Regibee" })).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Send RSVP" }));
+    await expect(canvas.getByRole("link", { name: "Make a free wish list" })).toHaveAttribute(
+      "href",
+      `/signup?redirect=${encodeURIComponent(`/e/${sampleExchangeEvent.slug}?g=token-g4#wishlist`)}`,
+    );
+    await expect(canvas.getByRole("link", { name: "Log in" })).toBeVisible();
   },
 };
 

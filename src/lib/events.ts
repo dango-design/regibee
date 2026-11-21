@@ -219,6 +219,15 @@ export interface GuestWishList {
   giftIdeas: string | null;
 }
 
+/** "store.com" from a wish list's link, for a list that isn't on Regibee. */
+export function storeName(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "another store";
+  }
+}
+
 export function isEventType(value: unknown): value is EventType {
   return typeof value === "string" && (EVENT_TYPES as readonly string[]).includes(value);
 }

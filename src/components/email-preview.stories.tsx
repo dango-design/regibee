@@ -365,6 +365,49 @@ export const RsvpGuestConfirmation: Story = {
   },
 };
 
+// A family Christmas where everyone gives everyone. The host linked their own
+// list, but the email leaves it out: everyone's lists are on the invitation.
+const sampleChristmasEmail = {
+  title: "Christmas at Aunt Linda's",
+  hostedBy: "Aunt Linda",
+  date: "Friday, December 25, 2026",
+  time: "2 – 8 PM PST",
+  locationName: "Aunt Linda's",
+  locationAddress: "88 Evergreen Ln\nPortland, OR 97201",
+  registries: [{ title: "Linda's Christmas List", url: "https://regibee.com/r/lindas-christmas-list-q2w8" }],
+  exchange: { kind: "everyone" as const, budget: "$30", mailed: false },
+};
+
+export const ChristmasInvitation: Story = {
+  args: {
+    subject: "You're invited: Christmas at Aunt Linda's",
+    from: '"Aunt Linda via Regibee" <notifications@regibee.com>',
+    html: eventInvitationHtml({
+      guestName: "Glinda",
+      hostName: "Aunt Linda",
+      event: sampleChristmasEmail,
+      rsvpUrl: "https://regibee.com/e/christmas-at-aunt-lindas-k3m9q2xa?g=Q2hyaXN0bWFzIGxpbms",
+    }),
+  },
+};
+
+// A guest who said yes without a wish list yet is asked to add one.
+export const ChristmasRsvpWithoutWishlist: Story = {
+  args: {
+    subject: "You're going to Christmas at Aunt Linda's",
+    html: rsvpGuestConfirmationHtml({
+      guestName: "Glinda",
+      status: "yes",
+      partySize: 2,
+      event: sampleChristmasEmail,
+      rsvpUrl: "https://regibee.com/e/christmas-at-aunt-lindas-k3m9q2xa?g=Q2hyaXN0bWFzIGxpbms",
+      calendarUrl: "https://calendar.google.com/calendar/render?action=TEMPLATE",
+      inExchange: true,
+      hasWishlist: false,
+    }),
+  },
+};
+
 export const RsvpHostNotification: Story = {
   args: {
     subject: "Glinda Upland is going to Remi's Baby Shower",
