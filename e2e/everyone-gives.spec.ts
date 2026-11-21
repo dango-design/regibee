@@ -7,9 +7,21 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createWishlist, db, reserveGift, runReservationJob, signIn, SITE_URL, uniqueId } from "./fixtures";
+import { AUTH_EMAILS } from "../src/lib/auth-email-templates";
+import {
+  createAccount,
+  createWishlist,
+  db,
+  reserveGift,
+  runReservationJob,
+  signIn,
+  SITE_URL,
+  uniqueEmail,
+  uniqueId,
+  waitForReact,
+} from "./fixtures";
 import { localSupabase } from "./local-supabase";
-import { waitForEmail } from "./mailbox";
+import { linkIn, waitForEmail } from "./mailbox";
 
 /** An everyone-gives-everyone event hosted by the given account, with these guests on its list. */
 async function createEveryoneEvent(hostId: string, guests: { name: string; email: string }[]) {
@@ -34,13 +46,24 @@ async function createEveryoneEvent(hostId: string, guests: { name: string; email
   return { event, guests: saved.map((g) => ({ ...g, rsvpPath: `/e/${event.slug}?g=${g.token}` })) };
 }
 
-/** RSVPs "Going" from a guest's own link, with a pasted wish list link or none. */
-async function rsvpWithList(page: Page, rsvpPath: string, wishlistUrl: string | null) {
+/** RSVPs "Going" from a guest's own link. The next step asks for a wish list. */
+async function rsvpGoing(page: Page, rsvpPath: string) {
   await page.goto(rsvpPath);
+  await waitForReact(page.getByRole("button", { name: "Going" }));
   await page.getByRole("button", { name: "Going" }).click();
-  if (wishlistUrl) await page.getByLabel(/Link to your wish list/).fill(wishlistUrl);
   await page.getByRole("button", { name: "Send RSVP" }).click();
-  await expect(page.getByText(/You're going/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /You're going/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Now add your wish list" })).toBeVisible();
+}
+
+/** RSVPs "Going" from a guest's own link, then pastes a wish list link, or adds none. */
+async function rsvpWithList(page: Page, rsvpPath: string, wishlistUrl: string | null) {
+  await rsvpGoing(page, rsvpPath);
+  if (!wishlistUrl) return;
+  await page.getByRole("button", { name: /Paste a link from another store/ }).click();
+  await page.getByLabel(/Link to your list/).fill(wishlistUrl);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("heading", { name: "Your wish list" })).toBeVisible();
 }
 
 /** The purchases on a list that its owner can read with the anon key, as the mobile app does. */
@@ -145,4 +168,111 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   await mayaPage.goto(`/dashboard/registry/${mayaList.id}?tab=purchases`);
   await expect(mayaPage.getByText("Ben Brother").first()).toBeVisible();
   await mayaSignedIn.close();
+});
+
+test("a guest without an account makes one and a wish list right after they RSVP", async ({ page }) => {
+  // A sign-up and its confirmation email: longer than one RSVP.
+  test.setTimeout(90_000);
+  const hal = await createAccount("Hal Host");
+  const email = uniqueEmail("nina");
+  const { event, guests } = await createEveryoneEvent(hal.id, [{ name: "Nina", email }]);
+  const [nina] = guests;
+
+  await rsvpGoing(page, nina.rsvpPath);
+  // Her confirmation asks for a wish list too.
+  const confirmation = await waitForEmail(email, `You're going to ${event.title}`);
+  expect(confirmation.html).toContain("Add your wish list.");
+
+  // "Make a free wish list" makes an account, and comes back to her invitation.
+  await page.getByRole("link", { name: "Make a free wish list" }).click();
+  await page.waitForURL(/\/signup\?redirect=/);
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Your name").fill("Nina Niece");
+  await page.getByRole("textbox", { name: /^Email/ }).fill(email);
+  await page.getByLabel("Password").fill("a-new-password");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText("Check your email")).toBeVisible();
+  const confirm = await waitForEmail(email, AUTH_EMAILS.confirmation.subject);
+  await page.goto(linkIn(confirm, /\/auth\/v1\/verify\?.*type=signup/));
+  await page.waitForURL(new RegExp(`/e/${event.slug}\\?g=${nina.token}`));
+
+  // Signed in now, one button makes her list and links it.
+  const make = page.getByRole("button", { name: "Make my wish list" });
+  await waitForReact(make);
+  await make.click();
+  await expect(page.getByRole("link", { name: "Add things to your list" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Your wish list" }).getByText("Nina's Christmas List")).toBeVisible();
+
+  const { data: guest } = await db.from("event_guests").select("wishlist_registry_id").eq("id", nina.id).single();
+  const { data: list } = await db
+    .from("registries")
+    .select("title, settings, is_private")
+    .eq("id", guest!.wishlist_registry_id!)
+    .single();
+  // Others can open it, and what's reserved stays hidden from her.
+  expect(list).toMatchObject({ title: "Nina's Christmas List", is_private: false, settings: { hide_reservations: true } });
+});
+
+test("a guest logs in after they RSVP and links a list they already have", async ({ page, browser }) => {
+  test.setTimeout(90_000);
+  const hal = await createAccount("Hal Host");
+  const olive = await createAccount("Olive Sister");
+  const { registry: oliveList } = await createWishlist(olive.id);
+  const { registry: halList } = await createWishlist(hal.id);
+  const { event, guests } = await createEveryoneEvent(hal.id, [{ name: "Olive", email: olive.email }]);
+  // The host linked their own list too. The invitation email leaves it out:
+  // guests find everyone's lists on the invitation.
+  await db.from("event_registries").insert({ event_id: event.id, registry_id: halList.id, linked_by: hal.id });
+
+  const hostContext = await browser.newContext();
+  const hostPage = await hostContext.newPage();
+  await signIn(hostPage, hal);
+  await hostPage.goto(`/dashboard/events/${event.id}`);
+  await hostPage.getByRole("button", { name: "Send invitations" }).click();
+  await hostPage.getByRole("button", { name: "Send", exact: true }).click();
+  const invitation = await waitForEmail(olive.email, `You're invited: ${event.title}`);
+  expect(invitation.html).toContain("everyone gives everyone");
+  expect(invitation.html).not.toContain(halList.title);
+  expect(invitation.html).not.toContain(`/r/${halList.slug}`);
+  await hostContext.close();
+
+  await rsvpGoing(page, guests[0].rsvpPath);
+  // The wish list step's own Log in, not the one in the top bar.
+  await page.getByRole("region", { name: "Now add your wish list" }).getByRole("link", { name: "Log in" }).click();
+  await page.waitForURL(/\/login\?redirect=/);
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Email").fill(olive.email);
+  await page.getByLabel("Password").fill(olive.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(new RegExp(`/e/${event.slug}\\?g=${guests[0].token}`));
+
+  const use = page.getByRole("button", { name: `Use ${oliveList.title}` });
+  await waitForReact(use);
+  await use.click();
+  await expect(page.getByRole("link", { name: "Add things to your list" })).toHaveAttribute(
+    "href",
+    `/dashboard/registry/${oliveList.id}`,
+  );
+  const { data: guest } = await db.from("event_guests").select("wishlist_registry_id").eq("id", guests[0].id).single();
+  expect(guest?.wishlist_registry_id).toBe(oliveList.id);
+});
+
+test("a guest logs in from the invitation's top bar and comes back to their own link", async ({ page }) => {
+  const hal = await createAccount("Hal Host");
+  const pia = await createAccount("Pia Cousin");
+  const { guests } = await createEveryoneEvent(hal.id, [{ name: "Pia", email: pia.email }]);
+
+  await page.goto(guests[0].rsvpPath);
+  const bar = page.getByRole("banner");
+  await bar.getByRole("link", { name: "Log in" }).click();
+  await page.waitForURL(/\/login\?redirect=/);
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Email").fill(pia.email);
+  await page.getByLabel("Password").fill(pia.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  // Back on her own link, still greeted by name, with her account menu in the bar.
+  await page.waitForURL((url) => url.pathname === guests[0].rsvpPath.split("?")[0] && url.search === `?g=${guests[0].token}`);
+  await expect(page.getByRole("heading", { name: "Hi Pia, can you make it?" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: /^Account menu/ })).toBeVisible();
 });

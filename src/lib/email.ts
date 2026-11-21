@@ -823,6 +823,8 @@ export async function confirmRsvpToGuest(opts: {
   exchange?: GiftExchange | null;
   /** Whether the guest is in the gift exchange after this RSVP. */
   inExchange?: boolean;
+  /** When everyone gives everyone: whether the guest has added a wish list or gift ideas. */
+  hasWishlist?: boolean;
   guest: { name: string; email: string; token: string };
   status: "yes" | "no" | "maybe";
   partySize: number;
@@ -855,6 +857,7 @@ export async function confirmRsvpToGuest(opts: {
         rsvpUrl: guestRsvpUrl(opts.event.slug, opts.guest.token),
         calendarUrl: googleCalendarUrl(event, eventUrl),
         inExchange: opts.inExchange,
+        hasWishlist: opts.hasWishlist,
         signups: opts.signups?.claims ?? [],
         answers: opts.answers,
       }),

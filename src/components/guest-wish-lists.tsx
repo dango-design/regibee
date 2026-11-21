@@ -1,7 +1,7 @@
 import { ExternalLink, Gift, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { initialsFor } from "@/lib/initials";
-import type { GuestWishList } from "@/lib/events";
+import { storeName, type GuestWishList } from "@/lib/events";
 import { cx } from "@/lib/utils/cx";
 
 export interface GuestWishListsProps {
@@ -19,15 +19,6 @@ export interface GuestWishListsProps {
   hostView?: boolean;
   /** Put in front of a Regibee list's link instead of going through the event. The demo passes "/demo". */
   basePath?: string;
-}
-
-/** "store.com" from a link, for a list that isn't on Regibee. */
-function storeName(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "Another store";
-  }
 }
 
 /**
@@ -112,7 +103,7 @@ export function GuestWishLists({
                         : entry.url
                           ? `A list on ${storeName(entry.url)}`
                           : entry.isYou
-                            ? "Add your wish list in your RSVP"
+                            ? "Add your wish list above"
                             : "No wish list yet"}
                     </p>
                     {entry.giftIdeas && (

@@ -476,13 +476,33 @@ export function daysUntil(eventDate: string, today: string): number {
   return Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
 }
 
-// "12 days to go", "Tomorrow", "Today" or "Event passed". Baby registries
-// count down to the due date instead.
+// "12 days to go", "Tomorrow" or "Today". Baby registries count down to the
+// due date instead ("Due in 12 days"). Once the date has gone by, it shows
+// the date itself with its year, like "Nov 3, 2026": wording like "Due date
+// passed" read as harsh.
 export function countdownLabel(eventDate: string, today: string, registryType: "baby" | "personal"): string {
   const days = daysUntil(eventDate, today);
   const baby = registryType === "baby";
-  if (days < 0) return baby ? "Due date passed" : "Event passed";
+  if (days < 0) {
+    // Built as a local date and formatted without a time zone, so it shows
+    // the same calendar day everywhere, the phone app included.
+    const [y, m, d] = eventDate.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
   if (days === 0) return baby ? "Due today" : "Today";
   if (days === 1) return baby ? "Due tomorrow" : "Tomorrow";
   return baby ? `Due in ${days} days` : `${days} days to go`;
+}
+
+/**
+ * Whether the guests of a new event of this occasion might give each other
+ * gifts, so the new event form asks about it. That's when the occasion can be
+ * for everyone taking part or for no one in particular, the audiences whose
+ * gift plans include an exchange (giftPlansFor). A baby shower or a wedding
+ * doesn't ask, and can still turn it on when the event is edited.
+ */
+export function offersGiftExchange(id: string): boolean {
+  if (!isOccasionId(id)) return false;
+  const occasion = occasionFor(id);
+  return occasion.audiences.some((audience) => giftPlansFor(audience, occasion).includes("exchange"));
 }

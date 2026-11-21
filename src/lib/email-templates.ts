@@ -556,8 +556,14 @@ function eventFactsBlock(event: EventEmailDetails): string {
   return `<p style="background:#F0FAFC;border-radius:12px;padding:14px 16px;line-height:1.6;">${rows.join("<br/><br/>")}</p>`;
 }
 
+/**
+ * The host's gift note and the lists the event links. When everyone gives
+ * everyone, like a family Christmas, the lists stay out: each guest's wish
+ * list is on the invitation, so the email sends them there instead.
+ */
 function registryLine(event: EventEmailDetails): string {
-  const registries = event.registries ?? (event.registry ? [event.registry] : []);
+  const everyone = event.exchange?.kind === "everyone";
+  const registries = everyone ? [] : (event.registries ?? (event.registry ? [event.registry] : []));
   const links = registries
     .map((r) => `<a href="${escapeHtml(r.url)}" style="color:#004659;">${escapeHtml(r.title)}</a>`)
     .join(" · ");
@@ -571,7 +577,7 @@ function exchangeLine(event: EventEmailDetails): string {
   if (!event.exchange) return "";
   if (event.exchange.kind === "everyone") {
     const each = event.exchange.budget ? ` Gifts are about ${escapeHtml(event.exchange.budget)} each.` : "";
-    return `<p><strong>Gifts:</strong> everyone gives everyone. Link your wish list when you RSVP, and see everyone else's on the invitation.${each}</p>`;
+    return `<p><strong>Gifts:</strong> everyone gives everyone. RSVP, then add your wish list. Everyone's lists are on the invitation.${each}</p>`;
   }
   const budget = event.exchange.budget ? `, about ${escapeHtml(event.exchange.budget)}` : "";
   const when = event.exchange.drawBy ? ` Names are drawn by ${escapeHtml(event.exchange.drawBy)}.` : "";
@@ -669,6 +675,8 @@ export function rsvpGuestConfirmationHtml(opts: {
   calendarUrl?: string | null;
   /** Whether the guest is in the event's gift exchange. */
   inExchange?: boolean;
+  /** When everyone gives everyone: whether the guest has added a wish list or gift ideas yet. */
+  hasWishlist?: boolean;
   /** What the guest signed up for on the event's sign-up sheet. */
   signups?: string[];
   /** The guest's answers to the host's RSVP questions. */
@@ -681,7 +689,9 @@ export function rsvpGuestConfirmationHtml(opts: {
     !event.exchange || !opts.inExchange
       ? ""
       : event.exchange.kind === "everyone"
-        ? `<p><strong>Everyone gives everyone.</strong> Everyone's wish lists are on the invitation, with what the others have reserved so nobody doubles up. Nobody sees what's been reserved from their own list.</p>`
+        ? opts.hasWishlist === false
+          ? `<p><strong>Add your wish list.</strong> Everyone gives everyone, so the others need to know what you'd like. <a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">Add it on the invitation</a>, where everyone's lists are, with what the others have reserved so nobody doubles up.</p>`
+          : `<p><strong>Everyone gives everyone.</strong> Everyone's wish lists are on the invitation, with what the others have reserved so nobody doubles up. Nobody sees what's been reserved from their own list.</p>`
         : `<p><strong>You're in the gift exchange.</strong> ${
             event.exchange.drawBy ? `Names are drawn by ${escapeHtml(event.exchange.drawBy)}, and` : "When names are drawn,"
           } we'll email you who you're giving to.</p>`;

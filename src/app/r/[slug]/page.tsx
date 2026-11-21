@@ -1,5 +1,4 @@
 import { cache } from "react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { Gift } from "lucide-react";
@@ -22,7 +21,7 @@ import { FollowButton } from "@/components/follow-button";
 import { displayName, profilePath } from "@/lib/profile-link";
 import { getViewer, getViewerRelation } from "@/lib/viewer";
 import type { RegistryType } from "@/lib/types";
-import { Logo } from "@/components/logo";
+import { Nav } from "@/components/nav";
 import { parseRetailerRegistries, type StoreId } from "@/lib/retailers";
 import {
   SECRET_GIVER_NAME,
@@ -610,123 +609,118 @@ export default async function PublicRegistryPage({
 
   return (
     <div className="min-h-screen bg-primary">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-3">
-          {/* Like the shared top bar: signed-in people go to their
-              registries, everyone else to the home page. */}
-          <Link href={viewer ? "/dashboard" : "/"} className="inline-flex items-center gap-2 font-semibold">
-            <Logo />
-          </Link>
-        </div>
-      </header>
+      {/* The site's top bar. Logging in or signing up from it comes back
+          to this list. */}
+      <Nav returnTo={`/r/${registry.slug}`} />
 
-      <PublicRegistryHero
-        isBabyRegistry={isBabyRegistry}
-        title={registry.title}
-        photoUrl={registry.photo_url}
-        names={registry.honoree_names || registry.parent_names}
-        eventDate={registry.event_date}
-        description={registry.description}
-        fulfilledItems={fulfilledItems}
-        totalItems={totalItems}
-        owner={owner && ownerRelation ? owner : null}
-        followButton={
-          owner &&
-          ownerRelation &&
-          !ownerRelation.isOwner && (
-            <FollowButton
-              publicId={owner.publicId}
-              name={owner.name}
-              state={ownerRelation.state}
-              returnTo={`/r/${slug}`}
-              align="start"
-            />
-          )
-        }
-        // Only when the card shows something, so the header doesn't keep an
-        // empty column for it.
-        about={
-          giftProfile &&
-          giftProfileCardShows(giftProfile, showBirthday) && (
-            <GiftProfileCard
-              variant="compact"
-              profile={giftProfile}
-              name={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
-              showBirthday={showBirthday}
-            />
-          )
-        }
-      />
-
-      {/* Items. With no items or funds yet, the grid says so and still offers
-          "Suggest an item". */}
-      <main className="container mx-auto px-4 py-6 sm:py-8">
-        {hideReservations && (
-          <ReservationsHiddenNotice
-            className="mb-6"
-            settingsHref={`/dashboard/registry/${registry.id}/settings`}
-            turnedOnByExchange={readReservationPrivacy(registry.settings).hide_reservations_source === "exchange"}
-          />
-        )}
-        {santaFor && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-sunshine-200 bg-sunshine-50 p-4">
-            <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="font-semibold text-primary">You&apos;re {santaFor}&apos;s Secret Santa.</p>
-              <p className="text-sm text-secondary">
-                If you reserve a gift here, {santaFor} sees &ldquo;{SECRET_GIVER_NAME}&rdquo; instead of your
-                name.
-              </p>
-            </div>
-          </div>
-        )}
-        {fellowGuests && (
-          <FellowGuestsNotice
-            className="mb-6"
-            eventTitle={fellowGuests.eventTitle}
-            eventHref={`/e/${fellowGuests.eventSlug}`}
-            ownerName={fellowGuests.listOwner ?? (registry.honoree_names?.trim() || registry.parent_names?.trim() || null)}
-          />
-        )}
-        <GuestPrefillProvider value={guestPrefill}>
-          <PublicRegistryGrid
-            items={shownItems}
-            categories={allCategories}
-            cashFunds={allFunds}
-            parentName={parentName}
-            paymentMethods={paymentMethods}
-            shippingAddress={shippingAddress}
-            myGifts={myGifts}
-            myItemGifts={myItemGifts}
-            reservedCounts={reservedCounts}
-            claims={fellowGuests?.claims}
-            openGift={openGift}
-            coverCounts={coverCountsObj}
-            selfPurchasedLabel={copy.selfPurchasedLabel}
-            coverFlavor={copy.coverItemFlavor(parentName)}
-            linkedStores={linkedStores}
-            showStoreRegistries={isBabyRegistry}
-            groupGifts={
-              viewerManages
-                ? undefined
-                : {
-                    registryId: registry.id,
-                    signedIn: Boolean(viewer),
-                    returnTo: `/r/${slug}`,
-                    mine: myGroupGifts,
-                    eventTitle: guestEventTitle,
-                  }
-            }
-            suggestButton={
-              <SuggestItemDialog
-                registryId={registry.id}
-                categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
+      <div id="main-content">
+        <PublicRegistryHero
+          isBabyRegistry={isBabyRegistry}
+          title={registry.title}
+          photoUrl={registry.photo_url}
+          names={registry.honoree_names || registry.parent_names}
+          eventDate={registry.event_date}
+          description={registry.description}
+          fulfilledItems={fulfilledItems}
+          totalItems={totalItems}
+          owner={owner && ownerRelation ? owner : null}
+          followButton={
+            owner &&
+            ownerRelation &&
+            !ownerRelation.isOwner && (
+              <FollowButton
+                publicId={owner.publicId}
+                name={owner.name}
+                state={ownerRelation.state}
+                returnTo={`/r/${slug}`}
+                align="start"
               />
-            }
-          />
-        </GuestPrefillProvider>
-      </main>
+            )
+          }
+          // Only when the card shows something, so the header doesn't keep an
+          // empty column for it.
+          about={
+            giftProfile &&
+            giftProfileCardShows(giftProfile, showBirthday) && (
+              <GiftProfileCard
+                variant="compact"
+                profile={giftProfile}
+                name={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
+                showBirthday={showBirthday}
+              />
+            )
+          }
+        />
+
+        {/* Items. With no items or funds yet, the grid says so and still offers
+            "Suggest an item". */}
+        <main className="container mx-auto px-4 py-6 sm:py-8">
+          {hideReservations && (
+            <ReservationsHiddenNotice
+              className="mb-6"
+              settingsHref={`/dashboard/registry/${registry.id}/settings`}
+              turnedOnByExchange={readReservationPrivacy(registry.settings).hide_reservations_source === "exchange"}
+            />
+          )}
+          {santaFor && (
+            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-sunshine-200 bg-sunshine-50 p-4">
+              <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="font-semibold text-primary">You&apos;re {santaFor}&apos;s Secret Santa.</p>
+                <p className="text-sm text-secondary">
+                  If you reserve a gift here, {santaFor} sees &ldquo;{SECRET_GIVER_NAME}&rdquo; instead of your
+                  name.
+                </p>
+              </div>
+            </div>
+          )}
+          {fellowGuests && (
+            <FellowGuestsNotice
+              className="mb-6"
+              eventTitle={fellowGuests.eventTitle}
+              eventHref={`/e/${fellowGuests.eventSlug}`}
+              ownerName={fellowGuests.listOwner ?? (registry.honoree_names?.trim() || registry.parent_names?.trim() || null)}
+            />
+          )}
+          <GuestPrefillProvider value={guestPrefill}>
+            <PublicRegistryGrid
+              items={shownItems}
+              categories={allCategories}
+              cashFunds={allFunds}
+              parentName={parentName}
+              paymentMethods={paymentMethods}
+              shippingAddress={shippingAddress}
+              myGifts={myGifts}
+              myItemGifts={myItemGifts}
+              reservedCounts={reservedCounts}
+              claims={fellowGuests?.claims}
+              openGift={openGift}
+              coverCounts={coverCountsObj}
+              selfPurchasedLabel={copy.selfPurchasedLabel}
+              coverFlavor={copy.coverItemFlavor(parentName)}
+              linkedStores={linkedStores}
+              showStoreRegistries={isBabyRegistry}
+              groupGifts={
+                viewerManages
+                  ? undefined
+                  : {
+                      registryId: registry.id,
+                      signedIn: Boolean(viewer),
+                      returnTo: `/r/${slug}`,
+                      mine: myGroupGifts,
+                      eventTitle: guestEventTitle,
+                    }
+              }
+              suggestButton={
+                <SuggestItemDialog
+                  registryId={registry.id}
+                  categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
+                />
+              }
+            />
+          </GuestPrefillProvider>
+        </main>
+      </div>
 
       <PoweredByFooter />
 

@@ -2,7 +2,7 @@ import type { Decorator, Meta, StoryObj } from "@storybook/react";
 import type { GiftProfile } from "@/lib/gift-profile";
 import { FollowButton, type FollowButtonState } from "./follow-button";
 import { GiftProfileCard } from "./gift-profile-card";
-import { Logo } from "./logo";
+import { NavBar } from "./nav-bar";
 import { PublicRegistryGrid } from "./public-registry-grid";
 import { PublicRegistryHero } from "./public-registry-hero";
 import { SuggestItemDialog } from "./suggest-item-dialog";
@@ -37,36 +37,33 @@ const items = [
 const categories = [{ id: "kitchen", name: "Kitchen", sort_order: 0 }];
 
 /**
- * The share page around the header (src/app/r/[slug]/page.tsx): the top bar
- * above it and the items under it, so a snapshot shows where the list starts.
+ * The share page around the header (src/app/r/[slug]/page.tsx): the site's
+ * top bar, signed out, above it and the items under it, so a snapshot shows
+ * where the list starts.
  */
 const withListPage: Decorator = (Story) => (
   <div className="min-h-screen bg-primary">
-    <header className="border-b">
-      <div className="container mx-auto px-4 py-3">
-        <span className="inline-flex items-center gap-2 font-semibold">
-          <Logo />
-        </span>
-      </div>
-    </header>
-    <Story />
-    <main className="container mx-auto px-4 py-6 sm:py-8">
-      <PublicRegistryGrid
-        items={items}
-        categories={categories}
-        cashFunds={[]}
-        parentName="Dorothy"
-        myGifts={{}}
-        coverCounts={{}}
-        suggestButton={
-          <SuggestItemDialog
-            registryId="registry-1"
-            categories={categories.map(({ id, name }) => ({ id, name }))}
-            action={async () => undefined}
-          />
-        }
-      />
-    </main>
+    <NavBar account={null} returnTo="/r/dorothy-christmas-k7m2p9qx4t" />
+    <div id="main-content">
+      <Story />
+      <main className="container mx-auto px-4 py-6 sm:py-8">
+        <PublicRegistryGrid
+          items={items}
+          categories={categories}
+          cashFunds={[]}
+          parentName="Dorothy"
+          myGifts={{}}
+          coverCounts={{}}
+          suggestButton={
+            <SuggestItemDialog
+              registryId="registry-1"
+              categories={categories.map(({ id, name }) => ({ id, name }))}
+              action={async () => undefined}
+            />
+          }
+        />
+      </main>
+    </div>
   </div>
 );
 

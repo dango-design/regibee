@@ -320,7 +320,7 @@ export const MealTrainBeforeSigningUp: Story = {
 
 /**
  * A family Christmas where everyone gives everyone. Glinda replied with her
- * wish list, so she sees everyone's lists above her RSVP.
+ * wish list. Her RSVP comes first, then everyone's lists.
  */
 export const EveryoneGivesEveryone: Story = {
   args: {
@@ -332,12 +332,6 @@ export const EveryoneGivesEveryone: Story = {
   },
   render: (args) => (
     <EventInvitation {...args}>
-      <GuestWishLists
-        lists={sampleGuestWishLists}
-        eventSlug={sampleExchangeEvent.slug}
-        guestToken="token-g1"
-        waitingCount={2}
-      />
       <RsvpForm
         slug={sampleExchangeEvent.slug}
         guest={{
@@ -355,8 +349,24 @@ export const EveryoneGivesEveryone: Story = {
         maxPartySize={sampleExchangeEvent.max_party_size}
         askKids
         exchange={{ kind: "everyone", mailed: false, drawn: false }}
+        wishlist={{
+          current: {
+            url: "https://regibee.com/r/glindas-wishlist-8h3m",
+            title: "Glinda's Christmas List",
+            ownListId: "glindas-list",
+          },
+          giftIdeas: null,
+          account: { lists: [{ id: "glindas-list", title: "Glinda's Christmas List" }] },
+          saveAction: async () => ({ error: null }),
+        }}
         passed={false}
         submitAction={submitAction}
+      />
+      <GuestWishLists
+        lists={sampleGuestWishLists}
+        eventSlug={sampleExchangeEvent.slug}
+        guestToken="token-g1"
+        waitingCount={2}
       />
     </EventInvitation>
   ),

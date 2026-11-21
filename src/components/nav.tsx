@@ -5,8 +5,9 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getViewer } from "@/lib/viewer";
 
 // Rendered on the server, so the account side of the bar arrives with the page
-// instead of popping in after it loads.
-export async function Nav() {
+// instead of popping in after it loads. A public page passes returnTo, so
+// logging in or signing up from it comes back to it.
+export async function Nav({ returnTo }: { returnTo?: string } = {}) {
   const viewer = await getViewer();
 
   let account: NavAccount | null = null;
@@ -24,5 +25,5 @@ export async function Nav() {
     };
   }
 
-  return <NavBar account={account} />;
+  return <NavBar account={account} returnTo={returnTo} />;
 }

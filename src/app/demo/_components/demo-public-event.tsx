@@ -7,7 +7,7 @@ import { EventInvitation, type InvitationRegistry } from "@/components/event-inv
 import { GuestWishLists } from "@/components/guest-wish-lists";
 import { RsvpForm } from "@/components/rsvp-form";
 import { SecretSantaCard } from "@/components/secret-santa-card";
-import type { RsvpInput } from "@/lib/actions/events";
+import type { EventWishlistInput, RsvpInput } from "@/lib/actions/events";
 import { addDays } from "@/lib/demo-data";
 import { findDemoEvent, type DemoEvent } from "@/lib/demo-events";
 import { DEMO_GROUP_GIFTS, demoEventGroupGift } from "@/lib/demo-group-gifts";
@@ -149,11 +149,14 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
       rsvp_note: input.note?.trim() || null,
       responded_at: new Date().toISOString(),
       answers: storedAnswers(input.answers),
+      // Like the real RSVP, one without a wish list keeps the one saved.
       ...(choice && {
         in_exchange: choice.join,
-        wishlist_url: choice.wishlistUrl?.trim() || null,
-        wishlist_registry_id: pastedList?.id ?? null,
-        gift_ideas: choice.giftIdeas?.trim() || null,
+        ...(choice.wishlistUrl !== undefined && {
+          wishlist_url: choice.wishlistUrl.trim() || null,
+          wishlist_registry_id: pastedList?.id ?? null,
+        }),
+        ...(choice.giftIdeas !== undefined && { gift_ideas: choice.giftIdeas.trim() || null }),
         shipping_address: choice.shippingAddress?.trim() || null,
       }),
     };
@@ -193,6 +196,26 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
     return { error: null };
   };
 
+  // The wish list step after an RSVP, like saveEventWishlist. The demo has no
+  // accounts, so a pasted link and gift ideas are what it saves.
+  const me = guests.find((g) => g.id === (guest?.id ?? VISITOR_ID)) ?? null;
+  const saveWishlist = async (input: EventWishlistInput) => {
+    const slug = input.url?.match(/\/r\/([a-z0-9-]+)/i)?.[1];
+    const list = slug ? findDemoRegistry(today, { slug }) : null;
+    setGuests((current) =>
+      current.map((g) =>
+        g.id !== me?.id
+          ? g
+          : {
+              ...g,
+              ...(input.url !== undefined && { wishlist_url: input.url.trim() || null, wishlist_registry_id: list?.id ?? null }),
+              ...(input.giftIdeas !== undefined && { gift_ideas: input.giftIdeas.trim() || null }),
+            },
+      ),
+    );
+    return { error: null };
+  };
+
   return (
     <DemoGuestShell>
       <DemoGuestHeader />
@@ -212,15 +235,6 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
               budget={exchange.budget}
               mailed={exchange.mailed}
               wishlistHref={gifteeList ? demoRegistryPath(gifteeList) : drew?.wishlist_url ?? null}
-            />
-          )}
-          {/* Guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
-          {everyone && (
-            <GuestWishLists
-              lists={guestWishLists(today, guests, guest?.id ?? null)}
-              waitingCount={guests.filter((g) => g.rsvp_status === "pending").length}
-              hostView={!guest}
-              basePath="/demo"
             />
           )}
           {token && !guest && (
@@ -258,7 +272,29 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
             mealTrain={mealTrain}
             questions={event.rsvp_questions}
             submitAction={submit}
+            wishlist={
+              everyone
+                ? {
+                    current: me?.wishlist_url
+                      ? { url: me.wishlist_url, title: demoList(today, me)?.title ?? null, ownListId: null }
+                      : null,
+                    giftIdeas: me?.gift_ideas ?? null,
+                    account: null,
+                    returnTo: `/demo/e/${event.slug}${token ? `?g=${encodeURIComponent(token)}` : ""}#wishlist`,
+                    saveAction: saveWishlist,
+                  }
+                : null
+            }
           />
+          {/* Below the RSVP, like the real page, guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
+          {everyone && (
+            <GuestWishLists
+              lists={guestWishLists(today, guests, guest?.id ?? null)}
+              waitingCount={guests.filter((g) => g.rsvp_status === "pending").length}
+              hostView={!guest}
+              basePath="/demo"
+            />
+          )}
           <EventGroupGifts gifts={groupGifts} basePath="/demo" />
         </EventInvitation>
       </main>
