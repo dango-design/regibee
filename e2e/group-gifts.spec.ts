@@ -5,7 +5,7 @@
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail, uniqueId } from "./fixtures";
+import { createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
 import { emailsTo, linkIn, waitForEmail } from "./mailbox";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -213,4 +213,32 @@ test("a group gift started from an event's invitation shows to its other guests"
   await expect(mayaPage.getByRole("heading", { name: event.title })).toBeVisible();
   await expect(mayaPage.getByRole("region", { name: "Group gifts" })).toHaveCount(0);
   await mayaContext.close();
+});
+
+test("a list and its group gift have the site's top bar, and logging in comes back to them", async ({ page, browser }) => {
+  const maya = await createAccount("Maya Owner");
+  const oz = await createAccount("Oz Organizer");
+  const { registry } = await createWishlist(maya.id);
+
+  // Oz isn't signed in on Maya's list. Log in brings him back to it.
+  await page.goto(`/r/${registry.slug}`);
+  const bar = page.getByRole("banner");
+  await bar.getByRole("link", { name: "Log in" }).click();
+  await page.waitForURL(/\/login\?redirect=/);
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Email").fill(oz.email);
+  await page.getByLabel("Password").fill(oz.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((url) => url.pathname === `/r/${registry.slug}`);
+  await expect(bar.getByRole("button", { name: /^Account menu/ })).toBeVisible();
+
+  // A friend who opens his group gift's link signed out can log in from it too.
+  await startGroupGift(page, registry.slug, "Venmo @oz");
+  const sharePath = new URL(page.url()).pathname;
+  const friend = await (await browser.newContext()).newPage();
+  await friend.goto(sharePath);
+  await expect(friend.getByRole("banner").getByRole("link", { name: "Log in" })).toHaveAttribute(
+    "href",
+    `/login?redirect=${encodeURIComponent(sharePath)}`,
+  );
 });

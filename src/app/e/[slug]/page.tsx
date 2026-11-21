@@ -1,8 +1,7 @@
 import { cache } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Logo } from "@/components/logo";
+import { Nav } from "@/components/nav";
 import { EventInvitation } from "@/components/event-invitation";
 import { RsvpForm } from "@/components/rsvp-form";
 import type { RsvpWishlist } from "@/components/rsvp-wishlist-step";
@@ -198,15 +197,11 @@ export default async function PublicEventPage({
 
   return (
     <div className="min-h-screen bg-primary">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-3">
-          <Link href={viewer ? "/dashboard" : "/"} className="inline-flex items-center gap-2 font-semibold">
-            <Logo />
-          </Link>
-        </div>
-      </header>
+      {/* The site's top bar. Logging in or signing up from it comes back to
+          this invitation, on the guest's own link when they have one. */}
+      <Nav returnTo={`/e/${event.slug}${guest ? `?g=${encodeURIComponent(guest.token)}` : ""}`} />
 
-      <main className="container mx-auto px-4 py-8 sm:py-12">
+      <main id="main-content" className="container mx-auto px-4 py-8 sm:py-12">
         <EventInvitation
           event={shown}
           registries={registries}

@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Logo } from "@/components/logo";
+import { Nav } from "@/components/nav";
 import { GroupGiftPage } from "@/components/group-gift-page";
 import { GroupGiftSurprise } from "@/components/group-gift-surprise";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -58,21 +57,17 @@ export default async function GroupGiftRoute({
   // The list's owner and managers never see the pledges: it's their surprise.
   const managesList = viewer ? await managesGroupGiftList(viewer.id, loaded.gift) : false;
 
+  // The site's top bar. Logging in or signing up from it comes back to this
+  // group gift, with the visitor's own pledge link when they came on one.
   const header = (
-    <header className="border-b">
-      <div className="container mx-auto px-4 py-3">
-        <Link href={viewer ? "/dashboard" : "/"} className="inline-flex items-center gap-2 font-semibold">
-          <Logo />
-        </Link>
-      </div>
-    </header>
+    <Nav returnTo={`/group-gift/${token}${p && isGroupGiftToken(p) ? `?p=${encodeURIComponent(p)}` : ""}`} />
   );
 
   if (managesList) {
     return (
       <div className="min-h-screen bg-primary">
         {header}
-        <main className="container mx-auto px-4 py-8 sm:py-12">
+        <main id="main-content" className="container mx-auto px-4 py-8 sm:py-12">
           <GroupGiftSurprise listSlug={loaded.registry.slug} />
         </main>
       </div>
@@ -93,7 +88,7 @@ export default async function GroupGiftRoute({
   return (
     <div className="min-h-screen bg-primary">
       {header}
-      <main className="container mx-auto px-4 py-8 sm:py-12">
+      <main id="main-content" className="container mx-auto px-4 py-8 sm:py-12">
         <GroupGiftPage view={view} viewer={pageViewer} shareUrl={groupGiftUrl(siteUrl, loaded.gift.token)} />
       </main>
       <footer className="mt-8 border-t py-6">
