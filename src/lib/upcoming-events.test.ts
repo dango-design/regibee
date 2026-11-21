@@ -35,7 +35,7 @@ test("countdownLabel still words the countdown the same way", () => {
   assert.equal(countdownLabel("2026-11-20", TODAY, "personal"), "Today");
   assert.equal(countdownLabel("2026-11-21", TODAY, "personal"), "Tomorrow");
   assert.equal(countdownLabel("2026-12-02", TODAY, "personal"), "12 days to go");
-  assert.equal(countdownLabel("2026-11-19", TODAY, "personal"), "Event passed");
+  assert.equal(countdownLabel("2026-11-19", TODAY, "personal"), "Nov 19, 2026");
   assert.equal(countdownLabel("2026-12-02", TODAY, "baby"), "Due in 12 days");
 });
 

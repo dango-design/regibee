@@ -8,6 +8,7 @@ import {
   LIST_OCCASIONS,
   OCCASIONS,
   OCCASION_IDS,
+  countdownLabel,
   giftPlanLabel,
   giftPlanRows,
   giftPlansFor,
@@ -171,4 +172,13 @@ test("a gift plan's label fits who it's for", () => {
   assert.equal(giftPlanLabel("link", "me", birthday, true).label, "Use a list you already have");
   assert.equal(giftPlanLabel("link", "someone", birthday, true).label, "Link their list");
   assert.equal(giftPlanLabel("link", "no_one", birthday).label, "Link a wishlist");
+});
+
+test("the countdown shows the date with its year once it has gone by", () => {
+  assert.equal(countdownLabel("2026-11-03", "2026-11-19", "baby"), "Nov 3, 2026");
+  assert.equal(countdownLabel("2026-11-03", "2026-11-19", "personal"), "Nov 3, 2026");
+  assert.equal(countdownLabel("2025-12-31", "2026-01-01", "baby"), "Dec 31, 2025");
+  assert.equal(countdownLabel("2026-11-19", "2026-11-19", "baby"), "Due today");
+  assert.equal(countdownLabel("2026-11-20", "2026-11-19", "personal"), "Tomorrow");
+  assert.equal(countdownLabel("2026-12-01", "2026-11-19", "baby"), "Due in 12 days");
 });
