@@ -228,16 +228,70 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
           signup={sheet ? { title: sheet.sheet.title, note: sheet.sheet.note, rows: signupRows, mealTrain } : null}
           addressHidden={addressHidden}
           basePath="/demo"
+          // Like the real page: the reply comes before the gift sections.
+          reply={
+            <>
+              {giftee && exchange && (
+                <SecretSantaCard
+                  giftee={giftee}
+                  budget={exchange.budget}
+                  mailed={exchange.mailed}
+                  wishlistHref={gifteeList ? demoRegistryPath(gifteeList) : drew?.wishlist_url ?? null}
+                />
+              )}
+              {token && !guest && (
+                <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+                  This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
+                </p>
+              )}
+              <RsvpForm
+                slug={event.slug}
+                token={guest?.token ?? null}
+                guest={
+                  guest
+                    ? {
+                        name: guest.name,
+                        status: guest.rsvp_status,
+                        partySize: guest.party_size,
+                        kidsCount: guest.kids_count,
+                        note: guest.rsvp_note,
+                        inExchange: guest.in_exchange,
+                        wishlistUrl: guest.wishlist_url,
+                        giftIdeas: guest.gift_ideas,
+                        shippingAddress: guest.shipping_address,
+                        answers: storedAnswers(guest.answers),
+                      }
+                    : null
+                }
+                openRsvp={event.open_rsvp && !(exchange?.drawn_at && exchange.mailed)}
+                maxPartySize={event.max_party_size}
+                askKids={event.ask_kids}
+                exchange={
+                  exchange ? { kind: exchangeKind(exchange), mailed: exchange.mailed, drawn: Boolean(exchange.drawn_at) } : null
+                }
+                passed={eventHasPassed(event, yesterday)}
+                signup={sheet ? { title: sheet.sheet.title, rows: signupRows } : null}
+                mealTrain={mealTrain}
+                questions={event.rsvp_questions}
+                submitAction={submit}
+                wishlist={
+                  everyone
+                    ? {
+                        current: me?.wishlist_url
+                          ? { url: me.wishlist_url, title: demoList(today, me)?.title ?? null, ownListId: null }
+                          : null,
+                        giftIdeas: me?.gift_ideas ?? null,
+                        account: null,
+                        returnTo: `/demo/e/${event.slug}${token ? `?g=${encodeURIComponent(token)}` : ""}#wishlist`,
+                        saveAction: saveWishlist,
+                      }
+                    : null
+                }
+              />
+            </>
+          }
         >
-          {giftee && exchange && (
-            <SecretSantaCard
-              giftee={giftee}
-              budget={exchange.budget}
-              mailed={exchange.mailed}
-              wishlistHref={gifteeList ? demoRegistryPath(gifteeList) : drew?.wishlist_url ?? null}
-            />
-          )}
-          {/* Guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
+          {/* After the gift sections, like the real page, guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
           {everyone && (
             <GuestWishLists
               lists={guestWishLists(today, guests, guest?.id ?? null)}
@@ -246,55 +300,6 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
               basePath="/demo"
             />
           )}
-          {token && !guest && (
-            <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
-              This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
-            </p>
-          )}
-          <RsvpForm
-            slug={event.slug}
-            token={guest?.token ?? null}
-            guest={
-              guest
-                ? {
-                    name: guest.name,
-                    status: guest.rsvp_status,
-                    partySize: guest.party_size,
-                    kidsCount: guest.kids_count,
-                    note: guest.rsvp_note,
-                    inExchange: guest.in_exchange,
-                    wishlistUrl: guest.wishlist_url,
-                    giftIdeas: guest.gift_ideas,
-                    shippingAddress: guest.shipping_address,
-                    answers: storedAnswers(guest.answers),
-                  }
-                : null
-            }
-            openRsvp={event.open_rsvp && !(exchange?.drawn_at && exchange.mailed)}
-            maxPartySize={event.max_party_size}
-            askKids={event.ask_kids}
-            exchange={
-              exchange ? { kind: exchangeKind(exchange), mailed: exchange.mailed, drawn: Boolean(exchange.drawn_at) } : null
-            }
-            passed={eventHasPassed(event, yesterday)}
-            signup={sheet ? { title: sheet.sheet.title, rows: signupRows } : null}
-            mealTrain={mealTrain}
-            questions={event.rsvp_questions}
-            submitAction={submit}
-            wishlist={
-              everyone
-                ? {
-                    current: me?.wishlist_url
-                      ? { url: me.wishlist_url, title: demoList(today, me)?.title ?? null, ownListId: null }
-                      : null,
-                    giftIdeas: me?.gift_ideas ?? null,
-                    account: null,
-                    returnTo: `/demo/e/${event.slug}${token ? `?g=${encodeURIComponent(token)}` : ""}#wishlist`,
-                    saveAction: saveWishlist,
-                  }
-                : null
-            }
-          />
           <EventGroupGifts gifts={groupGifts} basePath="/demo" />
         </EventInvitation>
       </main>

@@ -40,17 +40,20 @@ type Story = StoryObj<typeof EventInvitation>;
 /** Someone on the plain event link: they add their name and email to RSVP. */
 export const WithPicture: Story = {
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleEvent.slug}
-        guest={null}
-        token={null}
-        openRsvp
-        maxPartySize={2}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleEvent.slug}
+            guest={null}
+            token={null}
+            openRsvp
+            maxPartySize={2}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
 };
 
@@ -58,17 +61,20 @@ export const WithPicture: Story = {
 export const NoPictureAlreadyReplied: Story = {
   args: { event: { ...sampleEvent, image_url: null, event_type: "birthday", title: "Max Turns 30", hosted_by: null } },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleEvent.slug}
-        guest={{ name: "Glinda", status: "yes", partySize: 2, note: "Wouldn't miss it!" }}
-        token="token-g1"
-        openRsvp
-        maxPartySize={2}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleEvent.slug}
+            guest={{ name: "Glinda", status: "yes", partySize: 2, note: "Wouldn't miss it!" }}
+            token="token-g1"
+            openRsvp
+            maxPartySize={2}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
 };
 
@@ -76,17 +82,20 @@ export const NoPictureAlreadyReplied: Story = {
 export const ChoosingGoing: Story = {
   args: { event: { ...sampleEvent, image_url: null }, registry: null, calendar: null },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleEvent.slug}
-        guest={{ name: "Fiyero", status: "pending", partySize: 1, note: null }}
-        token="token-g4"
-        openRsvp
-        maxPartySize={4}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleEvent.slug}
+            guest={{ name: "Fiyero", status: "pending", partySize: 1, note: null }}
+            token="token-g4"
+            openRsvp
+            maxPartySize={4}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -102,17 +111,20 @@ export const ChoosingGoing: Story = {
 export const InviteOnly: Story = {
   args: { event: { ...sampleEvent, image_url: null }, registry: null },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleEvent.slug}
-        guest={null}
-        token={null}
-        openRsvp={false}
-        maxPartySize={2}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleEvent.slug}
+            guest={null}
+            token={null}
+            openRsvp={false}
+            maxPartySize={2}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
 };
 
@@ -140,17 +152,20 @@ const hostUpdates: InvitationUpdate[] = [
 export const WithHostUpdates: Story = {
   args: { event: { ...sampleEvent, image_url: null }, updates: hostUpdates },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleEvent.slug}
-        guest={{ name: "Glinda", status: "yes", partySize: 2, note: null }}
-        token="token-g1"
-        openRsvp
-        maxPartySize={2}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleEvent.slug}
+            guest={{ name: "Glinda", status: "yes", partySize: 2, note: null }}
+            token="token-g1"
+            openRsvp
+            maxPartySize={2}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
   play: async ({ canvasElement }) => {
     const updates = within(canvasElement).getByRole("region", { name: "Updates from the host" });
@@ -197,17 +212,20 @@ export const WithRegistriesAndGiftNote: Story = {
     guestToken: "token-g1",
   },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleEvent.slug}
-        guest={{ name: "Glinda", status: "yes", partySize: 2, note: null }}
-        token="token-g1"
-        openRsvp
-        maxPartySize={2}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleEvent.slug}
+            guest={{ name: "Glinda", status: "yes", partySize: 2, note: null }}
+            token="token-g1"
+            openRsvp
+            maxPartySize={2}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
 };
 
@@ -224,28 +242,31 @@ export const WithGiftExchange: Story = {
     guestToken: "token-g1",
   },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleExchangeEvent.slug}
-        guest={{
-          name: "Glinda",
-          status: "yes",
-          partySize: 3,
-          kidsCount: 2,
-          note: "We'll bring dumplings!",
-          inExchange: true,
-          wishlistUrl: "https://regibee.com/r/glindas-wishlist-8h3m",
-          giftIdeas: "Anything pink and sparkly",
-        }}
-        token="token-g1"
-        openRsvp
-        maxPartySize={sampleExchangeEvent.max_party_size}
-        askKids
-        exchange={{ mailed: false, drawn: false }}
-        passed={false}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleExchangeEvent.slug}
+            guest={{
+              name: "Glinda",
+              status: "yes",
+              partySize: 3,
+              kidsCount: 2,
+              note: "We'll bring dumplings!",
+              inExchange: true,
+              wishlistUrl: "https://regibee.com/r/glindas-wishlist-8h3m",
+              giftIdeas: "Anything pink and sparkly",
+            }}
+            token="token-g1"
+            openRsvp
+            maxPartySize={sampleExchangeEvent.max_party_size}
+            askKids
+            exchange={{ mailed: false, drawn: false }}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
 };
 
@@ -262,18 +283,21 @@ export const PotluckWithSignupSheet: Story = {
     signup: { title: samplePotluckSheet.sheet.title, note: samplePotluckSheet.sheet.note, rows: potluckRows },
   },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={samplePotluckEvent.slug}
-        guest={{ name: "Glinda", status: "yes", partySize: 2, note: null }}
-        token="token-g1"
-        openRsvp
-        maxPartySize={2}
-        passed={false}
-        signup={{ title: samplePotluckSheet.sheet.title, rows: potluckRows }}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={samplePotluckEvent.slug}
+            guest={{ name: "Glinda", status: "yes", partySize: 2, note: null }}
+            token="token-g1"
+            openRsvp
+            maxPartySize={2}
+            passed={false}
+            signup={{ title: samplePotluckSheet.sheet.title, rows: potluckRows }}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
 };
 
@@ -297,19 +321,22 @@ export const MealTrainBeforeSigningUp: Story = {
     },
   },
   render: (args) => (
-    <EventInvitation {...args}>
-      <RsvpForm
-        slug={sampleMealTrainEvent.slug}
-        guest={{ name: "Fiyero", status: "pending", partySize: 1, note: null }}
-        token="token-g4"
-        openRsvp
-        maxPartySize={1}
-        passed={false}
-        mealTrain
-        signup={{ title: sampleMealTrainSheet.sheet.title, rows: mealTrainRows }}
-        submitAction={submitAction}
-      />
-    </EventInvitation>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleMealTrainEvent.slug}
+            guest={{ name: "Fiyero", status: "pending", partySize: 1, note: null }}
+            token="token-g4"
+            openRsvp
+            maxPartySize={1}
+            passed={false}
+            mealTrain
+            signup={{ title: sampleMealTrainSheet.sheet.title, rows: mealTrainRows }}
+            submitAction={submitAction}
+          />
+      }
+    />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -320,7 +347,7 @@ export const MealTrainBeforeSigningUp: Story = {
 
 /**
  * A family Christmas where everyone gives everyone. Glinda replied with her
- * wish list, so she sees everyone's lists above her RSVP.
+ * wish list. Her RSVP comes first, then everyone's lists.
  */
 export const EveryoneGivesEveryone: Story = {
   args: {
@@ -331,42 +358,46 @@ export const EveryoneGivesEveryone: Story = {
     guestToken: "token-g1",
   },
   render: (args) => (
-    <EventInvitation {...args}>
+    <EventInvitation
+      {...args}
+      reply={
+          <RsvpForm
+            slug={sampleExchangeEvent.slug}
+            guest={{
+              name: "Glinda",
+              status: "yes",
+              partySize: 3,
+              kidsCount: 2,
+              note: "We'll bring dumplings!",
+              inExchange: true,
+              wishlistUrl: "https://regibee.com/r/glindas-wishlist-8h3m",
+              giftIdeas: null,
+            }}
+            token="token-g1"
+            openRsvp
+            maxPartySize={sampleExchangeEvent.max_party_size}
+            askKids
+            exchange={{ kind: "everyone", mailed: false, drawn: false }}
+            wishlist={{
+              current: {
+                url: "https://regibee.com/r/glindas-wishlist-8h3m",
+                title: "Glinda's Christmas List",
+                ownListId: "glindas-list",
+              },
+              giftIdeas: null,
+              account: { lists: [{ id: "glindas-list", title: "Glinda's Christmas List" }] },
+              saveAction: async () => ({ error: null }),
+            }}
+            passed={false}
+            submitAction={submitAction}
+          />
+      }
+    >
       <GuestWishLists
         lists={sampleGuestWishLists}
         eventSlug={sampleExchangeEvent.slug}
         guestToken="token-g1"
         waitingCount={2}
-      />
-      <RsvpForm
-        slug={sampleExchangeEvent.slug}
-        guest={{
-          name: "Glinda",
-          status: "yes",
-          partySize: 3,
-          kidsCount: 2,
-          note: "We'll bring dumplings!",
-          inExchange: true,
-          wishlistUrl: "https://regibee.com/r/glindas-wishlist-8h3m",
-          giftIdeas: null,
-        }}
-        token="token-g1"
-        openRsvp
-        maxPartySize={sampleExchangeEvent.max_party_size}
-        askKids
-        exchange={{ kind: "everyone", mailed: false, drawn: false }}
-        wishlist={{
-          current: {
-            url: "https://regibee.com/r/glindas-wishlist-8h3m",
-            title: "Glinda's Christmas List",
-            ownListId: "glindas-list",
-          },
-          giftIdeas: null,
-          account: { lists: [{ id: "glindas-list", title: "Glinda's Christmas List" }] },
-          saveAction: async () => ({ error: null }),
-        }}
-        passed={false}
-        submitAction={submitAction}
       />
     </EventInvitation>
   ),

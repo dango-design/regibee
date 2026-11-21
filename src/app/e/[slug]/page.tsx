@@ -1,8 +1,7 @@
 import { cache } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Logo } from "@/components/logo";
+import { Nav } from "@/components/nav";
 import { EventInvitation } from "@/components/event-invitation";
 import { RsvpForm } from "@/components/rsvp-form";
 import type { RsvpWishlist } from "@/components/rsvp-wishlist-step";
@@ -198,15 +197,11 @@ export default async function PublicEventPage({
 
   return (
     <div className="min-h-screen bg-primary">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-3">
-          <Link href={viewer ? "/dashboard" : "/"} className="inline-flex items-center gap-2 font-semibold">
-            <Logo />
-          </Link>
-        </div>
-      </header>
+      {/* The site's top bar. Logging in or signing up from it comes back to
+          this invitation, on the guest's own link when they have one. */}
+      <Nav returnTo={`/e/${event.slug}${guest ? `?g=${encodeURIComponent(guest.token)}` : ""}`} />
 
-      <main className="container mx-auto px-4 py-8 sm:py-12">
+      <main id="main-content" className="container mx-auto px-4 py-8 sm:py-12">
         <EventInvitation
           event={shown}
           registries={registries}
@@ -221,15 +216,59 @@ export default async function PublicEventPage({
           }
           addressHidden={addressHidden}
           updates={updates}
+          // The reply comes before the gift sections: a guest answers before
+          // browsing what to give. Everyone's lists and group gifts follow them.
+          reply={
+            <>
+              {giftee && exchange && (
+                <SecretSantaCard
+                  giftee={giftee}
+                  budget={exchange.budget}
+                  mailed={exchange.mailed}
+                  wishlistHref={gifteeWishlistHref}
+                />
+              )}
+              {token && !guest && (
+                <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+                  This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
+                </p>
+              )}
+              <RsvpForm
+                slug={event.slug}
+                token={guest?.token ?? null}
+                guest={
+                  guest
+                    ? {
+                        name: guest.name,
+                        status: guest.rsvp_status,
+                        partySize: guest.party_size,
+                        kidsCount: guest.kids_count,
+                        note: guest.rsvp_note,
+                        inExchange: guest.in_exchange,
+                        wishlistUrl: guest.wishlist_url,
+                        giftIdeas: guest.gift_ideas,
+                        shippingAddress: guest.shipping_address,
+                        answers: storedAnswers(guest.answers),
+                      }
+                    : null
+                }
+                openRsvp={event.open_rsvp && !(exchange?.drawn_at && exchange.mailed)}
+                maxPartySize={event.max_party_size}
+                askKids={event.ask_kids}
+                exchange={
+                  exchange
+                    ? { kind: exchangeKind(exchange), mailed: exchange.mailed, drawn: Boolean(exchange.drawn_at) }
+                    : null
+                }
+                wishlist={wishlist}
+                passed={eventHasPassed(event, yesterday)}
+                signup={signupSheet ? { title: signupSheet.sheet.title, rows: signupRows } : null}
+                mealTrain={mealTrain}
+                questions={storedQuestions(event.rsvp_questions)}
+              />
+            </>
+          }
         >
-          {giftee && exchange && (
-            <SecretSantaCard
-              giftee={giftee}
-              budget={exchange.budget}
-              mailed={exchange.mailed}
-              wishlistHref={gifteeWishlistHref}
-            />
-          )}
           {showGuestLists && (
             <GuestWishLists
               lists={guestLists}
@@ -239,44 +278,6 @@ export default async function PublicEventPage({
               hostView={!guest}
             />
           )}
-          {token && !guest && (
-            <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
-              This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
-            </p>
-          )}
-          <RsvpForm
-            slug={event.slug}
-            token={guest?.token ?? null}
-            guest={
-              guest
-                ? {
-                    name: guest.name,
-                    status: guest.rsvp_status,
-                    partySize: guest.party_size,
-                    kidsCount: guest.kids_count,
-                    note: guest.rsvp_note,
-                    inExchange: guest.in_exchange,
-                    wishlistUrl: guest.wishlist_url,
-                    giftIdeas: guest.gift_ideas,
-                    shippingAddress: guest.shipping_address,
-                    answers: storedAnswers(guest.answers),
-                  }
-                : null
-            }
-            openRsvp={event.open_rsvp && !(exchange?.drawn_at && exchange.mailed)}
-            maxPartySize={event.max_party_size}
-            askKids={event.ask_kids}
-            exchange={
-              exchange
-                ? { kind: exchangeKind(exchange), mailed: exchange.mailed, drawn: Boolean(exchange.drawn_at) }
-                : null
-            }
-            wishlist={wishlist}
-            passed={eventHasPassed(event, yesterday)}
-            signup={signupSheet ? { title: signupSheet.sheet.title, rows: signupRows } : null}
-            mealTrain={mealTrain}
-            questions={storedQuestions(event.rsvp_questions)}
-          />
           <EventGroupGifts gifts={groupGifts} />
         </EventInvitation>
       </main>

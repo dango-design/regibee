@@ -103,7 +103,7 @@ export function RsvpWishlistStep({
       <section
         id="wishlist"
         aria-labelledby="wishlist-heading"
-        className="mt-4 flex scroll-mt-6 flex-col gap-3 rounded-xl bg-mint-50 p-4"
+        className="mt-4 flex scroll-mt-24 flex-col gap-3 rounded-xl bg-mint-50 p-4"
       >
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
@@ -151,7 +151,7 @@ export function RsvpWishlistStep({
     <section
       id="wishlist"
       aria-labelledby="wishlist-heading"
-      className="mt-4 flex scroll-mt-6 flex-col gap-4 rounded-xl bg-mint-50 p-4"
+      className="mt-4 flex scroll-mt-24 flex-col gap-4 rounded-xl bg-mint-50 p-4"
     >
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">

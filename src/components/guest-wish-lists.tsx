@@ -103,7 +103,7 @@ export function GuestWishLists({
                         : entry.url
                           ? `A list on ${storeName(entry.url)}`
                           : entry.isYou
-                            ? "Add your wish list below"
+                            ? "Add your wish list above"
                             : "No wish list yet"}
                     </p>
                     {entry.giftIdeas && (

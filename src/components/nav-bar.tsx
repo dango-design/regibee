@@ -23,12 +23,19 @@ export interface NavAccount {
 export function NavBar({
   account,
   demo = false,
+  returnTo,
 }: {
   account: NavAccount | null;
   /** The demo's bar: links stay under /demo, and signing out just leaves. */
   demo?: boolean;
+  /**
+   * Where Log in and Sign up come back to, such as a guest's own event link.
+   * Left out, they go to the dashboard.
+   */
+  returnTo?: string;
 }) {
   const basePath = demo ? "/demo" : "";
+  const back = returnTo ? `?redirect=${encodeURIComponent(returnTo)}` : "";
   return (
     <header className="sticky top-0 z-50 w-full border-b border-secondary bg-primary/95 backdrop-blur supports-[backdrop-filter]:bg-primary/80">
       <a
@@ -52,13 +59,13 @@ export function NavBar({
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Log in</Link>
+                <Link href={`/login${back}`}>Log in</Link>
               </Button>
               <Button
                 size="sm"
                 asChild
               >
-                <Link href="/signup">Sign up</Link>
+                <Link href={`/signup${back}`}>Sign up</Link>
               </Button>
             </>
           )}

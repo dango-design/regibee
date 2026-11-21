@@ -78,7 +78,13 @@ export interface EventInvitationProps {
   addressHidden?: boolean;
   /** The host's messages and changes to the date, time or place, newest first. */
   updates?: InvitationUpdate[];
-  /** The RSVP form, under the details. */
+  /**
+   * The guest's reply: the RSVP form, and the Secret Santa card once names are
+   * drawn. It comes right after the details and the host's updates, before
+   * the gift sections: a guest answers before browsing what to give.
+   */
+  reply?: React.ReactNode;
+  /** What comes after the gift sections, such as everyone's wish lists and group gifts. */
   children?: React.ReactNode;
   /** Put in front of the registry link. The demo passes "/demo". */
   basePath?: string;
@@ -158,6 +164,7 @@ export function EventInvitation({
   signup = null,
   addressHidden = false,
   updates = [],
+  reply,
   children,
   basePath = "",
 }: EventInvitationProps) {
@@ -273,6 +280,8 @@ export function EventInvitation({
 
         {updates.length > 0 && <HostUpdates updates={updates} timeZone={event.time_zone} />}
 
+        {reply}
+
         {(registries.length > 0 || event.gift_note) && (
           <section aria-labelledby="gifts-heading" className="flex flex-col gap-4 rounded-2xl bg-brand-50 p-4">
             <div className="flex items-start gap-3">
@@ -349,7 +358,7 @@ export function EventInvitation({
                 Everyone gives everyone
               </h2>
               <p className="mt-1 text-secondary">
-                Link your wish list when you RSVP, and shop from everyone else&apos;s
+                Everyone adds a wish list when they RSVP, and shops from everyone else&apos;s
                 {exchange.budget ? `, about ${exchange.budget} a gift` : ""}. You&apos;ll see what the others
                 reserved, so nobody doubles up.
               </p>
