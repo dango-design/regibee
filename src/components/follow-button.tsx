@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { SwitchHorizontal01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
@@ -195,7 +195,6 @@ export function FollowButton({
   cancelAction,
   followsYou = false,
   basePath = "",
-  align = "center",
 }: {
   /** The id from the person's profile link. */
   publicId: string;
@@ -210,11 +209,6 @@ export function FollowButton({
   followsYou?: boolean;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
-  /**
-   * "center" puts the hint under the button. "start" puts it beside the
-   * button, lined up on the left, for the list page's header.
-   */
-  align?: "center" | "start";
 }) {
   const { state, busy, error, toggle } = useFollow({
     publicId,
@@ -226,36 +220,28 @@ export function FollowButton({
 
   if (state === "signed-out") {
     return (
-      <FollowLayout
-        align={align}
-        button={
-          <Button size="sm" asChild>
-            <Link href={`/login?redirect=${encodeURIComponent(returnTo)}`}>Follow</Link>
-          </Button>
-        }
-        hint={<>Log in to ask to follow {name}.</>}
-      />
+      <div className="flex flex-col items-center gap-1">
+        <Button size="sm" asChild>
+          <Link href={`/login?redirect=${encodeURIComponent(returnTo)}`}>Follow</Link>
+        </Button>
+        <p className="text-xs text-tertiary">Log in to ask to follow {name}.</p>
+      </div>
     );
   }
 
   if (state === "blocked") {
     return (
-      <FollowLayout
-        align={align}
-        button={
-          <Button size="sm" variant="outline" disabled>
-            Blocked
-          </Button>
-        }
-        hint={
-          <>
-            You blocked {name}.{" "}
-            <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-600 hover:underline">
-              Unblock
-            </Link>
-          </>
-        }
-      />
+      <div className="flex flex-col items-center gap-1">
+        <Button size="sm" variant="outline" disabled>
+          Blocked
+        </Button>
+        <p className="text-xs text-tertiary">
+          You blocked {name}.{" "}
+          <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-600 hover:underline">
+            Unblock
+          </Link>
+        </p>
+      </div>
     );
   }
 
@@ -268,54 +254,18 @@ export function FollowButton({
   }[state];
 
   return (
-    <FollowLayout
-      align={align}
-      button={<FollowToggle state={state} busy={busy} onClick={toggle} followsYou={followsYou} />}
-      hint={
-        <>
-          {hint}
-          {state === "pending" && (
-            <>
-              {" "}
-              <WithdrawRequest name={name} busy={busy} onClick={toggle} />
-            </>
-          )}
-        </>
-      }
-      error={error}
-    />
-  );
-}
-
-/** The button with its hint, under it or beside it. */
-function FollowLayout({
-  align,
-  button,
-  hint,
-  error,
-}: {
-  align: "center" | "start";
-  button: ReactNode;
-  hint: ReactNode;
-  error?: string;
-}) {
-  const errorLine = error && <p className="text-xs text-error-primary">{error}</p>;
-  if (align === "start") {
-    return (
-      <div className="flex flex-col items-start gap-1">
-        <div className="flex items-center gap-3">
-          <div className="shrink-0">{button}</div>
-          <p className="min-w-0 text-xs text-tertiary">{hint}</p>
-        </div>
-        {errorLine}
-      </div>
-    );
-  }
-  return (
     <div className="flex flex-col items-center gap-1">
-      {button}
-      <p className="text-xs text-tertiary">{hint}</p>
-      {errorLine}
+      <FollowToggle state={state} busy={busy} onClick={toggle} followsYou={followsYou} />
+      <p className="text-xs text-tertiary">
+        {hint}
+        {state === "pending" && (
+          <>
+            {" "}
+            <WithdrawRequest name={name} busy={busy} onClick={toggle} />
+          </>
+        )}
+      </p>
+      {error && <p className="text-xs text-error-primary">{error}</p>}
     </div>
   );
 }
