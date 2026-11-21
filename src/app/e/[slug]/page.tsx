@@ -230,15 +230,6 @@ export default async function PublicEventPage({
               wishlistHref={gifteeWishlistHref}
             />
           )}
-          {showGuestLists && (
-            <GuestWishLists
-              lists={guestLists}
-              eventSlug={event.slug}
-              guestToken={guest?.token ?? null}
-              waitingCount={waiting}
-              hostView={!guest}
-            />
-          )}
           {token && !guest && (
             <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
               This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
@@ -277,6 +268,16 @@ export default async function PublicEventPage({
             mealTrain={mealTrain}
             questions={storedQuestions(event.rsvp_questions)}
           />
+          {/* The RSVP comes first: answering matters more than browsing the lists. */}
+          {showGuestLists && (
+            <GuestWishLists
+              lists={guestLists}
+              eventSlug={event.slug}
+              guestToken={guest?.token ?? null}
+              waitingCount={waiting}
+              hostView={!guest}
+            />
+          )}
           <EventGroupGifts gifts={groupGifts} />
         </EventInvitation>
       </main>

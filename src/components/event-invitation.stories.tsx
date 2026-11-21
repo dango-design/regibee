@@ -320,7 +320,7 @@ export const MealTrainBeforeSigningUp: Story = {
 
 /**
  * A family Christmas where everyone gives everyone. Glinda replied with her
- * wish list, so she sees everyone's lists above her RSVP.
+ * wish list. Her RSVP comes first, then everyone's lists.
  */
 export const EveryoneGivesEveryone: Story = {
   args: {
@@ -332,12 +332,6 @@ export const EveryoneGivesEveryone: Story = {
   },
   render: (args) => (
     <EventInvitation {...args}>
-      <GuestWishLists
-        lists={sampleGuestWishLists}
-        eventSlug={sampleExchangeEvent.slug}
-        guestToken="token-g1"
-        waitingCount={2}
-      />
       <RsvpForm
         slug={sampleExchangeEvent.slug}
         guest={{
@@ -367,6 +361,12 @@ export const EveryoneGivesEveryone: Story = {
         }}
         passed={false}
         submitAction={submitAction}
+      />
+      <GuestWishLists
+        lists={sampleGuestWishLists}
+        eventSlug={sampleExchangeEvent.slug}
+        guestToken="token-g1"
+        waitingCount={2}
       />
     </EventInvitation>
   ),
