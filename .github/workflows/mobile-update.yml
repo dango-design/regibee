@@ -7,6 +7,12 @@ name: App update
 # runtime version that no installed build matches, so those need a new build.
 # See "Updates" in mobile/README.md.
 #
+# The app runs mobile/ and the website files it imports through `@shared/*`,
+# directly or through another shared file. The paths below name each of those
+# files. mobile/scripts/check-update-paths.mjs fails when one is missing or no
+# longer imported. The App update paths workflow runs it on pull requests, and
+# so does `npm run check` in mobile/.
+#
 # It needs the EXPO_TOKEN repo secret, an Expo access token for the account
 # that owns the project. Without it, the run says so and publishes nothing.
 on:
@@ -14,10 +20,37 @@ on:
     branches: [main]
     paths:
       - mobile/**
-      - src/lib/retailers.ts
-      - src/lib/demo-data.ts
-      - src/lib/gifts.ts
       - src/lib/account-deletion-summary.ts
+      - src/lib/checklist-data.ts
+      - src/lib/checklist-matching.ts
+      - src/lib/dashboard-page-types.ts
+      - src/lib/demo-data.ts
+      - src/lib/email-address.ts
+      - src/lib/event-images.ts
+      - src/lib/event-updates.ts
+      - src/lib/events-page-types.ts
+      - src/lib/events.ts
+      - src/lib/gift-ideas.ts
+      - src/lib/gift-profile.ts
+      - src/lib/gifts.ts
+      - src/lib/groups.ts
+      - src/lib/guest-emails.ts
+      - src/lib/item-categories.ts
+      - src/lib/list-access.ts
+      - src/lib/list-page-types.ts
+      - src/lib/occasion-theme.ts
+      - src/lib/occasions.ts
+      - src/lib/people-page-types.ts
+      - src/lib/profile-link.ts
+      - src/lib/registry-copy.ts
+      - src/lib/registry-listing.ts
+      - src/lib/registry-photos.ts
+      - src/lib/retailers.ts
+      - src/lib/rsvp-questions.ts
+      - src/lib/saved-items-types.ts
+      - src/lib/signups.ts
+      - src/lib/store-perks.ts
+      - src/lib/types.ts
       - extension/src/product-reader.ts
       - .github/workflows/mobile-update.yml
   workflow_dispatch:
