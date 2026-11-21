@@ -4,6 +4,10 @@
 // defaults and checks. Saving runs the website's own createEvent and
 // updateEvent, with the same form field names. Change both together.
 //
+// A new event goes in steps, one open at a time, like on the website: the
+// steps, their names and summaries come from @shared/event-steps. Editing an
+// event shows every section at once.
+//
 // Where the app differs: dates and times use the phone's pickers, menus are
 // rows of choices, and the invitation picture comes from the photo library.
 // On an existing event the picture uploads and saves as soon as it's picked,
@@ -43,9 +47,18 @@ import {
 } from "@shared/rsvp-questions";
 import { startingExchange } from "@shared/occasions";
 import { hidesAddressUntilSignup } from "@shared/signups";
+import {
+  eventStepInfo,
+  eventStepSummaries,
+  eventStepTitle,
+  newEventSteps,
+  type EventStepId,
+  type EventStepValues,
+} from "@shared/event-steps";
 
 import { DateField } from "@/components/date-field";
 import { Icon } from "@/components/icon";
+import { StepCard, StepFooter, useSteps } from "@/components/steps";
 import {
   Button,
   Card,
@@ -273,6 +286,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [titleError, setTitleError] = useState(false);
 
   const zoneOptions = [...COMMON_TIME_ZONES];
   if (timeZone && !zoneOptions.some((z) => z.value === timeZone)) {
@@ -391,6 +405,60 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
     ]);
   };
 
+  // ── A new event's steps (@shared/event-steps) ────────────────
+
+  const stepValues: EventStepValues = {
+    eventType,
+    title,
+    eventDate,
+    startTime,
+    endTime,
+    timeZone,
+    locationName,
+    locationAddress,
+    linkedTitles: linked.map((r) => r.title),
+    giftNote,
+    exchangeOn,
+    exchangeKind: kind,
+    budget,
+    hasPicture: Boolean(shownImage),
+    hostedBy,
+    message,
+    maxPartySize,
+    openRsvp,
+    rsvpBy,
+  };
+  const stepOrder = newEventSteps(eventType, exchangeOn);
+  const stepInfo = eventStepInfo(stepValues);
+  const { nav, move, advanceSoon, finish, footerLabel, stepProps, scrollProps } = useSteps({
+    order: stepOrder,
+    start: { open: editing ? null : "what", visited: new Set<EventStepId>() },
+    steps: stepInfo,
+    canFinish: (id) => {
+      if (id === "details" && !title.trim()) {
+        setTitleError(true);
+        return false;
+      }
+      return true;
+    },
+  });
+  const stepSummaries = eventStepSummaries(stepValues, typeOption.label);
+  /** A step's card: its title and summary. */
+  const stepCard = (id: EventStepId, options?: { showWhenUpcoming?: boolean }) => ({
+    title: eventStepTitle(id, eventType),
+    ...stepProps(
+      id,
+      id === "details" && !stepSummaries.details ? (
+        <Text variant="footnote" tone="danger">
+          Needs a name
+        </Text>
+      ) : (
+        stepSummaries[id]
+      ),
+      options,
+    ),
+  });
+
   // The same field names the website's form sends (readEventForm and
   // readExchangeForm in src/lib/actions/events.ts read them).
   const formFields = () => ({
@@ -423,7 +491,13 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
 
   const submit = async () => {
     if (!title.trim()) {
-      setError("Give your event a name.");
+      if (editing) {
+        setError("Give your event a name.");
+      } else {
+        // The name's step shows what's missing.
+        setTitleError(true);
+        if (nav.open !== "details") move({ type: "open", id: "details" });
+      }
       return;
     }
     setSaving(true);
@@ -471,6 +545,466 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
     }
   };
 
+  // ── Fields both layouts show ─────────────────────────────────
+
+  const changeAskKids = (value: boolean) => {
+    setAskKids(value);
+    setTouched((t) => ({ ...t, askKids: true }));
+  };
+  const changeQuestions = (next: RsvpQuestion[]) => {
+    setQuestions(next);
+    setTouched((t) => ({ ...t, questions: true }));
+  };
+
+  const pictureField = (
+    <>
+      {shownImage ? (
+        <View style={{ gap: spacing.md }}>
+          <View>
+            <Image
+              source={{ uri: shownImage }}
+              style={{ width: "100%", height: 288, borderRadius: radius.md, backgroundColor: theme.surfaceAlt }}
+              contentFit="contain"
+              transition={150}
+              accessibilityLabel="Invitation preview"
+              accessibilityIgnoresInvertColors
+            />
+            {uploading ? (
+              <View
+                style={{
+                  ...StyleSheet.absoluteFill,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: radius.md,
+                  backgroundColor: "rgba(0,0,0,0.25)",
+                }}
+              >
+                <ActivityIndicator color="#FFFFFF" />
+              </View>
+            ) : null}
+          </View>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Button title="Change" icon="image" variant="secondary" size="medium" onPress={choosePicture} disabled={uploading} style={{ flex: 1 }} />
+            <Button title="Remove" icon="trash" variant="secondary" size="medium" onPress={removePicture} disabled={uploading} style={{ flex: 1 }} />
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Upload your invitation"
+          disabled={uploading}
+          onPress={() => {
+            haptic();
+            choosePicture();
+          }}
+          style={({ pressed }) => ({
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            paddingVertical: spacing.xxl,
+            paddingHorizontal: spacing.lg,
+            borderRadius: radius.lg,
+            borderWidth: 2,
+            borderStyle: "dashed",
+            borderColor: pressed ? theme.tint : theme.border,
+            backgroundColor: pressed ? theme.tintSoft : "transparent",
+          })}
+        >
+          {uploading ? <ActivityIndicator color={theme.tint} /> : <Icon name="image" size={30} color={theme.tint} />}
+          <Text variant="callout" style={{ fontWeight: "600" }}>
+            Upload your invitation
+          </Text>
+          <Text variant="footnote" tone="tertiary">
+            Choose a picture from your photos.
+          </Text>
+        </Pressable>
+      )}
+      {imageError ? (
+        <Text variant="footnote" tone="danger">
+          {imageError}
+        </Text>
+      ) : null}
+    </>
+  );
+
+  /** The new event's steps leave out the longer explanations. */
+  const registryFields = (brief: boolean) => (
+    <>
+      {linked.length > 0 ? (
+        <Section>
+          {linked.map((registry, index) => (
+            <View key={registry.id}>
+              {index > 0 ? <Divider inset={spacing.lg} /> : null}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingLeft: spacing.lg, paddingRight: spacing.sm, minHeight: 52 }}>
+                <Icon name="gift" size={18} color={theme.tint} />
+                <View style={{ flex: 1, paddingVertical: spacing.sm }}>
+                  <Text variant="callout" numberOfLines={1} style={{ fontWeight: "500" }}>
+                    {registry.title}
+                  </Text>
+                  {registry.honoree ? (
+                    <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+                      {registry.honoree}
+                    </Text>
+                  ) : null}
+                </View>
+                <IconButton
+                  icon="close"
+                  size={18}
+                  color={theme.textTertiary}
+                  accessibilityLabel={`Unlink ${registry.title}`}
+                  onPress={() => setLinked(linked.filter((l) => l.id !== registry.id))}
+                />
+              </View>
+            </View>
+          ))}
+        </Section>
+      ) : null}
+      {pickable.length > 0 ? (
+        <View style={{ gap: spacing.sm }}>
+          <Label>{linked.length > 0 ? "Add another of your registries" : "Add one of your registries"}</Label>
+          <Section>
+            {pickable.map((registry, index) => (
+              <View key={registry.id}>
+                {index > 0 ? <Divider inset={spacing.lg} /> : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Link ${registry.title}`}
+                  onPress={() => {
+                    haptic();
+                    setLinked([...linked, { id: registry.id, title: registry.title }]);
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: spacing.md,
+                    paddingHorizontal: spacing.lg,
+                    minHeight: 50,
+                    backgroundColor: pressed ? theme.surfaceAlt : "transparent",
+                  })}
+                >
+                  <Icon name="add" size={17} color={theme.tint} />
+                  <Text variant="callout" numberOfLines={1} style={{ flex: 1 }}>
+                    {registry.title}
+                  </Text>
+                </Pressable>
+              </View>
+            ))}
+          </Section>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm }}>
+        <View style={{ flex: 1 }}>
+          <Field
+            label="Or paste a registry link"
+            value={pasted}
+            onChangeText={(value) => {
+              setPasted(value);
+              setLinkError("");
+            }}
+            placeholder="regibee.com/r/remi-and-max-1a2b"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            returnKeyType="done"
+            onSubmitEditing={() => void addPastedLink()}
+          />
+        </View>
+        <Button
+          title={lookingUp ? "Finding…" : "Link"}
+          variant="secondary"
+          size="medium"
+          onPress={() => void addPastedLink()}
+          disabled={lookingUp || !pasted.trim()}
+          style={{ height: 50 }}
+        />
+      </View>
+      {brief ? (
+        <Text variant="footnote" tone="tertiary">
+          Linking someone else's list emails them.
+        </Text>
+      ) : null}
+      {linkError ? (
+        <Text variant="footnote" tone="danger">
+          {linkError}
+        </Text>
+      ) : null}
+      {registries.length === 0 && linked.length === 0 ? (
+        <Text variant="footnote" tone="tertiary">
+          Don't have a registry yet?{" "}
+          <Text variant="footnote" tone="tint" style={{ fontWeight: "600" }} accessibilityRole="link" onPress={() => router.push("/new-registry")}>
+            Create one
+          </Text>{" "}
+          and link it here later.
+        </Text>
+      ) : null}
+    </>
+  );
+
+  const giftNoteField = (
+    <View style={{ gap: spacing.sm }}>
+      <Label>Gift note (optional)</Label>
+      <View accessibilityLabel="Ready-made gift notes" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        {GIFT_NOTE_PRESETS.map((preset) => (
+          <Chip key={preset.label} label={preset.label} selected={giftNote === preset.text} onPress={() => setGiftNote(preset.text)} />
+        ))}
+      </View>
+      <Field
+        accessibilityLabel="Gift note"
+        value={giftNote}
+        onChangeText={setGiftNote}
+        maxLength={MAX_GIFT_NOTE_LENGTH}
+        multiline
+        placeholder="Instead of a card, bring a favorite children's book with a note inside."
+      />
+    </View>
+  );
+
+  /** Everything under "Guests give gifts to each other", once it's on. */
+  const exchangeDetails = (brief: boolean) =>
+    exchangeOn ? (
+      <View style={{ gap: spacing.md }}>
+        <View accessibilityLabel="How gifts work" style={{ gap: spacing.sm }}>
+          {EXCHANGE_KINDS.map((option) => {
+            const selected = kind === option.value;
+            const disabled = drawn && !selected;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected, disabled }}
+                disabled={disabled}
+                onPress={() => {
+                  haptic();
+                  setKind(option.value);
+                }}
+                style={({ pressed }) => ({
+                  gap: 4,
+                  padding: spacing.md,
+                  borderRadius: radius.lg,
+                  borderWidth: selected ? 2 : 1,
+                  borderColor: selected ? theme.tint : theme.border,
+                  backgroundColor: selected ? theme.tintSoft : theme.surface,
+                  opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
+                })}
+              >
+                <Text variant="callout" style={{ fontWeight: "600" }}>
+                  {option.label}
+                </Text>
+                <Text variant="footnote" tone="tertiary">
+                  {option.hint}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Field
+          label={kind === "everyone" ? "Budget per gift (optional)" : "Budget (optional)"}
+          value={budget}
+          onChangeText={setBudget}
+          maxLength={40}
+          placeholder="$25"
+        />
+        {kind === "draw" ? (
+          <DateField
+            label="Draw names by (optional)"
+            value={drawBy || null}
+            onChange={(value) => setDrawBy(value ?? "")}
+            hint={brief ? undefined : "Guests see this, so they know when to join by."}
+          />
+        ) : null}
+        {kind === "everyone" && !brief ? (
+          <Text variant="footnote" tone="tertiary">
+            Each list hides what's been reserved from its owner, and shows it to them the day after the event, so they know who to
+            thank.
+          </Text>
+        ) : null}
+        {kind === "draw" ? (
+          <Section>
+            <ToggleRow
+              label="There's no get-together: gifts are mailed"
+              hint={brief ? undefined : "Guests answer “I'm in” instead of RSVPing, and give a shipping address that only the person who draws them sees."}
+              value={mailed}
+              onValueChange={setMailed}
+            />
+          </Section>
+        ) : null}
+      </View>
+    ) : null;
+
+  if (!editing) {
+    const hidesAddress = hidesAddressUntilSignup(eventType);
+    return (
+      <>
+        <ScrollView {...scrollProps} contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+          <Text variant="callout" tone="secondary">
+            You'll add guests and send the invitation next.
+          </Text>
+
+          <StepCard {...stepCard("what")}>
+            <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {EVENT_TYPE_OPTIONS.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  selected={eventType === option.value}
+                  onPress={() => {
+                    chooseType(option.value);
+                    advanceSoon("what");
+                  }}
+                />
+              ))}
+            </View>
+          </StepCard>
+
+          <StepCard {...stepCard("details")}>
+            <Field
+              label="Event name"
+              value={title}
+              onChangeText={(value) => {
+                setTitle(value);
+                if (value.trim()) setTitleError(false);
+              }}
+              error={titleError ? "Give your event a name." : null}
+              maxLength={120}
+              placeholder={typeOption.titlePlaceholder}
+              autoCapitalize="words"
+              autoFocus={!title}
+              returnKeyType="next"
+              onSubmitEditing={() => finish("details")}
+            />
+            <DateField label="Date (optional)" value={eventDate || null} onChange={(value) => setEventDate(value ?? "")} />
+            <StepFooter label={footerLabel("details")} onPress={() => finish("details")} />
+          </StepCard>
+
+          <StepCard {...stepCard("when")}>
+            <DateField label="Starts" mode="time" value={startTime || null} onChange={(value) => setStartTime(value ?? "")} />
+            <DateField label="Ends (optional)" mode="time" value={endTime || null} onChange={(value) => setEndTime(value ?? "")} />
+            <View style={{ gap: spacing.sm }}>
+              <Label>Time zone</Label>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                {zoneOptions.map((zone) => (
+                  <Chip key={zone.value} label={zone.label} selected={timeZone === zone.value} onPress={() => setTimeZone(zone.value)} />
+                ))}
+              </View>
+            </View>
+            {hidesAddress ? (
+              <Field
+                label="Drop-off address"
+                value={locationAddress}
+                onChangeText={setLocationAddress}
+                maxLength={300}
+                multiline
+                placeholder={"123 Main St\nSan Francisco, CA 94102"}
+                hint="Only people who sign up for a day see it."
+                textContentType="fullStreetAddress"
+              />
+            ) : (
+              <>
+                <Field label="Place" value={locationName} onChangeText={setLocationName} maxLength={120} placeholder={`e.g., "Grandma's house"`} />
+                <Field
+                  label="Address"
+                  value={locationAddress}
+                  onChangeText={setLocationAddress}
+                  maxLength={300}
+                  multiline
+                  placeholder={"123 Main St\nSan Francisco, CA 94102"}
+                  hint="Only people with the event link see it."
+                  textContentType="fullStreetAddress"
+                />
+              </>
+            )}
+            <StepFooter label={footerLabel("when")} onPress={() => finish("when")} primary={stepInfo.when.hasContent} />
+          </StepCard>
+
+          <StepCard {...stepCard("gifts")}>
+            <View style={{ gap: spacing.md }}>{registryFields(true)}</View>
+            {giftNoteField}
+            <StepFooter label={footerLabel("gifts")} onPress={() => finish("gifts")} primary={stepInfo.gifts.hasContent} />
+          </StepCard>
+
+          {stepOrder.includes("exchange") ? (
+            <StepCard {...stepCard("exchange")}>
+              <Section>
+                <ToggleRow
+                  label="Guests give gifts to each other"
+                  value={exchangeOn}
+                  onValueChange={(value) => {
+                    setExchangeOn(value);
+                    setTouched((t) => ({ ...t, exchange: true }));
+                  }}
+                />
+              </Section>
+              {exchangeDetails(true)}
+              <StepFooter label={footerLabel("exchange")} onPress={() => finish("exchange")} primary={stepInfo.exchange.hasContent} />
+            </StepCard>
+          ) : null}
+
+          <StepCard {...stepCard("invitation")}>
+            {pictureField}
+            <Field
+              label="Hosted by (optional)"
+              value={hostedBy}
+              onChangeText={setHostedBy}
+              maxLength={120}
+              placeholder='e.g., "Aunt Linda & Grandma Jo"'
+              autoCapitalize="words"
+            />
+            <Field
+              label="Message to guests (optional)"
+              value={message}
+              onChangeText={setMessage}
+              maxLength={2000}
+              multiline
+              placeholder="Parking, dress code, what to bring: anything guests should know."
+            />
+            <StepFooter label={footerLabel("invitation")} onPress={() => finish("invitation")} primary={stepInfo.invitation.hasContent} />
+          </StepCard>
+
+          {/* RSVPs shows the settings the event gets if the host skips it. */}
+          <StepCard {...stepCard("rsvps", { showWhenUpcoming: true })}>
+            <DateField label="Reply by (optional)" value={rsvpBy || null} onChange={(value) => setRsvpBy(value ?? "")} />
+            <View style={{ gap: 6 }}>
+              <Label>People per RSVP</Label>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                <Stepper value={maxPartySize} onChange={setMaxPartySize} min={1} max={MAX_PARTY_SIZE_LIMIT} />
+                {maxPartySize === 1 ? (
+                  <Text variant="subhead" tone="secondary">
+                    Just the guest
+                  </Text>
+                ) : null}
+              </View>
+              <Text variant="footnote" tone="tertiary">
+                Including the guest.
+              </Text>
+            </View>
+            <Section>
+              <SwitchRow label="Anyone with the event link can RSVP" value={openRsvp} onValueChange={setOpenRsvp} />
+              <Divider inset={spacing.lg} />
+              <SwitchRow label="Ask how many kids are coming" value={askKids} onValueChange={changeAskKids} />
+              <Divider inset={spacing.lg} />
+              <SwitchRow label="Email me when someone RSVPs" value={emailHost} onValueChange={setEmailHost} />
+              <Divider inset={spacing.lg} />
+              <SwitchRow label="Email everyone going a reminder the day before" value={remindDayBefore} onValueChange={setRemindDayBefore} />
+            </Section>
+            <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
+            <StepFooter label={footerLabel("rsvps")} onPress={() => finish("rsvps")} />
+          </StepCard>
+        </ScrollView>
+        <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+          {error ? (
+            <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
+              {error}
+            </Text>
+          ) : null}
+          <Button title="Create event" onPress={() => void submit()} loading={saving} />
+          <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
+            Only the name is required. You can change all of this later.
+          </Text>
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xxl }} keyboardShouldPersistTaps="handled">
@@ -507,72 +1041,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
           title="Invitation"
           description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
         >
-          {shownImage ? (
-            <View style={{ gap: spacing.md }}>
-              <View>
-                <Image
-                  source={{ uri: shownImage }}
-                  style={{ width: "100%", height: 288, borderRadius: radius.md, backgroundColor: theme.surfaceAlt }}
-                  contentFit="contain"
-                  transition={150}
-                  accessibilityLabel="Invitation preview"
-                  accessibilityIgnoresInvertColors
-                />
-                {uploading ? (
-                  <View
-                    style={{
-                      ...StyleSheet.absoluteFill,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: radius.md,
-                      backgroundColor: "rgba(0,0,0,0.25)",
-                    }}
-                  >
-                    <ActivityIndicator color="#FFFFFF" />
-                  </View>
-                ) : null}
-              </View>
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                <Button title="Change" icon="image" variant="secondary" size="medium" onPress={choosePicture} disabled={uploading} style={{ flex: 1 }} />
-                <Button title="Remove" icon="trash" variant="secondary" size="medium" onPress={removePicture} disabled={uploading} style={{ flex: 1 }} />
-              </View>
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Upload your invitation"
-              disabled={uploading}
-              onPress={() => {
-                haptic();
-                choosePicture();
-              }}
-              style={({ pressed }) => ({
-                alignItems: "center",
-                justifyContent: "center",
-                gap: spacing.sm,
-                paddingVertical: spacing.xxl,
-                paddingHorizontal: spacing.lg,
-                borderRadius: radius.lg,
-                borderWidth: 2,
-                borderStyle: "dashed",
-                borderColor: pressed ? theme.tint : theme.border,
-                backgroundColor: pressed ? theme.tintSoft : "transparent",
-              })}
-            >
-              {uploading ? <ActivityIndicator color={theme.tint} /> : <Icon name="image" size={30} color={theme.tint} />}
-              <Text variant="callout" style={{ fontWeight: "600" }}>
-                Upload your invitation
-              </Text>
-              <Text variant="footnote" tone="tertiary">
-                Choose a picture from your photos.
-              </Text>
-            </Pressable>
-          )}
-          {imageError ? (
-            <Text variant="footnote" tone="danger">
-              {imageError}
-            </Text>
-          ) : null}
+          {pictureField}
         </Group>
 
         <Group title="When">
@@ -663,10 +1132,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
               label="Ask how many kids are coming"
               description="Guests say how many of their party are kids, and you see both counts."
               value={askKids}
-              onValueChange={(value) => {
-                setAskKids(value);
-                setTouched((t) => ({ ...t, askKids: true }));
-              }}
+              onValueChange={changeAskKids}
             />
             <Divider inset={spacing.lg} />
             <SwitchRow label="Email me when someone RSVPs" value={emailHost} onValueChange={setEmailHost} />
@@ -678,13 +1144,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
               onValueChange={setRemindDayBefore}
             />
           </Section>
-          <RsvpQuestionsEditor
-            questions={questions}
-            onChange={(next) => {
-              setQuestions(next);
-              setTouched((t) => ({ ...t, questions: true }));
-            }}
-          />
+          <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
         </Group>
 
         <Group title="Gifts" description="What guests see about gifts, under the details on the invitation.">
@@ -696,126 +1156,10 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
                 linked it. Linking doesn't let you change their registry.
               </Text>
             </View>
-            {linked.length > 0 ? (
-              <Section>
-                {linked.map((registry, index) => (
-                  <View key={registry.id}>
-                    {index > 0 ? <Divider inset={spacing.lg} /> : null}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingLeft: spacing.lg, paddingRight: spacing.sm, minHeight: 52 }}>
-                      <Icon name="gift" size={18} color={theme.tint} />
-                      <View style={{ flex: 1, paddingVertical: spacing.sm }}>
-                        <Text variant="callout" numberOfLines={1} style={{ fontWeight: "500" }}>
-                          {registry.title}
-                        </Text>
-                        {registry.honoree ? (
-                          <Text variant="footnote" tone="tertiary" numberOfLines={1}>
-                            {registry.honoree}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <IconButton
-                        icon="close"
-                        size={18}
-                        color={theme.textTertiary}
-                        accessibilityLabel={`Unlink ${registry.title}`}
-                        onPress={() => setLinked(linked.filter((l) => l.id !== registry.id))}
-                      />
-                    </View>
-                  </View>
-                ))}
-              </Section>
-            ) : null}
-            {pickable.length > 0 ? (
-              <View style={{ gap: spacing.sm }}>
-                <Label>{linked.length > 0 ? "Add another of your registries" : "Add one of your registries"}</Label>
-                <Section>
-                  {pickable.map((registry, index) => (
-                    <View key={registry.id}>
-                      {index > 0 ? <Divider inset={spacing.lg} /> : null}
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Link ${registry.title}`}
-                        onPress={() => {
-                          haptic();
-                          setLinked([...linked, { id: registry.id, title: registry.title }]);
-                        }}
-                        style={({ pressed }) => ({
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: spacing.md,
-                          paddingHorizontal: spacing.lg,
-                          minHeight: 50,
-                          backgroundColor: pressed ? theme.surfaceAlt : "transparent",
-                        })}
-                      >
-                        <Icon name="add" size={17} color={theme.tint} />
-                        <Text variant="callout" numberOfLines={1} style={{ flex: 1 }}>
-                          {registry.title}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ))}
-                </Section>
-              </View>
-            ) : null}
-            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm }}>
-              <View style={{ flex: 1 }}>
-                <Field
-                  label="Or paste a registry link"
-                  value={pasted}
-                  onChangeText={(value) => {
-                    setPasted(value);
-                    setLinkError("");
-                  }}
-                  placeholder="regibee.com/r/remi-and-max-1a2b"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  returnKeyType="done"
-                  onSubmitEditing={() => void addPastedLink()}
-                />
-              </View>
-              <Button
-                title={lookingUp ? "Finding…" : "Link"}
-                variant="secondary"
-                size="medium"
-                onPress={() => void addPastedLink()}
-                disabled={lookingUp || !pasted.trim()}
-                style={{ height: 50 }}
-              />
-            </View>
-            {linkError ? (
-              <Text variant="footnote" tone="danger">
-                {linkError}
-              </Text>
-            ) : null}
-            {registries.length === 0 && linked.length === 0 ? (
-              <Text variant="footnote" tone="tertiary">
-                Don't have a registry yet?{" "}
-                <Text variant="footnote" tone="tint" style={{ fontWeight: "600" }} accessibilityRole="link" onPress={() => router.push("/new-registry")}>
-                  Create one
-                </Text>{" "}
-                and link it here later.
-              </Text>
-            ) : null}
+            {registryFields(false)}
           </View>
 
-          <View style={{ gap: spacing.sm }}>
-            <Label>Gift note (optional)</Label>
-            <View accessibilityLabel="Ready-made gift notes" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              {GIFT_NOTE_PRESETS.map((preset) => (
-                <Chip key={preset.label} label={preset.label} selected={giftNote === preset.text} onPress={() => setGiftNote(preset.text)} />
-              ))}
-            </View>
-            <Field
-              accessibilityLabel="Gift note"
-              value={giftNote}
-              onChangeText={setGiftNote}
-              maxLength={MAX_GIFT_NOTE_LENGTH}
-              multiline
-              placeholder="Instead of a card, bring a favorite children's book with a note inside."
-            />
-          </View>
+          {giftNoteField}
         </Group>
 
         <Group title="Gifts among the guests" description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other.">
@@ -835,75 +1179,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
               }}
             />
           </Section>
-          {exchangeOn ? (
-            <View style={{ gap: spacing.md }}>
-              <View accessibilityLabel="How gifts work" style={{ gap: spacing.sm }}>
-                {EXCHANGE_KINDS.map((option) => {
-                  const selected = kind === option.value;
-                  const disabled = drawn && !selected;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected, disabled }}
-                      disabled={disabled}
-                      onPress={() => {
-                        haptic();
-                        setKind(option.value);
-                      }}
-                      style={({ pressed }) => ({
-                        gap: 4,
-                        padding: spacing.md,
-                        borderRadius: radius.lg,
-                        borderWidth: selected ? 2 : 1,
-                        borderColor: selected ? theme.tint : theme.border,
-                        backgroundColor: selected ? theme.tintSoft : theme.surface,
-                        opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <Text variant="callout" style={{ fontWeight: "600" }}>
-                        {option.label}
-                      </Text>
-                      <Text variant="footnote" tone="tertiary">
-                        {option.hint}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <Field
-                label={kind === "everyone" ? "Budget per gift (optional)" : "Budget (optional)"}
-                value={budget}
-                onChangeText={setBudget}
-                maxLength={40}
-                placeholder="$25"
-              />
-              {kind === "draw" ? (
-                <DateField
-                  label="Draw names by (optional)"
-                  value={drawBy || null}
-                  onChange={(value) => setDrawBy(value ?? "")}
-                  hint="Guests see this, so they know when to join by."
-                />
-              ) : null}
-              {kind === "everyone" ? (
-                <Text variant="footnote" tone="tertiary">
-                  Each list hides what's been reserved from its owner, and shows it to them the day after the event, so they know who to
-                  thank.
-                </Text>
-              ) : null}
-              {kind === "draw" ? (
-                <Section>
-                  <ToggleRow
-                    label="There's no get-together: gifts are mailed"
-                    hint="Guests answer “I'm in” instead of RSVPing, and give a shipping address that only the person who draws them sees."
-                    value={mailed}
-                    onValueChange={setMailed}
-                  />
-                </Section>
-              ) : null}
-            </View>
-          ) : null}
+          {exchangeDetails(false)}
         </Group>
 
         {changes.length > 0 ? (
