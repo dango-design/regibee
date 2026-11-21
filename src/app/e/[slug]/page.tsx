@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Logo } from "@/components/logo";
 import { EventInvitation } from "@/components/event-invitation";
 import { RsvpForm } from "@/components/rsvp-form";
+import type { RsvpWishlist } from "@/components/rsvp-wishlist-step";
 import { PoweredByFooter } from "@/components/site-footer";
 import { SecretSantaCard } from "@/components/secret-santa-card";
 import { GuestWishLists } from "@/components/guest-wish-lists";
@@ -143,8 +144,8 @@ export default async function PublicEventPage({
     : null;
 
   // Everyone gives everyone: the event's guests and hosts see everyone's
-  // wish lists. A signed-in guest can pick one of their own lists when they
-  // RSVP.
+  // wish lists. A signed-in guest can pick one of their own lists after they
+  // RSVP. Private lists are left out, since nobody else can open them.
   const everyone = exchangeKind(exchange) === "everyone";
   const [isHost, guestLists, waiting, myLists] = everyone
     ? await Promise.all([
@@ -159,14 +160,27 @@ export default async function PublicEventPage({
         viewer
           ? supabaseAdmin
               .from("registries")
-              .select("title, slug")
+              .select("id, title, slug")
               .eq("owner_id", viewer.id)
+              .eq("is_private", false)
               .order("created_at", { ascending: false })
-              .then(({ data }) => (data || []) as { title: string; slug: string }[])
+              .then(({ data }) => (data || []) as { id: string; title: string; slug: string }[])
           : [],
       ])
     : [false, [], 0, []];
   const showGuestLists = everyone && (Boolean(guest) || isHost);
+  // The guest's own wish list, for the step after their RSVP.
+  const ownEntry = guestLists.find((entry) => entry.isYou) ?? null;
+  const ownList = ownEntry?.registry ? myLists.find((list) => list.slug === ownEntry.registry!.slug) : undefined;
+  const wishlist: RsvpWishlist | null = everyone
+    ? {
+        current: guest?.wishlist_url
+          ? { url: guest.wishlist_url, title: ownEntry?.registry?.title ?? null, ownListId: ownList?.id ?? null }
+          : null,
+        giftIdeas: guest?.gift_ideas ?? null,
+        account: viewer ? { lists: myLists.map(({ id, title }) => ({ id, title })) } : null,
+      }
+    : null;
   // The event's own time zone could be a day behind UTC, so it counts as over
   // only once yesterday in UTC is past it. Sign-up days work the same way.
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -257,7 +271,7 @@ export default async function PublicEventPage({
                 ? { kind: exchangeKind(exchange), mailed: exchange.mailed, drawn: Boolean(exchange.drawn_at) }
                 : null
             }
-            myLists={myLists.map((list) => ({ title: list.title, url: `${siteUrl}/r/${list.slug}` }))}
+            wishlist={wishlist}
             passed={eventHasPassed(event, yesterday)}
             signup={signupSheet ? { title: signupSheet.sheet.title, rows: signupRows } : null}
             mealTrain={mealTrain}

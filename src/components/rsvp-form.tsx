@@ -27,6 +27,7 @@ import {
   type RsvpQuestion,
 } from "@/lib/rsvp-questions";
 import { cx } from "@/lib/utils/cx";
+import { RsvpWishlistStep, type RsvpWishlist } from "@/components/rsvp-wishlist-step";
 
 type Answer = "yes" | "maybe" | "no";
 
@@ -81,10 +82,10 @@ export interface RsvpFormProps {
   /** The event's gift exchange, when it has one. A missing kind is a draw. */
   exchange?: { kind?: ExchangeKind; mailed: boolean; drawn: boolean } | null;
   /**
-   * The signed-in guest's own lists, for an everyone-gives-everyone event's
-   * wish list menu. Each url is the list's share link.
+   * Everyone gives everyone: the guest's wish list and lists to pick from, for
+   * the step after they say they're coming (rsvp-wishlist-step.tsx).
    */
-  myLists?: { title: string; url: string }[];
+  wishlist?: RsvpWishlist | null;
   /** The event's day is over. */
   passed: boolean;
   /** The event's sign-up sheet, as this guest sees it. Guests pick rows here. */
@@ -109,7 +110,7 @@ export function RsvpForm({
   maxPartySize,
   askKids = false,
   exchange = null,
-  myLists = [],
+  wishlist = null,
   passed,
   signup = null,
   mealTrain = false,
@@ -160,25 +161,14 @@ export function RsvpForm({
   // New guests join the exchange unless they say otherwise.
   const [join, setJoin] = useState(guest?.status === "pending" || !guest ? true : Boolean(guest.inExchange));
   const [wishlistUrl, setWishlistUrl] = useState(guest?.wishlistUrl ?? "");
-  // The menu of the guest's own lists: one of them, or "other" to paste a link.
-  const [listChoice, setListChoice] = useState(() =>
-    myLists.length === 0
-      ? "other"
-      : guest?.wishlistUrl
-        ? myLists.some((l) => l.url === guest.wishlistUrl)
-          ? guest.wishlistUrl
-          : "other"
-        : myLists[0].url,
-  );
   const [giftIdeas, setGiftIdeas] = useState(guest?.giftIdeas ?? "");
   const [address, setAddress] = useState(guest?.shippingAddress ?? "");
   // Answers to the host's questions.
   const [replies, setReplies] = useState<RsvpAnswers>(guest?.answers ?? {});
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-
-  // The wish list sent: the one picked from the guest's own lists, or the pasted link.
-  const chosenWishlist = everyone && listChoice !== "other" ? listChoice : wishlistUrl;
+  // The token a new guest gets back from their RSVP, before the page reloads with it.
+  const [newToken, setNewToken] = useState<string | null>(null);
   const answers = exchangeOnly ? EXCHANGE_ANSWERS : mealTrain ? MEAL_TRAIN_ANSWERS : PARTY_ANSWERS;
   const question = exchangeOnly ? "are you in?" : mealTrain ? "can you help?" : "can you make it?";
   const heading = guest ? `Hi ${guest.name}, ${question}` : question[0].toUpperCase() + question.slice(1);
@@ -214,12 +204,8 @@ export function RsvpForm({
         <p className="mt-1 text-tertiary">
           {current.status === "no" ? "Thanks for letting the host know." : "Thanks! The host has your answer."}
         </p>
-        {everyone && current.status !== "no" && (
-          <p className="mt-2 text-sm text-secondary">
-            {(saved ? chosenWishlist.trim() : guest?.wishlistUrl)
-              ? "Your wish list is on the invitation for the other guests."
-              : "Add your wish list, so everyone knows what you'd like."}
-          </p>
+        {everyone && current.status !== "no" && wishlist && (
+          <RsvpWishlistStep slug={slug} token={token ?? newToken ?? ""} {...wishlist} />
         )}
         {exchange && !everyone && !exchangeOnly && current.status !== "no" && (
           <p className="mt-2 text-sm text-secondary">
@@ -252,10 +238,8 @@ export function RsvpForm({
         {current.note && <p className="mt-3 text-sm whitespace-pre-line text-secondary">Your note: {current.note}</p>}
         {!passed && (
           <Button variant="outline" className="mt-4" onClick={() => setEditing(true)}>
-            {exchange && current.inExchange
-              ? everyone
-                ? "Change your RSVP or wish list"
-                : "Change your answer or wishlist"
+            {exchange && current.inExchange && !everyone
+              ? "Change your answer or wishlist"
               : signup && current.status !== "no"
                 ? "Change RSVP or sign-ups"
                 : "Change RSVP"}
@@ -330,8 +314,11 @@ export function RsvpForm({
       partySize: size,
       kidsCount: showKids ? Math.min(Number(kids), size) : 0,
       note,
+      // When everyone gives everyone, the wish list comes after, in its own step.
       exchange: exchange
-        ? { join: inExchange, wishlistUrl: chosenWishlist, giftIdeas, shippingAddress: address }
+        ? everyone
+          ? { join: inExchange }
+          : { join: inExchange, wishlistUrl, giftIdeas, shippingAddress: address }
         : undefined,
       signups: signup
         ? answer === "no"
@@ -348,6 +335,7 @@ export function RsvpForm({
     // Someone on the plain link now has their own: switch to it, so the page
     // shows their answer and the address bar holds a link they can come back to.
     if (!token && result.token) {
+      setNewToken(result.token);
       router.replace(`/e/${slug}?g=${encodeURIComponent(result.token)}`, { scroll: false });
     }
     router.refresh();
@@ -514,63 +502,11 @@ export function RsvpForm({
           </fieldset>
         )}
 
-        {everyone && attending && (
-          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 p-4">
-            <legend className="sr-only">Your wish list</legend>
-            <div>
-              <p className="font-medium text-primary">Your wish list</p>
-              <p className="text-sm text-tertiary">
-                Everyone gives everyone. The other guests see your list and what they&apos;ve each reserved from
-                it. You won&apos;t, so your gifts stay a surprise until the day after.
-              </p>
-            </div>
-            {myLists.length > 0 && (
-              <NativeSelect
-                label="Your list"
-                value={listChoice}
-                onChange={(e) => setListChoice(e.target.value)}
-                options={[
-                  ...myLists.map((list) => ({ value: list.url, label: list.title })),
-                  { value: "other", label: "A link to another list…" },
-                ]}
-              />
-            )}
-            {listChoice === "other" && (
-              <Input
-                label={myLists.length > 0 ? "Link to your list" : "Link to your wish list (optional)"}
-                value={wishlistUrl}
-                onChange={setWishlistUrl}
-                placeholder="regibee.com/r/your-wishlist or any store's list"
-                hint={
-                  myLists.length > 0
-                    ? "A Regibee list or a list at any store."
-                    : "A Regibee list works best: the others see what's been reserved, so nobody doubles up."
-                }
-              />
-            )}
-            {myLists.length === 0 && (
-              <p className="text-sm text-secondary">
-                No list yet?{" "}
-                <a
-                  href="/dashboard/registry/new"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-brand-600 hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"
-                >
-                  Make one on Regibee
-                </a>
-                , then paste its link here.
-              </p>
-            )}
-            <TextArea
-              label="Gift ideas (optional)"
-              value={giftIdeas}
-              onChange={setGiftIdeas}
-              rows={2}
-              maxLength={1000}
-              placeholder="Cozy socks (size M), anything with cats, a good mystery novel"
-            />
-          </fieldset>
+        {everyone && attending && !guest?.wishlistUrl && !guest?.giftIdeas && (
+          <p className="rounded-xl bg-mint-50 p-3 text-sm text-secondary">
+            Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wish list, so the others know
+            what you&apos;d like.
+          </p>
         )}
 
         {exchange && !everyone && (attending || exchangeOnly) && answer !== "no" && (

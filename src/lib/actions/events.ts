@@ -32,6 +32,7 @@ import {
   type GuestClaim,
 } from "@/lib/signups";
 import {
+  eventHasPassed,
   exchangeKind,
   formatEventDate,
   formatEventTime,
@@ -1175,17 +1176,23 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
         : input.exchange.join && input.status !== "no";
     const inExchange = !everyone && exchange.drawn_at ? Boolean(existing?.in_exchange) : wantsIn;
     if (everyone || !exchange.drawn_at) response.in_exchange = inExchange;
-    if (inExchange) {
+    // When everyone gives everyone, guests add their wish list after they
+    // RSVP (saveEventWishlist), so an RSVP without one keeps what's saved.
+    if (inExchange && (!everyone || input.exchange.wishlistUrl !== undefined)) {
       const wishlist = readWishlistUrl(input.exchange.wishlistUrl);
       if ("error" in wishlist) return { error: wishlist.error };
-      const address = input.exchange.shippingAddress?.trim().slice(0, 300) || null;
-      if (!everyone && exchange.mailed && !address) {
-        return { error: "Add a shipping address, so your Secret Santa can mail your gift." };
-      }
       response.wishlist_url = wishlist.url;
       response.wishlist_registry_id = await wishlistRegistryId(wishlist.url);
+    }
+    if (inExchange && (!everyone || input.exchange.giftIdeas !== undefined)) {
       response.gift_ideas = input.exchange.giftIdeas?.trim().slice(0, 1000) || null;
-      response.shipping_address = !everyone && exchange.mailed ? address : null;
+    }
+    if (inExchange && !everyone) {
+      const address = input.exchange.shippingAddress?.trim().slice(0, 300) || null;
+      if (exchange.mailed && !address) {
+        return { error: "Add a shipping address, so your Secret Santa can mail your gift." };
+      }
+      response.shipping_address = exchange.mailed ? address : null;
     }
   }
 
@@ -1197,7 +1204,15 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
     if (problem) return { error: problem };
   }
 
-  let guest: { id: string; name: string; email: string | null; token: string; in_exchange: boolean };
+  let guest: {
+    id: string;
+    name: string;
+    email: string | null;
+    token: string;
+    in_exchange: boolean;
+    wishlist_url: string | null;
+    gift_ideas: string | null;
+  };
   let newGuest = false;
 
   if (input.token) {
@@ -1206,7 +1221,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
       .update(response)
       .eq("event_id", event.id)
       .eq("token", input.token)
-      .select("id, name, email, token, in_exchange")
+      .select("id, name, email, token, in_exchange, wishlist_url, gift_ideas")
       .maybeSingle();
     if (error || !data) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
     guest = data;
@@ -1234,7 +1249,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
     const { data, error } = await supabaseAdmin
       .from("event_guests")
       .insert({ ...response, event_id: event.id, name, email, token: generateGuestToken(), added_by_guest: true })
-      .select("id, name, email, token, in_exchange")
+      .select("id, name, email, token, in_exchange, wishlist_url, gift_ideas")
       .single();
     if (error?.code === "23505") {
       return {
@@ -1277,6 +1292,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
           registries,
           exchange,
           inExchange: guest.in_exchange,
+          hasWishlist: Boolean(guest.wishlist_url || guest.gift_ideas),
           guest: { name: guest.name, email: guest.email, token: guest.token },
           status: input.status,
           partySize,
@@ -1308,6 +1324,112 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
 
   revalidateEvent(event);
   return { error: null, token: guest.token };
+}
+
+export interface EventWishlistInput {
+  slug: string;
+  /** The guest's personal token, from their invitation link or their RSVP. */
+  token: string;
+  /** One of the signed-in account's own lists. */
+  registryId?: string;
+  /** Make a new list for the signed-in account, and use it. */
+  makeNew?: boolean;
+  /** A link to a list at any store, or "" for none. Used when neither of the above is. */
+  url?: string;
+  /** Left out to keep what's saved. */
+  giftIdeas?: string;
+}
+
+/**
+ * A guest's wish list on an everyone-gives-everyone event, added after they
+ * RSVP: one of their own Regibee lists, a new one made here, or a link to any
+ * store's list, with gift ideas. Picking or making a list needs an account,
+ * since it's theirs. The guest is found by their token, like submitRsvp.
+ * Nobody is emailed. Returns the Regibee list now linked, if any.
+ */
+export async function saveEventWishlist(input: EventWishlistInput): Promise<Result<{ registryId: string | null }>> {
+  const { data: eventRow } = await supabaseAdmin.from("events").select("*").eq("slug", input.slug).maybeSingle();
+  if (!eventRow) return { error: "This event wasn't found." };
+  const event = eventRow as EventDetails;
+  const exchange = await getGiftExchange(event.id);
+  if (!exchange || exchangeKind(exchange) !== "everyone") return { error: "This event doesn't use wish lists." };
+  if (eventHasPassed(event, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10))) {
+    return { error: "This event has passed." };
+  }
+
+  const { data: guest } = input.token
+    ? await supabaseAdmin
+        .from("event_guests")
+        .select("id, name, email, in_exchange")
+        .eq("event_id", event.id)
+        .eq("token", input.token)
+        .maybeSingle()
+    : { data: null };
+  if (!guest) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
+  if (!guest.in_exchange) return { error: "RSVP that you're coming first, then add your wish list." };
+
+  const changes: Record<string, unknown> = {};
+  let registryId: string | null = null;
+  if (input.registryId || input.makeNew) {
+    const { user, supabase } = await requireAccount();
+    if (!user) return { error: "Log in to use a Regibee list." };
+    let list: { id: string; slug: string };
+    if (input.makeNew) {
+      const { data: profile } = await supabaseAdmin.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+      const firstName = ((profile?.full_name as string | null)?.trim() || (guest.name as string)).split(/\s+/)[0];
+      const occasion = occasionFor(event.event_type);
+      const made = await insertRegistry(supabase, {
+        ownerId: user.id,
+        title: listTitleFor(occasion, firstName).slice(0, 120),
+        registryType: occasion.list.registryType,
+        eventType: occasion.list.eventType,
+        eventDate: event.event_date,
+        settings: { tax_enabled: false },
+      });
+      if ("error" in made) {
+        console.error("[events] Failed to make a guest's wish list:", made.error);
+        return { error: "Your wish list wasn't made. Try again." };
+      }
+      list = made;
+      revalidatePath("/dashboard");
+    } else {
+      const { data } = await supabaseAdmin
+        .from("registries")
+        .select("id, slug, owner_id, is_private")
+        .eq("id", input.registryId!)
+        .maybeSingle();
+      if (!data || data.owner_id !== user.id) return { error: "That list wasn't found. Refresh the page and pick again." };
+      if (data.is_private) {
+        return { error: "That list is private, so nobody else can open it. Make it link-only in its settings first." };
+      }
+      list = data;
+    }
+    changes.wishlist_url = `${siteUrl()}/r/${list.slug}`;
+    changes.wishlist_registry_id = list.id;
+    registryId = list.id;
+  } else if (input.url !== undefined) {
+    const wishlist = readWishlistUrl(input.url);
+    if ("error" in wishlist) return { error: wishlist.error };
+    registryId = await wishlistRegistryId(wishlist.url);
+    changes.wishlist_url = wishlist.url;
+    changes.wishlist_registry_id = registryId;
+  }
+  if (input.giftIdeas !== undefined) changes.gift_ideas = input.giftIdeas.trim().slice(0, 1000) || null;
+  if (Object.keys(changes).length === 0) return { error: null, registryId: null };
+
+  const { error } = await supabaseAdmin.from("event_guests").update(changes).eq("id", guest.id);
+  if (error) {
+    console.error("[events] Failed to save a guest's wish list:", error);
+    return { error: "Your wish list wasn't saved. Try again." };
+  }
+  // Their own list starts hiding what's been reserved from them.
+  if (typeof changes.wishlist_url === "string") {
+    await hideReservationsOnOwnWishlist(changes.wishlist_url, guest.email as string | null).catch((err) =>
+      console.error("[events] Failed to hide reservations on a wishlist:", err),
+    );
+  }
+  revalidateEvent(event);
+  return { error: null, registryId };
 }
 
 // ── Co-hosts ─────────────────────────────────────────────────
