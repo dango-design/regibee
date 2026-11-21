@@ -165,8 +165,10 @@ function WishListHero({
                 {formatEventDate(eventDate)}
               </span>
             )}
+            {/* On phones the line wraps after the date, so the dot would be
+                left hanging at its end. */}
             {eventDate && owner && (
-              <span aria-hidden="true" className="text-quaternary">
+              <span aria-hidden="true" className="hidden text-quaternary sm:inline">
                 ·
               </span>
             )}
