@@ -237,15 +237,6 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
               wishlistHref={gifteeList ? demoRegistryPath(gifteeList) : drew?.wishlist_url ?? null}
             />
           )}
-          {/* Guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
-          {everyone && (
-            <GuestWishLists
-              lists={guestWishLists(today, guests, guest?.id ?? null)}
-              waitingCount={guests.filter((g) => g.rsvp_status === "pending").length}
-              hostView={!guest}
-              basePath="/demo"
-            />
-          )}
           {token && !guest && (
             <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
               This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
@@ -295,6 +286,15 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
                 : null
             }
           />
+          {/* Below the RSVP, like the real page, guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
+          {everyone && (
+            <GuestWishLists
+              lists={guestWishLists(today, guests, guest?.id ?? null)}
+              waitingCount={guests.filter((g) => g.rsvp_status === "pending").length}
+              hostView={!guest}
+              basePath="/demo"
+            />
+          )}
           <EventGroupGifts gifts={groupGifts} basePath="/demo" />
         </EventInvitation>
       </main>
