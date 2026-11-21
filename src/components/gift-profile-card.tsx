@@ -116,3 +116,6 @@ export function GiftProfileCard({ profile, name, showBirthday = false, action, c
     </section>
   );
 }
+
+/** The likes or skip chips, for other places that show a gift profile. */
+export { Chips as GiftProfileChips };
