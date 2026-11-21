@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { SelectField } from "@/components/base/select/select-field";
 import {
   Dialog,
   DialogContent,
@@ -570,35 +570,31 @@ export function EventGuestManager({
         )}
         {groups.length > 0 && (
           <div className="mt-3 border-t border-secondary pt-3">
-            <NativeSelect
+            <SelectField
               aria-label="Invite a group"
               value=""
               disabled={adding}
-              onChange={(e) => inviteGroup(e.target.value)}
-              options={[
-                { value: "", label: "Invite a group…" },
-                ...groups.map((group) => ({
-                  value: group.id,
-                  label: `${group.name} (${memberCountLabel(group.memberCount)})`,
-                })),
-              ]}
+              onChange={inviteGroup}
+              placeholder="Invite a group…"
+              options={groups.map((group) => ({
+                value: group.id,
+                label: `${group.name} (${memberCountLabel(group.memberCount)})`,
+              }))}
             />
           </div>
         )}
         {copySources.length > 0 && (
           <div className="mt-3 border-t border-secondary pt-3">
-            <NativeSelect
+            <SelectField
               aria-label="Copy guests from another event"
               value=""
               disabled={adding}
-              onChange={(e) => copyFrom(e.target.value)}
-              options={[
-                { value: "", label: "Copy guests from another event…" },
-                ...copySources.map((source) => ({
-                  value: source.id,
-                  label: `${source.title} (${source.guestCount === 1 ? "1 guest" : `${source.guestCount} guests`})`,
-                })),
-              ]}
+              onChange={copyFrom}
+              placeholder="Copy guests from another event…"
+              options={copySources.map((source) => ({
+                value: source.id,
+                label: `${source.title} (${source.guestCount === 1 ? "1 guest" : `${source.guestCount} guests`})`,
+              }))}
             />
           </div>
         )}
@@ -980,20 +976,20 @@ function GuestDialog({
             )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <NativeSelect
+            <SelectField
               label="RSVP"
               value={status}
-              onChange={(e) => setStatus(e.target.value as RsvpStatus)}
+              onChange={(value) => setStatus(value as RsvpStatus)}
               options={(["pending", "yes", "maybe", "no"] as RsvpStatus[]).map((value) => ({
                 value,
                 label: RSVP_LABELS[value],
               }))}
             />
             {(status === "yes" || status === "maybe") && maxPartySize > 1 && (
-              <NativeSelect
+              <SelectField
                 label="People"
                 value={partySize}
-                onChange={(e) => setPartySize(e.target.value)}
+                onChange={setPartySize}
                 options={Array.from({ length: Math.max(maxPartySize, guest.party_size) }, (_, i) => ({
                   value: String(i + 1),
                   label: String(i + 1),

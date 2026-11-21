@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { SelectField } from "@/components/base/select/select-field";
 import { sendEventMessage } from "@/lib/actions/event-messages";
 import {
   MAX_MESSAGE_BODY_LENGTH,
@@ -149,10 +149,10 @@ export function GuestMessages({
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={send} className="flex flex-col gap-4">
-            <NativeSelect
+            <SelectField
               label="Send to"
               value={audience}
-              onChange={(e) => setAudience(e.target.value as MessageAudience)}
+              onChange={(value) => setAudience(value as MessageAudience)}
               options={(Object.keys(MESSAGE_AUDIENCES) as MessageAudience[]).map((value) => ({
                 value,
                 label: `${MESSAGE_AUDIENCES[value].label} (${counts[value]})`,

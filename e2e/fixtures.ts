@@ -127,6 +127,22 @@ export async function waitForReact(locator: Locator) {
     .toBe(true);
 }
 
+/**
+ * Picks an option in one of the site's dropdowns. They open their own list
+ * instead of the browser's menu, so Playwright's selectOption can't use them.
+ * The dropdown's button is named by its value and then its label, so a string
+ * `field` matches any part of that.
+ */
+export async function chooseOption(scope: Page | Locator, field: string | RegExp, option: string) {
+  await scope.getByRole("button", { name: field }).click();
+  // The list opens at the end of the page, outside `scope`.
+  const page = "page" in scope ? scope.page() : scope;
+  await page.getByRole("option", { name: option, exact: true }).click();
+  // As it closes, the list puts focus back on its button. Wait, so the next
+  // step's typing isn't sent there.
+  await expect(page.getByRole("listbox")).toBeHidden();
+}
+
 /** Signs in from the login page. */
 export async function signIn(page: Page, account: { email: string; password: string }) {
   await page.goto("/login");

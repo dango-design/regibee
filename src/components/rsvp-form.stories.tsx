@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { RsvpForm } from "./rsvp-form";
 import {
   SAMPLE_TODAY,
@@ -183,9 +183,15 @@ export const WeddingQuestions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Going" }));
-    await userEvent.selectOptions(canvas.getByLabelText(/How many people, including you/), "2");
+    await userEvent.click(canvas.getByRole("button", { name: /How many people, including you/ }));
+    // The list opens at the end of the page, outside the story's canvas.
+    const page = within(document.body);
+    await userEvent.click(await page.findByRole("option", { name: "2" }));
+    // As it closes, the list puts focus back on its button. Wait, or that
+    // takes focus from the name field mid-typing.
+    await waitFor(() => expect(page.queryByRole("listbox")).not.toBeInTheDocument(), { timeout: 5000 });
     await userEvent.type(canvas.getByRole("textbox", { name: "Name of guest 2" }), "Elphaba");
-    await expect(canvas.getByRole("combobox", { name: "For Elphaba" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /For Elphaba$/ })).toBeVisible();
   },
 };
 

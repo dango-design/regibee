@@ -8,7 +8,7 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { cx } from "@/lib/utils/cx";
 import { isReactComponent } from "@/lib/utils/is-react-component";
 import type { SelectItemType } from "./select";
-import { SelectContext } from "./select";
+import { SelectContext } from "./select-context";
 
 const sizes = {
     sm: "p-2 pr-2.5",
