@@ -230,6 +230,23 @@ export const WithRegistriesAndGiftNote: Story = {
 };
 
 /**
+ * The same gifts on a phone. Each list is one short row: one picture,
+ * its name and how many gifts are left. The whole row opens the list.
+ */
+export const WithRegistriesPhone: Story = {
+  ...WithRegistriesAndGiftNote,
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const gifts = within(canvasElement).getByRole("region", { name: "Gifts" });
+    const lists = within(gifts).getAllByRole("link");
+    await expect(lists).toHaveLength(2);
+    await expect(lists[0]).toHaveAccessibleName(/23 gifts still needed$/);
+    await expect(lists[0]).toHaveAttribute("href", expect.stringContaining(`/e/${sampleEvent.slug}/gifts?g=token-g1`));
+    await expect(lists[1]).toHaveAccessibleName(/1 gift still needed$/);
+  },
+};
+
+/**
  * A holiday party with a gift exchange, before names are drawn. This guest
  * replied, said how many kids are coming and joined the exchange.
  */
