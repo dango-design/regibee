@@ -1,0 +1,31 @@
+name: App update paths
+
+# Checks that the App update workflow (mobile-update.yml) runs for every
+# website file the app imports through `@shared/*`. Without that, a merge that
+# changes only such a file publishes no app update, and phones keep the old
+# code. See mobile/scripts/check-update-paths.mjs. It needs no packages, so it
+# runs without `npm ci`.
+on:
+  pull_request:
+    paths:
+      - mobile/src/**
+      - src/lib/**
+      - mobile/scripts/check-update-paths.mjs
+      - .github/workflows/mobile-update.yml
+      - .github/workflows/mobile-update-paths.yml
+  push:
+    branches: [main]
+    paths:
+      - mobile/src/**
+      - src/lib/**
+      - mobile/scripts/check-update-paths.mjs
+      - .github/workflows/mobile-update.yml
+      - .github/workflows/mobile-update-paths.yml
+
+jobs:
+  paths:
+    name: App update paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: node mobile/scripts/check-update-paths.mjs

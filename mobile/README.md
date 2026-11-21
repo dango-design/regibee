@@ -75,6 +75,8 @@ npx eas-cli@latest build --profile preview --platform android
 
 Preview builds get changes over the air. When a merge to main changes the app, the **App update** workflow (`.github/workflows/mobile-update.yml`) publishes an update to the `preview` channel. The app checks each time it opens and uses a downloaded update from the next start.
 
+The workflow runs when a merge changes `mobile/` or one of the website files the app imports through `@shared/*`, directly or through another shared file. Its `paths` name each of those files. `scripts/check-update-paths.mjs` fails when the list is missing one, or names a file the app no longer imports, and prints the lines to add or remove. `npm run check` runs it, and so does the **App update paths** check on pull requests. So when the app starts importing a new website file, add that file to the workflow's `paths` in the same pull request.
+
 **Account › This version** says which code the app is running: the newest pull request in it, the commit, and whether it's running an update or the version it was built with. **Check for updates** checks straight away, downloads a newer update, and offers **Restart now**. The section shows in builds on the `preview` channel (preview builds and the Play testing builds below) and while developing, not in the public store version. `scripts/build-info.js` reads the commit and pull request from git when a build or update is made.
 
 An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest" means there's no newer update for that build. `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
@@ -124,7 +126,7 @@ This builds a signed `.aab` in Expo's cloud and uploads it to the internal testi
 ```bash
 npm run typecheck
 npm run lint
-npm run check   # product reader up to date, types, and a full iOS and Android bundle
+npm run check   # App update paths, product reader up to date, types, and a full iOS and Android bundle
 npx expo-doctor
 ```
 
