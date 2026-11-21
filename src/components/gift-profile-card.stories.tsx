@@ -42,8 +42,3 @@ export const Short: Story = {
     profile: { birthday: { month: 10, day: 31 }, likes: ["Crosswords", "Philosophy books"] },
   },
 };
-
-// The compact card beside a list page's header: each label beside its value.
-export const Compact: Story = {
-  args: { variant: "compact", showBirthday: true },
-};

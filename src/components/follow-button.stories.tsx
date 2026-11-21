@@ -65,26 +65,3 @@ export const FollowsYou: Story = {
     </div>
   ),
 };
-
-// Every state with the hint beside the button, lined up on the left, as the
-// list page's header shows it.
-export const AllStatesBeside: Story = {
-  render: () => (
-    <div className="flex w-80 flex-col gap-6">
-      {states.map((state) => (
-        <div key={state} className="flex flex-col gap-2">
-          <span className="text-xs font-mono text-tertiary">{state}</span>
-          <FollowButton
-            publicId="k7m2p9qx4t"
-            name="Remi & Max"
-            state={state}
-            returnTo="/r/remi-max-baby-k7m2p9qx4t"
-            requestAction={mockAction}
-            cancelAction={mockAction}
-            align="start"
-          />
-        </div>
-      ))}
-    </div>
-  ),
-};
