@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ACCOUNT_SECTION_SCROLL_MARGIN, AccountSectionTitle } from "@/components/account-nav";
+import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { FollowBackButton, MutualBadge } from "@/components/follow-button";
@@ -186,9 +186,9 @@ export function FollowLists({
     <>
       {/* Always here, even with nothing waiting: links to follow requests
           land on this card, and it says so when there are none. */}
-      <Card id="follow-requests" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+      <Card id="follow-requests" className={SECTION_SCROLL_MARGIN}>
         <CardHeader>
-          <AccountSectionTitle sectionId="follow-requests">Follow requests</AccountSectionTitle>
+          <SectionTitle sectionId="follow-requests">Follow requests</SectionTitle>
           <CardDescription>
             People you approve can see the private registries on your profile, and your birthday.
           </CardDescription>
@@ -254,9 +254,9 @@ export function FollowLists({
         </CardContent>
       </Card>
 
-      <Card id="followers" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+      <Card id="followers" className={SECTION_SCROLL_MARGIN}>
         <CardHeader>
-          <AccountSectionTitle sectionId="followers">Followers</AccountSectionTitle>
+          <SectionTitle sectionId="followers">Followers</SectionTitle>
           <CardDescription>
             They can see your private registries and your birthday. Follow them back to see theirs.
             Mutual means you follow each other.
@@ -307,9 +307,9 @@ export function FollowLists({
         </CardContent>
       </Card>
 
-      <Card id="following" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+      <Card id="following" className={SECTION_SCROLL_MARGIN}>
         <CardHeader>
-          <AccountSectionTitle sectionId="following">Following</AccountSectionTitle>
+          <SectionTitle sectionId="following">Following</SectionTitle>
           <CardDescription>
             People whose registries you follow. See them all on your{" "}
             <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
@@ -366,9 +366,9 @@ export function FollowLists({
       </Card>
 
       {blocked.length > 0 && (
-        <Card id="blocked" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+        <Card id="blocked" className={SECTION_SCROLL_MARGIN}>
           <CardHeader>
-            <AccountSectionTitle sectionId="blocked">Blocked</AccountSectionTitle>
+            <SectionTitle sectionId="blocked">Blocked</SectionTitle>
             <CardDescription>
               They can&apos;t ask to follow you or find you in search, and your profile is hidden from
               them while they&apos;re signed in.

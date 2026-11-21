@@ -3,7 +3,7 @@
 // Follow requests section of the Account page (src/components/account-settings.tsx).
 // The page shows its loading skeleton first, so the section isn't there when
 // Next.js handles the link's #fragment: the page's navigation
-// (src/components/account-nav.tsx) goes to it once it is.
+// (src/components/section-nav.tsx) goes to it once it is.
 
 import { expect, test, type Page } from "@playwright/test";
 import { createAccount, db, signIn } from "./fixtures";

@@ -1,14 +1,15 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import {
-  ACCOUNT_SECTION_SCROLL_MARGIN,
-  AccountNav,
-  AccountSectionTitle,
-  type AccountSection,
-} from "./account-nav";
+  SECTION_NAV_GRID,
+  SECTION_SCROLL_MARGIN,
+  SectionNav,
+  SectionTitle,
+  type PageSection,
+} from "./section-nav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-const SECTIONS: AccountSection[] = [
+const SECTIONS: PageSection[] = [
   { id: "profile", label: "Your profile" },
   { id: "gift-profile", label: "Gift profile" },
   { id: "follow-requests", label: "Follow requests", waiting: 2 },
@@ -29,19 +30,23 @@ const withoutSectionInUrl: Decorator = (Story) => {
   return <Story />;
 };
 
-/** The navigation beside stand-in sections, laid out like the Account page, under a stand-in top bar. */
-function AccountNavOnPage({ sections }: { sections: AccountSection[] }) {
+/**
+ * The navigation beside stand-in sections, laid out like the Account page,
+ * under a stand-in top bar. The edit event page has the same navigation: see
+ * the EventForm stories.
+ */
+function SectionNavOnPage(props: React.ComponentProps<typeof SectionNav>) {
   return (
     <>
       <div className="sticky top-0 z-50 h-16 border-b border-secondary bg-primary" />
       <div className="container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl">
-        <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-10">
-          <AccountNav sections={sections} />
+        <div className={SECTION_NAV_GRID}>
+          <SectionNav {...props} />
           <div className="space-y-6">
-            {sections.map((section) => (
-              <Card key={section.id} id={section.id} className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+            {props.sections.map((section) => (
+              <Card key={section.id} id={section.id} className={SECTION_SCROLL_MARGIN}>
                 <CardHeader>
-                  <AccountSectionTitle sectionId={section.id}>{section.label}</AccountSectionTitle>
+                  <SectionTitle sectionId={section.id}>{section.label}</SectionTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-40 rounded-lg bg-secondary" />
@@ -55,16 +60,16 @@ function AccountNavOnPage({ sections }: { sections: AccountSection[] }) {
   );
 }
 
-const meta: Meta<typeof AccountNav> = {
-  title: "Components/AccountNav",
-  component: AccountNav,
+const meta: Meta<typeof SectionNav> = {
+  title: "Components/SectionNav",
+  component: SectionNav,
   parameters: { layout: "fullscreen" },
   decorators: [withoutSectionInUrl],
-  args: { sections: SECTIONS },
-  render: (args) => <AccountNavOnPage {...args} />,
+  args: { sections: SECTIONS, label: "Account sections" },
+  render: (args) => <SectionNavOnPage {...args} />,
 };
 export default meta;
-type Story = StoryObj<typeof AccountNav>;
+type Story = StoryObj<typeof SectionNav>;
 
 // On a wide screen: a column on the left, with two follow requests waiting.
 export const Default: Story = {

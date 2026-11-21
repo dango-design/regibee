@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ACCOUNT_SECTION_SCROLL_MARGIN, AccountSectionTitle } from "@/components/account-nav";
+import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import {
@@ -98,9 +98,9 @@ export function DeleteAccountCard({
 
   return (
     <>
-      <Card id="delete-account" className={cx("border-error-primary/50", ACCOUNT_SECTION_SCROLL_MARGIN)}>
+      <Card id="delete-account" className={cx("border-error-primary/50", SECTION_SCROLL_MARGIN)}>
         <CardHeader>
-          <AccountSectionTitle sectionId="delete-account">Delete account</AccountSectionTitle>
+          <SectionTitle sectionId="delete-account">Delete account</SectionTitle>
           <CardDescription>
             Deletes your account, your registries and events, and your profile. Registries other
             people help manage stay with them. This can&apos;t be undone.
