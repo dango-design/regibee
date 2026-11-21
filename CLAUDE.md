@@ -97,6 +97,11 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - A card that opens one thing, like a registry, an event or an item to edit, opens it from a click anywhere on the card, not only from its title or button. Its other buttons keep doing their own thing.
 - Use the `clickable-card`, `card-link` and `card-action` classes in `src/app/globals.css`, which explain how. `DashboardRegistryCard` is an example. Don't wrap a card that holds buttons in a link: HTML doesn't allow it.
 
+## Dropdowns
+
+- Never use a plain `<select>` on the website. The browser draws its menu itself, and it looks out of place. Use `SelectField` (`src/components/base/select/select-field.tsx`), which opens a styled list. In a price field, use `CurrencySelect`. For a small filter or sort pill, use `TightSelect`.
+- In tests, Playwright's `selectOption` can't pick from these. Use `chooseOption` in `e2e/fixtures.ts`. In a story, click the field's button, then the option in `document.body`, since the list opens outside the story.
+
 ## Visual tests (Chromatic)
 
 - `.github/workflows/chromatic.yml` runs Chromatic on every push. It snapshots only the stories the commit affects.

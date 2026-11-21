@@ -5,9 +5,9 @@
 // back, and two people who follow each other show as Mutual.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createWishlist, CRON_SECRET, db, waitForReact } from "./fixtures";
+import { chooseOption, createAccount, createWishlist, CRON_SECRET, db, waitForReact } from "./fixtures";
 import { emailsTo, linkIn, waitForEmail } from "./mailbox";
-import { addDays, formatBirthday } from "../src/lib/gift-profile";
+import { addDays, formatBirthday, MONTH_OPTIONS } from "../src/lib/gift-profile";
 import { profilePath } from "../src/lib/profile-link";
 
 /** Today in UTC, the same as the server. */
@@ -173,8 +173,8 @@ test("someone fills in their gift profile on the Account page", async ({ page })
   await page.goto("/dashboard/account");
 
   const form = page.locator("#gift-profile");
-  await form.getByLabel("Birthday: month").selectOption("2");
-  await form.getByLabel("Birthday: day").selectOption("29");
+  await chooseOption(form, "Birthday: month", "February");
+  await chooseOption(form, "Birthday: day", "29");
   await form.getByLabel("Tops").fill("L");
   const likes = form.getByRole("textbox", { name: "Likes" });
   await likes.fill("Puzzles");
@@ -222,8 +222,8 @@ test("a list kept for a child has its own gift profile, and followers see the ch
   await expect(form.getByText("About Toto")).toBeVisible();
   await waitForReact(form);
   const birthday = birthdayIn(3);
-  await form.getByLabel("Toto's birthday: month").selectOption(String(birthday.month));
-  await form.getByLabel("Toto's birthday: day").selectOption(String(birthday.day));
+  await chooseOption(form, "Toto's birthday: month", MONTH_OPTIONS[birthday.month - 1].label);
+  await chooseOption(form, "Toto's birthday: day", String(birthday.day));
   await form.getByLabel("Shoes").fill("Toddler 9");
   await form.getByRole("button", { name: "Save" }).click();
   await expect(form.getByText("Saved")).toBeVisible();

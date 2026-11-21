@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
+import { SelectField } from "@/components/base/select/select-field";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { PhotoUploadButton } from "@/components/photo-upload-button";
 import { ProfileListingField } from "@/components/profile-listing-field";
@@ -416,22 +417,18 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                     Generate invite link
                   </h3>
                   <div className="flex gap-2 items-end">
-                    <div>
-                      <label htmlFor="invite-max-uses" className="text-xs text-tertiary">
-                        Max uses
-                      </label>
-                      <select
-                        id="invite-max-uses"
-                        value={maxUses}
-                        onChange={(e) => setMaxUses(e.target.value)}
-                        className="block w-full rounded-md border px-3 py-2 text-sm bg-transparent"
-                      >
-                        <option value="1">1 use</option>
-                        <option value="5">5 uses</option>
-                        <option value="10">10 uses</option>
-                        <option value="unlimited">Unlimited</option>
-                      </select>
-                    </div>
+                    <SelectField
+                      label="Max uses"
+                      value={maxUses}
+                      onChange={setMaxUses}
+                      options={[
+                        { value: "1", label: "1 use" },
+                        { value: "5", label: "5 uses" },
+                        { value: "10", label: "10 uses" },
+                        { value: "unlimited", label: "Unlimited" },
+                      ]}
+                      className="w-36"
+                    />
                     <Button onClick={generateLink} variant="outline" className="shrink-0">
                       Generate
                     </Button>

@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Copy, Check, X, Users, Mail, LinkIcon, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
+import { SelectField } from "@/components/base/select/select-field";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -804,20 +805,18 @@ export default function RegistrySettingsPage() {
                   Generate invite link
                 </h3>
                 <div className="flex gap-2 items-end">
-                  <div>
-                    <label htmlFor="invite-max-uses" className="text-xs text-tertiary">Max uses</label>
-                    <select
-                      id="invite-max-uses"
-                      value={maxUses}
-                      onChange={(e) => setMaxUses(e.target.value)}
-                      className="block w-full rounded-md border px-3 py-2 text-sm bg-transparent max-sm:py-2.5 max-sm:text-md"
-                    >
-                      <option value="1">1 use</option>
-                      <option value="5">5 uses</option>
-                      <option value="10">10 uses</option>
-                      <option value="unlimited">Unlimited</option>
-                    </select>
-                  </div>
+                  <SelectField
+                    label="Max uses"
+                    value={maxUses}
+                    onChange={setMaxUses}
+                    options={[
+                      { value: "1", label: "1 use" },
+                      { value: "5", label: "5 uses" },
+                      { value: "10", label: "10 uses" },
+                      { value: "unlimited", label: "Unlimited" },
+                    ]}
+                    className="w-36"
+                  />
                   <Button
                     onClick={handleGenerateLink}
                     disabled={generatingLink}
