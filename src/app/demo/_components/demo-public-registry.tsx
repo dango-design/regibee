@@ -163,12 +163,13 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
               requestAction={demoOk}
               cancelAction={demoOk}
               basePath="/demo"
+              align="start"
             />
           )
         }
       />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         <PublicRegistryGrid
           items={items}
           categories={registry.categories}

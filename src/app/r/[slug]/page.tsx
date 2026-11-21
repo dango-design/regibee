@@ -40,7 +40,7 @@ import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notic
 import { FellowGuestsNotice } from "@/components/fellow-guests-notice";
 import type { OpenGift } from "@/components/reserve-item-dialog";
 import { GuestPrefillProvider, type GuestPrefill } from "@/components/guest-prefill-context";
-import { GiftProfileCard } from "@/components/gift-profile-card";
+import { GiftProfileCard, giftProfileCardShows } from "@/components/gift-profile-card";
 import { parseGiftProfile, withoutBirthday, type GiftProfile } from "@/lib/gift-profile";
 import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
 import { canManageRegistry } from "@/lib/events-server";
@@ -640,6 +640,20 @@ export default async function PublicRegistryPage({
               name={owner.name}
               state={ownerRelation.state}
               returnTo={`/r/${slug}`}
+              align="start"
+            />
+          )
+        }
+        // Only when the card shows something, so the header doesn't keep an
+        // empty column for it.
+        about={
+          giftProfile &&
+          giftProfileCardShows(giftProfile, showBirthday) && (
+            <GiftProfileCard
+              variant="compact"
+              profile={giftProfile}
+              name={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
+              showBirthday={showBirthday}
             />
           )
         }
@@ -647,7 +661,7 @@ export default async function PublicRegistryPage({
 
       {/* Items. With no items or funds yet, the grid says so and still offers
           "Suggest an item". */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         {hideReservations && (
           <ReservationsHiddenNotice
             className="mb-6"
@@ -673,14 +687,6 @@ export default async function PublicRegistryPage({
             eventTitle={fellowGuests.eventTitle}
             eventHref={`/e/${fellowGuests.eventSlug}`}
             ownerName={fellowGuests.listOwner ?? (registry.honoree_names?.trim() || registry.parent_names?.trim() || null)}
-          />
-        )}
-        {giftProfile && (
-          <GiftProfileCard
-            className="mx-auto mb-8 max-w-2xl"
-            profile={giftProfile}
-            name={honoreeDisplayName(registry, owner?.name ?? "this list's owner")}
-            showBirthday={showBirthday}
           />
         )}
         <GuestPrefillProvider value={guestPrefill}>
