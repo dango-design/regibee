@@ -237,7 +237,8 @@ test("a guest logs in after they RSVP and links a list they already have", async
   await hostContext.close();
 
   await rsvpGoing(page, guests[0].rsvpPath);
-  await page.getByRole("link", { name: "Log in" }).click();
+  // The wish list step's own Log in, not the one in the top bar.
+  await page.getByRole("region", { name: "Now add your wish list" }).getByRole("link", { name: "Log in" }).click();
   await page.waitForURL(/\/login\?redirect=/);
   await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(olive.email);
@@ -254,4 +255,24 @@ test("a guest logs in after they RSVP and links a list they already have", async
   );
   const { data: guest } = await db.from("event_guests").select("wishlist_registry_id").eq("id", guests[0].id).single();
   expect(guest?.wishlist_registry_id).toBe(oliveList.id);
+});
+
+test("a guest logs in from the invitation's top bar and comes back to their own link", async ({ page }) => {
+  const hal = await createAccount("Hal Host");
+  const pia = await createAccount("Pia Cousin");
+  const { guests } = await createEveryoneEvent(hal.id, [{ name: "Pia", email: pia.email }]);
+
+  await page.goto(guests[0].rsvpPath);
+  const bar = page.getByRole("banner");
+  await bar.getByRole("link", { name: "Log in" }).click();
+  await page.waitForURL(/\/login\?redirect=/);
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Email").fill(pia.email);
+  await page.getByLabel("Password").fill(pia.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  // Back on her own link, still greeted by name, with her account menu in the bar.
+  await page.waitForURL((url) => url.pathname === guests[0].rsvpPath.split("?")[0] && url.search === `?g=${guests[0].token}`);
+  await expect(page.getByRole("heading", { name: "Hi Pia, can you make it?" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: /^Account menu/ })).toBeVisible();
 });
