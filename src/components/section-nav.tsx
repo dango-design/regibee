@@ -69,7 +69,8 @@ function scrollMargin(element: HTMLElement) {
  * reached the top of the page. At the very bottom it's the last section,
  * since the short ones down there never reach the top. A section someone
  * picked stays current while the page scrolls to it, and after, as long as
- * it's in view at the bottom of the page.
+ * it's in view and the page can't scroll any further: at the bottom, or on a
+ * screen tall enough to show the whole page.
  */
 function useCurrentSection(ids: string[], aliases: Record<string, string>) {
   const [current, setCurrent] = useState<string | null>(ids[0] ?? null);
@@ -88,13 +89,15 @@ function useCurrentSection(ids: string[], aliases: Record<string, string>) {
     if (sections.length === 0) return;
 
     const root = document.documentElement;
-    const atBottom = window.scrollY > 0 && window.innerHeight + window.scrollY >= root.scrollHeight - 2;
+    // The page can't scroll any further down: it's at the bottom, or it all fits.
+    const atEnd = window.innerHeight + window.scrollY >= root.scrollHeight - 2;
+    const atBottom = window.scrollY > 0 && atEnd;
 
     const pickedSection = picked.current ? document.getElementById(picked.current) : null;
     if (pickedSection) {
       const { top, bottom } = pickedSection.getBoundingClientRect();
       const inView = top < window.innerHeight && bottom > scrollMargin(pickedSection);
-      if (scrolling.current || (atBottom && inView)) {
+      if (scrolling.current || (atEnd && inView)) {
         setCurrent(pickedSection.id);
         return;
       }
