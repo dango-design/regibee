@@ -2,7 +2,7 @@
 // through the page the way a person would, and checks what it made.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail } from "./fixtures";
+import { chooseOption, createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail } from "./fixtures";
 import { linkIn, waitForEmail } from "./mailbox";
 
 async function openPicker(page: Page) {
@@ -71,7 +71,7 @@ test("a Christmas party for no one in particular links one of your own wishlists
   await page.getByRole("button", { name: "Next", exact: true }).click();
   // Wishlists come first, even with no one in particular getting gifts.
   await page.getByRole("button", { name: /Link a wishlist/ }).click();
-  await page.getByLabel("Your lists").selectOption({ label: registry.title });
+  await chooseOption(page, "Your lists", registry.title);
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByText(`Your list “${registry.title}”, linked to the invitation`)).toBeVisible();
   await page.getByRole("button", { name: "Make the event" }).click();

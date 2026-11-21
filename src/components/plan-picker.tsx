@@ -7,7 +7,7 @@ import { ArrowLeft, Baby, Check, ClipboardList, Gift, Heart, Link2, Loader2, Mai
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { SelectField } from "@/components/base/select/select-field";
 import { startPlan, type PlanInput } from "@/lib/actions/events";
 import { themeForTint } from "@/lib/occasion-theme";
 import {
@@ -493,10 +493,10 @@ export function PlanPicker({
           </div>
           {state.gifts === "link" && pickableLists.length > 0 && (
             <div className="flex flex-col gap-3 sm:max-w-lg">
-              <NativeSelect
+              <SelectField
                 label="Your lists"
                 value={state.registryId}
-                onChange={(e) => update({ registryId: e.target.value, linkUrl: "" })}
+                onChange={(value) => update({ registryId: value, linkUrl: "" })}
                 options={[{ value: "", label: "Choose a list…" }, ...pickableLists.map((l) => ({ value: l.id, label: l.title }))]}
               />
               <Input

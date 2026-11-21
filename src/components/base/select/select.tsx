@@ -1,7 +1,7 @@
 "use client";
 
 import type { FC, ReactNode, Ref, RefAttributes } from "react";
-import { createContext, isValidElement } from "react";
+import { isValidElement } from "react";
 import { ChevronDown } from "@untitledui/icons";
 import type { SelectProps as AriaSelectProps } from "react-aria-components";
 import { Button as AriaButton, ListBox as AriaListBox, Select as AriaSelect, SelectValue as AriaSelectValue } from "react-aria-components";
@@ -12,6 +12,7 @@ import { cx } from "@/lib/utils/cx";
 import { isReactComponent } from "@/lib/utils/is-react-component";
 import { ComboBox } from "./combobox";
 import { Popover } from "./popover";
+import { SelectContext } from "./select-context";
 import { SelectItem } from "./select-item";
 
 export type SelectItemType = {
@@ -106,7 +107,7 @@ const SelectValue = ({ isOpen, isFocused, isDisabled, size, placeholder, placeho
     );
 };
 
-export const SelectContext = createContext<{ size: "sm" | "md" }>({ size: "sm" });
+export { SelectContext };
 
 const Select = ({ placeholder = "Select", placeholderIcon, size = "sm", children, items, label, hint, tooltip, className, ...rest }: SelectProps) => {
     return (

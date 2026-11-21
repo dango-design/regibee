@@ -3,7 +3,7 @@
 // exchange inside it, and shares a private wishlist with it.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createExchangeEvent, createWishlist, db, signIn, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
+import { chooseOption, createAccount, createExchangeEvent, createWishlist, db, signIn, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
 import { waitForEmail } from "./mailbox";
 
 async function guestsOf(eventId: string) {
@@ -147,7 +147,7 @@ test("Invite a group adds its people to a guest list once", async ({ page }) => 
 
   await signIn(page, host);
   await openEvent(page, dinner!.id);
-  await page.getByLabel("Invite a group").selectOption({ label: `${group!.name} (3 people)` });
+  await chooseOption(page, "Invite a group", `${group!.name} (3 people)`);
   await expect(page.getByText("Added 2 guests. 1 already on the list.")).toBeVisible();
   expect((await guestsOf(dinner!.id)).map((g) => g.name).sort()).toEqual(["Ann", "Bo", "Grandpa"]);
 });

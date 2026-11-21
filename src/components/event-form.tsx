@@ -7,7 +7,7 @@ import { Gift, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { SelectField } from "@/components/base/select/select-field";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { createEvent, lookupRegistryLink, setEventImage, updateEvent } from "@/lib/actions/events";
 import { uploadEventImage } from "@/lib/upload-event-image";
@@ -543,17 +543,15 @@ export function EventForm({
         </ul>
       )}
       {pickable.length > 0 && (
-        <NativeSelect
+        <SelectField
           aria-label="Add one of your registries"
           value=""
-          onChange={(e) => {
-            const picked = registries.find((r) => r.id === e.target.value);
+          onChange={(value) => {
+            const picked = registries.find((r) => r.id === value);
             if (picked) setLinked([...linked, { id: picked.id, title: picked.title }]);
           }}
-          options={[
-            { value: "", label: linked.length > 0 ? "Add another of your registries…" : "Add one of your registries…" },
-            ...pickable.map((r) => ({ value: r.id, label: r.title })),
-          ]}
+          placeholder={linked.length > 0 ? "Add another of your registries…" : "Add one of your registries…"}
+          options={pickable.map((r) => ({ value: r.id, label: r.title }))}
         />
       )}
       <div className="flex items-end gap-2">
@@ -756,10 +754,10 @@ export function EventForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
               <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
-              <NativeSelect
+              <SelectField
                 label="Time zone"
                 value={timeZone}
-                onChange={(e) => setTimeZone(e.target.value)}
+                onChange={setTimeZone}
                 options={zoneOptions}
                 className="sm:col-span-2"
               />
@@ -855,11 +853,11 @@ export function EventForm({
             <div className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
-                <NativeSelect
+                <SelectField
                   label="People per RSVP"
                   hint="Including the guest."
                   value={maxPartySize}
-                  onChange={(e) => setMaxPartySize(e.target.value)}
+                  onChange={setMaxPartySize}
                   options={partySizeOptions}
                 />
               </div>
@@ -958,10 +956,10 @@ export function EventForm({
       <Section title="When">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Date" type="date" value={eventDate} onChange={setEventDate} />
-          <NativeSelect
+          <SelectField
             label="Time zone"
             value={timeZone}
-            onChange={(e) => setTimeZone(e.target.value)}
+            onChange={setTimeZone}
             options={zoneOptions}
           />
           <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
@@ -1016,11 +1014,11 @@ export function EventForm({
       <Section title="RSVPs">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
-          <NativeSelect
+          <SelectField
             label="People per RSVP"
             hint="Including the guest. 2 lets each guest bring one person."
             value={maxPartySize}
-            onChange={(e) => setMaxPartySize(e.target.value)}
+            onChange={setMaxPartySize}
             options={partySizeOptions}
           />
         </div>

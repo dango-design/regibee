@@ -1,10 +1,10 @@
 "use client";
 
-import { useId, useState } from "react";
-import { ChevronDown, Info, Link as LinkIcon, Package, Percent, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { Info, Link as LinkIcon, Package, Percent, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
-import { Label } from "@/components/base/input/label";
+import { SelectField } from "@/components/base/select/select-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateRetailerRegistries } from "@/lib/actions/registry";
 import {
@@ -48,7 +48,6 @@ export function StoreRegistriesCard({
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const storeSelectId = useId();
 
   const unlinkedStores = STORES.filter((s) => !registries.some((r) => r.store === s.id));
 
@@ -157,34 +156,17 @@ export function StoreRegistriesCard({
           <form onSubmit={handleAdd} className="space-y-2" noValidate>
             <p className="text-sm font-semibold text-primary">Add a store registry</p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              {/* A plain select rather than NativeSelect, which gives its
-                  label and select the same id. */}
-              <div className="flex flex-col gap-1.5 sm:w-48 sm:shrink-0">
-                <Label htmlFor={storeSelectId}>Store</Label>
-                <div className="relative grid items-center">
-                  <select
-                    id={storeSelectId}
-                    value={store}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setStore(isStoreId(v) ? v : "");
-                      setError("");
-                    }}
-                    className="appearance-none rounded-lg bg-primary py-2 pl-3.5 pr-9 text-md text-primary shadow-xs ring-1 ring-primary outline-hidden ring-inset focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    <option value="">Choose store</option>
-                    {unlinkedStores.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    aria-hidden="true"
-                    className="pointer-events-none absolute right-3 h-4 w-4 text-fg-quaternary"
-                  />
-                </div>
-              </div>
+              <SelectField
+                label="Store"
+                value={store}
+                onChange={(v) => {
+                  setStore(isStoreId(v) ? v : "");
+                  setError("");
+                }}
+                placeholder="Choose store"
+                options={unlinkedStores.map((s) => ({ value: s.id, label: s.name }))}
+                className="sm:w-48 sm:shrink-0"
+              />
               <Input
                 label="Registry link"
                 // Plain text: links pasted without https:// are fine, but a

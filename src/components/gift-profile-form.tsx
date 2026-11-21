@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
+import { SelectField } from "@/components/base/select/select-field";
 import { TextArea } from "@/components/base/textarea/textarea";
 import {
   BIRTHDAY_REMINDER_DAYS,
@@ -18,7 +19,6 @@ import {
   type GiftProfile,
   type GiftProfileSizes,
 } from "@/lib/gift-profile";
-import { cx } from "@/lib/utils/cx";
 
 export type SaveGiftProfile = (profile: GiftProfile) => Promise<{ success?: boolean; error?: string | null }>;
 
@@ -52,40 +52,6 @@ function addTags(tags: string[], entries: string[]): string[] {
     next.push(tag);
   }
   return next;
-}
-
-const selectClass =
-  "w-full appearance-none rounded-lg bg-primary py-2 pr-9 pl-3 text-md text-primary shadow-xs ring-1 ring-primary outline-hidden transition duration-100 ease-linear ring-inset focus-visible:ring-2 focus-visible:ring-brand";
-
-/** A native select, so phones show their own picker. */
-function PlainSelect({
-  label,
-  value,
-  onChange,
-  placeholder,
-  options,
-  className,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  options: { value: number; label: string }[];
-  className?: string;
-}) {
-  return (
-    <div className={cx("relative grid items-center", className)}>
-      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={String(option.value)}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 size-4 text-fg-quaternary" />
-    </div>
-  );
 }
 
 function TagField({
@@ -190,7 +156,7 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
   const whose = childName ? `${childName}'s` : "your child's";
 
   const dayOptions = Array.from({ length: month ? daysInMonth(Number(month)) : 31 }, (_, i) => ({
-    value: i + 1,
+    value: String(i + 1),
     label: String(i + 1),
   }));
 
@@ -249,23 +215,25 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
       <fieldset>
         <legend className={legendClass}>{title("Birthday")}</legend>
         <div className="flex gap-3">
-          <PlainSelect
-            label={`${title("Birthday")}: month`}
+          <SelectField
+            aria-label={`${title("Birthday")}: month`}
             value={month}
             onChange={handleMonthChange}
-            placeholder="Month"
-            options={MONTH_OPTIONS}
+            // The empty choice clears the birthday.
+            options={[
+              { value: "", label: "Month" },
+              ...MONTH_OPTIONS.map((option) => ({ value: String(option.value), label: option.label })),
+            ]}
             className="min-w-0 flex-[2]"
           />
-          <PlainSelect
-            label={`${title("Birthday")}: day`}
+          <SelectField
+            aria-label={`${title("Birthday")}: day`}
             value={day}
             onChange={(next) => {
               setDay(next);
               setSaved(false);
             }}
-            placeholder="Day"
-            options={dayOptions}
+            options={[{ value: "", label: "Day" }, ...dayOptions]}
             className="min-w-0 flex-1"
           />
         </div>

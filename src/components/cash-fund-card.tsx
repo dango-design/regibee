@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Input, InputBase } from "@/components/base/input/input";
-import { InputGroup, InputPrefix } from "@/components/base/input/input-group";
+import { InputGroup } from "@/components/base/input/input-group";
+import { CurrencySelect } from "@/components/currency-select";
 import { TextArea } from "@/components/base/textarea/textarea";
 import {
   Dialog,
@@ -172,26 +172,7 @@ export function CashFundCard({
               name="goalAmount"
               defaultValue={fund.goal_amount != null ? fund.goal_amount.toFixed(2) : ""}
               prefix={currencySymbols[currency] || "$"}
-              trailingAddon={
-                <InputPrefix position="trailing">
-                  <span className="relative inline-flex items-center">
-                    <select
-                      aria-label="Currency"
-                      className="appearance-none bg-transparent pr-5 text-primary outline-none cursor-pointer max-sm:-my-2.5 max-sm:py-2.5"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option>USD</option>
-                      <option>EUR</option>
-                      <option>GBP</option>
-                      <option>JPY</option>
-                      <option>CAD</option>
-                      <option>AUD</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-0 h-4 w-4 text-tertiary" />
-                  </span>
-                </InputPrefix>
-              }
+              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
             >
               <InputBase
                 type="number"
