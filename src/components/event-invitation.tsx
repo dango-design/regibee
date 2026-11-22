@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   CalendarPlus,
+  ChevronRight,
   Clock,
   CookingPot,
   Gift,
@@ -10,7 +11,6 @@ import {
   Shuffle,
   Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   eventTheme,
   eventTypeLabel,
@@ -22,7 +22,6 @@ import {
   type LinkedRegistry,
 } from "@/lib/events";
 import type { InvitationUpdate } from "@/lib/event-updates";
-import { formatPrice } from "@/lib/money";
 import { SignupSheetSection, type InvitationSignup } from "@/components/signup-sheet";
 import { cx } from "@/lib/utils/cx";
 
@@ -47,7 +46,7 @@ export type InvitationEvent = Pick<
 export interface InvitationRegistry extends LinkedRegistry {
   /** Whose list it is: "Remi & Max". */
   honoree?: string | null;
-  /** A few gifts still needed, shown as a row of pictures. */
+  /** A few gifts still needed. The invitation shows up to three of their pictures. */
   items?: { id: string; title: string; image_url: string | null; price: number | null }[];
   /** How many items still need a giver. */
   itemsLeft?: number;
@@ -98,6 +97,41 @@ function DetailRow({ icon: Icon, children }: { icon: typeof CalendarDays; childr
       </span>
       <div className="min-w-0 pt-1.5 text-secondary">{children}</div>
     </div>
+  );
+}
+
+/**
+ * A few of a list's gifts as small overlapping pictures, or a gift icon when
+ * none has a picture. One on a phone, so the name has room, and three on a
+ * wider screen.
+ */
+function RegistryPictures({ items }: { items: NonNullable<InvitationRegistry["items"]> }) {
+  const pictures = items.filter((item) => item.image_url).slice(0, 3);
+  if (pictures.length === 0) {
+    return (
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary">
+        <Gift aria-hidden="true" className="size-5 text-quaternary" />
+      </span>
+    );
+  }
+  return (
+    <span aria-hidden="true" className="flex shrink-0">
+      {pictures.map((item, index) => (
+        <span
+          key={item.id}
+          className={cx(
+            "flex size-11 items-center justify-center overflow-hidden rounded-lg bg-secondary ring-2 ring-bg-primary",
+            // Each picture after the first tucks under the one before it.
+            // A margin on the picture itself, not -space-x on the row, so the
+            // phone's single picture keeps its full width.
+            index > 0 && "-ml-4 max-sm:hidden",
+          )}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- product pictures from any store */}
+          <img src={item.image_url!} alt="" className="size-full object-contain p-1" />
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -295,54 +329,37 @@ export function EventInvitation({
                 {event.gift_note && <p className="mt-1 whitespace-pre-line text-secondary">{event.gift_note}</p>}
               </div>
             </div>
-            {registries.map((linked) => (
-              <div key={linked.slug} className="flex flex-col gap-3 rounded-xl bg-primary p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium text-primary">{linked.title}</p>
-                    {(linked.honoree || linked.itemsLeft !== undefined) && (
-                      <p className="text-sm text-tertiary">
-                        {[
-                          linked.honoree ? `${linked.honoree}'s registry` : null,
-                          linked.itemsLeft !== undefined
-                            ? linked.itemsLeft === 0
-                              ? "Every gift is taken"
-                              : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                  </div>
-                  <Button variant="outline" size="sm" className="shrink-0" asChild>
-                    <a href={giftHref(linked.slug)}>View registry</a>
-                  </Button>
-                </div>
-                {linked.items && linked.items.length > 0 && (
-                  <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {linked.items.map((item) => (
-                      <li key={item.id}>
-                        <a href={giftHref(linked.slug)} className="group flex flex-col gap-1">
-                          <span className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-secondary">
-                            {item.image_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element -- product pictures from any store
-                              <img src={item.image_url} alt="" className="size-full object-contain p-1.5" />
-                            ) : (
-                              <Gift aria-hidden="true" className="size-6 text-quaternary" />
-                            )}
-                          </span>
-                          <span className="line-clamp-2 text-xs font-medium text-secondary group-hover:text-primary">
-                            {item.title}
-                          </span>
-                          {item.price !== null && <span className="text-xs text-tertiary">{formatPrice(item.price)}</span>}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
+            {registries.map((linked) => {
+              const details = [
+                linked.honoree ? `${linked.honoree}'s registry` : null,
+                linked.itemsLeft !== undefined
+                  ? linked.itemsLeft === 0
+                    ? "Every gift is taken"
+                    : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              return (
+                // One compact row per list: a few pictures, its name and how
+                // many gifts are left. The names and prices are on the list.
+                <a
+                  key={linked.slug}
+                  href={giftHref(linked.slug)}
+                  className="group clickable-card flex items-center gap-3 rounded-xl border border-transparent bg-primary p-3"
+                >
+                  <RegistryPictures items={linked.items ?? []} />
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 font-medium text-primary group-hover:underline">{linked.title}</span>
+                    {details && <span className="block text-sm text-tertiary">{details}</span>}
+                  </span>
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="size-5 shrink-0 text-quaternary transition motion-safe:group-hover:translate-x-0.5"
+                  />
+                </a>
+              );
+            })}
           </section>
         )}
 
