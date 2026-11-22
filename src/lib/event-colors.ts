@@ -70,6 +70,14 @@ function mix(hex: string, toward: string, amount: number): string {
  */
 const MIN_FILL_LUMINANCE = 0.62;
 
+/**
+ * A mark, like a checkmark, drawn on a swatch of the color itself: the site's
+ * dark text color, or white on a dark color, whichever stands out more.
+ */
+export function markOn(color: string): string {
+  return contrast(color, "#ffffff") > contrast(color, "#231b18") ? "#ffffff" : "#231b18";
+}
+
 /** The fill and ink for a host's color. */
 export function themeColors(color: string): ThemeColors {
   let fill = color;

@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { THEME_COLOR_PRESETS, contrast, normalizeThemeColor, themeColors } from "./event-colors.ts";
+import { THEME_COLOR_PRESETS, contrast, markOn, normalizeThemeColor, themeColors } from "./event-colors.ts";
 
 // The site's text colors (src/styles/theme.css): primary, secondary, tertiary.
 const TEXT = ["#231b18", "#4d4440", "#5e5652"];
@@ -58,4 +58,13 @@ test("a dark color becomes a light fill of the same hue", () => {
   assert.notEqual(fill, "#1b2a4a");
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(fill.slice(i, i + 2), 16));
   assert.ok(b > r && b > g, `${fill} should still be blue`);
+});
+
+test("a checkmark on a swatch stands out, on dark colors and light ones", () => {
+  assert.equal(markOn("#1b2a4a"), "#ffffff");
+  assert.equal(markOn("#000000"), "#ffffff");
+  assert.equal(markOn("#f9eb80"), "#231b18");
+  for (const color of SAMPLES) {
+    assert.ok(contrast(markOn(color), color) >= 3, `the mark on ${color} is ${contrast(markOn(color), color).toFixed(2)}`);
+  }
 });

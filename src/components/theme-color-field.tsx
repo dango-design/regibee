@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Gift, Pipette } from "lucide-react";
-import { THEME_COLOR_PRESETS, normalizeThemeColor, themeColors } from "@/lib/event-colors";
+import { THEME_COLOR_PRESETS, markOn, normalizeThemeColor, themeColors } from "@/lib/event-colors";
 import { cx } from "@/lib/utils/cx";
 
 /**
@@ -49,16 +49,16 @@ export function ThemeColorField({ value, onChange }: { value: string; onChange: 
               aria-pressed={selected}
               title={preset.label}
               onClick={() => onChange(preset.color)}
-              className={cx(swatch, selected && "ring-2 ring-gray-900")}
+              className={cx(swatch, selected && "ring-2 ring-gray-900 ring-offset-2")}
               style={{ backgroundColor: preset.color }}
             >
-              {selected && <Check aria-hidden="true" className="size-4 text-gray-900" />}
+              {selected && <Check aria-hidden="true" className="size-4" style={{ color: markOn(preset.color) }} />}
             </button>
           );
         })}
         {/* Any color: the browser's own picker, behind a swatch that shows it. */}
         <label
-          className={cx(swatch, "focus-within:ring-2 focus-within:ring-brand-600", custom && "ring-2 ring-gray-900")}
+          className={cx(swatch, "focus-within:ring-2 focus-within:ring-brand-600", custom && "ring-2 ring-gray-900 ring-offset-2")}
           style={custom ? { backgroundColor: color } : undefined}
           title="Pick any color"
         >
@@ -70,7 +70,8 @@ export function ThemeColorField({ value, onChange }: { value: string; onChange: 
             className="absolute inset-0 size-full cursor-pointer opacity-0"
           />
           {custom ? (
-            <Check aria-hidden="true" className="size-4" style={{ color: colors!.ink }} />
+            // Drawn on the color itself, so white on a dark color.
+            <Check aria-hidden="true" className="size-4" style={{ color: markOn(color) }} />
           ) : (
             <Pipette aria-hidden="true" className="size-4 text-tertiary" />
           )}
