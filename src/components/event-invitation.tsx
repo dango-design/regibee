@@ -73,7 +73,7 @@ export interface EventInvitationProps {
    * and hosts only. They share one section with the lists the host linked.
    * Leave it out for anyone else, who sees only the host's lists there.
    */
-  wishLists?: { lists: GuestWishList[]; waitingCount?: number; hostView?: boolean } | null;
+  wishLists?: { lists: GuestWishList[]; waitingCount?: number } | null;
   /**
    * The event's slug and the guest's RSVP token. With both, gift links go
    * through the event, which tells the registry who the guest is.
@@ -343,7 +343,6 @@ export function EventInvitation({
             eventSlug={eventSlug}
             guestToken={guestToken}
             waitingCount={wishLists?.waitingCount}
-            hostView={wishLists?.hostView}
             basePath={basePath || undefined}
           />
         )}

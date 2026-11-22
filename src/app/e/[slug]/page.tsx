@@ -19,6 +19,7 @@ import {
   getInvitationUpdates,
   getSignupSheet,
   registrySlugFromLink,
+  withGuestsLinkedLists,
 } from "@/lib/events-server";
 import { hidesAddressUntilSignup, signupRowsForGuest, withAddressFor } from "@/lib/signups";
 import { storedAnswers, storedQuestions } from "@/lib/rsvp-questions";
@@ -148,7 +149,9 @@ export default async function PublicEventPage({
   const [isHost, guestLists, waiting, myLists] = everyone
     ? await Promise.all([
         viewer ? getEventForManager(event.id, viewer.id).then(Boolean) : false,
-        getGuestWishLists(event.id, guest?.id ?? null),
+        // A list the host linked that belongs to a guest without a wish list
+        // is theirs, on their row and in their wish list step.
+        getGuestWishLists(event.id, guest?.id ?? null).then((lists) => withGuestsLinkedLists(lists, registries)),
         supabaseAdmin
           .from("event_guests")
           .select("id", { count: "exact", head: true })
@@ -184,13 +187,15 @@ export default async function PublicEventPage({
       return { ...list, ownerName: named ?? list.honoree, isYours };
     }),
   );
-  // The guest's own wish list, for the step after their RSVP.
+  // The guest's own wish list, for the step after their RSVP: the one they
+  // added, or else their own list the host linked.
   const ownEntry = guestLists.find((entry) => entry.isYou) ?? null;
   const ownList = ownEntry?.registry ? myLists.find((list) => list.slug === ownEntry.registry!.slug) : undefined;
+  const ownUrl = guest?.wishlist_url || ownEntry?.url || null;
   const wishlist: RsvpWishlist | null = everyone
     ? {
-        current: guest?.wishlist_url
-          ? { url: guest.wishlist_url, title: ownEntry?.registry?.title ?? null, ownListId: ownList?.id ?? null }
+        current: ownUrl
+          ? { url: ownUrl, title: ownEntry?.registry?.title ?? null, ownListId: ownList?.id ?? null }
           : null,
         giftIdeas: guest?.gift_ideas ?? null,
         account: viewer ? { lists: myLists.map(({ id, title }) => ({ id, title })) } : null,
@@ -222,7 +227,7 @@ export default async function PublicEventPage({
           event={shown}
           registries={invitationRegistries}
           exchange={exchange}
-          wishLists={showGuestLists ? { lists: guestLists, waitingCount: waiting, hostView: !guest } : null}
+          wishLists={showGuestLists ? { lists: guestLists, waitingCount: waiting } : null}
           eventSlug={event.slug}
           guestToken={guest?.token ?? null}
           calendar={google ? { google, ics: `/e/${event.slug}/calendar` } : null}

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { loadItemsForLists } from "@/lib/list-items";
 import { displayName } from "@/lib/profile-link";
+import { giveGuestsTheirLinkedLists } from "@/lib/guest-linked-lists";
 import {
   exchangeKind,
   type EventDetails,
@@ -559,6 +560,47 @@ export async function getGuestWishLists(eventId: string, viewerGuestId: string |
       giftIdeas: g.gift_ideas,
     }))
     .sort((a, b) => Number(b.isYou) - Number(a.isYou));
+}
+
+/**
+ * Everyone's wish lists, with each list the host linked put on its owner's
+ * row when the owner is a guest with no wish list of their own, matched by
+ * email (src/lib/guest-linked-lists.ts). Takes the lists getEventRegistries
+ * loaded withItems, which know their owners. The emails stay on the server.
+ */
+export async function withGuestsLinkedLists(
+  lists: GuestWishList[],
+  registries: EventRegistry[],
+): Promise<GuestWishList[]> {
+  const waiting = lists.filter((entry) => !entry.url && !entry.registry);
+  const owned = registries.filter((registry) => registry.owner);
+  if (waiting.length === 0 || owned.length === 0) return lists;
+
+  const ownerIds = [...new Set(owned.map((registry) => registry.owner!.id))];
+  const [{ data: guests }, ownerEmails] = await Promise.all([
+    supabaseAdmin
+      .from("event_guests")
+      .select("id, email")
+      .in(
+        "id",
+        waiting.map((entry) => entry.guestId),
+      ),
+    Promise.all(
+      ownerIds.map(async (id) => {
+        const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+        return [id, data?.user?.email ?? null] as const;
+      }),
+    ).then((pairs) => new Map(pairs)),
+  ]);
+  return giveGuestsTheirLinkedLists(
+    lists,
+    owned.map((registry) => ({
+      slug: registry.slug,
+      title: registry.title,
+      ownerEmail: ownerEmails.get(registry.owner!.id) ?? null,
+    })),
+    new Map((guests || []).map((g) => [g.id as string, (g.email as string | null) ?? null])),
+  );
 }
 
 // ── Reveals ──────────────────────────────────────────────────

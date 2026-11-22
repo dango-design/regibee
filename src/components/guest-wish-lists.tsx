@@ -29,8 +29,6 @@ export interface GuestWishListsProps {
   guestToken?: string | null;
   /** Guests who haven't answered yet, so they aren't on the list. */
   waitingCount?: number;
-  /** A host looking at it without being a guest: no "You" row to point at. */
-  hostView?: boolean;
   /** Put in front of a Regibee list's link instead of going through the event. The demo passes "/demo". */
   basePath?: string;
 }
@@ -61,7 +59,7 @@ function ListRow({
   return (
     <li
       className={cx(
-        "flex flex-col gap-3 rounded-xl bg-primary p-3 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 rounded-xl border border-secondary bg-primary p-3 sm:flex-row sm:items-center sm:justify-between",
         href && "clickable-card",
       )}
     >
@@ -123,8 +121,10 @@ function seeListLabel(name: string): string {
 }
 
 /**
- * Everyone's wish lists, on an everyone-gives-everyone invitation: how the
- * exchange works, the lists the host linked, and each guest's list. Anyone
+ * Everyone's wish lists, on an everyone-gives-everyone invitation: the
+ * budget and the host's note, the lists the host linked, and each guest's
+ * list. A list the host linked that belongs to a guest comes on that guest's
+ * row instead (withGuestsLinkedLists in src/lib/events-server.ts). Anyone
  * with the link sees the host's lists; only the event's guests and hosts see
  * the guests' lists. A guest's own list is first among them, without a
  * button to shop it: nobody sees what's been reserved from their own list.
@@ -137,7 +137,6 @@ export function GuestWishLists({
   eventSlug,
   guestToken,
   waitingCount = 0,
-  hostView = false,
   basePath,
 }: GuestWishListsProps) {
   const hrefFor = (slug: string) =>
@@ -153,25 +152,22 @@ export function GuestWishLists({
   const withList = lists?.filter((l) => l.url).length ?? 0;
 
   return (
-    <section aria-labelledby="wish-lists-heading" className="flex flex-col gap-4 rounded-2xl bg-mint-50 p-4 sm:p-5">
+    // No fill, so it sits well beside any invitation picture. Each list is
+    // its own outlined row.
+    <section aria-labelledby="wish-lists-heading" className="flex flex-col gap-4">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <Users aria-hidden="true" className="size-4.5 text-mint-800" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
+          <Users aria-hidden="true" className="size-4.5 text-brand-600" />
         </span>
         <div className="min-w-0 pt-1">
           <h2 id="wish-lists-heading" className="font-medium text-primary">
             Everyone&apos;s wish lists
           </h2>
           {giftNote && <p className="mt-1 whitespace-pre-line text-secondary">{giftNote}</p>}
-          <p className="mt-1 text-secondary">
-            Everyone gives everyone: each guest adds a wish list when they RSVP, and shops from the others&apos;
-            {budget ? `, about ${budget} a gift` : ""}.{" "}
-            {lists === null
-              ? "Guests see each other's lists here."
-              : hostView
-                ? "Guests see these lists, and what the others reserved from each one."
-                : "Open a list to see what the others reserved, so nobody doubles up."}
-          </p>
+          {budget && <p className="mt-1 text-secondary">About {budget} a gift.</p>}
+          {/* Someone with the link who isn't a guest sees only the host's
+              lists, so they're told where the rest are. */}
+          {lists === null && <p className="mt-1 text-secondary">Guests see each other&apos;s lists here.</p>}
           <p className="mt-1 text-sm text-tertiary">
             Nobody sees what&apos;s been reserved from their own list until the day after.
           </p>
@@ -244,7 +240,7 @@ export function GuestWishLists({
       )}
 
       {lists && lists.length === 0 && (
-        <p className="rounded-xl bg-primary p-3 text-sm text-tertiary">
+        <p className="rounded-xl border border-secondary bg-primary p-3 text-sm text-tertiary">
           Nobody has RSVPed yet. Lists show here as guests add them.
         </p>
       )}
