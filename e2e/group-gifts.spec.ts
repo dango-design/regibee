@@ -144,7 +144,10 @@ test("the organizer calls it off, the item goes back on the list, and pledgers h
   await scarecrow.context.close();
 
   await ozPage.reload();
-  await ozPage.getByRole("button", { name: "Call it off" }).click();
+  // A click before React takes over the reloaded page does nothing.
+  const callItOff = ozPage.getByRole("button", { name: "Call it off" });
+  await waitForReact(callItOff);
+  await callItOff.click();
   await ozPage.getByRole("group").getByRole("button", { name: "Call it off" }).click();
   await expect(ozPage.getByText("This group gift was called off")).toBeVisible();
   await waitForEmail(scarecrowEmail, `The group gift of "${item.title}" was called off`);
