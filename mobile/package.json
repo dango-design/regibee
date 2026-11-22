@@ -55,7 +55,7 @@
     "typecheck": "tsc --noEmit",
     "product-reader": "node scripts/build-product-reader.mjs",
     "icons": "node scripts/build-icons.mjs",
-    "check": "node scripts/build-product-reader.mjs --check && tsc --noEmit && expo export --platform ios --platform android --output-dir dist --clear"
+    "check": "node scripts/check-update-paths.mjs && node scripts/build-product-reader.mjs --check && tsc --noEmit && expo export --platform ios --platform android --output-dir dist --clear"
   },
   "private": true
 }
