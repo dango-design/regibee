@@ -432,7 +432,7 @@ export const EveryoneGivesEveryone: Story = {
     await expect(canvas.queryByRole("region", { name: "Gifts" })).toBeNull();
     await expect(canvas.queryByRole("region", { name: "Everyone gives everyone" })).toBeNull();
     const lists = canvas.getByRole("region", { name: "Everyone's wish lists" });
-    await expect(within(lists).getByText(/about \$25 a gift/)).toBeVisible();
+    await expect(within(lists).getByText("About $25 a gift.")).toBeVisible();
     const links = within(lists).getAllByRole("link");
     // The host's list looks like a guest's: whose it is, then its name.
     await expect(links.map((link) => link.textContent)).toEqual([

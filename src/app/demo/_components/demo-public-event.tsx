@@ -214,7 +214,6 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
               ? {
                   lists: guestWishLists(today, guests, guest?.id ?? null),
                   waitingCount: guests.filter((g) => g.rsvp_status === "pending").length,
-                  hostView: !guest,
                 }
               : null
           }

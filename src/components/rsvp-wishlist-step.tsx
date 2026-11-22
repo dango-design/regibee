@@ -91,11 +91,11 @@ export function RsvpWishlistStep({
       <section
         id="wishlist"
         aria-labelledby="wishlist-heading"
-        className="mt-4 flex scroll-mt-24 flex-col gap-3 rounded-xl bg-mint-50 p-4"
+        className="mt-4 flex scroll-mt-24 flex-col gap-3 rounded-xl bg-secondary p-4"
       >
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-            <Gift aria-hidden="true" className="size-4.5 text-mint-800" />
+            <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
           </span>
           <div className="min-w-0 pt-1">
             <h3 id="wishlist-heading" className="font-medium text-primary">
@@ -114,11 +114,11 @@ export function RsvpWishlistStep({
                 {giftIdeas}
               </p>
             )}
-            <p className="mt-2 text-sm text-tertiary">
-              {justMade && current?.ownListId
-                ? "It's linked to the invitation. Add a few things, so everyone knows what to get you."
-                : "The others see it on the invitation, with what they've reserved from it. You won't, so your gifts stay a surprise."}
-            </p>
+            {justMade && current?.ownListId && (
+              <p className="mt-2 text-sm text-tertiary">
+                It&apos;s linked to the invitation. Add a few things, so everyone knows what to get you.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -139,11 +139,11 @@ export function RsvpWishlistStep({
     <section
       id="wishlist"
       aria-labelledby="wishlist-heading"
-      className="mt-4 flex scroll-mt-24 flex-col gap-4 rounded-xl bg-mint-50 p-4"
+      className="mt-4 flex scroll-mt-24 flex-col gap-4 rounded-xl bg-secondary p-4"
     >
       <div className="flex items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <Gift aria-hidden="true" className="size-4.5 text-mint-800" />
+          <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
         </span>
         <h3 id="wishlist-heading" className="min-w-0 font-medium text-primary">
           {current ? "Change your wish list" : "Now add your wish list"}

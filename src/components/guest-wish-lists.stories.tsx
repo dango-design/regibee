@@ -74,7 +74,6 @@ export const YourOwnLinkedList: Story = {
   args: {
     lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false })),
     guestToken: null,
-    hostView: true,
     registries: [
       {
         title: "Aunt Linda's Christmas List",
@@ -122,7 +121,6 @@ export const HostView: Story = {
   args: {
     lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false })),
     guestToken: null,
-    hostView: true,
   },
 };
 

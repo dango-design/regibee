@@ -503,7 +503,7 @@ export function RsvpForm({
         )}
 
         {everyone && attending && !guest?.wishlistUrl && !guest?.giftIdeas && (
-          <p className="rounded-xl bg-mint-50 p-3 text-sm text-secondary">
+          <p className="rounded-xl bg-secondary p-3 text-sm text-secondary">
             Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wish list, so the others know
             what you&apos;d like.
           </p>
