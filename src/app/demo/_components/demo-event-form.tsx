@@ -46,7 +46,8 @@ export function DemoEventForm({ eventId, registryId }: { eventId?: string; regis
 
   return (
     <DemoOwnerShell>
-      <div className={cx("container mx-auto px-4 py-8", event ? "max-w-2xl" : "max-w-xl")}>
+      {/* Editing is as wide as the Account page, for the section navigation on the left from lg. */}
+      <div className={cx("container mx-auto px-4 py-8", event ? "max-w-2xl lg:max-w-5xl" : "max-w-xl")}>
         <Link
           href={event ? `/demo/dashboard/events/${event.id}` : "/demo/dashboard/events"}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-tertiary hover:text-primary"

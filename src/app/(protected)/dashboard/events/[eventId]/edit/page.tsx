@@ -18,7 +18,8 @@ export default async function EditEventPage({ params }: { params: Promise<{ even
   const { event, registries, linkedRegistries, exchange } = data;
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
+    // As wide as the Account page, for the section navigation on the left from lg.
+    <div className="container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl">
       <Link
         href={`/dashboard/events/${event.id}`}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-tertiary hover:text-primary max-sm:min-h-11"

@@ -10,6 +10,7 @@ import {
   type StoreId,
   type StoreInfo,
 } from "@/lib/retailers";
+import { registrySettingsHref } from "@/lib/registry-settings-sections";
 
 interface StoreLinkNoticeProps {
   /** The item link as typed or pasted. */
@@ -76,7 +77,7 @@ export function StoreLinkNotice({
         </div>
         <div className="flex flex-wrap items-center gap-3 pl-6.5">
           <a
-            href={`/dashboard/registry/${registryId}/settings#store-registries`}
+            href={registrySettingsHref(registryId, "store-registries")}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-9 items-center rounded-full bg-primary px-3.5 text-sm font-semibold text-secondary ring-1 ring-primary ring-inset hover:bg-primary_hover"

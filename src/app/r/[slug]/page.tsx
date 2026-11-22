@@ -45,6 +45,7 @@ import { parseGiftProfile, withoutBirthday, type GiftProfile } from "@/lib/gift-
 import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
 import { canManageRegistry } from "@/lib/events-server";
 import { myGroupGiftsOnItems } from "@/lib/group-gifts-server";
+import { registrySettingsHref } from "@/lib/registry-settings-sections";
 
 const PURCHASE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -673,7 +674,7 @@ export default async function PublicRegistryPage({
           {hideReservations && (
             <ReservationsHiddenNotice
               className="mb-6"
-              settingsHref={`/dashboard/registry/${registry.id}/settings`}
+              settingsHref={registrySettingsHref(registry.id, "reservations")}
               turnedOnByExchange={readReservationPrivacy(registry.settings).hide_reservations_source === "exchange"}
             />
           )}

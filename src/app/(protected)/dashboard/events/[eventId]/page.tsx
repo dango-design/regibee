@@ -12,6 +12,7 @@ import { EventActionsMenu } from "@/components/event-actions-menu";
 import { SignupSheetManager, SignupSheetStarter } from "@/components/signup-sheet-manager";
 import { GuestMessages } from "@/components/guest-messages";
 import { eventTheme, eventTypeLabel, exchangeKind, formatEventDate } from "@/lib/events";
+import { editSectionHref } from "@/lib/edit-event-sections";
 import { loadEventPage } from "@/lib/events-page";
 import { getViewer } from "@/lib/viewer";
 import { cx } from "@/lib/utils/cx";
@@ -56,6 +57,8 @@ export default async function ManageEventPage({
   } = data;
   const theme = eventTheme(event.event_type);
   const publicPath = `/e/${event.slug}`;
+  // Links to a part of the event go straight to its section of the edit page.
+  const editPath = `/dashboard/events/${event.id}/edit`;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -99,7 +102,7 @@ export default async function ManageEventPage({
             </a>
           </Button>
           <Button variant="outline" asChild>
-            <Link href={`/dashboard/events/${event.id}/edit`}>
+            <Link href={editPath}>
               <span className="inline-flex items-center gap-1.5">
                 <Pencil className="h-4 w-4 shrink-0" />
                 Edit
@@ -114,7 +117,11 @@ export default async function ManageEventPage({
 
       {image === "failed" && (
         <p role="alert" className="mt-6 rounded-xl bg-error-secondary p-4 text-sm text-error-primary">
-          Your event is saved, but the invitation picture didn&apos;t upload. Add it again from Edit.
+          Your event is saved, but the invitation picture didn&apos;t upload.{" "}
+          <Link href={editSectionHref(editPath, "invitation")} className="font-medium underline">
+            Add it again
+          </Link>
+          .
         </p>
       )}
 
@@ -127,7 +134,7 @@ export default async function ManageEventPage({
               status={status}
               guests={guests}
               exclusions={exclusions}
-              editHref={`/dashboard/events/${event.id}/edit`}
+              editHref={editSectionHref(editPath, "exchange")}
             />
           )}
           {signupSheet && (
@@ -163,7 +170,7 @@ export default async function ManageEventPage({
               <img src={event.image_url} alt={`${event.title} invitation`} className="block h-auto w-full" />
             ) : (
               <Link
-                href={`/dashboard/events/${event.id}/edit`}
+                href={editSectionHref(editPath, "invitation")}
                 className={cx(
                   "flex flex-col items-center justify-center gap-2 px-4 py-10 text-center hover:opacity-90",
                   theme.bg,
@@ -215,7 +222,7 @@ export default async function ManageEventPage({
                     </p>
                   ))}
                   {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
-                  <Link href={`/dashboard/events/${event.id}/edit`} className="text-sm font-medium text-brand-600 hover:underline">
+                  <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-600 hover:underline">
                     {registries.length > 0 || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
                   </Link>
                 </div>
@@ -231,7 +238,7 @@ export default async function ManageEventPage({
             counts={audienceCounts}
             messages={messages}
             remindDayBefore={event.remind_day_before ?? true}
-            editHref={`/dashboard/events/${event.id}/edit`}
+            editHref={editSectionHref(editPath, "rsvps")}
           />
 
           <EventCoHosts eventId={event.id} hosts={hosts} invites={invites} viewerId={viewer.id} />

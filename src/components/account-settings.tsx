@@ -4,11 +4,12 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check } from "lucide-react";
 import {
-  ACCOUNT_SECTION_SCROLL_MARGIN,
-  AccountNav,
-  AccountSectionTitle,
-  type AccountSection,
-} from "@/components/account-nav";
+  SECTION_NAV_GRID,
+  SECTION_SCROLL_MARGIN,
+  SectionNav,
+  SectionTitle,
+  type PageSection,
+} from "@/components/section-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
@@ -94,6 +95,9 @@ function RegistryListingRow({
   );
 }
 
+/** Old section ids that links still use. Follow request emails already sent link to #follows. */
+const RENAMED_SECTIONS: Record<string, string> = { follows: "follow-requests" };
+
 export function AccountSettings({
   profile,
   registries,
@@ -176,7 +180,7 @@ export function AccountSettings({
 
   // The page's sections, in order. Their ids are on the cards below, and
   // links from elsewhere use them, like /dashboard/account#follow-requests.
-  const sections: AccountSection[] = [
+  const sections: PageSection[] = [
     { id: "profile", label: "Your profile" },
     ...(giftProfile ? [{ id: "gift-profile", label: "Gift profile" }] : []),
     ...(follows
@@ -203,13 +207,13 @@ export function AccountSettings({
         <h1 className="text-2xl font-bold">Account</h1>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-10">
-        <AccountNav sections={sections} />
+      <div className={SECTION_NAV_GRID}>
+        <SectionNav sections={sections} label="Account sections" aliases={RENAMED_SECTIONS} />
 
         <div className="space-y-6">
-          <Card id="profile" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+          <Card id="profile" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
-              <AccountSectionTitle sectionId="profile">Your profile</AccountSectionTitle>
+              <SectionTitle sectionId="profile">Your profile</SectionTitle>
               <CardDescription>
                 One link to all the registries you choose below. Anyone with the link can see your name
                 and those registries.
@@ -278,9 +282,9 @@ export function AccountSettings({
           </Card>
 
           {giftProfile && (
-            <Card id="gift-profile" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+            <Card id="gift-profile" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
-                <AccountSectionTitle sectionId="gift-profile">Gift profile</AccountSectionTitle>
+                <SectionTitle sectionId="gift-profile">Gift profile</SectionTitle>
                 <CardDescription>
                   Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wish lists
                   and your profile, so anyone with those links sees them.
@@ -296,7 +300,7 @@ export function AccountSettings({
               section. #follows is what links used before the sections had
               their own ids, and emails already sent still use it. */}
           {follows && (
-            <div id="follows" className={cx("space-y-6", ACCOUNT_SECTION_SCROLL_MARGIN)}>
+            <div id="follows" className={cx("space-y-6", SECTION_SCROLL_MARGIN)}>
               <FollowLists
                 requests={follows.requests}
                 followers={follows.followers}
@@ -310,9 +314,9 @@ export function AccountSettings({
           )}
 
           {birthdayEmails !== undefined && (
-            <Card id="birthday-emails" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+            <Card id="birthday-emails" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
-                <AccountSectionTitle sectionId="birthday-emails">Birthday emails</AccountSectionTitle>
+                <SectionTitle sectionId="birthday-emails">Birthday emails</SectionTitle>
               </CardHeader>
               <CardContent>
                 <BirthdayEmailsSetting initial={birthdayEmails} action={birthdayEmailsAction} />
@@ -320,9 +324,9 @@ export function AccountSettings({
             </Card>
           )}
 
-          <Card id="profile-registries" className={ACCOUNT_SECTION_SCROLL_MARGIN}>
+          <Card id="profile-registries" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
-              <AccountSectionTitle sectionId="profile-registries">Registries on your profile</AccountSectionTitle>
+              <SectionTitle sectionId="profile-registries">Registries on your profile</SectionTitle>
               <CardDescription>
                 Only the ones you check appear. Anyone with your link sees the public ones;
                 private ones only show to followers you approve. Registries you help manage for

@@ -9,6 +9,7 @@ import { updateStorePerks } from "@/lib/actions/registry";
 import { cn } from "@/lib/utils";
 import type { StoreId } from "@/lib/retailers";
 import type { PerkTone, StorePerksRow } from "@/lib/store-perks";
+import { registrySettingsHref } from "@/lib/registry-settings-sections";
 
 type SaveAction = (
   registryId: string,
@@ -119,7 +120,6 @@ export function StorePerksCard({
   const giftUnlocked = rows.filter(
     (r) => r.welcomeBox?.afterGift && welcomeStatus(r) === "ready"
   );
-  const settingsHref = `/dashboard/registry/${registryId}/settings`;
 
   return (
     <Card>
@@ -196,7 +196,7 @@ export function StorePerksCard({
                     </a>
                   ) : (
                     <Link
-                      href={`${settingsHref}#store-registries`}
+                      href={registrySettingsHref(registryId, "store-registries")}
                       className="shrink-0 px-1 py-2 text-sm font-semibold text-brand-secondary hover:underline max-sm:py-3"
                     >
                       Link registry
@@ -251,7 +251,8 @@ export function StorePerksCard({
 
         {!hasDueDate && (
           <p className="text-sm text-secondary">
-            <Link href={settingsHref} className="font-semibold text-brand-secondary hover:underline">
+            {/* The due date is in the settings' General section. */}
+            <Link href={registrySettingsHref(registryId, "general")} className="font-semibold text-brand-secondary hover:underline">
               Add your due date
             </Link>{" "}
             to see when completion discounts open.

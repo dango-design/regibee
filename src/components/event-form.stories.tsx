@@ -9,10 +9,37 @@ const registries = [
   { id: "00000000-0000-4000-8000-000000000003", title: "Max's Birthday Wishlist" },
 ];
 
+/**
+ * The edit page around the form, under a stand-in top bar: as wide as the
+ * Account page, with the section navigation on the left from lg.
+ */
+function EditPage({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <div className="sticky top-0 z-50 h-16 border-b border-secondary bg-primary" />
+      <div className="container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl">
+        <h1 className="text-3xl font-bold">Edit event</h1>
+        <p className="mt-1 text-tertiary">Guests see your changes on the event page right away.</p>
+        <div className="mt-6">{children}</div>
+      </div>
+    </>
+  );
+}
+
+/** Puts a section's #fragment in the URL, as a link from the event's page does. */
+const withSectionInUrl = (section: string) => () => {
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${section}`);
+};
+
 const meta: Meta<typeof EventForm> = {
   title: "Components/EventForm",
   component: EventForm,
   parameters: { layout: "padded" },
+  // The edit page's navigation goes to the section in the URL's #fragment.
+  // Storybook keeps the URL between stories, so each starts without one.
+  beforeEach: () => {
+    if (window.location.hash) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  },
   args: {
     registries,
     createAction: fn(async () => ({ error: "This is a story, so nothing was saved." })),
@@ -22,11 +49,16 @@ const meta: Meta<typeof EventForm> = {
     lookupAction: fn(async () => ({ error: "This is a story, so no link was looked up." })),
   },
   decorators: [
-    (Story) => (
-      <div className="max-w-2xl">
-        <Story />
-      </div>
-    ),
+    (Story, { args }) =>
+      args.eventId ? (
+        <EditPage>
+          <Story />
+        </EditPage>
+      ) : (
+        <div className="max-w-2xl">
+          <Story />
+        </div>
+      ),
   ],
 };
 export default meta;
@@ -165,8 +197,56 @@ export const NewEventAllStepsDone: Story = {
 // The edit page always passes the event's linked registries.
 const linkedRegistries = [{ id: registries[0].id, title: registries[0].title }];
 
+// The edit page fills the screen, under the top bar.
+const editPage = { layout: "fullscreen" };
+
+/** Editing shows every section at once, with a navigation to them on the left. */
 export const EditingWithPicture: Story = {
+  parameters: editPage,
+  globals: { viewport: { value: "desktop" } },
   args: { eventId: sampleEvent.id, initial: sampleEvent, linkedRegistries },
+};
+
+/**
+ * "Add your invitation" on the event's page links to #invitation. The page
+ * opens there: Invitation is current in the navigation, and focus is on its
+ * title, so Tab goes on to the upload button.
+ */
+export const EditingFromAddYourInvitation: Story = {
+  parameters: editPage,
+  globals: { viewport: { value: "desktop" } },
+  args: { eventId: sampleEvent.id, initial: { ...sampleEvent, image_url: null }, linkedRegistries },
+  beforeEach: withSectionInUrl("invitation"),
+  play: async ({ canvas }) => {
+    const nav = within(canvas.getByRole("navigation", { name: "Event sections" }));
+    await waitFor(() => expect(canvas.getByRole("heading", { name: "Invitation" })).toHaveFocus());
+    await expect(nav.getByRole("link", { name: "Invitation" })).toHaveAttribute("aria-current", "location");
+    await expect(nav.getByRole("link", { name: "Occasion and name" })).not.toHaveAttribute("aria-current");
+    // The section starts just under the top bar, not hidden behind it.
+    const top = canvas.getByRole("region", { name: "Invitation" }).getBoundingClientRect().top;
+    await expect(top).toBeGreaterThanOrEqual(64);
+    await expect(top).toBeLessThan(160);
+    await userEvent.tab();
+    await expect(canvas.getByRole("button", { name: /Upload your invitation/ })).toHaveFocus();
+  },
+};
+
+/**
+ * On a phone the sections are a row of links that sticks under the top bar
+ * and scrolls sideways by itself. Following one goes to its section.
+ */
+export const EditingOnPhone: Story = {
+  parameters: editPage,
+  globals: { viewport: { value: "mobile1" } },
+  args: { eventId: sampleEvent.id, initial: sampleEvent, linkedRegistries },
+  play: async ({ canvas }) => {
+    const nav = within(canvas.getByRole("navigation", { name: "Event sections" }));
+    await userEvent.click(nav.getByRole("link", { name: "RSVPs" }));
+    await waitFor(() => expect(nav.getByRole("link", { name: "RSVPs" })).toHaveAttribute("aria-current", "location"));
+    await expect(canvas.getByRole("heading", { name: "RSVPs" })).toHaveFocus();
+    // The row scrolls; the page doesn't.
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
 };
 
 /**
@@ -175,6 +255,7 @@ export const EditingWithPicture: Story = {
  * is. Guests also say how many kids are coming.
  */
 export const EditingWithGiftsAndExchange: Story = {
+  parameters: editPage,
   args: {
     eventId: sampleEvent.id,
     initial: {
@@ -198,6 +279,7 @@ export const EditingWithGiftsAndExchange: Story = {
 
 /** A wedding asks each person's meal, the names of plus-ones, and any dietary needs. */
 export const EditingWeddingQuestions: Story = {
+  parameters: editPage,
   args: {
     eventId: sampleEvent.id,
     initial: {
@@ -213,6 +295,7 @@ export const EditingWeddingQuestions: Story = {
 
 /** Changing the place of an event offers to email guests about it. */
 export const ChangingThePlace: Story = {
+  parameters: editPage,
   args: { eventId: sampleEvent.id, initial: { ...sampleEvent, image_url: null }, linkedRegistries },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

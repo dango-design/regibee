@@ -35,6 +35,7 @@ import {
   type GiftExchange,
 } from "@/lib/events";
 import { drawNames, orderedPair, type Pair } from "@/lib/gift-exchange";
+import { editSectionHref } from "@/lib/edit-event-sections";
 import {
   claimsByGuest,
   describeClaim,
@@ -466,7 +467,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                 status={status}
                 guests={shownGuests}
                 exclusions={exclusions}
-                editHref={editPath}
+                editHref={editSectionHref(editPath, "exchange")}
                 actions={exchangeActions(guests, setGuests, exclusions, setExclusions, setExchange)}
               />
             )}
@@ -508,7 +509,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                 <img src={event.image_url} alt={`${event.title} invitation`} className="block h-auto w-full" />
               ) : (
                 <Link
-                  href={editPath}
+                  href={editSectionHref(editPath, "invitation")}
                   className={cx(
                     "flex flex-col items-center justify-center gap-2 px-4 py-10 text-center hover:opacity-90",
                     theme.bg,
@@ -551,7 +552,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                       <p className="text-sm text-tertiary">No registry linked.</p>
                     )}
                     {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
-                    <Link href={editPath} className="text-sm font-medium text-brand-600 hover:underline">
+                    <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-600 hover:underline">
                       {registry || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
                     </Link>
                   </div>
@@ -567,7 +568,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
               counts={audienceCounts}
               messages={messages}
               remindDayBefore={event.remind_day_before ?? true}
-              editHref={editPath}
+              editHref={editSectionHref(editPath, "rsvps")}
               sendAction={sendMessage}
             />
 

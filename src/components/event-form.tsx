@@ -41,6 +41,15 @@ import {
   type EventStepValues,
 } from "@/lib/event-steps";
 import { isFinishedDate } from "@/lib/step-nav";
+import type { EditEventSection } from "@/lib/edit-event-sections";
+import {
+  SECTION_NAV_GRID,
+  SECTION_SCROLL_MARGIN,
+  SectionNav,
+  SectionTitle,
+  sectionTitleId,
+  type PageSection,
+} from "@/components/section-nav";
 
 type Values = Pick<
   EventDetails,
@@ -103,10 +112,27 @@ export interface EventFormProps {
   uploadImage?: (eventId: string, file: File) => Promise<PhotoUploadResult>;
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+/** One section of the edit page. Its id is its #fragment, which the page's navigation and other pages link to. */
+function Section({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: EditEventSection;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="rounded-xl border border-secondary bg-primary p-5">
-      <h2 className="text-md font-semibold text-primary">{title}</h2>
+    <section
+      id={id}
+      aria-labelledby={sectionTitleId(id)}
+      className={cx("rounded-xl border border-secondary bg-primary p-5", SECTION_SCROLL_MARGIN)}
+    >
+      <SectionTitle sectionId={id} className="text-md font-semibold text-primary">
+        {title}
+      </SectionTitle>
       {description && <p className="mt-0.5 text-sm text-tertiary">{description}</p>}
       <div className="mt-4 flex flex-col gap-4">{children}</div>
     </section>
@@ -907,199 +933,219 @@ export function EventForm({
     );
   }
 
+  // The edit page's sections, in the order below, for its navigation.
+  const editSections: (PageSection & { id: EditEventSection })[] = [
+    { id: "details", label: "Occasion and name" },
+    { id: "invitation", label: "Invitation" },
+    { id: "when", label: "When" },
+    { id: "where", label: hidesAddress ? "Where to drop off" : "Where" },
+    { id: "message", label: "Message to guests" },
+    { id: "rsvps", label: "RSVPs" },
+    { id: "gifts", label: "Gifts" },
+    { id: "exchange", label: "Gifts among the guests" },
+  ];
+
+  // Laid out like the Account page: the sections in a column on the left from
+  // lg, and a row of links under the top bar below that. The page around it
+  // is max-w-2xl, and lg:max-w-5xl.
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-      <Section title="What are you celebrating?">
-        <div role="group" aria-label="Occasion" className="flex flex-wrap gap-2">
-          {EVENT_TYPE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={eventType === option.value}
-              onClick={() => chooseType(option.value)}
-              className={cx(
-                "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 max-sm:min-h-11",
-                eventType === option.value
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-secondary text-secondary hover:border-primary",
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <Input
-          label="Event name"
-          value={title}
-          onChange={setTitle}
-          isRequired
-          maxLength={120}
-          placeholder={typeOption.titlePlaceholder}
-        />
-        <Input
-          label="Hosted by (optional)"
-          value={hostedBy}
-          onChange={setHostedBy}
-          maxLength={120}
-          placeholder='e.g., "Aunt Linda & Grandma Jo"'
-          hint="Guests see this on the invitation. Emails come from this name."
-        />
-      </Section>
-
-      <Section
-        title="Invitation"
-        description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
-      >
-        {pictureField}
-      </Section>
-
-      <Section title="When">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Date" type="date" value={eventDate} onChange={setEventDate} />
-          <SelectField
-            label="Time zone"
-            value={timeZone}
-            onChange={setTimeZone}
-            options={zoneOptions}
-          />
-          <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
-          <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
-        </div>
-      </Section>
-
-      {hidesAddressUntilSignup(eventType) ? (
-        <Section title="Where to drop off">
-          <TextArea
-            label="Drop-off address"
-            value={locationAddress}
-            onChange={setLocationAddress}
-            maxLength={300}
-            rows={2}
-            placeholder={"123 Main St\nSan Francisco, CA 94102"}
-            hint="Only people who sign up for a day see it, on their own link and in their email."
-          />
-        </Section>
-      ) : (
-        <Section title="Where">
-          <Input
-            label="Place"
-            value={locationName}
-            onChange={setLocationName}
-            maxLength={120}
-            placeholder={`e.g., "Grandma's house" or "The Garden Room"`}
-          />
-          <TextArea
-            label="Address"
-            value={locationAddress}
-            onChange={setLocationAddress}
-            maxLength={300}
-            rows={2}
-            placeholder={"123 Main St\nSan Francisco, CA 94102"}
-            hint="Only people with the event link see it. Guests get a map link."
-          />
-        </Section>
-      )}
-
-      <Section title="Message to guests" description="Parking, dress code, what to bring: anything guests should know.">
-        <TextArea
-          aria-label="Message to guests"
-          value={message}
-          onChange={setMessage}
-          maxLength={2000}
-          rows={4}
-          placeholder="Join us for brunch and games as we celebrate Remi! Street parking is easiest."
-        />
-      </Section>
-
-      <Section title="RSVPs">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
-          <SelectField
-            label="People per RSVP"
-            hint="Including the guest. 2 lets each guest bring one person."
-            value={maxPartySize}
-            onChange={setMaxPartySize}
-            options={partySizeOptions}
-          />
-        </div>
-        <Checkbox
-          isSelected={openRsvp}
-          onChange={setOpenRsvp}
-          label={<span className="font-normal">Anyone with the event link can RSVP</span>}
-          hint="They're added to your guest list. Turn this off to take RSVPs only from guests you invite."
-        />
-        <Checkbox
-          isSelected={askKids}
-          onChange={changeAskKids}
-          label={<span className="font-normal">Ask how many kids are coming</span>}
-          hint="Guests say how many of their party are kids, and you see both counts."
-        />
-        <Checkbox
-          isSelected={emailHost}
-          onChange={setEmailHost}
-          label={<span className="font-normal">Email me when someone RSVPs</span>}
-        />
-        <Checkbox
-          isSelected={remindDayBefore}
-          onChange={setRemindDayBefore}
-          label={<span className="font-normal">Email everyone going a reminder the day before</span>}
-          hint="With the time, the place and anything they signed up to bring."
-        />
-        <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
-      </Section>
-
-      <Section title="Gifts" description="What guests see about gifts, under the details on the invitation.">
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="text-sm font-medium text-secondary">Registries and wishlists</p>
-            <p className="text-sm text-tertiary">
-              Link yours, or someone else&apos;s with its link, like the parents&apos; registry for a baby shower.
-              They get an email saying you linked it. Linking doesn&apos;t let you change their registry.
-            </p>
+    <div className={SECTION_NAV_GRID}>
+      <SectionNav sections={editSections} label="Event sections" />
+      <form onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-5" noValidate>
+        <Section id="details" title="What are you celebrating?">
+          <div role="group" aria-label="Occasion" className="flex flex-wrap gap-2">
+            {EVENT_TYPE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={eventType === option.value}
+                onClick={() => chooseType(option.value)}
+                className={cx(
+                  "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 max-sm:min-h-11",
+                  eventType === option.value
+                    ? "border-brand-600 bg-brand-600 text-white"
+                    : "border-secondary text-secondary hover:border-primary",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          {registryFields(false)}
-        </div>
-
-        {giftNoteField}
-      </Section>
-
-      <Section
-        title="Gifts among the guests"
-        description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other."
-      >
-        {exchangeFields(false)}
-      </Section>
-
-      {changes.length > 0 && (
-        <div className="rounded-xl bg-brand-50 p-4">
-          <Checkbox
-            isSelected={notifyGuests}
-            onChange={setNotifyGuests}
-            label={<span className="font-medium">Email guests about the {changeSummary(changes).replace(/^New /, "new ")}</span>}
-            hint="Everyone who said yes or maybe, and everyone invited who hasn't answered, gets the new details, and a line on the invitation says what changed. Untick this for a small fix, like a typo."
+          <Input
+            label="Event name"
+            value={title}
+            onChange={setTitle}
+            isRequired
+            maxLength={120}
+            placeholder={typeOption.titlePlaceholder}
           />
+          <Input
+            label="Hosted by (optional)"
+            value={hostedBy}
+            onChange={setHostedBy}
+            maxLength={120}
+            placeholder='e.g., "Aunt Linda & Grandma Jo"'
+            hint="Guests see this on the invitation. Emails come from this name."
+          />
+        </Section>
+
+        <Section
+          id="invitation"
+          title="Invitation"
+          description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
+        >
+          {pictureField}
+        </Section>
+
+        <Section id="when" title="When">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Date" type="date" value={eventDate} onChange={setEventDate} />
+            <SelectField
+              label="Time zone"
+              value={timeZone}
+              onChange={setTimeZone}
+              options={zoneOptions}
+            />
+            <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
+            <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
+          </div>
+        </Section>
+
+        {hidesAddress ? (
+          <Section id="where" title="Where to drop off">
+            <TextArea
+              label="Drop-off address"
+              value={locationAddress}
+              onChange={setLocationAddress}
+              maxLength={300}
+              rows={2}
+              placeholder={"123 Main St\nSan Francisco, CA 94102"}
+              hint="Only people who sign up for a day see it, on their own link and in their email."
+            />
+          </Section>
+        ) : (
+          <Section id="where" title="Where">
+            <Input
+              label="Place"
+              value={locationName}
+              onChange={setLocationName}
+              maxLength={120}
+              placeholder={`e.g., "Grandma's house" or "The Garden Room"`}
+            />
+            <TextArea
+              label="Address"
+              value={locationAddress}
+              onChange={setLocationAddress}
+              maxLength={300}
+              rows={2}
+              placeholder={"123 Main St\nSan Francisco, CA 94102"}
+              hint="Only people with the event link see it. Guests get a map link."
+            />
+          </Section>
+        )}
+
+        <Section id="message" title="Message to guests" description="Parking, dress code, what to bring: anything guests should know.">
+          <TextArea
+            aria-label="Message to guests"
+            value={message}
+            onChange={setMessage}
+            maxLength={2000}
+            rows={4}
+            placeholder="Join us for brunch and games as we celebrate Remi! Street parking is easiest."
+          />
+        </Section>
+
+        <Section id="rsvps" title="RSVPs">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
+            <SelectField
+              label="People per RSVP"
+              hint="Including the guest. 2 lets each guest bring one person."
+              value={maxPartySize}
+              onChange={setMaxPartySize}
+              options={partySizeOptions}
+            />
+          </div>
+          <Checkbox
+            isSelected={openRsvp}
+            onChange={setOpenRsvp}
+            label={<span className="font-normal">Anyone with the event link can RSVP</span>}
+            hint="They're added to your guest list. Turn this off to take RSVPs only from guests you invite."
+          />
+          <Checkbox
+            isSelected={askKids}
+            onChange={changeAskKids}
+            label={<span className="font-normal">Ask how many kids are coming</span>}
+            hint="Guests say how many of their party are kids, and you see both counts."
+          />
+          <Checkbox
+            isSelected={emailHost}
+            onChange={setEmailHost}
+            label={<span className="font-normal">Email me when someone RSVPs</span>}
+          />
+          <Checkbox
+            isSelected={remindDayBefore}
+            onChange={setRemindDayBefore}
+            label={<span className="font-normal">Email everyone going a reminder the day before</span>}
+            hint="With the time, the place and anything they signed up to bring."
+          />
+          <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
+        </Section>
+
+        <Section id="gifts" title="Gifts" description="What guests see about gifts, under the details on the invitation.">
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-sm font-medium text-secondary">Registries and wishlists</p>
+              <p className="text-sm text-tertiary">
+                Link yours, or someone else&apos;s with its link, like the parents&apos; registry for a baby shower.
+                They get an email saying you linked it. Linking doesn&apos;t let you change their registry.
+              </p>
+            </div>
+            {registryFields(false)}
+          </div>
+
+          {giftNoteField}
+        </Section>
+
+        <Section
+          id="exchange"
+          title="Gifts among the guests"
+          description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other."
+        >
+          {exchangeFields(false)}
+        </Section>
+
+        {changes.length > 0 && (
+          <div className="rounded-xl bg-brand-50 p-4">
+            <Checkbox
+              isSelected={notifyGuests}
+              onChange={setNotifyGuests}
+              label={<span className="font-medium">Email guests about the {changeSummary(changes).replace(/^New /, "new ")}</span>}
+              hint="Everyone who said yes or maybe, and everyone invited who hasn't answered, gets the new details, and a line on the invitation says what changed. Untick this for a small fix, like a typo."
+            />
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-error-primary">
+            {error}
+          </p>
+        )}
+
+        {/* On phones the buttons stay in a bar at the bottom of the screen,
+            so saving doesn't mean scrolling past every section first. */}
+        <div className="flex flex-wrap gap-2 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-4 max-sm:flex-nowrap max-sm:border-t max-sm:border-secondary max-sm:bg-primary max-sm:px-4 max-sm:pt-3 max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-sm:*:flex-1">
+          <Button type="submit" disabled={saving}>
+            <span className="inline-flex items-center gap-1.5">
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              {saving ? "Saving…" : editing ? "Save changes" : "Create event"}
+            </span>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={eventId ? `/dashboard/events/${eventId}` : "/dashboard/events"}>Cancel</Link>
+          </Button>
         </div>
-      )}
-
-      {error && (
-        <p role="alert" className="text-sm text-error-primary">
-          {error}
-        </p>
-      )}
-
-      {/* On phones the buttons stay in a bar at the bottom of the screen,
-          so saving doesn't mean scrolling past every section first. */}
-      <div className="flex flex-wrap gap-2 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-4 max-sm:flex-nowrap max-sm:border-t max-sm:border-secondary max-sm:bg-primary max-sm:px-4 max-sm:pt-3 max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-sm:*:flex-1">
-        <Button type="submit" disabled={saving}>
-          <span className="inline-flex items-center gap-1.5">
-            {saving && <Loader2 className="size-4 animate-spin" />}
-            {saving ? "Saving…" : editing ? "Save changes" : "Create event"}
-          </span>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href={eventId ? `/dashboard/events/${eventId}` : "/dashboard/events"}>Cancel</Link>
-        </Button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

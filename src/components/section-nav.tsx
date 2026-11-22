@@ -4,40 +4,51 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cx } from "@/lib/utils/cx";
 
-export interface AccountSection {
+/**
+ * A page split into sections with a navigation beside them, like the Account
+ * page and the edit event page. The page lays out the navigation and its
+ * sections with SECTION_NAV_GRID, inside a container that's max-w-2xl, and
+ * lg:max-w-5xl from lg. Each section has its id and SECTION_SCROLL_MARGIN,
+ * and a SectionTitle.
+ */
+export interface PageSection {
   /** The section's id on the page, and its link's #fragment. */
   id: string;
   label: string;
-  /** Waiting follow requests, shown as a number next to the label. */
+  /** Things waiting, like follow requests, shown as a number next to the label. */
   waiting?: number;
 }
+
+/** The navigation on the left from `lg`, and the sections beside it. */
+export const SECTION_NAV_GRID = "lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-10";
 
 /**
  * Room above a section when the page scrolls to it: the top bar, plus the
  * row of section links that sticks under it below `lg`. The navigation reads
  * it back to tell which section is current.
  */
-export const ACCOUNT_SECTION_SCROLL_MARGIN = "scroll-mt-34 lg:scroll-mt-24";
+export const SECTION_SCROLL_MARGIN = "scroll-mt-34 lg:scroll-mt-24";
 
-/** Old section ids that links still use. Follow request emails already sent link to #follows. */
-const RENAMED_SECTIONS: Record<string, string> = { follows: "follow-requests" };
-
-export function accountSectionTitleId(sectionId: string) {
+export function sectionTitleId(sectionId: string) {
   return `${sectionId}-title`;
 }
 
 /**
  * A section's title. It's the h2 that the navigation moves focus to, so
  * screen readers say which section someone jumped to and Tab carries on from
- * there. It keeps the look of a card title.
+ * there. It looks like a card title, unless the page gives it a look of its own.
  */
-export function AccountSectionTitle({ sectionId, children }: { sectionId: string; children: React.ReactNode }) {
+export function SectionTitle({
+  sectionId,
+  className = "font-sans leading-none font-semibold tracking-normal",
+  children,
+}: {
+  sectionId: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <h2
-      id={accountSectionTitleId(sectionId)}
-      tabIndex={-1}
-      className="font-sans leading-none font-semibold tracking-normal outline-none"
-    >
+    <h2 id={sectionTitleId(sectionId)} tabIndex={-1} className={cx(className, "outline-none")}>
       {children}
     </h2>
   );
@@ -58,11 +69,14 @@ function scrollMargin(element: HTMLElement) {
  * reached the top of the page. At the very bottom it's the last section,
  * since the short ones down there never reach the top. A section someone
  * picked stays current while the page scrolls to it, and after, as long as
- * it's in view at the bottom of the page.
+ * it's in view and the page can't scroll any further: at the bottom, or on a
+ * screen tall enough to show the whole page.
  */
-function useCurrentSection(ids: string[]) {
+function useCurrentSection(ids: string[], aliases: Record<string, string>) {
   const [current, setCurrent] = useState<string | null>(ids[0] ?? null);
   const idsRef = useRef(ids);
+  // A page's old ids don't change while it's open.
+  const aliasesRef = useRef(aliases);
   // The section someone picked, and whether the scroll to it is still going.
   const picked = useRef<string | null>(null);
   const scrolling = useRef(false);
@@ -75,13 +89,15 @@ function useCurrentSection(ids: string[]) {
     if (sections.length === 0) return;
 
     const root = document.documentElement;
-    const atBottom = window.scrollY > 0 && window.innerHeight + window.scrollY >= root.scrollHeight - 2;
+    // The page can't scroll any further down: it's at the bottom, or it all fits.
+    const atEnd = window.innerHeight + window.scrollY >= root.scrollHeight - 2;
+    const atBottom = window.scrollY > 0 && atEnd;
 
     const pickedSection = picked.current ? document.getElementById(picked.current) : null;
     if (pickedSection) {
       const { top, bottom } = pickedSection.getBoundingClientRect();
       const inView = top < window.innerHeight && bottom > scrollMargin(pickedSection);
-      if (scrolling.current || (atBottom && inView)) {
+      if (scrolling.current || (atEnd && inView)) {
         setCurrent(pickedSection.id);
         return;
       }
@@ -110,7 +126,7 @@ function useCurrentSection(ids: string[]) {
 
   const goTo = useCallback(
     (requested: string, { smooth = true, rewriteUrl = true }: { smooth?: boolean; rewriteUrl?: boolean } = {}) => {
-      const id = RENAMED_SECTIONS[requested] ?? requested;
+      const id = aliasesRef.current[requested] ?? requested;
       const section = document.getElementById(id);
       if (!section || !idsRef.current.includes(id)) return;
 
@@ -119,7 +135,7 @@ function useCurrentSection(ids: string[]) {
       setCurrent(id);
       waitForScrollToSettle();
       section.scrollIntoView({ behavior: smooth && !prefersReducedMotion() ? "smooth" : "auto", block: "start" });
-      (document.getElementById(accountSectionTitleId(id)) ?? section).focus({ preventScroll: true });
+      (document.getElementById(sectionTitleId(id)) ?? section).focus({ preventScroll: true });
       // null lets Next.js keep its own history state and learn the new URL.
       if (rewriteUrl && window.location.hash !== `#${id}`) window.history.replaceState(null, "", `#${id}`);
     },
@@ -139,9 +155,9 @@ function useCurrentSection(ids: string[]) {
       if (scrolling.current) waitForScrollToSettle();
       update();
     };
-    // A link to a section, from the dashboard or an email, lands here. The
-    // page's loading skeleton shows first, so Next.js has already scrolled
-    // to the top by the time the section exists: go to it now.
+    // A link to a section, from another page or an email, lands here. When
+    // the page has a loading skeleton, it shows first, so Next.js has already
+    // scrolled to the top by the time the section exists: go to it now.
     const fromHash = () => {
       const hash = window.location.hash.slice(1);
       // Section ids are plain words, so a hash that needs decoding isn't one.
@@ -164,15 +180,30 @@ function useCurrentSection(ids: string[]) {
   return [current, goTo] as const;
 }
 
+const NO_ALIASES: Record<string, string> = {};
+
 /**
- * The Account page's list of sections. On wide screens it's a column on the
- * left that stays in view; below `lg` it's a row of links that sticks under
- * the top bar and scrolls sideways on its own, never the page. The current
- * section follows the scroll, and following a link moves focus to that
- * section's title.
+ * A page's list of sections. On wide screens it's a column on the left that
+ * stays in view; below `lg` it's a row of links that sticks under the top bar
+ * and scrolls sideways on its own, never the page. The current section
+ * follows the scroll, and following a link moves focus to that section's
+ * title.
  */
-export function AccountNav({ sections }: { sections: AccountSection[] }) {
-  const [current, goTo] = useCurrentSection(sections.map((section) => section.id));
+export function SectionNav({
+  sections,
+  label,
+  aliases = NO_ALIASES,
+}: {
+  sections: PageSection[];
+  /** What screen readers call the navigation: "Account sections". */
+  label: string;
+  /** Old section ids that links still use, and the section each one means now. */
+  aliases?: Record<string, string>;
+}) {
+  const [current, goTo] = useCurrentSection(
+    sections.map((section) => section.id),
+    aliases,
+  );
   const listRef = useRef<HTMLUListElement>(null);
 
   // In the row of links, bring the current one into view.
@@ -191,7 +222,7 @@ export function AccountNav({ sections }: { sections: AccountSection[] }) {
 
   return (
     <nav
-      aria-label="Account sections"
+      aria-label={label}
       className={cx(
         "sticky top-16 z-30 -mx-4 mb-6 border-b border-secondary bg-primary/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-primary/80",
         "lg:top-24 lg:mx-0 lg:mb-0 lg:border-0 lg:bg-transparent lg:px-0 lg:backdrop-blur-none lg:supports-[backdrop-filter]:bg-transparent",
