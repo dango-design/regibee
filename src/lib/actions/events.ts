@@ -241,6 +241,12 @@ function readExchangeForm(formData: FormData): ExchangeForm | null | { error: st
 const MAX_LINKED_REGISTRIES = 10;
 
 /**
+ * Everyone gives everyone: each guest's wish list is a Regibee list, so
+ * adding one takes an account. A Secret Santa's wishlist can still be any link.
+ */
+const ACCOUNT_FOR_WISH_LIST = "Make a free account or log in to add your wish list.";
+
+/**
  * The registries the event form asks to link, in order. Each is either one
  * the host manages (by id), one already linked (by id), or any registry by
  * its share link. Null when the form didn't send a list, which leaves the
@@ -1176,6 +1182,11 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
         : input.exchange.join && input.status !== "no";
     const inExchange = !everyone && exchange.drawn_at ? Boolean(existing?.in_exchange) : wantsIn;
     if (everyone || !exchange.drawn_at) response.in_exchange = inExchange;
+    // A wish list here is a Regibee list, added after the RSVP, so it takes
+    // an account. A Secret Santa's can still be any link.
+    if (everyone && (input.exchange.wishlistUrl?.trim() || input.exchange.giftIdeas?.trim())) {
+      return { error: ACCOUNT_FOR_WISH_LIST };
+    }
     // When everyone gives everyone, guests add their wish list after they
     // RSVP (saveEventWishlist), so an RSVP without one keeps what's saved.
     if (inExchange && (!everyone || input.exchange.wishlistUrl !== undefined)) {
@@ -1334,18 +1345,22 @@ export interface EventWishlistInput {
   registryId?: string;
   /** Make a new list for the signed-in account, and use it. */
   makeNew?: boolean;
-  /** A link to a list at any store, or "" for none. Used when neither of the above is. */
+  /**
+   * Only "", to take off a link saved before wish lists here needed an
+   * account. A link to a list is refused: pick or make a Regibee list.
+   */
   url?: string;
-  /** Left out to keep what's saved. */
+  /** Only "", to clear gift ideas saved before. New ones are refused, like a link. */
   giftIdeas?: string;
 }
 
 /**
  * A guest's wish list on an everyone-gives-everyone event, added after they
- * RSVP: one of their own Regibee lists, a new one made here, or a link to any
- * store's list, with gift ideas. Picking or making a list needs an account,
- * since it's theirs. The guest is found by their token, like submitRsvp.
- * Nobody is emailed. Returns the Regibee list now linked, if any.
+ * RSVP: one of their own Regibee lists, or a new one made here. Either needs
+ * an account, since the list is theirs. A pasted link or gift ideas are
+ * refused; only clearing ones saved before still works. The guest is found
+ * by their token, like submitRsvp. Nobody is emailed. Returns the Regibee
+ * list now linked, if any.
  */
 export async function saveEventWishlist(input: EventWishlistInput): Promise<Result<{ registryId: string | null }>> {
   const { data: eventRow } = await supabaseAdmin.from("events").select("*").eq("slug", input.slug).maybeSingle();
@@ -1367,6 +1382,8 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
     : { data: null };
   if (!guest) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
   if (!guest.in_exchange) return { error: "RSVP that you're coming first, then add your wish list." };
+  // A wish list here is a Regibee list, so it takes an account.
+  if (input.url?.trim() || input.giftIdeas?.trim()) return { error: ACCOUNT_FOR_WISH_LIST };
 
   const changes: Record<string, unknown> = {};
   let registryId: string | null = null;

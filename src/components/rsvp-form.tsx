@@ -237,7 +237,7 @@ export function RsvpForm({
         )}
         {current.note && <p className="mt-3 text-sm whitespace-pre-line text-secondary">Your note: {current.note}</p>}
         {!passed && (
-          <Button variant="outline" className="mt-4" onClick={() => setEditing(true)}>
+          <Button variant="ghost" className="mt-4" onClick={() => setEditing(true)}>
             {exchange && current.inExchange && !everyone
               ? "Change your answer or wishlist"
               : signup && current.status !== "no"

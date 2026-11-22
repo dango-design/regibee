@@ -6,7 +6,7 @@ import { EventGroupGifts } from "@/components/event-group-gifts";
 import { EventInvitation, type InvitationRegistry } from "@/components/event-invitation";
 import { RsvpForm } from "@/components/rsvp-form";
 import { SecretSantaCard } from "@/components/secret-santa-card";
-import type { EventWishlistInput, RsvpInput } from "@/lib/actions/events";
+import type { RsvpInput } from "@/lib/actions/events";
 import { addDays } from "@/lib/demo-data";
 import { findDemoEvent, type DemoEvent } from "@/lib/demo-events";
 import { DEMO_GROUP_GIFTS, demoEventGroupGift } from "@/lib/demo-group-gifts";
@@ -195,25 +195,9 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
     return { error: null };
   };
 
-  // The wish list step after an RSVP, like saveEventWishlist. The demo has no
-  // accounts, so a pasted link and gift ideas are what it saves.
+  // The wish list step after an RSVP. The demo has no accounts, so like a
+  // signed-out guest's, it offers making an account or logging in.
   const me = guests.find((g) => g.id === (guest?.id ?? VISITOR_ID)) ?? null;
-  const saveWishlist = async (input: EventWishlistInput) => {
-    const slug = input.url?.match(/\/r\/([a-z0-9-]+)/i)?.[1];
-    const list = slug ? findDemoRegistry(today, { slug }) : null;
-    setGuests((current) =>
-      current.map((g) =>
-        g.id !== me?.id
-          ? g
-          : {
-              ...g,
-              ...(input.url !== undefined && { wishlist_url: input.url.trim() || null, wishlist_registry_id: list?.id ?? null }),
-              ...(input.giftIdeas !== undefined && { gift_ideas: input.giftIdeas.trim() || null }),
-            },
-      ),
-    );
-    return { error: null };
-  };
 
   return (
     <DemoGuestShell>
@@ -293,7 +277,6 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
                         giftIdeas: me?.gift_ideas ?? null,
                         account: null,
                         returnTo: `/demo/e/${event.slug}${token ? `?g=${encodeURIComponent(token)}` : ""}#wishlist`,
-                        saveAction: saveWishlist,
                       }
                     : null
                 }
