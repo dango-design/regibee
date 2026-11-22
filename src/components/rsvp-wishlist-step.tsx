@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Gift, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/base/input/input";
-import { TextArea } from "@/components/base/textarea/textarea";
 import { saveEventWishlist, type EventWishlistInput } from "@/lib/actions/events";
 import { storeName } from "@/lib/events";
 
@@ -32,10 +30,10 @@ export interface RsvpWishlistStepProps extends RsvpWishlist {
 
 /**
  * The step after a guest says they're coming to an everyone-gives-everyone
- * event: add the wish list the others will shop from. Someone signed in picks
- * one of their lists or makes a new one. Someone signed out makes an account
- * or logs in, and comes back here to do that. Anyone can paste a link to a
- * list at another store, or just write gift ideas.
+ * event: add the wish list the others will shop from. It's a Regibee list, so
+ * it takes an account. Someone signed in picks one of their lists or makes a
+ * new one. Someone signed out makes an account or logs in, and comes back
+ * here to do that. A link or gift ideas saved before this rule still show.
  */
 export function RsvpWishlistStep({
   slug,
@@ -50,10 +48,7 @@ export function RsvpWishlistStep({
   const [refreshing, startTransition] = useTransition();
   const hasSomething = Boolean(current || giftIdeas);
   const [choosing, setChoosing] = useState(!hasSomething);
-  const [pasting, setPasting] = useState(false);
-  const [url, setUrl] = useState(current?.url ?? "");
-  const [ideas, setIdeas] = useState(giftIdeas ?? "");
-  // Which button is saving: a list's id, "new" or "paste".
+  // Which button is saving: a list's id or "new".
   const [busy, setBusy] = useState<string | null>(null);
   const [justMade, setJustMade] = useState(false);
   const [error, setError] = useState("");
@@ -75,16 +70,9 @@ export function RsvpWishlistStep({
     startTransition(() => {
       setBusy(null);
       setChoosing(false);
-      setPasting(false);
       setJustMade(Boolean(choice.makeNew));
       router.refresh();
     });
-  };
-
-  const openPaste = () => {
-    setUrl(current?.url ?? "");
-    setIdeas(giftIdeas ?? "");
-    setPasting(true);
   };
 
   // A button's label, or a spinner while that button's save runs.
@@ -153,19 +141,13 @@ export function RsvpWishlistStep({
       aria-labelledby="wishlist-heading"
       className="mt-4 flex scroll-mt-24 flex-col gap-4 rounded-xl bg-mint-50 p-4"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
           <Gift aria-hidden="true" className="size-4.5 text-mint-800" />
         </span>
-        <div className="min-w-0 pt-1">
-          <h3 id="wishlist-heading" className="font-medium text-primary">
-            {current ? "Change your wish list" : "Now add your wish list"}
-          </h3>
-          <p className="mt-1 text-sm text-secondary">
-            Everyone gives everyone, so the others need to know what you&apos;d like. They&apos;ll see what&apos;s
-            been reserved from your list. You won&apos;t, so your gifts stay a surprise.
-          </p>
-        </div>
+        <h3 id="wishlist-heading" className="min-w-0 font-medium text-primary">
+          {current ? "Change your wish list" : "Now add your wish list"}
+        </h3>
       </div>
 
       {account ? (
@@ -206,8 +188,10 @@ export function RsvpWishlistStep({
             </div>
           )}
           <div className="flex flex-col items-start gap-1.5">
+            {/* With lists to pick from, picking one is the main thing to do,
+                so making another is a quieter button. */}
             <Button
-              variant={lists.length > 0 ? "outline" : "default"}
+              variant={lists.length > 0 ? "ghost" : "default"}
               disabled={working}
               onClick={() => save({ makeNew: true }, "new")}
             >
@@ -244,48 +228,6 @@ export function RsvpWishlistStep({
         </div>
       )}
 
-      {pasting ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save({ url, giftIdeas: ideas }, "paste");
-          }}
-          className="flex flex-col gap-3 border-t border-secondary pt-4"
-        >
-          <Input
-            label="Link to your list (optional)"
-            value={url}
-            onChange={setUrl}
-            placeholder="A list at Amazon, Target or any store"
-            hint="Paste the whole link from your browser."
-          />
-          <TextArea
-            label="Gift ideas (optional)"
-            value={ideas}
-            onChange={setIdeas}
-            rows={2}
-            maxLength={1000}
-            placeholder="Cozy socks (size M), anything with cats, a good mystery novel"
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" disabled={working}>
-              {spinner("paste", "Save", "Saving…")}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" disabled={working} onClick={() => setPasting(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <button
-          type="button"
-          onClick={openPaste}
-          className="cursor-pointer self-start text-left text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11"
-        >
-          Paste a link from another store, or add gift ideas
-        </button>
-      )}
-
       {error && (
         <p role="alert" className="text-sm text-error-primary">
           {error}
@@ -300,7 +242,6 @@ export function RsvpWishlistStep({
           disabled={working}
           onClick={() => {
             setChoosing(false);
-            setPasting(false);
             setError("");
           }}
         >

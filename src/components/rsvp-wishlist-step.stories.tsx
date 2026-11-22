@@ -30,22 +30,18 @@ type Story = StoryObj<typeof RsvpWishlistStep>;
 
 /**
  * Not signed in: make a free account and a list, or log in to use one. Both
- * come back to the guest's own link. Opening the last line lets them paste a
- * list from another store or write gift ideas instead.
+ * come back to the guest's own link. A wish list here is a Regibee list, so
+ * there's no pasting another store's link.
  */
 export const SignedOut: Story = {
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("link", { name: "Log in" })).toHaveAttribute(
       "href",
       `/login?redirect=${encodeURIComponent("/e/christmas-at-aunt-lindas-k3m9q2xa?g=token-g4#wishlist")}`,
     );
-    await userEvent.click(canvas.getByRole("button", { name: /Paste a link from another store/ }));
-    await userEvent.type(canvas.getByLabelText(/Link to your list/), "amazon.com/hz/wishlist/ls/3KQ9");
-    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
-    await expect(args.saveAction).toHaveBeenCalledWith(
-      expect.objectContaining({ url: "amazon.com/hz/wishlist/ls/3KQ9", giftIdeas: "" }),
-    );
+    await expect(canvas.queryByRole("button", { name: /Paste a link/ })).toBeNull();
+    await expect(canvas.queryByLabelText(/Gift ideas/)).toBeNull();
   },
 };
 
@@ -85,7 +81,10 @@ export const Linked: Story = {
   },
 };
 
-/** A list from another store. Change opens the choices again, with a way back. */
+/**
+ * A list from another store, saved before a wish list here had to be a
+ * Regibee list. It still shows. Change opens the choices again, with a way back.
+ */
 export const LinkedElsewhere: Story = {
   args: {
     current: { url: "https://www.amazon.com/hz/wishlist/ls/3KQ9", title: null, ownListId: null },

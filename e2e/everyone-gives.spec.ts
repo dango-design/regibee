@@ -15,7 +15,6 @@ import {
   reserveGift,
   runReservationJob,
   signIn,
-  SITE_URL,
   uniqueEmail,
   uniqueId,
   waitForReact,
@@ -56,13 +55,31 @@ async function rsvpGoing(page: Page, rsvpPath: string) {
   await expect(page.getByRole("heading", { name: "Now add your wish list" })).toBeVisible();
 }
 
-/** RSVPs "Going" from a guest's own link, then pastes a wish list link, or adds none. */
-async function rsvpWithList(page: Page, rsvpPath: string, wishlistUrl: string | null) {
+/**
+ * RSVPs "Going" from a guest's own link, logs in from the wish list step,
+ * and links one of the account's lists. A wish list here is a Regibee list,
+ * so it takes an account.
+ */
+async function rsvpWithOwnList(
+  page: Page,
+  rsvpPath: string,
+  account: { email: string; password: string },
+  list: { title: string },
+) {
   await rsvpGoing(page, rsvpPath);
-  if (!wishlistUrl) return;
-  await page.getByRole("button", { name: /Paste a link from another store/ }).click();
-  await page.getByLabel(/Link to your list/).fill(wishlistUrl);
-  await page.getByRole("button", { name: "Save" }).click();
+  // The step's own Log in, not the one in the top bar. It has no way to paste a link.
+  const step = page.getByRole("region", { name: "Now add your wish list" });
+  await expect(step.getByRole("button", { name: /Paste a link/ })).toHaveCount(0);
+  await step.getByRole("link", { name: "Log in" }).click();
+  await page.waitForURL(/\/login\?redirect=/);
+  await waitForReact(page.locator("form"));
+  await page.getByLabel("Email").fill(account.email);
+  await page.getByLabel("Password").fill(account.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((url) => `${url.pathname}${url.search}` === rsvpPath);
+  const use = page.getByRole("button", { name: `Use ${list.title}` });
+  await waitForReact(use);
+  await use.click();
   await expect(page.getByRole("heading", { name: "Your wish list" })).toBeVisible();
 }
 
@@ -97,15 +114,19 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   // Maya and Ben RSVP with their lists. Maya's list starts hiding what's
   // reserved from her, so her gifts stay a surprise.
   const mayaContext = await browser.newContext();
-  await rsvpWithList(await mayaContext.newPage(), mayaGuest.rsvpPath, `${SITE_URL}/r/${mayaList.slug}`);
+  await rsvpWithOwnList(await mayaContext.newPage(), mayaGuest.rsvpPath, maya, mayaList);
   await mayaContext.close();
-  const benContext = await browser.newContext();
-  const benPage = await benContext.newPage();
-  await rsvpWithList(benPage, benGuest.rsvpPath, `${SITE_URL}/r/${benList.slug}`);
+  const benSignedIn = await browser.newContext();
+  await rsvpWithOwnList(await benSignedIn.newPage(), benGuest.rsvpPath, ben, benList);
+  await benSignedIn.close();
   const { data: mayaSettings } = await db.from("registries").select("settings").eq("id", mayaList.id).single();
   expect(mayaSettings?.settings).toMatchObject({ hide_reservations: true });
 
-  // Ben sees everyone's lists, opens Maya's from the invitation and reserves the scarf.
+  // Ben, back on his own link without signing in, sees everyone's lists,
+  // opens Maya's from the invitation and reserves the scarf.
+  const benContext = await browser.newContext();
+  const benPage = await benContext.newPage();
+  await benPage.goto(benGuest.rsvpPath);
   const lists = benPage.getByRole("region", { name: "Everyone's wish lists" });
   await expect(lists.getByText(mayaList.title)).toBeVisible();
   await lists.getByRole("link", { name: "See Maya's list" }).click();
@@ -117,7 +138,7 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   // Cleo, another guest, sees that Ben reserved it.
   const cleoContext = await browser.newContext();
   const cleoPage = await cleoContext.newPage();
-  await rsvpWithList(cleoPage, cleoGuest.rsvpPath, null);
+  await rsvpGoing(cleoPage, cleoGuest.rsvpPath);
   await cleoPage
     .getByRole("region", { name: "Everyone's wish lists" })
     .getByRole("link", { name: "See Maya's list" })

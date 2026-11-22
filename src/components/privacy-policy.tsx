@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 20, 2026",
+  effectiveDate: "November 21, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -328,8 +328,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Everyone gives everyone.</strong> At an event where
-                every guest gives to everyone, you can add a wish list link and gift ideas when you RSVP. The
-                event&apos;s guests and hosts see them on the invitation, with your name.
+                every guest gives to everyone, you add one of your Regibee wish lists after you RSVP, which takes an
+                account. The event&apos;s guests and hosts see it on the invitation, with your name.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Group gifts.</strong> Someone with an account can
