@@ -9,7 +9,6 @@ import {
   Megaphone,
   PartyPopper,
   Shuffle,
-  Users,
 } from "lucide-react";
 import {
   eventTheme,
@@ -19,9 +18,11 @@ import {
   mapsUrl,
   type EventDetails,
   type GiftExchange,
+  type GuestWishList,
   type LinkedRegistry,
 } from "@/lib/events";
 import type { InvitationUpdate } from "@/lib/event-updates";
+import { GuestWishLists } from "@/components/guest-wish-lists";
 import { SignupSheetSection, type InvitationSignup } from "@/components/signup-sheet";
 import { cx } from "@/lib/utils/cx";
 
@@ -61,6 +62,12 @@ export interface EventInvitationProps {
   /** The event's gift exchange, when it has one. */
   exchange?: Pick<GiftExchange, "kind" | "budget" | "draw_by" | "mailed" | "drawn_at"> | null;
   /**
+   * Everyone gives everyone: each guest's wish list, for the event's guests
+   * and hosts only. They share one section with the lists the host linked.
+   * Leave it out for anyone else, who sees only the host's lists there.
+   */
+  wishLists?: { lists: GuestWishList[]; waitingCount?: number; hostView?: boolean } | null;
+  /**
    * The event's slug and the guest's RSVP token. With both, gift links go
    * through the event, which tells the registry who the guest is.
    */
@@ -83,7 +90,7 @@ export interface EventInvitationProps {
    * the gift sections: a guest answers before browsing what to give.
    */
   reply?: React.ReactNode;
-  /** What comes after the gift sections, such as everyone's wish lists and group gifts. */
+  /** What comes after the gift sections, such as group gifts. */
   children?: React.ReactNode;
   /** Put in front of the registry link. The demo passes "/demo". */
   basePath?: string;
@@ -192,6 +199,7 @@ export function EventInvitation({
   registries: registryList,
   registry,
   exchange = null,
+  wishLists = null,
   eventSlug,
   guestToken,
   calendar,
@@ -211,6 +219,9 @@ export function EventInvitation({
   const time = formatEventTime(event);
   const map = mapsUrl(event);
   const hasImage = Boolean(event.image_url);
+  // Everyone gives everyone: the host's lists and the guests' lists are all
+  // the same kind of thing, so they share one section instead of Gifts.
+  const everyone = exchange?.kind === "everyone";
 
   return (
     <div
@@ -316,7 +327,21 @@ export function EventInvitation({
 
         {reply}
 
-        {(registries.length > 0 || event.gift_note) && (
+        {everyone && (
+          <GuestWishLists
+            lists={wishLists?.lists ?? null}
+            registries={registries}
+            giftNote={event.gift_note}
+            budget={exchange.budget}
+            eventSlug={eventSlug}
+            guestToken={guestToken}
+            waitingCount={wishLists?.waitingCount}
+            hostView={wishLists?.hostView}
+            basePath={basePath || undefined}
+          />
+        )}
+
+        {!everyone && (registries.length > 0 || event.gift_note) && (
           <section aria-labelledby="gifts-heading" className="flex flex-col gap-4 rounded-2xl bg-brand-50 p-4">
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
@@ -364,27 +389,6 @@ export function EventInvitation({
         )}
 
         {signup && <SignupSheetSection signup={signup} />}
-
-        {exchange?.kind === "everyone" && (
-          <section aria-labelledby="exchange-heading" className="flex items-start gap-3 rounded-2xl bg-mint-50 p-4">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-              <Users aria-hidden="true" className="size-4.5 text-mint-800" />
-            </span>
-            <div className="min-w-0 pt-1">
-              <h2 id="exchange-heading" className="font-medium text-primary">
-                Everyone gives everyone
-              </h2>
-              <p className="mt-1 text-secondary">
-                Everyone adds a wish list when they RSVP, and shops from everyone else&apos;s
-                {exchange.budget ? `, about ${exchange.budget} a gift` : ""}. You&apos;ll see what the others
-                reserved, so nobody doubles up.
-              </p>
-              <p className="mt-1 text-sm text-tertiary">
-                Nobody sees what&apos;s been reserved from their own list until the day after.
-              </p>
-            </div>
-          </section>
-        )}
 
         {exchange && exchange.kind !== "everyone" && (
           <section aria-labelledby="exchange-heading" className="flex items-start gap-3 rounded-2xl bg-mint-50 p-4">

@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { EventInvitation, type InvitationRegistry } from "./event-invitation";
 import { RsvpForm } from "./rsvp-form";
-import { GuestWishLists } from "./guest-wish-lists";
 import {
   SAMPLE_TODAY,
   sampleEvent,
@@ -362,15 +361,30 @@ export const MealTrainBeforeSigningUp: Story = {
   },
 };
 
+/** The host's own wish list, linked to the family Christmas. */
+const hostsList: InvitationRegistry = {
+  title: "Aunt Linda's Christmas List",
+  slug: "aunt-lindas-list-5r2t",
+  itemsLeft: 4,
+  items: [{ id: "i6", title: "Panda Lovey", image_url: "/hero/panda.svg", price: 24 }],
+};
+
 /**
  * A family Christmas where everyone gives everyone. Glinda replied with her
- * wish list. Her RSVP comes first, then everyone's lists.
+ * wish list. Her RSVP comes first, then one section with everyone's lists:
+ * the one Aunt Linda linked first, then each guest's.
  */
 export const EveryoneGivesEveryone: Story = {
   args: {
-    event: { ...sampleExchangeEvent, title: "Christmas at Aunt Linda's" },
+    event: {
+      ...sampleExchangeEvent,
+      title: "Christmas at Aunt Linda's",
+      gift_note: "Wrapped gifts go under the tree when you arrive.",
+    },
     registry: null,
+    registries: [hostsList],
     exchange: sampleEveryoneExchange,
+    wishLists: { lists: sampleGuestWishLists, waitingCount: 2 },
     eventSlug: sampleExchangeEvent.slug,
     guestToken: "token-g1",
   },
@@ -409,18 +423,65 @@ export const EveryoneGivesEveryone: Story = {
             submitAction={submitAction}
           />
       }
-    >
-      <GuestWishLists
-        lists={sampleGuestWishLists}
-        eventSlug={sampleExchangeEvent.slug}
-        guestToken="token-g1"
-        waitingCount={2}
-      />
-    </EventInvitation>
+    />
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // One section for every list: no separate Gifts or exchange boxes.
+    await expect(canvas.queryByRole("region", { name: "Gifts" })).toBeNull();
+    await expect(canvas.queryByRole("region", { name: "Everyone gives everyone" })).toBeNull();
+    const lists = canvas.getByRole("region", { name: "Everyone's wish lists" });
+    await expect(within(lists).getByText(/about \$25 a gift/)).toBeVisible();
+    const links = within(lists).getAllByRole("link");
+    await expect(links.map((link) => link.textContent)).toEqual([
+      "See list: Aunt Linda's Christmas List",
+      "See Elphaba's list",
+      "See Fiyero's list",
+    ]);
+    await expect(links[0]).toHaveAttribute(
+      "href",
+      `/e/${sampleExchangeEvent.slug}/gifts?g=token-g1&to=${hostsList.slug}`,
+    );
+  },
 };
 
 export const EveryoneGivesEveryonePhone: Story = {
   ...EveryoneGivesEveryone,
+  play: undefined,
   globals: { viewport: { value: "mobile1" } },
+};
+
+/**
+ * Someone on the plain event link who isn't a guest yet. They see how the
+ * exchange works and the host's list, but not the guests' lists.
+ */
+export const EveryoneGivesEveryoneVisitor: Story = {
+  args: {
+    ...EveryoneGivesEveryone.args,
+    wishLists: null,
+    guestToken: null,
+  },
+  render: (args) => (
+    <EventInvitation
+      {...args}
+      reply={
+        <RsvpForm
+          slug={sampleExchangeEvent.slug}
+          guest={null}
+          token={null}
+          openRsvp
+          maxPartySize={sampleExchangeEvent.max_party_size}
+          exchange={{ kind: "everyone", mailed: false, drawn: false }}
+          passed={false}
+          submitAction={submitAction}
+        />
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const lists = within(canvasElement).getByRole("region", { name: "Everyone's wish lists" });
+    await expect(within(lists).getAllByRole("link")).toHaveLength(1);
+    await expect(within(lists).getByText("Aunt Linda's Christmas List")).toBeVisible();
+    await expect(within(lists).queryByText("Elphaba Thropp")).toBeNull();
+  },
 };

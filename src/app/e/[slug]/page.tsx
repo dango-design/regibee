@@ -7,7 +7,6 @@ import { RsvpForm } from "@/components/rsvp-form";
 import type { RsvpWishlist } from "@/components/rsvp-wishlist-step";
 import { PoweredByFooter } from "@/components/site-footer";
 import { SecretSantaCard } from "@/components/secret-santa-card";
-import { GuestWishLists } from "@/components/guest-wish-lists";
 import { EventGroupGifts } from "@/components/event-group-gifts";
 import { groupGiftsForEvent, listsOfViewer } from "@/lib/group-gifts-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -206,6 +205,7 @@ export default async function PublicEventPage({
           event={shown}
           registries={registries}
           exchange={exchange}
+          wishLists={showGuestLists ? { lists: guestLists, waitingCount: waiting, hostView: !guest } : null}
           eventSlug={event.slug}
           guestToken={guest?.token ?? null}
           calendar={google ? { google, ics: `/e/${event.slug}/calendar` } : null}
@@ -217,7 +217,7 @@ export default async function PublicEventPage({
           addressHidden={addressHidden}
           updates={updates}
           // The reply comes before the gift sections: a guest answers before
-          // browsing what to give. Everyone's lists and group gifts follow them.
+          // browsing what to give. Group gifts follow them.
           reply={
             <>
               {giftee && exchange && (
@@ -269,15 +269,6 @@ export default async function PublicEventPage({
             </>
           }
         >
-          {showGuestLists && (
-            <GuestWishLists
-              lists={guestLists}
-              eventSlug={event.slug}
-              guestToken={guest?.token ?? null}
-              waitingCount={waiting}
-              hostView={!guest}
-            />
-          )}
           <EventGroupGifts gifts={groupGifts} />
         </EventInvitation>
       </main>
