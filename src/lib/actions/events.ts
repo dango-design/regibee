@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { requireAccount } from "@/lib/require-account";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { eventImageUrlPrefix } from "@/lib/event-images";
+import { normalizeThemeColor } from "@/lib/event-colors";
 import { noEmailsMessage, reserveEmails, settleEmails, visitorEmailAllowance } from "@/lib/email-budget";
 import { notEnoughLeftMessage, partlySentMessage } from "@/lib/account-levels";
 import {
@@ -169,6 +170,12 @@ function readEventForm(formData: FormData): { fields: EventFields } | { error: s
     questions = cleaned.questions;
   }
   const rawRemind = formData.get("remindDayBefore");
+  // The invitation's color: "" for none. Missing, as from an older app, keeps it.
+  const rawTheme = formData.get("themeColor");
+  const themeColor = rawTheme === null || String(rawTheme).trim() === "" ? null : normalizeThemeColor(rawTheme);
+  if (rawTheme !== null && String(rawTheme).trim() !== "" && !themeColor) {
+    return { error: "That color doesn't look right. Pick another." };
+  }
 
   const rawType = formData.get("eventType");
   const eventDate = dateField(formData, "eventDate");
@@ -208,6 +215,7 @@ function readEventForm(formData: FormData): { fields: EventFields } | { error: s
       ask_kids: formData.get("askKids") === "true",
       ...(questions !== undefined && { rsvp_questions: questions }),
       ...(rawRemind !== null && { remind_day_before: rawRemind !== "false" }),
+      ...(rawTheme !== null && { theme_color: themeColor }),
     },
   };
 }
@@ -1631,6 +1639,7 @@ async function copyEventForNextYear(
       ask_kids: old.ask_kids,
       rsvp_questions: storedQuestions(old.rsvp_questions),
       remind_day_before: old.remind_day_before ?? true,
+      theme_color: old.theme_color ?? null,
       repeated_from: old.id,
       group_id: groupId,
     })

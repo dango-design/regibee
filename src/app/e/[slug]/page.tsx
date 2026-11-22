@@ -199,6 +199,7 @@ export default async function PublicEventPage({
           : null,
         giftIdeas: guest?.gift_ideas ?? null,
         account: viewer ? { lists: myLists.map(({ id, title }) => ({ id, title })) } : null,
+        themeColor: event.theme_color ?? null,
       }
     : null;
   // The event's own time zone could be a day behind UTC, so it counts as over

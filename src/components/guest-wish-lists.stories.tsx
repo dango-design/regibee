@@ -133,3 +133,8 @@ export const NobodyYet: Story = {
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1" } },
 };
+
+/** The host picked a color for the invitation, so it fills the section. */
+export const WithHostColor: Story = {
+  args: { themeColor: "#a0e4d4" },
+};

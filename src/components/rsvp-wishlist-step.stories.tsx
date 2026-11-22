@@ -98,6 +98,11 @@ export const LinkedElsewhere: Story = {
   },
 };
 
+/** The host picked a color for the invitation, so it fills the step. Without one, it has no fill. */
+export const WithHostColor: Story = {
+  args: { ...SignedInWithLists.args, themeColor: "#f9b8b9" },
+};
+
 export const SignedOutPhone: Story = {
   ...SignedOut,
   play: undefined,
