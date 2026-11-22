@@ -98,35 +98,28 @@ function ListRow({
   );
 }
 
-/** A linked list's first picture, or a gift icon when none of its gifts has one. */
-function ListPicture({ items }: { items: InvitationRegistry["items"] }) {
-  const picture = items?.find((item) => item.image_url)?.image_url;
+/** Someone's initials in a circle, in the brand color when it's you. */
+function Initials({ name, isYou }: { name: string; isYou: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary"
-    >
-      {picture ? (
-        // eslint-disable-next-line @next/next/no-img-element -- product pictures from any store
-        <img src={picture} alt="" className="size-full object-contain p-0.5" />
-      ) : (
-        <Gift className="size-4.5 text-quaternary" />
+      className={cx(
+        "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+        isYou ? "bg-brand-600 text-white" : "bg-mint-200 text-mint-900",
       )}
+    >
+      {initialsFor(name)}
     </span>
   );
 }
 
-/** "Remi & Max's registry · 3 gifts still needed", for a list the host linked. */
-function linkedDetail(linked: InvitationRegistry): string | null {
-  const parts = [
-    linked.honoree ? `${linked.honoree}'s registry` : null,
-    linked.itemsLeft !== undefined
-      ? linked.itemsLeft === 0
-        ? "Every gift is taken"
-        : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
-      : null,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : null;
+/**
+ * "See Maya's list", by first name. A couple's names stay whole: "See Remi &
+ * Max's list".
+ */
+function seeListLabel(name: string): string {
+  const who = /\s(&|and)\s/i.test(name) ? name : name.split(/\s+/)[0];
+  return `See ${who}'s list`;
 }
 
 /**
@@ -187,40 +180,47 @@ export function GuestWishLists({
 
       {(linked.length > 0 || (lists && lists.length > 0)) && (
         <ul className="flex flex-col gap-2">
-          {linked.map((registry) => (
-            <ListRow
-              key={`linked:${registry.slug}`}
-              leading={<ListPicture items={registry.items} />}
-              name={registry.title}
-              detail={linkedDetail(registry)}
-              href={hrefFor(registry.slug)}
-              button={
-                registry.honoree ? (
-                  `See ${registry.honoree}'s list`
-                ) : (
-                  <>
-                    See list<span className="sr-only">: {registry.title}</span>
-                  </>
-                )
-              }
-            />
-          ))}
+          {/* The host's lists look like the guests': whose list it is, then
+              its name. One with no name to show leads with its own name. */}
+          {linked.map((registry) => {
+            const owner = registry.ownerName?.trim() || null;
+            return (
+              <ListRow
+                key={`linked:${registry.slug}`}
+                leading={
+                  owner ? (
+                    <Initials name={owner} isYou={Boolean(registry.isYours)} />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-200 text-mint-900"
+                    >
+                      <Gift className="size-4.5" />
+                    </span>
+                  )
+                }
+                name={owner ?? registry.title}
+                isYou={Boolean(registry.isYours)}
+                detail={owner ? registry.title : null}
+                href={registry.isYours ? null : hrefFor(registry.slug)}
+                button={
+                  owner ? (
+                    seeListLabel(owner)
+                  ) : (
+                    <>
+                      See list<span className="sr-only">: {registry.title}</span>
+                    </>
+                  )
+                }
+              />
+            );
+          })}
           {(lists ?? []).map((entry) => {
             const href = entry.registry ? hrefFor(entry.registry.slug) : entry.url;
             return (
               <ListRow
                 key={entry.guestId}
-                leading={
-                  <span
-                    aria-hidden="true"
-                    className={cx(
-                      "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
-                      entry.isYou ? "bg-brand-600 text-white" : "bg-mint-200 text-mint-900",
-                    )}
-                  >
-                    {initialsFor(entry.name)}
-                  </span>
-                }
+                leading={<Initials name={entry.name} isYou={entry.isYou} />}
                 name={entry.name}
                 isYou={entry.isYou}
                 detail={
@@ -236,7 +236,7 @@ export function GuestWishLists({
                 // Where a click on the row goes: nowhere on your own row.
                 href={href && !entry.isYou ? href : null}
                 external={!entry.registry}
-                button={`See ${entry.name.split(/\s+/)[0]}'s list`}
+                button={seeListLabel(entry.name)}
               />
             );
           })}

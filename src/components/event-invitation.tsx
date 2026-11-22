@@ -51,6 +51,13 @@ export interface InvitationRegistry extends LinkedRegistry {
   items?: { id: string; title: string; image_url: string | null; price: number | null }[];
   /** How many items still need a giver. */
   itemsLeft?: number;
+  /**
+   * Everyone gives everyone: whose list it is, to show it like a guest's.
+   * Their account name, or the names written on the list.
+   */
+  ownerName?: string | null;
+  /** The viewer owns this list, so it has no button: nobody shops their own list. */
+  isYours?: boolean;
 }
 
 export interface EventInvitationProps {

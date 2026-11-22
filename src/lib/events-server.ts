@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { loadItemsForLists } from "@/lib/list-items";
+import { displayName } from "@/lib/profile-link";
 import {
   exchangeKind,
   type EventDetails,
@@ -219,6 +220,14 @@ export interface EventRegistry extends LinkedRegistry {
   items: InvitationItem[];
   /** How many items still need a giver. */
   itemsLeft: number;
+  /**
+   * Who owns the list, with withItems only. `name` is their account name
+   * when they show this list on their profile, as the list's own page does,
+   * and otherwise null. `accountName` is always their account name, for
+   * showing the owner their own list. Both stay on the server: never send
+   * the id or `accountName` to a page.
+   */
+  owner?: { id: string; name: string | null; accountName: string | null };
 }
 
 const PREVIEW_ITEMS = 4;
@@ -230,7 +239,9 @@ const PREVIEW_ITEMS = 4;
 export async function getEventRegistries(eventId: string, { withItems = false } = {}): Promise<EventRegistry[]> {
   const { data } = await supabaseAdmin
     .from("event_registries")
-    .select("linked_by, sort_order, created_at, registries(id, title, slug, honoree_names, parent_names, photo_url)")
+    .select(
+      "linked_by, sort_order, created_at, registries(id, title, slug, honoree_names, parent_names, photo_url, owner_id, listed_on_profile)",
+    )
     .eq("event_id", eventId)
     .order("sort_order")
     .order("created_at");
@@ -243,6 +254,8 @@ export async function getEventRegistries(eventId: string, { withItems = false } 
       honoree_names: string | null;
       parent_names: string | null;
       photo_url: string | null;
+      owner_id: string;
+      listed_on_profile: boolean | null;
     } | null;
   }[]).filter((row) => row.registries);
 
@@ -257,6 +270,21 @@ export async function getEventRegistries(eventId: string, { withItems = false } 
     itemsLeft: 0,
   }));
   if (!withItems || registries.length === 0) return registries;
+
+  // Whose each list is. Like the list's own page (src/app/r/[slug]/page.tsx),
+  // others see the owner's name only when they show the list on their profile.
+  const ownerIds = [...new Set(rows.map((row) => row.registries!.owner_id))];
+  const { data: owners } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ownerIds);
+  const ownerNames = new Map((owners || []).map((o) => [o.id as string, displayName(o as { full_name: string | null })]));
+  rows.forEach((row, i) => {
+    const list = row.registries!;
+    const accountName = ownerNames.get(list.owner_id) ?? null;
+    registries[i].owner = {
+      id: list.owner_id,
+      name: list.listed_on_profile ? accountName : null,
+      accountName,
+    };
+  });
 
   // Each list's own items and the ones its owner placed on it from their
   // other lists (src/lib/list-items.ts).

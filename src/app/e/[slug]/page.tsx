@@ -2,7 +2,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
-import { EventInvitation } from "@/components/event-invitation";
+import { EventInvitation, type InvitationRegistry } from "@/components/event-invitation";
 import { RsvpForm } from "@/components/rsvp-form";
 import type { RsvpWishlist } from "@/components/rsvp-wishlist-step";
 import { PoweredByFooter } from "@/components/site-footer";
@@ -30,7 +30,7 @@ import {
   type EventDetails,
   type EventGuest,
 } from "@/lib/events";
-import { getViewer } from "@/lib/viewer";
+import { getViewer, getViewerRelation } from "@/lib/viewer";
 
 // Event pages are read with the service-role client, always filtered by the
 // slug in the URL (and a guest's token). The event tables have no access rules
@@ -167,6 +167,23 @@ export default async function PublicEventPage({
       ])
     : [false, [], 0, []];
   const showGuestLists = everyone && (Boolean(guest) || isHost);
+  // Everyone gives everyone: each list the host linked shows whose it is,
+  // like a guest's. Its owner sees their own name. Anyone else sees the
+  // owner's name only when the list's own page shows it (on their profile,
+  // and they haven't blocked the viewer), or else the names written on the
+  // list. The owner's id and account name stay on the server.
+  const invitationRegistries: InvitationRegistry[] = await Promise.all(
+    registries.map(async ({ owner, ...list }) => {
+      if (!everyone || !owner) return list;
+      const isYours = viewer?.id === owner.id;
+      const named = isYours
+        ? owner.accountName
+        : owner.name && !(await getViewerRelation(owner.id)).hidden
+          ? owner.name
+          : null;
+      return { ...list, ownerName: named ?? list.honoree, isYours };
+    }),
+  );
   // The guest's own wish list, for the step after their RSVP.
   const ownEntry = guestLists.find((entry) => entry.isYou) ?? null;
   const ownList = ownEntry?.registry ? myLists.find((list) => list.slug === ownEntry.registry!.slug) : undefined;
@@ -203,7 +220,7 @@ export default async function PublicEventPage({
       <main id="main-content" className="container mx-auto px-4 py-8 sm:py-12">
         <EventInvitation
           event={shown}
-          registries={registries}
+          registries={invitationRegistries}
           exchange={exchange}
           wishLists={showGuestLists ? { lists: guestLists, waitingCount: waiting, hostView: !guest } : null}
           eventSlug={event.slug}
