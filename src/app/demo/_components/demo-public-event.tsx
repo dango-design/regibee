@@ -4,7 +4,6 @@ import { useState } from "react";
 import { notFound } from "next/navigation";
 import { EventGroupGifts } from "@/components/event-group-gifts";
 import { EventInvitation, type InvitationRegistry } from "@/components/event-invitation";
-import { GuestWishLists } from "@/components/guest-wish-lists";
 import { RsvpForm } from "@/components/rsvp-form";
 import { SecretSantaCard } from "@/components/secret-santa-card";
 import type { EventWishlistInput, RsvpInput } from "@/lib/actions/events";
@@ -224,6 +223,17 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
           event={shown}
           registries={registry ? [invitationRegistry(registry)] : []}
           exchange={exchange}
+          // Guests see everyone's lists. So do the hosts, which on the plain
+          // link is you, Remi & Max.
+          wishLists={
+            everyone
+              ? {
+                  lists: guestWishLists(today, guests, guest?.id ?? null),
+                  waitingCount: guests.filter((g) => g.rsvp_status === "pending").length,
+                  hostView: !guest,
+                }
+              : null
+          }
           calendar={google ? { google, ics: `/demo/e/${event.slug}/calendar` } : null}
           signup={sheet ? { title: sheet.sheet.title, note: sheet.sheet.note, rows: signupRows, mealTrain } : null}
           addressHidden={addressHidden}
@@ -291,15 +301,6 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
             </>
           }
         >
-          {/* After the gift sections, like the real page, guests see everyone's lists. So do the hosts, which on the plain link is you, Remi & Max. */}
-          {everyone && (
-            <GuestWishLists
-              lists={guestWishLists(today, guests, guest?.id ?? null)}
-              waitingCount={guests.filter((g) => g.rsvp_status === "pending").length}
-              hostView={!guest}
-              basePath="/demo"
-            />
-          )}
           <EventGroupGifts gifts={groupGifts} basePath="/demo" />
         </EventInvitation>
       </main>
