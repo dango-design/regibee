@@ -38,8 +38,9 @@ type Story = StoryObj<typeof GuestWishLists>;
 export const AsAGuest: Story = {};
 
 /**
- * The host linked their own list to the event, which shows first. A list
- * that's also a guest's wish list shows once, on the guest's row.
+ * The host linked their own list to the event. It shows first, and like a
+ * guest's: whose it is, then its name. A list that's also a guest's wish
+ * list shows once, on the guest's row.
  */
 export const WithTheHostsList: Story = {
   args: {
@@ -50,22 +51,58 @@ export const WithTheHostsList: Story = {
         slug: "aunt-lindas-list-5r2t",
         itemsLeft: 4,
         items: [{ id: "i1", title: "Panda Lovey", image_url: "/hero/panda.svg", price: 24 }],
+        ownerName: "Linda Park",
       },
-      { title: "Glinda's Christmas List", slug: "glindas-wishlist-8h3m", itemsLeft: 2, items: [] },
+      { title: "Glinda's Christmas List", slug: "glindas-wishlist-8h3m", itemsLeft: 2, items: [], ownerName: "Glinda" },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rows = canvas.getAllByRole("listitem");
+    await expect(rows).toHaveLength(5);
+    await expect(rows[0]).toHaveTextContent(/Linda Park\s*Aunt Linda's Christmas List/);
+    await expect(within(rows[0]).getByRole("link", { name: "See Linda's list" })).toBeVisible();
+    await expect(canvas.getAllByText("Glinda's Christmas List")).toHaveLength(1);
+  },
+};
+
+/**
+ * The host, looking at their own list on the invitation. It says it's
+ * theirs and has no button: nobody shops their own list.
+ */
+export const YourOwnLinkedList: Story = {
+  args: {
+    lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false })),
+    guestToken: null,
+    hostView: true,
+    registries: [
+      {
+        title: "Aunt Linda's Christmas List",
+        slug: "aunt-lindas-list-5r2t",
+        itemsLeft: 4,
+        items: [],
+        ownerName: "Linda Park",
+        isYours: true,
+      },
     ],
   },
   play: async ({ canvasElement }) => {
     const rows = within(canvasElement).getAllByRole("listitem");
-    await expect(rows).toHaveLength(5);
-    await expect(rows[0]).toHaveTextContent(/^Aunt Linda's Christmas List4 gifts still needed/);
-    await expect(within(canvasElement).getAllByText("Glinda's Christmas List")).toHaveLength(1);
+    await expect(rows[0]).toHaveTextContent(/Linda Park\s*\(you\)/);
+    await expect(within(rows[0]).queryByRole("link")).toBeNull();
   },
 };
 
-/** Someone who isn't a guest or a host: only the host's list shows. */
+/**
+ * Someone who isn't a guest or a host: only the host's lists show. Glinda's
+ * isn't on her profile here, so it leads with its own name.
+ */
 export const NotAGuest: Story = {
   args: {
     ...WithTheHostsList.args,
+    registries: WithTheHostsList.args!.registries!.map((list) =>
+      list.slug === "glindas-wishlist-8h3m" ? { ...list, ownerName: null } : list,
+    ),
     lists: null,
     guestToken: null,
   },

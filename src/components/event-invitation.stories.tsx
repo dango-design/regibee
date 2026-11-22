@@ -361,12 +361,13 @@ export const MealTrainBeforeSigningUp: Story = {
   },
 };
 
-/** The host's own wish list, linked to the family Christmas. */
+/** The host's own wish list, linked to the family Christmas. It shows on her profile, so guests see her name. */
 const hostsList: InvitationRegistry = {
   title: "Aunt Linda's Christmas List",
   slug: "aunt-lindas-list-5r2t",
   itemsLeft: 4,
   items: [{ id: "i6", title: "Panda Lovey", image_url: "/hero/panda.svg", price: 24 }],
+  ownerName: "Linda Park",
 };
 
 /**
@@ -433,8 +434,9 @@ export const EveryoneGivesEveryone: Story = {
     const lists = canvas.getByRole("region", { name: "Everyone's wish lists" });
     await expect(within(lists).getByText(/about \$25 a gift/)).toBeVisible();
     const links = within(lists).getAllByRole("link");
+    // The host's list looks like a guest's: whose it is, then its name.
     await expect(links.map((link) => link.textContent)).toEqual([
-      "See list: Aunt Linda's Christmas List",
+      "See Linda's list",
       "See Elphaba's list",
       "See Fiyero's list",
     ]);
