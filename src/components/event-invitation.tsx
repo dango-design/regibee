@@ -25,6 +25,7 @@ import type { InvitationUpdate } from "@/lib/event-updates";
 import { GuestWishLists } from "@/components/guest-wish-lists";
 import { SignupSheetSection, type InvitationSignup } from "@/components/signup-sheet";
 import { cx } from "@/lib/utils/cx";
+import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
 
 export type InvitationEvent = Pick<
   EventDetails,
@@ -41,7 +42,7 @@ export type InvitationEvent = Pick<
   | "image_url"
   | "rsvp_by"
 > &
-  Partial<Pick<EventDetails, "gift_note">>;
+  Partial<Pick<EventDetails, "gift_note" | "theme_color">>;
 
 /** A registry linked to the event, as the invitation shows it. */
 export interface InvitationRegistry extends LinkedRegistry {
@@ -223,6 +224,9 @@ export function EventInvitation({
       ? `/e/${eventSlug}/gifts?g=${encodeURIComponent(guestToken)}&to=${encodeURIComponent(slug)}`
       : `${basePath}/r/${slug}`;
   const theme = eventTheme(event.event_type);
+  // The host's own color, when they picked one (src/lib/event-colors.ts).
+  const hostColor = normalizeThemeColor(event.theme_color);
+  const colors = hostColor ? themeColors(hostColor) : null;
   const time = formatEventTime(event);
   const map = mapsUrl(event);
   const hasImage = Boolean(event.image_url);
@@ -247,16 +251,30 @@ export function EventInvitation({
           />
         </div>
       ) : (
-        <div className={cx("flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center", theme.bg)}>
+        <div
+          className={cx("flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center", !colors && theme.bg)}
+          style={colors ? { backgroundColor: colors.fill } : undefined}
+        >
           <span className="flex size-14 items-center justify-center rounded-full bg-primary">
             {/* A meal train is help after a birth, an illness or a loss, not a party. */}
             {event.event_type === "meal_train" ? (
-              <CookingPot aria-hidden="true" className={cx("size-7", theme.icon)} />
+              <CookingPot
+                aria-hidden="true"
+                className={cx("size-7", !colors && theme.icon)}
+                style={colors ? { color: colors.ink } : undefined}
+              />
             ) : (
-              <PartyPopper aria-hidden="true" className={cx("size-7", theme.icon)} />
+              <PartyPopper
+                aria-hidden="true"
+                className={cx("size-7", !colors && theme.icon)}
+                style={colors ? { color: colors.ink } : undefined}
+              />
             )}
           </span>
-          <p className={cx("text-sm font-semibold tracking-wide uppercase", theme.text)}>
+          <p
+            className={cx("text-sm font-semibold tracking-wide uppercase", !colors && theme.text)}
+            style={colors ? { color: colors.ink } : undefined}
+          >
             {eventTypeLabel(event.event_type)}
           </p>
         </div>
@@ -340,6 +358,7 @@ export function EventInvitation({
             registries={registries}
             giftNote={event.gift_note}
             budget={exchange.budget}
+            themeColor={hostColor}
             eventSlug={eventSlug}
             guestToken={guestToken}
             waitingCount={wishLists?.waitingCount}
@@ -348,10 +367,18 @@ export function EventInvitation({
         )}
 
         {!everyone && (registries.length > 0 || event.gift_note) && (
-          <section aria-labelledby="gifts-heading" className="flex flex-col gap-4 rounded-2xl bg-brand-50 p-4">
+          <section
+            aria-labelledby="gifts-heading"
+            className={cx("flex flex-col gap-4 rounded-2xl p-4", !colors && "bg-brand-50")}
+            style={colors ? { backgroundColor: colors.fill } : undefined}
+          >
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-                <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
+                <Gift
+                  aria-hidden="true"
+                  className={cx("size-4.5", !colors && "text-brand-600")}
+                  style={colors ? { color: colors.ink } : undefined}
+                />
               </span>
               <div className="min-w-0 pt-1">
                 <h2 id="gifts-heading" className="font-medium text-primary">

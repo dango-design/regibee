@@ -7,6 +7,8 @@ import { Check, Gift, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { saveEventWishlist, type EventWishlistInput } from "@/lib/actions/events";
 import { storeName } from "@/lib/events";
+import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
+import { cx } from "@/lib/utils/cx";
 
 /** What the wish list step needs from the event page, besides the event and the guest's token. */
 export interface RsvpWishlist {
@@ -20,6 +22,8 @@ export interface RsvpWishlist {
   account: { lists: { id: string; title: string }[] } | null;
   /** Where signing up or logging in comes back to. Defaults to the guest's own link. */
   returnTo?: string;
+  /** The host's color for the invitation, which fills the step. None leaves it without a fill. */
+  themeColor?: string | null;
   saveAction?: (input: EventWishlistInput) => Promise<{ error: string | null }>;
 }
 
@@ -42,8 +46,28 @@ export function RsvpWishlistStep({
   giftIdeas,
   account,
   returnTo,
+  themeColor = null,
   saveAction = saveEventWishlist,
 }: RsvpWishlistStepProps) {
+  // No fill, under a line, unless the host picked a color for the invitation.
+  const color = normalizeThemeColor(themeColor);
+  const colors = color ? themeColors(color) : null;
+  const box = cx(
+    "mt-4 flex scroll-mt-24 flex-col",
+    colors ? "rounded-xl p-4" : "border-t border-secondary pt-4",
+  );
+  const boxStyle = colors ? { backgroundColor: colors.fill } : undefined;
+  const icon = (
+    <span
+      className={cx("flex size-9 shrink-0 items-center justify-center rounded-full", colors ? "bg-primary" : "bg-secondary")}
+    >
+      <Gift
+        aria-hidden="true"
+        className={cx("size-4.5", !colors && "text-brand-600")}
+        style={colors ? { color: colors.ink } : undefined}
+      />
+    </span>
+  );
   const router = useRouter();
   const [refreshing, startTransition] = useTransition();
   const hasSomething = Boolean(current || giftIdeas);
@@ -91,12 +115,11 @@ export function RsvpWishlistStep({
       <section
         id="wishlist"
         aria-labelledby="wishlist-heading"
-        className="mt-4 flex scroll-mt-24 flex-col gap-3 rounded-xl bg-secondary p-4"
+        className={cx(box, "gap-3")}
+        style={boxStyle}
       >
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-            <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
-          </span>
+          {icon}
           <div className="min-w-0 pt-1">
             <h3 id="wishlist-heading" className="font-medium text-primary">
               Your wish list
@@ -139,12 +162,11 @@ export function RsvpWishlistStep({
     <section
       id="wishlist"
       aria-labelledby="wishlist-heading"
-      className="mt-4 flex scroll-mt-24 flex-col gap-4 rounded-xl bg-secondary p-4"
+      className={cx(box, "gap-4")}
+      style={boxStyle}
     >
       <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
-        </span>
+        {icon}
         <h3 id="wishlist-heading" className="min-w-0 font-medium text-primary">
           {current ? "Change your wish list" : "Now add your wish list"}
         </h3>
@@ -161,7 +183,7 @@ export function RsvpWishlistStep({
                   return (
                     <li
                       key={list.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary p-3"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3"
                     >
                       <span className="min-w-0 font-medium break-words text-primary">{list.title}</span>
                       {linked ? (

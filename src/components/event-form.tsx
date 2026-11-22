@@ -31,6 +31,7 @@ import { RsvpQuestionsEditor } from "@/components/rsvp-questions-editor";
 import { defaultQuestions, storedQuestions, type RsvpQuestion } from "@/lib/rsvp-questions";
 import { changedParts, changeSummary } from "@/lib/event-updates";
 import { cx } from "@/lib/utils/cx";
+import { ThemeColorField } from "@/components/theme-color-field";
 import { ChoiceChip, StepFooter, StepSection, useStepSections } from "@/components/step-sections";
 import {
   eventStepInfo,
@@ -72,6 +73,7 @@ type Values = Pick<
   | "ask_kids"
   | "rsvp_questions"
   | "remind_day_before"
+  | "theme_color"
 >;
 
 /** A registry on the form's list of links. */
@@ -171,6 +173,8 @@ export function EventForm({
   const [emailHost, setEmailHost] = useState(initial.email_host_on_rsvp ?? true);
   const [askKids, setAskKids] = useState(initial.ask_kids ?? false);
   const [giftNote, setGiftNote] = useState(initial.gift_note ?? "");
+  // The invitation's color: "" for none.
+  const [themeColor, setThemeColor] = useState(initial.theme_color ?? "");
   // A new event starts with its occasion's questions; an existing one keeps its own.
   const [questions, setQuestions] = useState<RsvpQuestion[]>(() =>
     eventId
@@ -394,6 +398,7 @@ export function EventForm({
     data.set("remindDayBefore", String(remindDayBefore));
     data.set("notifyGuests", String(notifyGuests && changes.length > 0));
     data.set("giftNote", giftNote);
+    data.set("themeColor", themeColor);
     data.set("registryLinks", JSON.stringify(linked.map((r) => (r.link ? { link: r.link } : { id: r.id }))));
     data.set("exchangeEnabled", String(exchangeOn));
     data.set("exchangeKind", kind);
@@ -851,6 +856,7 @@ export function EventForm({
           <StepSection {...stepProps("invitation")}>
             <div className="flex flex-col gap-4">
               {pictureField}
+              <ThemeColorField value={themeColor} onChange={setThemeColor} />
               <Input
                 label="Hosted by (optional)"
                 value={hostedBy}
@@ -994,7 +1000,10 @@ export function EventForm({
           title="Invitation"
           description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
         >
-          {pictureField}
+          <div className="flex flex-col gap-6">
+            {pictureField}
+            <ThemeColorField value={themeColor} onChange={setThemeColor} />
+          </div>
         </Section>
 
         <Section id="when" title="When">

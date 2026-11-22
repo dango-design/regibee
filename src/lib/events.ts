@@ -52,6 +52,11 @@ export interface EventDetails {
   rsvp_questions?: RsvpQuestion[];
   /** Email everyone going a reminder the day before. */
   remind_day_before?: boolean;
+  /**
+   * The invitation's color, like "#f9b8b9", or null for the occasion's
+   * colors. Turn it into colors with themeColors (src/lib/event-colors.ts).
+   */
+  theme_color?: string | null;
   /** The event date the last day-before reminder went out for. */
   reminded_for?: string | null;
   created_at: string;

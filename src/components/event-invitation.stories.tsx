@@ -229,6 +229,18 @@ export const WithRegistriesAndGiftNote: Story = {
 };
 
 /**
+ * The host picked a color: it fills the top, since there's no picture, and
+ * the Gifts section, in place of the occasion's colors.
+ */
+export const WithHostColor: Story = {
+  ...WithRegistriesAndGiftNote,
+  args: {
+    ...WithRegistriesAndGiftNote.args,
+    event: { ...WithRegistriesAndGiftNote.args!.event!, theme_color: "#d9c8f0" },
+  },
+};
+
+/**
  * The same gifts on a phone. Each list is one short row: one picture,
  * its name and how many gifts are left. The whole row opens the list.
  */
@@ -418,6 +430,7 @@ export const EveryoneGivesEveryone: Story = {
               },
               giftIdeas: null,
               account: { lists: [{ id: "glindas-list", title: "Glinda's Christmas List" }] },
+              themeColor: args.event.theme_color ?? null,
               saveAction: async () => ({ error: null }),
             }}
             passed={false}
@@ -445,6 +458,19 @@ export const EveryoneGivesEveryone: Story = {
       `/e/${sampleExchangeEvent.slug}/gifts?g=token-g1&to=${hostsList.slug}`,
     );
   },
+};
+
+/**
+ * The host picked a color for the invitation. It fills the wish list box in
+ * the RSVP card and everyone's wish lists, which have no fill without one.
+ */
+export const EveryoneGivesEveryoneWithHostColor: Story = {
+  ...EveryoneGivesEveryone,
+  args: {
+    ...EveryoneGivesEveryone.args,
+    event: { ...EveryoneGivesEveryone.args!.event!, theme_color: "#c8102e" },
+  },
+  play: undefined,
 };
 
 export const EveryoneGivesEveryonePhone: Story = {

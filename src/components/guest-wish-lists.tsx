@@ -4,6 +4,7 @@ import type { InvitationRegistry } from "@/components/event-invitation";
 import { initialsFor } from "@/lib/initials";
 import { storeName, type GuestWishList } from "@/lib/events";
 import { cx } from "@/lib/utils/cx";
+import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
 
 export interface GuestWishListsProps {
   /**
@@ -31,6 +32,8 @@ export interface GuestWishListsProps {
   waitingCount?: number;
   /** Put in front of a Regibee list's link instead of going through the event. The demo passes "/demo". */
   basePath?: string;
+  /** The host's color for the invitation, which fills the section. None leaves it without a fill. */
+  themeColor?: string | null;
 }
 
 /** One list in the section, a guest's or one the host linked. */
@@ -138,7 +141,10 @@ export function GuestWishLists({
   guestToken,
   waitingCount = 0,
   basePath,
+  themeColor = null,
 }: GuestWishListsProps) {
+  const color = normalizeThemeColor(themeColor);
+  const colors = color ? themeColors(color) : null;
   const hrefFor = (slug: string) =>
     basePath
       ? `${basePath}/r/${slug}`
@@ -152,12 +158,22 @@ export function GuestWishLists({
   const withList = lists?.filter((l) => l.url).length ?? 0;
 
   return (
-    // No fill, so it sits well beside any invitation picture. Each list is
-    // its own outlined row.
-    <section aria-labelledby="wish-lists-heading" className="flex flex-col gap-4">
+    // No fill unless the host picked a color, so it sits well beside any
+    // invitation picture. Each list is its own outlined row.
+    <section
+      aria-labelledby="wish-lists-heading"
+      className={cx("flex flex-col gap-4", colors && "rounded-2xl p-4 sm:p-5")}
+      style={colors ? { backgroundColor: colors.fill } : undefined}
+    >
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
-          <Users aria-hidden="true" className="size-4.5 text-brand-600" />
+        <span
+          className={cx("flex size-9 shrink-0 items-center justify-center rounded-full", colors ? "bg-primary" : "bg-secondary")}
+        >
+          <Users
+            aria-hidden="true"
+            className={cx("size-4.5", !colors && "text-brand-600")}
+            style={colors ? { color: colors.ink } : undefined}
+          />
         </span>
         <div className="min-w-0 pt-1">
           <h2 id="wish-lists-heading" className="font-medium text-primary">
