@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import { ExternalLink, ShoppingBag, Undo2 } from "lucide-react";
 import { ItemImage } from "@/components/item-image";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ interface ItemCardProps {
 }
 
 export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, highlightId, purchases, selfPurchaseButtonLabel = "Mark as bought by parent", registryType = "baby", eventType = null, linkedRegistries, storesWithRegistryLinks, otherLists }: ItemCardProps) {
-  const [toggling, setToggling] = useState(false);
+  const [toggling, startToggle] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [giftDetailOpen, setGiftDetailOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -67,10 +67,13 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
     }
   }, [isHighlighted]);
 
-  const handleToggleParentPurchased = async () => {
-    setToggling(true);
-    await toggleParentPurchased(item.id, registryId, !item.is_parent_purchased);
-    setToggling(false);
+  // The action returns before the page's updated item arrives. In a
+  // transition, `toggling` stays true until the new item is on screen, so the
+  // card doesn't show the old button again in between.
+  const handleToggleParentPurchased = () => {
+    startToggle(async () => {
+      await toggleParentPurchased(item.id, registryId, !item.is_parent_purchased);
+    });
   };
 
   // For the owner, a click anywhere on the card opens the item to edit. The
