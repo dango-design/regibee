@@ -95,7 +95,7 @@ The extension has one listing on the Chrome Web Store. It's private while people
 
 Only one version can wait for review. If a merge lands while an older version is still waiting, the workflow cancels the older one and sends the new one. The review starts over, so merges that keep landing before a review finishes keep putting the update off.
 
-Merges that change only `extension/test/` or this README don't publish anything. A change to `src/lib/extension.ts` or `src/lib/retailers.ts` does, since the extension is built from them.
+Merges that change only `extension/test/`, `extension/store-listing/` or this README don't publish anything. A change to `src/lib/extension.ts` or `src/lib/retailers.ts` does, since the extension is built from them.
 
 ### Versions
 
@@ -115,10 +115,7 @@ The website goes live minutes after a merge. The extension reaches people days l
 This is done once, by a person, in Google's dashboards.
 
 1. **Developer account.** Sign in to the [Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole) with the Google account that should own the extension. It needs 2-step verification and a one-time $5 registration fee.
-2. **The listing.** Run `npm run extension:build`, zip what's inside `extension/dist` (not the folder itself) and upload it as a new item. The API can't create an item, so this first upload is by hand. Then fill in:
-   - The store listing: a description, screenshots, and `extension/icons/icon-128.png` as the icon.
-   - Privacy: the extension's purpose, a reason for each permission (`storage`, `activeTab`, `scripting`, `contextMenus`) and for its access to the stores in `src/lib/retailers.ts` and regibee.com, and data-use answers that match the "The browser extension" section of the privacy policy. Use https://www.regibee.com/privacy as the privacy policy URL. Update that page when what the extension reads or keeps changes.
-   - Distribution: **Private**.
+2. **The listing.** Run `npm run extension:build`, zip what's inside `extension/dist` (not the folder itself) and upload it as a new item. The API can't create an item, so this first upload is by hand. Then fill in the Store listing, Privacy, Distribution and Test instructions tabs. [`store-listing/README.md`](store-listing/README.md) has the text for each field and the images to upload. The Privacy tab's answers must match the "The browser extension" section of the privacy policy, at https://www.regibee.com/privacy. When what the extension reads or keeps changes, update both.
 
    Then submit it for review.
 3. **A service account, so GitHub can publish.** In the [Google Cloud console](https://console.cloud.google.com), make a project and turn on the Chrome Web Store API. Create a service account in it, with no roles, and make a JSON key for it. Add the service account's email in the developer dashboard's account settings. An account can have only one.
@@ -127,7 +124,7 @@ This is done once, by a person, in Google's dashboards.
    - `CWS_PUBLISHER_ID`: the publisher ID, under Publisher › Settings in the developer dashboard.
    - `CWS_ITEM_ID`: the extension's 32-letter ID, on the item's Package tab.
 
-   Until all three are set, the workflow warns and publishes nothing.
+   Until all three are set, the workflow warns and publishes nothing. Add them once the first version has passed review. Otherwise the next merge that changes the extension cancels that review and starts a new one.
 
 ### Adding testers
 
