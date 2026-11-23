@@ -38,6 +38,7 @@ on:
       - src/lib/guest-emails.ts
       - src/lib/guest-input.ts
       - src/lib/item-categories.ts
+      - src/lib/item-details.ts
       - src/lib/list-access.ts
       - src/lib/list-page-types.ts
       - src/lib/occasion-theme.ts

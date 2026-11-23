@@ -32,6 +32,7 @@ import { formatRevealDate, nextReveal } from "@/lib/reveal";
 import { getEventsForReveal, getGiftsRevealedThrough, listEventsForRegistry, type RegistryEventEntry } from "@/lib/events-server";
 import { getSessionUser } from "@/lib/viewer";
 import { itemsHiddenFromOwner, listsForItems, loadListItems, type ListItem } from "@/lib/list-items";
+import { loadItemDetailsState } from "@/lib/item-details-server";
 import type {
   ListPageCategory,
   ListPageData,
@@ -255,11 +256,12 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
   const turnedOnByExchange = readReservationPrivacy(registry.settings).hide_reservations_source === "exchange";
 
   const listItems = items || [];
-  const { purchases: placedPurchases, otherListsByItem, hiddenItemIds } = await loadPlacementDetails(
-    listItems,
-    registryId,
-    viewer.hiddenItemsFor,
-  );
+  const [{ purchases: placedPurchases, otherListsByItem, hiddenItemIds }, { missingDetails, detailReview }] =
+    await Promise.all([
+      loadPlacementDetails(listItems, registryId, viewer.hiddenItemsFor),
+      // Items the extension can fill in, and what it filled in (src/lib/item-details.ts).
+      loadItemDetailsState(listItems, { canEditPlaced: viewer.isOwner }),
+    ]);
   // A gift belongs to the item. If another list it's on hides what's been
   // reserved from the owner, this page hides that item's gifts too.
   const hidesItem = (id: string | null | undefined) => hideReservations || (!!id && hiddenItemIds.has(id));
@@ -365,6 +367,8 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
     linkedRegistries,
     storesWithRegistryLinks: registryLinkStores,
     plainLinkGroups,
+    missingDetails,
+    detailReview,
     perkRows,
     perkEmails: parseStorePerksState(settings).emails,
     readyPerkCount: readyPerkCount(perkRows),

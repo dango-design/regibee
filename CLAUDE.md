@@ -85,6 +85,13 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The product readers fill it in when the page has one: `src/lib/product-page.ts` on the server, and `extension/src/product-reader.ts` in the extension and the phone app. The rules and their tests are in `src/lib/gtin.ts`. The extension's reader can't import, so it has its own copy: change both.
 - A barcode belongs to the link it was read from. The dialogs send it only with that link, and the server actions clear a saved one when the link changes without a new one (`gtinChange`). Swapping a store link for its registry link keeps it, since that's the same product.
 
+## Filling in details later
+
+- Some stores, Amazon above all, block Regibee's server. An item added without the extension, such as from an iPad, then keeps its link and a name guessed from it, with no photo or price.
+- On a computer with the extension, the list's page offers to fill those in (`MissingDetailsNotice`). The extension reads each link in a background tab, and `saveReadDetails` (`src/lib/actions/item-details.ts`) saves what it found.
+- The rules are in `src/lib/item-details.ts`: a read replaces the name and price when the store's are different, fills in a photo only when there's none, and never changes the price of an item the owner marked as bought.
+- `item_detail_reads` keeps each item's last read and the value before each change, so `DetailReview` can show the new and old values and switch back. Only the server reads it, with the service-role client. An item is offered again only when its link changes.
+
 ## Gift ideas
 
 - A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it through the API.

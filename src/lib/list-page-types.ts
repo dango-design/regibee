@@ -4,6 +4,7 @@
 // it through its @shared/* path.
 
 import type { EventType } from "./events";
+import type { DetailField, ShownSide } from "./item-details";
 import type { RetailerRegistry, StoreId } from "./retailers";
 import type { StorePerksRow } from "./store-perks";
 import type { PersonalEventType, RegistryType } from "./types";
@@ -42,6 +43,31 @@ export interface ListPageItem {
   placed: boolean;
   /** The titles of the owner's other lists it's on. */
   otherLists: string[];
+}
+
+/** An item whose store link the extension can read again for its photo or price (src/lib/item-details.ts). */
+export interface ListPageMissingDetails {
+  id: string;
+  title: string;
+  external_url: string;
+}
+
+/** One change that filling in an item's details made. */
+export interface ListPageDetailChange {
+  field: DetailField;
+  /** The value before. Null when the field was empty. */
+  before: string | number | null;
+  after: string | number;
+  /** Which of the two the item shows now. */
+  shown: ShownSide;
+}
+
+/** An item whose filled-in details nobody has reviewed yet. */
+export interface ListPageDetailReview {
+  itemId: string;
+  title: string;
+  imageUrl: string | null;
+  changes: ListPageDetailChange[];
 }
 
 export interface ListPageCategory {
@@ -120,6 +146,10 @@ export interface ListPageData {
   linkedRegistries?: RetailerRegistry[];
   storesWithRegistryLinks?: StoreId[];
   plainLinkGroups: { storeId: StoreId; items: { id: string; title: string }[] }[];
+  /** Items the browser extension can fill in. Missing before the item_detail_reads migration runs. */
+  missingDetails?: ListPageMissingDetails[];
+  /** Filled-in details waiting for review. */
+  detailReview?: ListPageDetailReview[];
   perkRows: StorePerksRow[];
   perkEmails: boolean;
   readyPerkCount: number;
