@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fn, screen, userEvent, within } from "storybook/test";
+import { expect, fireEvent, fn, screen, userEvent, within } from "storybook/test";
 import { EventGuestManager } from "./event-guest-manager";
 import { guestForHost } from "@/lib/events";
 import {
@@ -13,6 +13,10 @@ import { claimsByGuest, describeClaim } from "@/lib/signups";
 import { defaultQuestions } from "@/lib/rsvp-questions";
 
 const ok = fn(async () => ({ error: null }));
+
+// Sets a text field's value. userEvent.type doesn't reach React in these
+// fields (see create-registry-form.stories.tsx). Real typing works.
+const fill = (field: HTMLElement, value: string) => fireEvent.input(field, { target: { value } });
 
 const meta: Meta<typeof EventGuestManager> = {
   title: "Components/EventGuestManager",
@@ -215,5 +219,45 @@ export const PrivateEmail: Story = {
     const dialog = within(await screen.findByRole("dialog"));
     await expect(dialog.getByText(/It stays private, and invitations still reach it/)).toBeInTheDocument();
     await expect(dialog.getByRole("button", { name: "Send invitation" })).toBeInTheDocument();
+  },
+};
+
+/**
+ * "Add another guest" adds a row and puts the cursor in it, so a host can add
+ * several guests at once without pasting a list. Rows left blank are skipped,
+ * and the form goes back to one row once they're added.
+ */
+export const AddingSeveralGuests: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    fill(canvas.getByRole("textbox", { name: "Name" }), "Fiyero Tigelaar");
+    await userEvent.click(canvas.getByRole("button", { name: "Add another guest" }));
+    await expect(canvas.getByRole("textbox", { name: "Guest 2 name" })).toHaveFocus();
+    fill(canvas.getByRole("textbox", { name: "Guest 2 name" }), "Boq Woodsman");
+    fill(canvas.getByRole("textbox", { name: "Guest 2 email" }), "Boq@Example.com");
+    await userEvent.click(canvas.getByRole("button", { name: "Add another guest" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Add 2 guests" }));
+    await expect(args.actions?.addGuests).toHaveBeenCalledWith(sampleEvent.id, [
+      { name: "Fiyero Tigelaar", email: null },
+      { name: "Boq Woodsman", email: "boq@example.com" },
+    ]);
+    await expect(canvas.queryByRole("textbox", { name: "Guest 2 name" })).not.toBeInTheDocument();
+    await expect(canvas.getByRole("textbox", { name: "Name" })).toHaveValue("");
+  },
+};
+
+/** A row with an email but no name: nothing is added, and that row's name is marked. */
+export const FixingAGuestRow: Story = {
+  args: { actions: { addGuests: fn(async () => ({ error: null, added: 2, alreadyListed: 0 })) } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    fill(canvas.getByRole("textbox", { name: "Name" }), "Fiyero Tigelaar");
+    fill(canvas.getByRole("textbox", { name: "Email (optional)" }), "fiyero@example.com");
+    await userEvent.click(canvas.getByRole("button", { name: "Add another guest" }));
+    fill(canvas.getByRole("textbox", { name: "Guest 2 email" }), "boq@example.com");
+    await userEvent.click(canvas.getByRole("button", { name: "Add 2 guests" }));
+    await expect(canvas.getByRole("alert")).toHaveTextContent("Add a name for each guest.");
+    await expect(canvas.getByRole("textbox", { name: "Guest 2 name" })).toHaveAttribute("aria-invalid", "true");
+    await expect(args.actions?.addGuests).not.toHaveBeenCalled();
   },
 };
