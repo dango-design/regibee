@@ -1,8 +1,8 @@
 // Everyone gives everyone: a list the host linked to the event can belong to
 // one of the event's guests, like a host who's also on the guest list and
-// linked their own list. Until that guest adds a wish list of their own, the
-// linked list is theirs, so it shows on their row in everyone's wish lists
-// and in their RSVP's wish list step, instead of as a second row.
+// linked their own list. Until that guest adds a wishlist of their own, the
+// linked list is theirs, so it shows on their row in everyone's wishlists
+// and in their RSVP's wishlist step, instead of as a second row.
 //
 // No imports, so its test runs on plain Node.
 
@@ -24,8 +24,8 @@ const normal = (email: string | null | undefined) => email?.trim().toLowerCase()
 
 /**
  * Puts each linked list on the row of the guest whose email is its owner's,
- * when that guest hasn't added a wish list. Each list goes to one guest at
- * most, and never to a second row when it's already someone's wish list.
+ * when that guest hasn't added a wishlist. Each list goes to one guest at
+ * most, and never to a second row when it's already someone's wishlist.
  * guestEmails maps a guest's id to their email.
  */
 export function giveGuestsTheirLinkedLists<T extends WishListEntry>(

@@ -35,7 +35,7 @@ test("the dashboard shows the soonest events and the days left", async ({ page }
   ]);
   if (guestError) throw guestError;
 
-  // A friend's event that links the host's wish list celebrates the host.
+  // A friend's event that links the host's wishlist celebrates the host.
   const { registry } = await createWishlist(host.id);
   const shower = await createEvent(friend.id, `Surprise Party ${id}`, inDays(5));
   const { error: linkError } = await db.from("event_registries").insert({ event_id: shower.id, registry_id: registry.id });

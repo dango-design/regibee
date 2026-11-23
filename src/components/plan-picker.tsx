@@ -219,7 +219,7 @@ export function PlanPicker({
       occasion: id,
       audience,
       invitation: !LIST_FIRST.includes(id),
-      // Christmas and a holiday party start with each guest linking their own wish list.
+      // Christmas and a holiday party start with each guest linking their own wishlist.
       gifts: audience ? startingGiftPlan(audience, chosen) : null,
     };
     if (only === "everyone") {
@@ -321,7 +321,7 @@ export function PlanPicker({
     if (state.gifts === "ask") summary.push(`An email to ${state.askEmail || "them"} asking for a ${occasion.list.noun}`);
     if (state.gifts === "exchange") summary.push("A Secret Santa draw. Guests add a wishlist when they join. Set the budget and draw date next.");
     if (state.gifts === "everyone") {
-      summary.push("Everyone gives everyone: guests link their wish lists when they RSVP, and see each other's");
+      summary.push("Everyone gives everyone: guests link their wishlists when they RSVP, and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
     if (state.gifts === "later") summary.push("Nothing about gifts yet. You can set that up from the event any time.");

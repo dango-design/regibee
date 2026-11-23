@@ -123,8 +123,8 @@ async function loadOwner(listedOnProfile: boolean, ownerId: string) {
   };
 }
 
-// The gift profile shown above a personal wish list's items. A list kept for
-// a child has its own, in its settings. Other wish lists show their owner's.
+// The gift profile shown above a personal wishlist's items. A list kept for
+// a child has its own, in its settings. Other wishlists show their owner's.
 // Baby registries show none.
 async function loadGiftProfile(registry: {
   registry_type: string | null;
@@ -178,7 +178,7 @@ async function loadGuestPrefill(registryId: string): Promise<{
         eventTitle = (link as unknown as { events: { title: string } | null }).events?.title ?? null;
         included = true;
       } else {
-        // Or another guest's wish list, when everyone gives everyone.
+        // Or another guest's wishlist, when everyone gives everyone.
         included = await eventIncludesRegistry(guest.eventId, registryId);
       }
     }
@@ -214,7 +214,7 @@ async function loadFellowGuestClaims(
   claims: Record<string, string[]>;
   eventTitle: string;
   eventSlug: string;
-  /** The guest whose wish list this is, when it's a guest's. */
+  /** The guest whose wishlist this is, when it's a guest's. */
   listOwner: string | null;
 } | null> {
   if (!guest || !isUuid(guest.guestId) || viewerId === registry.owner_id) return null;
@@ -641,7 +641,7 @@ export default async function PublicRegistryPage({
             }
           />
         ) : (
-          // A wish list: no date, since one list usually serves many
+          // A wishlist: no date, since one list usually serves many
           // occasions. The owner's sizes and likes go in its summary card.
           <WishListHero
             title={registry.title}

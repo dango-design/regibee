@@ -529,8 +529,8 @@ function GuestRow({
               label={
                 everyoneGives
                   ? guest.wishlist_url || guest.gift_ideas
-                    ? "Wish list added"
-                    : "No wish list yet"
+                    ? "Wishlist added"
+                    : "No wishlist yet"
                   : `Gift exchange${guest.wishlist_url || guest.gift_ideas ? " · wishlist added" : ""}`
               }
             />

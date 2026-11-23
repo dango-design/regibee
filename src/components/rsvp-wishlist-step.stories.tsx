@@ -30,7 +30,7 @@ type Story = StoryObj<typeof RsvpWishlistStep>;
 
 /**
  * Not signed in: make a free account and a list, or log in to use one. Both
- * come back to the guest's own link. A wish list here is a Regibee list, so
+ * come back to the guest's own link. A wishlist here is a Regibee list, so
  * there's no pasting another store's link.
  */
 export const SignedOut: Story = {
@@ -67,7 +67,7 @@ export const SignedInNoLists: Story = {
   args: { account: { lists: [] } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Make my wish list" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Make my wishlist" }));
     await expect(args.saveAction).toHaveBeenCalledWith(expect.objectContaining({ makeNew: true }));
   },
 };
@@ -82,7 +82,7 @@ export const Linked: Story = {
 };
 
 /**
- * A list from another store, saved before a wish list here had to be a
+ * A list from another store, saved before a wishlist here had to be a
  * Regibee list. It still shows. Change opens the choices again, with a way back.
  */
 export const LinkedElsewhere: Story = {
@@ -93,8 +93,8 @@ export const LinkedElsewhere: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("A list on amazon.com")).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "Change" }));
-    await expect(canvas.getByRole("heading", { name: "Change your wish list" })).toBeVisible();
-    await expect(canvas.getByRole("button", { name: "Keep my wish list as it is" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Change your wishlist" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Keep my wishlist as it is" })).toBeVisible();
   },
 };
 

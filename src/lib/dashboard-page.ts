@@ -9,7 +9,7 @@ import { createClient } from "@/utils/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { countFollowRequests } from "@/lib/follows";
 import { formatEventTime, summarizeRsvps } from "@/lib/events";
-import { listEventsForUser, listLinkedEventsForUser } from "@/lib/events-server";
+import { listEventsForUser, listInvitedEventsForUser, listLinkedEventsForUser } from "@/lib/events-server";
 import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { getSessionUser } from "@/lib/viewer";
 import { giftActivityAction, giverNameForOwner, itemAsUnreserved, reservationsHiddenFrom } from "@/lib/gifts";
@@ -151,11 +151,19 @@ async function loadSharedRegistries(supabase: ServerClient, user: User) {
 }
 
 /**
- * "Coming up": the soonest events the user hosts or co-hosts, and other
- * people's events that link their lists, as the Events tab lists them.
+ * "Coming up": the soonest events the user hosts or co-hosts, other people's
+ * events they're invited to, and other people's events that link their lists,
+ * as the Events tab lists them. An event that's in more than one keeps its
+ * first entry, so one you're invited to that links your list shows your
+ * reply, as on the Events tab.
  */
-async function loadUpcomingEvents(userId: string, today: string): Promise<DashboardEvent[]> {
-  const [hosted, linked] = await Promise.all([listEventsForUser(userId), listLinkedEventsForUser(userId)]);
+async function loadUpcomingEvents(user: User, today: string): Promise<DashboardEvent[]> {
+  const [hosted, invited, linked] = await Promise.all([
+    listEventsForUser(user.id),
+    // Invitations to the account's email count only once it's confirmed.
+    listInvitedEventsForUser({ id: user.id, email: user.email_confirmed_at ? (user.email ?? null) : null }),
+    listLinkedEventsForUser(user.id),
+  ]);
   return pickUpcomingEvents(
     [
       ...hosted.map((event) => {
@@ -171,6 +179,18 @@ async function loadUpcomingEvents(userId: string, today: string): Promise<Dashbo
           summary: { guests, attending, maybe, pending },
         };
       }),
+      ...invited.map((event) => ({
+        id: event.id,
+        slug: event.slug,
+        title: event.title,
+        eventType: event.event_type,
+        eventDate: event.event_date,
+        time: formatEventTime(event),
+        role: "guest" as const,
+        summary: null,
+        rsvp: event.rsvp_status,
+        guestToken: event.guest_token,
+      })),
       ...linked.map((event) => ({
         id: event.id,
         slug: event.slug,
@@ -212,7 +232,7 @@ export async function loadDashboard(): Promise<DashboardData | null> {
     // "Coming up" out rather than the whole tab.
     user.is_anonymous
       ? []
-      : loadUpcomingEvents(user.id, today).catch((error) => {
+      : loadUpcomingEvents(user, today).catch((error) => {
           console.error("[dashboard] Failed to load upcoming events:", error);
           return [];
         }),

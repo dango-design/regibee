@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { DashboardEvent } from "@/lib/dashboard-page-types";
-import { eventTheme, formatShortEventDate, rsvpStatsText, type EventType } from "@/lib/events";
+import { eventTheme, formatShortEventDate, MY_RSVP_LABELS, rsvpStatsText, type EventType } from "@/lib/events";
 import { countdownLabel, daysUntil } from "@/lib/occasions";
 import { cx } from "@/lib/utils/cx";
 
@@ -35,8 +35,9 @@ function CountdownTile({ days, eventType }: { days: number; eventType: EventType
 /**
  * "Coming up" on the My registries tab: the next few events, with how many
  * days are left until each, so they're in view without opening the Events
- * tab. Events the user hosts open their page; someone else's event that
- * celebrates them opens its invitation. Renders nothing when there are none.
+ * tab. Events the user hosts open their page. Someone else's event opens its
+ * invitation: on the user's own guest link when they're invited, so they can
+ * RSVP. Renders nothing when there are none.
  */
 export function UpcomingEvents({
   events,
@@ -73,7 +74,11 @@ export function UpcomingEvents({
       <ul className="mt-3 grid gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
         {events.map((event) => {
           const href =
-            event.role === "host" ? `${basePath}/dashboard/events/${event.id}` : `${basePath}/e/${event.slug}`;
+            event.role === "host"
+              ? `${basePath}/dashboard/events/${event.id}`
+              : event.role === "guest" && event.guestToken
+                ? `${basePath}/e/${event.slug}?g=${encodeURIComponent(event.guestToken)}`
+                : `${basePath}/e/${event.slug}`;
           const when = `${formatShortEventDate(event.eventDate)}${event.time ? ` · ${event.time}` : ""}`;
           return (
             <li key={event.id}>
@@ -89,7 +94,11 @@ export function UpcomingEvents({
                   <span className="sr-only">. {countdownLabel(event.eventDate, today, "personal")}. </span>
                   <span className="mt-0.5 block truncate text-sm text-tertiary">{when}</span>
                   <span className="block truncate text-sm text-secondary">
-                    {event.summary ? rsvpStatsText(event.summary) : "Celebrating you"}
+                    {event.summary
+                      ? rsvpStatsText(event.summary)
+                      : event.role === "guest" && event.rsvp
+                        ? MY_RSVP_LABELS[event.rsvp]
+                        : "Celebrating you"}
                   </span>
                 </span>
               </Link>

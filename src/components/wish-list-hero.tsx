@@ -45,10 +45,10 @@ const ONE_COLUMN_FROM: Record<number, string> = {
 const PART = "flex min-w-0 flex-col bg-primary px-5 py-4 sm:px-6 sm:py-5";
 
 /**
- * The top of a wish list's page. A tinted band holds the title and who
+ * The top of a wishlist's page. A tinted band holds the title and who
  * shared it. Under it, a card overlapping the band's edge sums the list up:
  * the owner's note, how much has been gifted, and the person's sizes and
- * likes. A wish list usually serves many occasions, so it shows no date.
+ * likes. A wishlist usually serves many occasions, so it shows no date.
  * Baby registries keep their own header (PublicRegistryHero).
  */
 export function WishListHero({

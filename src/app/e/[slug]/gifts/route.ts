@@ -8,7 +8,7 @@ import { EVENT_GUEST_COOKIE, EVENT_GUEST_COOKIE_OPTIONS, encodeEventGuest } from
 // them on to the registry, so the gift form knows their name and the gift is
 // matched to their RSVP. For a gift exchange, "to" can be the wishlist of the
 // person the guest drew, and the cookie marks them as that person's Secret
-// Santa. When everyone gives everyone, "to" can be any guest's wish list, and
+// Santa. When everyone gives everyone, "to" can be any guest's wishlist, and
 // the registry page shows the guest what the other guests reserved there.
 //
 // The registry's own address ends up in the address bar, so a guest who
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
   }
 
-  // Otherwise the registry must be one the event links, or a guest's wish
-  // list when everyone gives everyone.
+  // Otherwise the registry must be one the event links, or a guest's
+  // wishlist when everyone gives everyone.
   if (!santa && !(await eventIncludesRegistry(event.id, registry.id))) {
     return NextResponse.redirect(registryUrl);
   }

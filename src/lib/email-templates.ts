@@ -431,7 +431,7 @@ export interface BirthdayReminderEntry {
   /** For a child's list: the parent who keeps it. */
   parentName?: string;
   linkUrl: string;
-  /** What the link opens: their wish list, or their profile. */
+  /** What the link opens: their wishlist, or their profile. */
   linkTo: "list" | "profile";
 }
 
@@ -460,7 +460,7 @@ export function birthdayReminderHtml(opts: {
   settingsUrl: string;
 }): string {
   const linkLabel = (b: BirthdayReminderEntry) =>
-    b.linkTo === "list" ? `See ${b.name}'s wish list` : `See ${b.name}'s profile`;
+    b.linkTo === "list" ? `See ${b.name}'s wishlist` : `See ${b.name}'s profile`;
   const whose = (b: BirthdayReminderEntry) =>
     `<strong>${escapeHtml(b.name)}</strong>${b.parentName ? ` (${escapeHtml(b.parentName)}'s list)` : ""}`;
 
@@ -472,8 +472,8 @@ export function birthdayReminderHtml(opts: {
     <p>${whose(b)} has a birthday in ${opts.days} days, on ${escapeHtml(formatBirthdayDate(b.date))}.</p>
     <p>${
       b.linkTo === "list"
-        ? "Their wish list shows what they'd love and what's already taken, with their sizes and the things to skip."
-        : "Their profile has their wish lists, their sizes and the things to skip."
+        ? "Their wishlist shows what they'd love and what's already taken, with their sizes and the things to skip."
+        : "Their profile has their wishlists, their sizes and the things to skip."
     }</p>
     <p style="margin: 24px 0;">${buttonLink(b.linkUrl, linkLabel(b))}</p>`;
         })()
@@ -487,7 +487,7 @@ export function birthdayReminderHtml(opts: {
         )
         .join("\n      ")}
     </ul>
-    <p>Each wish list shows what they'd love and what's already taken.</p>`;
+    <p>Each wishlist shows what they'd love and what's already taken.</p>`;
 
   return `
     <p>Hi ${escapeHtml(opts.toName || "there")},</p>
@@ -558,8 +558,8 @@ function eventFactsBlock(event: EventEmailDetails): string {
 
 /**
  * The host's gift note and the lists the event links. When everyone gives
- * everyone, like a family Christmas, the lists stay out: each guest's wish
- * list is on the invitation, so the email sends them there instead.
+ * everyone, like a family Christmas, the lists stay out: each guest's
+ * wishlist is on the invitation, so the email sends them there instead.
  */
 function registryLine(event: EventEmailDetails): string {
   const everyone = event.exchange?.kind === "everyone";
@@ -577,7 +577,7 @@ function exchangeLine(event: EventEmailDetails): string {
   if (!event.exchange) return "";
   if (event.exchange.kind === "everyone") {
     const each = event.exchange.budget ? ` Gifts are about ${escapeHtml(event.exchange.budget)} each.` : "";
-    return `<p><strong>Gifts:</strong> everyone gives everyone. RSVP, then add your wish list. Everyone's lists are on the invitation.${each}</p>`;
+    return `<p><strong>Gifts:</strong> everyone gives everyone. RSVP, then add your wishlist. Everyone's lists are on the invitation.${each}</p>`;
   }
   const budget = event.exchange.budget ? `, about ${escapeHtml(event.exchange.budget)}` : "";
   const when = event.exchange.drawBy ? ` Names are drawn by ${escapeHtml(event.exchange.drawBy)}.` : "";
@@ -675,7 +675,7 @@ export function rsvpGuestConfirmationHtml(opts: {
   calendarUrl?: string | null;
   /** Whether the guest is in the event's gift exchange. */
   inExchange?: boolean;
-  /** When everyone gives everyone: whether the guest has added a wish list or gift ideas yet. */
+  /** When everyone gives everyone: whether the guest has added a wishlist or gift ideas yet. */
   hasWishlist?: boolean;
   /** What the guest signed up for on the event's sign-up sheet. */
   signups?: string[];
@@ -690,8 +690,8 @@ export function rsvpGuestConfirmationHtml(opts: {
       ? ""
       : event.exchange.kind === "everyone"
         ? opts.hasWishlist === false
-          ? `<p><strong>Add your wish list.</strong> Everyone gives everyone, so the others need to know what you'd like. <a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">Add it on the invitation</a>, where everyone's lists are, with what the others have reserved so nobody doubles up.</p>`
-          : `<p><strong>Everyone gives everyone.</strong> Everyone's wish lists are on the invitation, with what the others have reserved so nobody doubles up. Nobody sees what's been reserved from their own list.</p>`
+          ? `<p><strong>Add your wishlist.</strong> Everyone gives everyone, so the others need to know what you'd like. <a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">Add it on the invitation</a>, where everyone's lists are, with what the others have reserved so nobody doubles up.</p>`
+          : `<p><strong>Everyone gives everyone.</strong> Everyone's wishlists are on the invitation, with what the others have reserved so nobody doubles up. Nobody sees what's been reserved from their own list.</p>`
         : `<p><strong>You're in the gift exchange.</strong> ${
             event.exchange.drawBy ? `Names are drawn by ${escapeHtml(event.exchange.drawBy)}, and` : "When names are drawn,"
           } we'll email you who you're giving to.</p>`;

@@ -24,7 +24,7 @@ const meta: Meta<typeof Field> = {
 export default meta;
 type Story = StoryObj<typeof Field>;
 
-/** No color yet: the occasion's colors, and no fill on the wish lists. Picking one shows how it looks. */
+/** No color yet: the occasion's colors, and no fill on the wishlists. Picking one shows how it looks. */
 export const NoColor: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

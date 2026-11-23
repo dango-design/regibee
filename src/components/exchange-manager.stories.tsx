@@ -82,7 +82,7 @@ export const DrawIsOutOfDate: Story = {
 
 /**
  * Everyone gives everyone: no draw. The panel shows who's taking part and
- * who has added a wish list. The host sees that a guest added one, not the
+ * who has added a wishlist. The host sees that a guest added one, not the
  * list itself.
  */
 export const EveryoneGivesEveryone: Story = {

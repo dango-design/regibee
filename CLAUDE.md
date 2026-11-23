@@ -45,10 +45,28 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The anon key ships in the browser, so anyone can use it. The table access rules (RLS) are the only thing protecting data the anon key can reach.
 - `SUPABASE_SERVICE_ROLE_KEY` skips every access rule. Use the service-role client only in server code, and filter by an id or slug the user is allowed to see. The public registry page (`src/app/r/[slug]/page.tsx`) works this way.
 
+## Support view
+
+- `/support` lets the support team find any account or list and see it as its owner does, without being invited. The code is in `src/lib/support.ts`, `src/app/(protected)/support` and `src/components/support`. The tables are in `20261123064207_support_view.sql`.
+- An account is on the support team when its confirmed email address is in `support_emails`. Add someone in the Supabase SQL Editor. Never put their address in a migration or any other file, since the repo is public:
+
+  ```sql
+  insert into public.support_emails (email) values (lower('person@example.com')) on conflict do nothing;
+  ```
+
+  `delete from public.support_emails where email = lower('…')` removes one. Either takes effect on their next page load.
+- Everyone else gets the not-found page at `/support`. The account menu's Support link shows only to the team.
+- The pages call `requireSupport` first, then read with the service-role client. There are no access rules (RLS) for the support team, on purpose: a support account's own session can read no more through the anon key, in the browser, the phone app or the extension, than anyone else's. Each support loader checks `getSupportViewer` again, and none of them are in `src/lib/app-loaders.ts`.
+- A list's support page uses `loadListPageForSupport` (`src/lib/list-page.ts`), which builds the same data as the owner's manage page, as the owner sees it. When you change what the owner's page loads, the support page follows.
+- The pages are read-only for now: no button on them changes anything, and server actions still refuse a support account that doesn't manage the list. To let the team change something later, add that one action on purpose, with its own `isSupportAccount` check and a row in `support_views`.
+- Every account or list the team opens is recorded in `support_views`, and so is showing the gifts an owner hid from themselves. If the row can't be saved, the page fails instead of showing the data. Only people with access to the Supabase project can read it, in the SQL Editor; the migration has a sample query. Owners don't see it.
+- The support pages show gift ideas and account levels, which the rest of the site shows only to the gift idea's owner, or to nobody.
+- The privacy policy's security section says the support team can access the information in an account. Describe the team by its role ("our support team"), not by how many people are on it.
+
 ## List links
 
 - A list is private, link-only or public (`src/lib/list-access.ts`). The database keeps this as `is_private` and `is_public`; both can't be set. New lists start link-only.
-- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wish lists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
+- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wishlists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
 - Anyone with a link-only or public list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
 - A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
 - Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
@@ -69,14 +87,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 ## Gift ideas
 
-- A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it.
-- Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email or to co-managers. Don't put gift ideas on a registry or give them a link.
+- A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it through the API.
+- Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email or to co-managers. Don't put gift ideas on a registry or give them a link. The support pages are the one exception (see "Support view").
 - The table has access rules for the signed-in owner, so the website, the extension and the phone app can read and write it as that user. Prefer that over the service-role client. Checks and grouping are in `src/lib/gift-ideas.ts`, which has no imports.
 - Wherever someone picks a list to add a product to, offer Gift ideas too, after their registries: the extension's "Add to" picker, the phone app's "Add to" row (`onChooseGiftIdea` in `mobile/src/components/item-editor.tsx`, which opens `mobile/src/app/idea.tsx` with the link), and the website's share page. Someone with no registry can still save a gift idea.
 
 ## Account levels
 
-- Every account is basic unless its email address is in `star_emails`. Then it's star. Star is for people we know, like testers. Nobody can buy it, and the site never shows anyone their level. Keep it that way: a level people pay for would bring the app stores' in-app purchase rules into the phone app.
+- Every account is basic unless its email address is in `star_emails`. Then it's star. Star is for people we know, like testers. Nobody can buy it, and the site never shows anyone their level (only the support pages show it, to the support team). Keep it that way: a level people pay for would bring the app stores' in-app purchase rules into the phone app.
 - Both levels can do everything. Star only gets higher limits on what costs money or reaches people who never signed up:
   - Emails to addresses someone typed in: invitations, reminders, messages to guests, change notices, name draws, co-host and list-manager invites, asking someone to make a list, and invites to follow. Each account has a daily allowance, and all basic accounts share another. The numbers are in `src/lib/account-levels.ts`.
   - Photo uploads: 50 for basic, 500 for star. The numbers are in `can_upload_photo` in `20261116074752_account_levels.sql`.
@@ -91,6 +109,11 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
   `delete from public.star_emails where email = lower('…')` removes one. Either takes effect on the account's next send or upload.
 - The phone app and the extension don't send emails or upload photos, so the levels don't change them.
+
+## Words
+
+- Spell it "wishlist", one word, or "Wishlist" at the start of a sentence. This goes for text people see, emails, code comments, docs and PR titles. Don't write "wish list". New code names use `Wishlist` too. Older names such as `GuestWishLists` and `WishListHero`, and the comments in migrations that have already run, still say it the old way.
+- Each kind of list has its own name in `src/lib/occasions.ts`, such as "baby registry", "birthday wishlist" and "Christmas list". "Gift list" is the general word, used where the kind isn't known yet, as on the New page.
 
 ## Clickable cards
 

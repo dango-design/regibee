@@ -373,7 +373,7 @@ export const MealTrainBeforeSigningUp: Story = {
   },
 };
 
-/** The host's own wish list, linked to the family Christmas. It shows on her profile, so guests see her name. */
+/** The host's own wishlist, linked to the family Christmas. It shows on her profile, so guests see her name. */
 const hostsList: InvitationRegistry = {
   title: "Aunt Linda's Christmas List",
   slug: "aunt-lindas-list-5r2t",
@@ -384,7 +384,7 @@ const hostsList: InvitationRegistry = {
 
 /**
  * A family Christmas where everyone gives everyone. Glinda replied with her
- * wish list. Her RSVP comes first, then one section with everyone's lists:
+ * wishlist. Her RSVP comes first, then one section with everyone's lists:
  * the one Aunt Linda linked first, then each guest's.
  */
 export const EveryoneGivesEveryone: Story = {
@@ -444,7 +444,7 @@ export const EveryoneGivesEveryone: Story = {
     // One section for every list: no separate Gifts or exchange boxes.
     await expect(canvas.queryByRole("region", { name: "Gifts" })).toBeNull();
     await expect(canvas.queryByRole("region", { name: "Everyone gives everyone" })).toBeNull();
-    const lists = canvas.getByRole("region", { name: "Everyone's wish lists" });
+    const lists = canvas.getByRole("region", { name: "Everyone's wishlists" });
     await expect(within(lists).getByText("About $25 a gift.")).toBeVisible();
     const links = within(lists).getAllByRole("link");
     // The host's list looks like a guest's: whose it is, then its name.
@@ -461,8 +461,8 @@ export const EveryoneGivesEveryone: Story = {
 };
 
 /**
- * The host picked a color for the invitation. It fills the wish list box in
- * the RSVP card and everyone's wish lists, which have no fill without one.
+ * The host picked a color for the invitation. It fills the wishlist box in
+ * the RSVP card and everyone's wishlists, which have no fill without one.
  */
 export const EveryoneGivesEveryoneWithHostColor: Story = {
   ...EveryoneGivesEveryone,
@@ -507,7 +507,7 @@ export const EveryoneGivesEveryoneVisitor: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
-    const lists = within(canvasElement).getByRole("region", { name: "Everyone's wish lists" });
+    const lists = within(canvasElement).getByRole("region", { name: "Everyone's wishlists" });
     await expect(within(lists).getAllByRole("link")).toHaveLength(1);
     await expect(within(lists).getByText("Aunt Linda's Christmas List")).toBeVisible();
     await expect(within(lists).queryByText("Elphaba Thropp")).toBeNull();

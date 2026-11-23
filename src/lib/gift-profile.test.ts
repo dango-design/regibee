@@ -87,7 +87,7 @@ test("date helpers count across months and years", () => {
   assert.equal(formatBirthdayDate("2026-03-03"), "Tuesday, March 3");
 });
 
-test("pickBirthdayList links one current wish list, or the one birthday list", () => {
+test("pickBirthdayList links one current wishlist, or the one birthday list", () => {
   const today = "2026-03-01";
   const list = (slug: string, extra: Partial<Parameters<typeof pickBirthdayList>[0][number]> = {}) => ({
     slug,

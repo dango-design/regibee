@@ -249,10 +249,10 @@ function readExchangeForm(formData: FormData): ExchangeForm | null | { error: st
 const MAX_LINKED_REGISTRIES = 10;
 
 /**
- * Everyone gives everyone: each guest's wish list is a Regibee list, so
+ * Everyone gives everyone: each guest's wishlist is a Regibee list, so
  * adding one takes an account. A Secret Santa's wishlist can still be any link.
  */
-const ACCOUNT_FOR_WISH_LIST = "Make a free account or log in to add your wish list.";
+const ACCOUNT_FOR_WISH_LIST = "Make a free account or log in to add your wishlist.";
 
 /**
  * The registries the event form asks to link, in order. Each is either one
@@ -1190,12 +1190,12 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
         : input.exchange.join && input.status !== "no";
     const inExchange = !everyone && exchange.drawn_at ? Boolean(existing?.in_exchange) : wantsIn;
     if (everyone || !exchange.drawn_at) response.in_exchange = inExchange;
-    // A wish list here is a Regibee list, added after the RSVP, so it takes
+    // A wishlist here is a Regibee list, added after the RSVP, so it takes
     // an account. A Secret Santa's can still be any link.
     if (everyone && (input.exchange.wishlistUrl?.trim() || input.exchange.giftIdeas?.trim())) {
       return { error: ACCOUNT_FOR_WISH_LIST };
     }
-    // When everyone gives everyone, guests add their wish list after they
+    // When everyone gives everyone, guests add their wishlist after they
     // RSVP (saveEventWishlist), so an RSVP without one keeps what's saved.
     if (inExchange && (!everyone || input.exchange.wishlistUrl !== undefined)) {
       const wishlist = readWishlistUrl(input.exchange.wishlistUrl);
@@ -1354,7 +1354,7 @@ export interface EventWishlistInput {
   /** Make a new list for the signed-in account, and use it. */
   makeNew?: boolean;
   /**
-   * Only "", to take off a link saved before wish lists here needed an
+   * Only "", to take off a link saved before wishlists here needed an
    * account. A link to a list is refused: pick or make a Regibee list.
    */
   url?: string;
@@ -1363,7 +1363,7 @@ export interface EventWishlistInput {
 }
 
 /**
- * A guest's wish list on an everyone-gives-everyone event, added after they
+ * A guest's wishlist on an everyone-gives-everyone event, added after they
  * RSVP: one of their own Regibee lists, or a new one made here. Either needs
  * an account, since the list is theirs. A pasted link or gift ideas are
  * refused; only clearing ones saved before still works. The guest is found
@@ -1375,7 +1375,7 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
   if (!eventRow) return { error: "This event wasn't found." };
   const event = eventRow as EventDetails;
   const exchange = await getGiftExchange(event.id);
-  if (!exchange || exchangeKind(exchange) !== "everyone") return { error: "This event doesn't use wish lists." };
+  if (!exchange || exchangeKind(exchange) !== "everyone") return { error: "This event doesn't use wishlists." };
   if (eventHasPassed(event, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10))) {
     return { error: "This event has passed." };
   }
@@ -1389,8 +1389,8 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
         .maybeSingle()
     : { data: null };
   if (!guest) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
-  if (!guest.in_exchange) return { error: "RSVP that you're coming first, then add your wish list." };
-  // A wish list here is a Regibee list, so it takes an account.
+  if (!guest.in_exchange) return { error: "RSVP that you're coming first, then add your wishlist." };
+  // A wishlist here is a Regibee list, so it takes an account.
   if (input.url?.trim() || input.giftIdeas?.trim()) return { error: ACCOUNT_FOR_WISH_LIST };
 
   const changes: Record<string, unknown> = {};
@@ -1412,8 +1412,8 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
         settings: { tax_enabled: false },
       });
       if ("error" in made) {
-        console.error("[events] Failed to make a guest's wish list:", made.error);
-        return { error: "Your wish list wasn't made. Try again." };
+        console.error("[events] Failed to make a guest's wishlist:", made.error);
+        return { error: "Your wishlist wasn't made. Try again." };
       }
       list = made;
       revalidatePath("/dashboard");
@@ -1444,8 +1444,8 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
 
   const { error } = await supabaseAdmin.from("event_guests").update(changes).eq("id", guest.id);
   if (error) {
-    console.error("[events] Failed to save a guest's wish list:", error);
-    return { error: "Your wish list wasn't saved. Try again." };
+    console.error("[events] Failed to save a guest's wishlist:", error);
+    return { error: "Your wishlist wasn't saved. Try again." };
   }
   // Their own list starts hiding what's been reserved from them.
   if (typeof changes.wishlist_url === "string") {

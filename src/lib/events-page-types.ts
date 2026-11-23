@@ -2,7 +2,7 @@
 // website and the phone app. Only types, and only relative type imports of
 // shareable files, so the app can share it through @shared/*.
 
-import type { EventDetails, EventGuest, EventType, ExchangeStatus, GiftExchange, RsvpSummary } from "./events";
+import type { EventDetails, EventGuest, EventType, ExchangeStatus, GiftExchange, RsvpStatus, RsvpSummary } from "./events";
 import type { EventMessage, MessageAudience } from "./event-updates";
 import type { GroupEvent, GroupSummary } from "./groups";
 import type { RsvpQuestion } from "./rsvp-questions";
@@ -23,11 +23,33 @@ export interface EventsTabCard {
   coHost: boolean;
 }
 
+/** Someone else's event on the Events tab, where the viewer is on the guest list. */
+export interface EventsTabInvite {
+  id: string;
+  slug: string;
+  title: string;
+  eventType: EventType;
+  eventDate: string | null;
+  /** "6:00 PM PT", or null without a time. */
+  time: string | null;
+  imageUrl: string | null;
+  /** The "Hosted by" line on the invitation, or null when the host left it empty. */
+  hostedBy: string | null;
+  /** The viewer's own reply. */
+  rsvp: RsvpStatus;
+  /** The viewer's guest link token. /e/<slug>?g=<token> opens the invitation with their RSVP. */
+  guestToken: string;
+}
+
 export interface EventsTabData {
-  /** Soonest first, with no-date events last. */
+  /** Events the viewer hosts or co-hosts, today and later. Soonest first, with no-date events last. */
   upcoming: EventsTabCard[];
-  /** Most recent first. */
+  /** Events the viewer hosted or co-hosted. Most recent first. */
   past: EventsTabCard[];
+  /** Other people's events the viewer is a guest at, today and later. Soonest first, with no-date events last. */
+  invited: EventsTabInvite[];
+  /** Other people's past events the viewer was a guest at. Most recent first. */
+  invitedPast: EventsTabInvite[];
   /** "Celebrating you": other people's upcoming events that link the viewer's lists. */
   linked: { id: string; slug: string; title: string; dateText: string | null; registryTitles: string[] }[];
   groups: GroupSummary[];

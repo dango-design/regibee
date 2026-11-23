@@ -302,7 +302,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
     if (editing) return;
     const defaults = EVENT_TYPE_OPTIONS.find((o) => o.value === type)?.defaults ?? {};
     // Christmas and a holiday party start with each guest linking their own
-    // wish list, and a gift exchange with drawing names.
+    // wishlist, and a gift exchange with drawing names.
     if (!touched.exchange) {
       const start = startingExchange(type);
       setExchangeOn(start.on);
@@ -1169,7 +1169,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
               hint={
                 drawn
                   ? "Names have been drawn. To turn this off, undo the draw on the event's page first."
-                  : "Guests add a wish list or gift ideas when they RSVP."
+                  : "Guests add a wishlist or gift ideas when they RSVP."
               }
               value={exchangeOn}
               disabled={drawn}

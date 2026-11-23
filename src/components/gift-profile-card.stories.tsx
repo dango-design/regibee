@@ -26,7 +26,7 @@ const meta: Meta<typeof GiftProfileCard> = {
 export default meta;
 type Story = StoryObj<typeof GiftProfileCard>;
 
-// What anyone with the link sees on a wish list: no birthday.
+// What anyone with the link sees on a wishlist: no birthday.
 export const OnAWishList: Story = {};
 
 // What Dorothy's approved followers see on her profile, birthday included.

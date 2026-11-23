@@ -101,6 +101,20 @@ test("pickUpcomingEvents keeps the first entry for an event listed twice", () =>
   assert.equal(picked[0].role, "host");
 });
 
+test("an event you're invited to that also celebrates you shows as an invitation", () => {
+  // The dashboard passes hosted events, then invitations, then celebrating ones.
+  const picked = pickUpcomingEvents(
+    [
+      event("shower", "2026-12-01", { role: "guest", summary: null, rsvp: "pending", guestToken: "t" }),
+      event("shower", "2026-12-01", { role: "celebrating", summary: null }),
+    ],
+    TODAY,
+  );
+  assert.equal(picked.length, 1);
+  assert.equal(picked[0].role, "guest");
+  assert.equal(picked[0].rsvp, "pending");
+});
+
 test("pickUpcomingEvents sorts events on the same day by title", () => {
   const picked = pickUpcomingEvents(
     [event("b", "2026-12-01", { title: "Brunch" }), event("a", "2026-12-01", { title: "Afternoon tea" })],

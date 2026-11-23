@@ -56,7 +56,7 @@ function monthAndDay(date: string): string {
 
 const HOME_ADDRESS = DEMO_REGISTRY.settings.shipping_address.split("\n").slice(1).join("\n");
 
-/** A guest's wish list link, when it's one of the demo's lists. It works on the live site. */
+/** A guest's wishlist link, when it's one of the demo's lists. It works on the live site. */
 function listLink(slug: string): string {
   return `https://regibee.com/demo/r/${slug}`;
 }
@@ -77,7 +77,7 @@ type GuestInput = {
   answers?: RsvpAnswers;
   /** In the gift exchange. */
   inExchange?: boolean;
-  /** A demo registry's slug and id, for a Regibee wish list. */
+  /** A demo registry's slug and id, for a Regibee wishlist. */
   list?: { slug: string; id: string };
   /** Any other store's list. */
   listUrl?: string;
@@ -356,7 +356,7 @@ function mealTrain(today: string): DemoEvent {
 
 /**
  * Christmas dinner at Remi & Max's, where everyone gives everyone: each
- * guest links a wish list, and sees the others' lists on the invitation.
+ * guest links a wishlist, and sees the others' lists on the invitation.
  * Guests bring a dish from the sign-up sheet.
  */
 function familyChristmas(today: string): DemoEvent {
@@ -389,7 +389,7 @@ function familyChristmas(today: string): DemoEvent {
     location_name: "Remi & Max's place",
     location_address: HOME_ADDRESS,
     message:
-      "Christmas at our place this year! We'll do the turkey, so pick something to bring below. Add your wish list when you RSVP, and you'll see everyone else's and what's already been picked, so nobody doubles up.",
+      "Christmas at our place this year! We'll do the turkey, so pick something to bring below. Add your wishlist when you RSVP, and you'll see everyone else's and what's already been picked, so nobody doubles up.",
     gift_note: "Kids first, then everyone else. Wrapped gifts go under the tree when you arrive.",
     image_url: null,
     rsvp_by: addDays(christmas, -14),
@@ -430,14 +430,14 @@ function familyChristmas(today: string): DemoEvent {
       message(today, id, {
         id: "m1",
         audience: "not_declined",
-        subject: "Add your wish lists!",
-        body: "Remember to add your wish list when you RSVP, so everyone can start shopping. Kids' lists too!",
+        subject: "Add your wishlists!",
+        body: "Remember to add your wishlist when you RSVP, so everyone can start shopping. Kids' lists too!",
         recipients: 5,
         daysAgo: 7,
       }),
     ],
     guests: guests(today, id, [
-      // The hosts are on their own list, so their wish list shows too.
+      // The hosts are on their own list, so their wishlist shows too.
       {
         id: "c1",
         name: "Remi & Max",

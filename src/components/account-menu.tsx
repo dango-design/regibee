@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Settings, UserPlus, UserRound } from "lucide-react";
+import { ChevronDown, LifeBuoy, LogOut, Settings, UserPlus, UserRound } from "lucide-react";
 import { Button as AriaButton, RouterProvider } from "react-aria-components";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
@@ -74,6 +74,7 @@ export function AccountMenu({ account, basePath, demo }: { account: NavAccount; 
               addon={count > 0 ? String(count) : undefined}
             />
             <Dropdown.Item id="account" href={`${basePath}/dashboard/account`} icon={Settings} label="Account settings" />
+            {account.support && !demo && <Dropdown.Item id="support" href="/support" icon={LifeBuoy} label="Support" />}
             <Dropdown.Separator />
             <Dropdown.Item id="sign-out" icon={LogOut} label={demo ? "Leave the demo" : "Sign out"} />
           </Dropdown.Menu>
