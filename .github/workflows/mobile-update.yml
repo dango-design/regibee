@@ -27,6 +27,7 @@ on:
       - src/lib/demo-data.ts
       - src/lib/email-address.ts
       - src/lib/event-images.ts
+      - src/lib/event-steps.ts
       - src/lib/event-updates.ts
       - src/lib/events-page-types.ts
       - src/lib/events.ts
@@ -49,6 +50,7 @@ on:
       - src/lib/rsvp-questions.ts
       - src/lib/saved-items-types.ts
       - src/lib/signups.ts
+      - src/lib/step-nav.ts
       - src/lib/store-perks.ts
       - src/lib/types.ts
       - extension/src/product-reader.ts
