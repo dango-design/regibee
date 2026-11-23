@@ -121,7 +121,7 @@ test("the owner gets a new link: the old one stops working, guests' gift emails 
   expect(forgedResponse?.status()).toBe(404);
 });
 
-test("a gift exchange guest's wish list link follows the list's new link", async ({ page, browser }) => {
+test("a gift exchange guest's wishlist link follows the list's new link", async ({ page, browser }) => {
   const owner = await createAccount("Maya Owner");
   const { registry } = await createWishlist(owner.id);
   const { guests } = await createExchangeEvent(owner.id, [{ name: "Maya", email: owner.email }]);

@@ -28,7 +28,7 @@ export default function GiftProfileScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120 }}
       >
         <Text variant="subhead" tone="secondary">
-          Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wish lists and your profile, so anyone
+          Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wishlists and your profile, so anyone
           with those links sees them.
         </Text>
         <GiftProfileForm initial={data.giftProfile} onSave={(profile) => run("giftProfile.saveGiftProfile", profile)} />

@@ -48,7 +48,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 ## List links
 
 - A list is private, link-only or public (`src/lib/list-access.ts`). The database keeps this as `is_private` and `is_public`; both can't be set. New lists start link-only.
-- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wish lists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
+- A private list opens only for its owner and co-managers. `src/app/r/[slug]/page.tsx` shows everyone else the not-found page. The database takes a list off its events, groups and Secret Santa wishlists when it becomes private, refuses to add it back, and refuses guests' gifts on it (`20261115084541_private_lists.sql`). Any new place that shows a list to people who don't manage it must skip private lists.
 - Anyone with a link-only or public list's link (`/r/<slug>`) can open it. The 12 random characters at the end of the slug are what keep a list to the people it was sent to. Make new slugs with `generateRegistrySlug` (`src/lib/registry-create.ts`), or `new_registry_slug` in the database, never with `Math.random`.
 - A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
 - Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
@@ -91,6 +91,11 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
   `delete from public.star_emails where email = lower('…')` removes one. Either takes effect on the account's next send or upload.
 - The phone app and the extension don't send emails or upload photos, so the levels don't change them.
+
+## Words
+
+- Spell it "wishlist", one word, or "Wishlist" at the start of a sentence. This goes for text people see, emails, code comments, docs and PR titles. Don't write "wish list". New code names use `Wishlist` too. Older names such as `GuestWishLists` and `WishListHero`, and the comments in migrations that have already run, still say it the old way.
+- Each kind of list has its own name in `src/lib/occasions.ts`, such as "baby registry", "birthday wishlist" and "Christmas list". "Gift list" is the general word, used where the kind isn't known yet, as on the New page.
 
 ## Clickable cards
 

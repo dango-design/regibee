@@ -160,7 +160,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               If you fill it in on your Account page, we keep your birthday (the month and day, no year), your
               sizes, favorite colors, likes, things to skip and notes. Everything but the birthday shows on your
-              personal wish lists and your profile, so anyone with those links sees it. Your birthday shows only to
+              personal wishlists and your profile, so anyone with those links sees it. Your birthday shows only to
               you and the followers you&apos;ve approved: on your profile, on their Following page, and in an email
               we send them 10 days before.
             </P>
@@ -244,7 +244,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 In a gift exchange that draws names, you see who has joined and how many have added a wishlist or
                 address, but not who drew whom or what anyone added. When everyone gives everyone, you and your
-                guests see everyone&apos;s wish lists on the invitation.
+                guests see everyone&apos;s wishlists on the invitation.
               </li>
               <li>
                 You can ask the person an event is for to make a gift list. We email them a link, and keep their name
@@ -328,7 +328,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Everyone gives everyone.</strong> At an event where
-                every guest gives to everyone, you add one of your Regibee wish lists after you RSVP, which takes an
+                every guest gives to everyone, you add one of your Regibee wishlists after you RSVP, which takes an
                 account. The event&apos;s guests and hosts see it on the invitation, with your name.
               </li>
               <li>

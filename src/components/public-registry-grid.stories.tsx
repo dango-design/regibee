@@ -277,8 +277,8 @@ export const NoItemsYet: Story = {
   },
 };
 
-// A guest of an everyone-gives-everyone Christmas, on another guest's wish
-// list (src/app/r/[slug]/page.tsx). Each item another guest reserved says who,
+// A guest of an everyone-gives-everyone Christmas, on another guest's
+// wishlist (src/app/r/[slug]/page.tsx). Each item another guest reserved says who,
 // so nobody doubles up. The guest's own reservation says "Reserved for you",
 // and a second copy of the same item reserved by someone else says "Also".
 export const FellowGuestsReserved: Story = {

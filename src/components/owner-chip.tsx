@@ -29,7 +29,7 @@ export interface OwnerChipProps {
 }
 
 /**
- * Who shared a wish list: their initials and name, linking to their profile.
+ * Who shared a wishlist: their initials and name, linking to their profile.
  * A Follow button sits beside it only while there's something to do. Once
  * the viewer follows them, "Following" shows inside the chip as a plain fact:
  * unfollowing is rare, and their profile page still offers it.

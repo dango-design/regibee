@@ -93,7 +93,7 @@ const TRACKS: Track[] = [
         href: "/demo/dashboard/events/christmas",
         icon: TreePine,
         title: "Host Christmas dinner",
-        body: "Who's coming, whose wish list is in, and who's bringing what.",
+        body: "Who's coming, whose wishlist is in, and who's bringing what.",
       },
       {
         href: "/demo/dashboard/events/secret-santa",
@@ -112,14 +112,14 @@ const TRACKS: Track[] = [
       {
         href: "/demo/e/family-christmas?g=demo-c5",
         icon: Mail,
-        title: "RSVP with your wish list",
+        title: "RSVP with your wishlist",
         body: "As Nessa: see everyone's lists and pick a dish to bring.",
       },
       {
         href: "/demo/e/friendsmas-secret-santa?g=demo-ss2",
         icon: Shuffle,
         title: "See who you drew",
-        body: "As Glinda, with her Secret Santa name and their wish list.",
+        body: "As Glinda, with her Secret Santa name and their wishlist.",
       },
       {
         href: "/demo/r/lily-and-sams-christmas-list",

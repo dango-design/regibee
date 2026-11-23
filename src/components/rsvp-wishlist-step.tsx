@@ -10,10 +10,10 @@ import { storeName } from "@/lib/events";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
 import { cx } from "@/lib/utils/cx";
 
-/** What the wish list step needs from the event page, besides the event and the guest's token. */
+/** What the wishlist step needs from the event page, besides the event and the guest's token. */
 export interface RsvpWishlist {
   /**
-   * The guest's wish list now, or null. A Regibee list has its title, and its
+   * The guest's wishlist now, or null. A Regibee list has its title, and its
    * id when it's one of the signed-in account's own lists, so they can add to it.
    */
   current: { url: string; title: string | null; ownListId: string | null } | null;
@@ -34,7 +34,7 @@ export interface RsvpWishlistStepProps extends RsvpWishlist {
 
 /**
  * The step after a guest says they're coming to an everyone-gives-everyone
- * event: add the wish list the others will shop from. It's a Regibee list, so
+ * event: add the wishlist the others will shop from. It's a Regibee list, so
  * it takes an account. Someone signed in picks one of their lists or makes a
  * new one. Someone signed out makes an account or logs in, and comes back
  * here to do that. A link or gift ideas saved before this rule still show.
@@ -122,7 +122,7 @@ export function RsvpWishlistStep({
           {icon}
           <div className="min-w-0 pt-1">
             <h3 id="wishlist-heading" className="font-medium text-primary">
-              Your wish list
+              Your wishlist
             </h3>
             {current ? (
               <p className="text-sm break-words text-secondary">
@@ -151,7 +151,7 @@ export function RsvpWishlistStep({
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={() => setChoosing(true)}>
-            {current ? "Change" : "Add a wish list"}
+            {current ? "Change" : "Add a wishlist"}
           </Button>
         </div>
       </section>
@@ -168,7 +168,7 @@ export function RsvpWishlistStep({
       <div className="flex items-center gap-3">
         {icon}
         <h3 id="wishlist-heading" className="min-w-0 font-medium text-primary">
-          {current ? "Change your wish list" : "Now add your wish list"}
+          {current ? "Change your wishlist" : "Now add your wishlist"}
         </h3>
       </div>
 
@@ -221,7 +221,7 @@ export function RsvpWishlistStep({
                 "new",
                 <span className="inline-flex items-center gap-1.5">
                   <Plus aria-hidden="true" className="size-4" />
-                  {lists.length > 0 ? "Make a new wish list" : "Make my wish list"}
+                  {lists.length > 0 ? "Make a new wishlist" : "Make my wishlist"}
                 </span>,
                 "Making it…",
               )}
@@ -237,7 +237,7 @@ export function RsvpWishlistStep({
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link href={`/signup?redirect=${encodeURIComponent(back)}`}>Make a free wish list</Link>
+              <Link href={`/signup?redirect=${encodeURIComponent(back)}`}>Make a free wishlist</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href={`/login?redirect=${encodeURIComponent(back)}`}>Log in</Link>
@@ -267,7 +267,7 @@ export function RsvpWishlistStep({
             setError("");
           }}
         >
-          Keep my wish list as it is
+          Keep my wishlist as it is
         </Button>
       )}
     </section>

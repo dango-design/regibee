@@ -27,14 +27,14 @@ test("a host on the guest list gets their linked list on their row", () => {
   assert.equal(result[1].registry, null);
 });
 
-test("a guest's own wish list stays, and the linked list keeps its own row", () => {
+test("a guest's own wishlist stays, and the linked list keeps its own row", () => {
   const own = { title: "My Other List", slug: "other-list-9z8y" };
   const lists = [guest("host", own)];
   const result = giveGuestsTheirLinkedLists(lists, [hostsList], new Map([["host", "host@example.com"]]));
   assert.deepEqual(result[0].registry, own);
 });
 
-test("a list that's already someone's wish list isn't given to a second guest", () => {
+test("a list that's already someone's wishlist isn't given to a second guest", () => {
   const lists = [guest("brother", { title: "Host's Wishlist", slug: "hosts-list-1a2b" }), guest("host")];
   const emails = new Map([
     ["brother", "brother@example.com"],

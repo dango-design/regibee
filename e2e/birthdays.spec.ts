@@ -31,7 +31,7 @@ async function follow(followerId: string, followeeId: string, status: "pending" 
   if (error) throw error;
 }
 
-/** Someone with a birthday, sizes and likes, and one wish list on their profile. */
+/** Someone with a birthday, sizes and likes, and one wishlist on their profile. */
 async function personWithBirthday(name: string, birthday: { month: number; day: number }) {
   const person = await createAccount(name);
   const { error } = await db

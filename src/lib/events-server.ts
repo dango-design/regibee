@@ -567,7 +567,7 @@ export async function getPendingListRequests(eventId: string): Promise<{ name: s
 
 /**
  * Whether guests of this event can shop this registry as part of the event:
- * the event links it, or it's the wish list of one of its guests and the
+ * the event links it, or it's the wishlist of one of its guests and the
  * event's gift exchange is everyone gives everyone. (A Secret Santa's
  * wishlist is only for the person who drew them; the gift link route checks
  * that on its own.) With several registries, any one of them counts: an item
@@ -592,7 +592,7 @@ export async function eventIncludesRegistry(eventId: string, registryIds: string
 }
 
 /**
- * Everyone's wish lists for an everyone-gives-everyone event: each guest
+ * Everyone's wishlists for an everyone-gives-everyone event: each guest
  * taking part, with their list or null when they haven't added one. The
  * viewer's own entry comes first. Only the event's guests and hosts get this.
  */
@@ -623,8 +623,8 @@ export async function getGuestWishLists(eventId: string, viewerGuestId: string |
 }
 
 /**
- * Everyone's wish lists, with each list the host linked put on its owner's
- * row when the owner is a guest with no wish list of their own, matched by
+ * Everyone's wishlists, with each list the host linked put on its owner's
+ * row when the owner is a guest with no wishlist of their own, matched by
  * email (src/lib/guest-linked-lists.ts). Takes the lists getEventRegistries
  * loaded withItems, which know their owners. The emails stay on the server.
  */
@@ -667,7 +667,7 @@ export async function withGuestsLinkedLists(
 
 /**
  * The events a registry is linked to, by the event's own links or as a
- * guest's wish list. A list that hides reservations from its owner reveals
+ * guest's wishlist. A list that hides reservations from its owner reveals
  * them the day after each one (src/lib/reveal.ts).
  */
 export async function getEventsForReveal(

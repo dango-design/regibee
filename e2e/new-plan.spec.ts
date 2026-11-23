@@ -80,7 +80,7 @@ test("a Christmas party for no one in particular links one of your own wishlists
   expect((await linkedRegistries(eventId)).map((r) => r.id)).toEqual([registry.id]);
 });
 
-test("a holiday party starts with each guest linking their own wish list", async ({ page }) => {
+test("a holiday party starts with each guest linking their own wishlist", async ({ page }) => {
   const hal = await createAccount("Hal Host");
   await signIn(page, hal);
   await openPicker(page);
@@ -91,7 +91,7 @@ test("a holiday party starts with each guest linking their own wish list", async
   await expect(page.getByRole("button", { name: /Everyone gives everyone/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByLabel("Event name")).toHaveValue("Holiday Party");
-  await expect(page.getByText(/guests link their wish lists when they RSVP/)).toBeVisible();
+  await expect(page.getByText(/guests link their wishlists when they RSVP/)).toBeVisible();
   await page.getByRole("button", { name: "Make the event" }).click();
 
   const eventId = await eventIdFrom(page);

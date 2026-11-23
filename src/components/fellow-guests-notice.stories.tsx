@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { FellowGuestsNotice } from "./fellow-guests-notice";
 
-// On a guest's wish list, for another guest who opened it from an
+// On a guest's wishlist, for another guest who opened it from an
 // everyone-gives-everyone invitation (src/app/r/[slug]/page.tsx).
 
 const meta: Meta<typeof FellowGuestsNotice> = {

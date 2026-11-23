@@ -157,7 +157,7 @@ export const MAX_GIFT_NOTE_LENGTH = 500;
  * - draw: names are drawn, and each person gives one gift to the person they
  *   drew (a Secret Santa).
  * - everyone: everyone gives everyone, like a family Christmas. Each guest
- *   links a wish list, the event page shows everyone's lists to the guests,
+ *   links a wishlist, the event page shows everyone's lists to the guests,
  *   and guests see what the others reserved so nobody doubles up.
  */
 export type ExchangeKind = "draw" | "everyone";
@@ -166,7 +166,7 @@ export const EXCHANGE_KINDS: { value: ExchangeKind; label: string; hint: string 
   {
     value: "everyone",
     label: "Everyone gives everyone",
-    hint: "Each guest links a wish list. Guests see each other's lists and what's been reserved, so nobody doubles up.",
+    hint: "Each guest links a wishlist. Guests see each other's lists and what's been reserved, so nobody doubles up.",
   },
   {
     value: "draw",
@@ -211,7 +211,7 @@ export function exchangeKind(exchange: Pick<GiftExchange, "kind"> | null | undef
   return exchange?.kind === "everyone" ? "everyone" : "draw";
 }
 
-/** A guest's wish list, as the other guests of an everyone-gives-everyone event see it. */
+/** A guest's wishlist, as the other guests of an everyone-gives-everyone event see it. */
 export interface GuestWishList {
   guestId: string;
   name: string;
@@ -224,7 +224,7 @@ export interface GuestWishList {
   giftIdeas: string | null;
 }
 
-/** "store.com" from a wish list's link, for a list that isn't on Regibee. */
+/** "store.com" from a wishlist's link, for a list that isn't on Regibee. */
 export function storeName(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

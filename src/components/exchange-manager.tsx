@@ -84,7 +84,7 @@ export function ExchangeManager({
 
 /**
  * The host's side of an everyone-gives-everyone event: who's taking part and
- * who has added a wish list. There's nothing to draw. The host sees whether a
+ * who has added a wishlist. There's nothing to draw. The host sees whether a
  * guest added a list, not the list itself, unless they're a guest too.
  */
 function EveryoneGivesManager({
@@ -107,7 +107,7 @@ function EveryoneGivesManager({
               Everyone gives everyone
             </h2>
             <p className="text-sm text-tertiary">
-              {exchange.budget ? `About ${exchange.budget} a gift · ` : ""}Guests link wish lists when they RSVP
+              {exchange.budget ? `About ${exchange.budget} a gift · ` : ""}Guests link wishlists when they RSVP
             </p>
           </div>
         </div>
@@ -125,7 +125,7 @@ function EveryoneGivesManager({
                 : withList.length === 1
                   ? "1 has"
                   : `${withList.length} have`
-            } added a wish list.`}
+            } added a wishlist.`}
         {waiting > 0 ? ` ${waiting === 1 ? "1 guest hasn't" : `${waiting} guests haven't`} answered yet.` : ""}
       </p>
 
@@ -142,7 +142,7 @@ function EveryoneGivesManager({
                 <span aria-hidden="true" className="size-2 rounded-full bg-quaternary" />
               )}
               {g.name}
-              <span className="sr-only">{g.wishlist_url ? ", has a wish list" : ", no wish list yet"}</span>
+              <span className="sr-only">{g.wishlist_url ? ", has a wishlist" : ", no wishlist yet"}</span>
             </li>
           ))}
         </ul>
