@@ -77,6 +77,24 @@ colima stop
 - With `EMAIL_TRANSPORT=mailpit`, `src/lib/mailer.ts` sends to Mailpit instead of Resend. The tests also blank `RESEND_API_KEY`, so Resend couldn't send even if something skipped Mailpit.
 - `e2e/db.sh` runs only local commands. Nothing in it takes `--remote`.
 
+## Flow maps
+
+`e2e/flows/` holds scripts that walk a whole user flow the way the tests do, and save a screenshot of every step, the emails included. `build-map.mjs` turns a run into one page: the screens in order, in a lane each for the host, the emails and the guest, with an arrow from each step to the next.
+
+```bash
+npx playwright test --config e2e/flows/playwright.config.ts
+```
+
+```bash
+node e2e/flows/build-map.mjs event-hosting
+```
+
+The screenshots, a `steps.json` and the page land in `test-results/flows/<flow>/`, which git ignores. The page is made to be published as a Claude artifact, with the screenshots as its files. Run both again after a change and the map shows the new pages.
+
+- A flow is a file named `<flow>.flow.ts`, so the tests' own config never runs it. `event-hosting.flow.ts` is the example.
+- `flow.page(...)` saves the page, and `flow.email(...)` saves an email from Mailpit. Each takes a title and a note for the map. `after` and `via` say which step leads to this one and by which button or link.
+- Flows use the same local Supabase and port 3100 as the tests, so run one only when no test run is going.
+
 ## Writing a test
 
 - `fixtures.ts` creates test data with the service-role key, such as an owner with a registry and an item, and has steps several tests share, such as reserving a gift.
