@@ -83,7 +83,10 @@ test("someone types a friend's exact email, asks to follow, and the friend appro
   await franPage.goto(reviewLink);
   const requests = franPage.locator("#follow-requests");
   await expect(requests).toContainText("Sid Searcher");
-  await requests.getByRole("button", { name: "Approve" }).click();
+  // A click before React takes over the page does nothing.
+  const approve = requests.getByRole("button", { name: "Approve" });
+  await waitForReact(approve);
+  await approve.click();
   await expect.poll(() => followStatus(sid.id, fran.id)).toBe("approved");
   await franContext.close();
 

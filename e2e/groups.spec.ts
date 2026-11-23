@@ -53,7 +53,10 @@ test("a guest list saved as a group fills an event and runs next year's exchange
   // page once first (for a group that doesn't exist) gets that out of the way.
   await page.request.get("/dashboard/groups/00000000-0000-4000-8000-000000000000");
   await openEvent(page, lastYear.id);
-  await page.getByRole("button", { name: "Save as a group" }).click();
+  // A click before React takes over the page does nothing.
+  const saveAsGroup = page.getByRole("button", { name: "Save as a group" });
+  await waitForReact(saveAsGroup);
+  await saveAsGroup.click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Group name").fill("The Chens");
   await dialog.getByRole("button", { name: "Save group" }).click();
@@ -71,7 +74,11 @@ test("a guest list saved as a group fills an event and runs next year's exchange
   // A cousin joins the family. Adding Ann again changes nothing.
   await page.goto(`/dashboard/groups/${groupId}`);
   const dee = uniqueEmail("dee");
-  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Dee");
+  // Text typed before React takes over the page is cleared, and the Add
+  // button, in the same form, does nothing yet.
+  const newName = page.getByRole("textbox", { name: "Name", exact: true });
+  await waitForReact(newName);
+  await newName.fill("Dee");
   await page.getByRole("textbox", { name: "Email (optional)" }).fill(dee);
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByText(dee)).toBeVisible();
@@ -108,7 +115,9 @@ test("a guest list saved as a group fills an event and runs next year's exchange
   // Everyone joins, the host draws, and nobody gets last year's person.
   await db.from("event_guests").update({ in_exchange: true }).eq("event_id", thisYearId);
   await page.reload();
-  await page.getByRole("button", { name: "Draw names" }).click();
+  const drawNames = page.getByRole("button", { name: "Draw names" });
+  await waitForReact(drawNames);
+  await drawNames.click();
   await page.getByRole("button", { name: "Draw names" }).click();
   await expect(page.getByRole("button", { name: "Draw again" })).toBeVisible();
   const drawn = await guestsOf(thisYearId);
@@ -147,6 +156,7 @@ test("Invite a group adds its people to a guest list once", async ({ page }) => 
 
   await signIn(page, host);
   await openEvent(page, dinner!.id);
+  await waitForReact(page.getByRole("button", { name: "Invite a group" }));
   await chooseOption(page, "Invite a group", `${group!.name} (3 people)`);
   await expect(page.getByText("Added 2 guests. 1 already on the list.")).toBeVisible();
   expect((await guestsOf(dinner!.id)).map((g) => g.name).sort()).toEqual(["Ann", "Bo", "Grandpa"]);
