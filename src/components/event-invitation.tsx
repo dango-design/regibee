@@ -57,8 +57,13 @@ export interface InvitationRegistry extends LinkedRegistry {
    * Their account name, or the names written on the list.
    */
   ownerName?: string | null;
-  /** The viewer owns this list, so it has no button: nobody shops their own list. */
+  /**
+   * The viewer owns this list. Nobody shops their own list, so its button
+   * opens the viewer's own page for it instead, by `id`.
+   */
   isYours?: boolean;
+  /** The list's id. Your own list opens on your own page for it, by its id. */
+  id?: string;
 }
 
 export interface EventInvitationProps {

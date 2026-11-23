@@ -30,12 +30,40 @@ export default meta;
 type Story = StoryObj<typeof GuestWishLists>;
 
 /**
- * Glinda, on her own invitation link. Her list is first, with no button:
- * nobody sees what's been reserved from their own list. Elphaba's and
- * Fiyero's open through the event, Boq hasn't added one yet, and two guests
- * haven't answered.
+ * Glinda, signed in on her own invitation link. Her list is first, and its
+ * button opens her own page for it, where what's been reserved stays hidden
+ * from her until the day after. Elphaba's and Fiyero's open through the event, Boq hasn't added
+ * one yet, and two guests haven't answered.
  */
-export const AsAGuest: Story = {};
+export const AsAGuest: Story = {
+  play: async ({ canvasElement }) => {
+    const rows = within(canvasElement).getAllByRole("listitem");
+    await expect(rows[0]).toHaveTextContent(/Glinda\s*\(you\)/);
+    await expect(within(rows[0]).getByRole("link", { name: "See your list" })).toHaveAttribute(
+      "href",
+      "/dashboard/registry/glindas-list",
+    );
+    await expect(within(rows[1]).getByRole("link", { name: "See Elphaba's list" })).toHaveAttribute(
+      "href",
+      `/e/${sampleExchangeEvent.slug}/gifts?g=token-g1&to=elphabas-list-2k9d`,
+    );
+  },
+};
+
+/**
+ * Glinda's wishlist is a list her account doesn't own, or she's signed out.
+ * It has no button: that list's page would show her what's been reserved.
+ */
+export const AListYouDontOwn: Story = {
+  args: {
+    lists: sampleGuestWishLists.map((entry) => (entry.isYou ? { ...entry, ownListId: null } : entry)),
+  },
+  play: async ({ canvasElement }) => {
+    const rows = within(canvasElement).getAllByRole("listitem");
+    await expect(rows[0]).toHaveTextContent(/Glinda\s*\(you\)\s*Glinda's Christmas List/);
+    await expect(within(rows[0]).queryByRole("link")).toBeNull();
+  },
+};
 
 /**
  * The host linked their own list to the event. It shows first, and like a
@@ -68,14 +96,16 @@ export const WithTheHostsList: Story = {
 
 /**
  * The host, looking at their own list on the invitation. It says it's
- * theirs and has no button: nobody shops their own list.
+ * theirs. Nobody shops their own list, so its button opens the host's own
+ * page for it instead.
  */
 export const YourOwnLinkedList: Story = {
   args: {
-    lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false })),
+    lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false, ownListId: null })),
     guestToken: null,
     registries: [
       {
+        id: "lindas-list",
         title: "Aunt Linda's Christmas List",
         slug: "aunt-lindas-list-5r2t",
         itemsLeft: 4,
@@ -88,7 +118,12 @@ export const YourOwnLinkedList: Story = {
   play: async ({ canvasElement }) => {
     const rows = within(canvasElement).getAllByRole("listitem");
     await expect(rows[0]).toHaveTextContent(/Linda Park\s*\(you\)/);
-    await expect(within(rows[0]).queryByRole("link")).toBeNull();
+    await expect(within(rows[0]).getAllByRole("link")).toHaveLength(1);
+    await expect(within(rows[0]).getByRole("link", { name: "See your list" })).toHaveAttribute(
+      "href",
+      "/dashboard/registry/lindas-list",
+    );
+    await expect(within(rows[0]).queryByRole("link", { name: "See Linda's list" })).toBeNull();
   },
 };
 
@@ -111,7 +146,7 @@ export const NotAGuest: Story = {
 export const NoListOfYourOwn: Story = {
   args: {
     lists: sampleGuestWishLists.map((entry) =>
-      entry.isYou ? { ...entry, url: null, registry: null } : entry,
+      entry.isYou ? { ...entry, url: null, registry: null, ownListId: null } : entry,
     ),
   },
 };
@@ -119,7 +154,7 @@ export const NoListOfYourOwn: Story = {
 /** The host, looking at the invitation without being on the guest list. */
 export const HostView: Story = {
   args: {
-    lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false })),
+    lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false, ownListId: null })),
     guestToken: null,
   },
 };
