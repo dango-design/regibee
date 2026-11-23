@@ -118,7 +118,10 @@ test("taking an item off its home list moves it, and its gift, to the other list
 
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${home.id}`);
-  await page.getByText(item.title).click();
+  // A click before React takes over the page does nothing.
+  const onHome = page.getByText(item.title);
+  await waitForReact(onHome);
+  await onHome.click();
   const dialog = page.getByRole("dialog");
   page.once("dialog", (confirm) => {
     expect(confirm.message()).toContain(`Remove "${item.title}" from this list? It stays on`);
@@ -140,10 +143,12 @@ test("taking an item off its home list moves it, and its gift, to the other list
   const { data: gifts } = await db.from("purchases").select("buyer_email, status").eq("registry_item_id", item.id);
   expect(gifts).toEqual([{ buyer_email: guestEmail, status: "reserved" }]);
   await page.goto(`/dashboard/registry/${other.id}`);
-  await expect(page.getByText(item.title)).toBeVisible();
+  const onOther = page.getByText(item.title);
+  await expect(onOther).toBeVisible();
 
   // On its last list, removing it deletes it.
-  await page.getByText(item.title).click();
+  await waitForReact(onOther);
+  await onOther.click();
   page.once("dialog", (confirm) => void confirm.accept());
   await dialog.getByRole("button", { name: "Remove item" }).filter({ visible: true }).click();
   await expect(dialog).toBeHidden();
