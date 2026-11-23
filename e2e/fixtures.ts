@@ -81,7 +81,10 @@ export async function createRegistryWithItem({ star = true }: { star?: boolean }
 /** Reserves the registry's one item as a guest, from the registry page. */
 export async function reserveGift(page: Page, opts: { slug: string; name: string; email: string }) {
   await page.goto(`/r/${opts.slug}`);
-  await page.getByRole("button", { name: "Gift this" }).click();
+  // A click before React takes over the page does nothing.
+  const giftThis = page.getByRole("button", { name: "Gift this" });
+  await waitForReact(giftThis);
+  await giftThis.click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Your Name").fill(opts.name);
   await dialog.getByLabel("Your Email").fill(opts.email);

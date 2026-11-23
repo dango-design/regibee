@@ -14,7 +14,10 @@ const SHARE_LINK = /\/group-gift\/[A-Za-z0-9_-]+$/;
 /** Starts a group gift on the list's one item, signed in as the organizer. */
 async function startGroupGift(page: Page, slug: string, payback: string) {
   await page.goto(`/r/${slug}`);
-  await page.getByRole("button", { name: "Group gift" }).click();
+  // A click before React takes over the page does nothing.
+  const groupGift = page.getByRole("button", { name: "Group gift" });
+  await waitForReact(groupGift);
+  await groupGift.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Total to collect")).toHaveValue("40");
   await dialog.getByLabel("How should people pay you back?").fill(payback);
@@ -28,7 +31,10 @@ async function chipInAsGuest(browser: Browser, shareUrl: string, opts: { name: s
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(shareUrl);
-  await page.getByLabel("Your name").fill(opts.name);
+  // Text typed before React takes over the page is cleared.
+  const name = page.getByLabel("Your name");
+  await waitForReact(name);
+  await name.fill(opts.name);
   await page.getByLabel("Your email").fill(opts.email);
   await page.getByLabel("Your share").fill(opts.amount);
   await page.getByRole("button", { name: "Chip in" }).click();
@@ -78,7 +84,9 @@ test("a friend starts a group gift, a guest chips in, and the owner only sees an
   const glindaPage = await glindaLater.newPage();
   await glindaPage.goto(glindaLink);
   await expect(glindaPage.getByText("$25 of $40")).toBeVisible();
-  await glindaPage.getByRole("button", { name: "Change amount" }).click();
+  const changeAmount = glindaPage.getByRole("button", { name: "Change amount" });
+  await waitForReact(changeAmount);
+  await changeAmount.click();
   await glindaPage.getByLabel("Your new amount").fill("30");
   await glindaPage.getByRole("button", { name: "Save" }).click();
   await expect(glindaPage.getByText("Changed to $30.")).toBeVisible();
@@ -109,7 +117,9 @@ test("a friend starts a group gift, a guest chips in, and the owner only sees an
   // Oz ticks Glinda off and marks it bought. Maya hears it the usual way.
   await ozPage.reload();
   // React Aria's checkbox hides its input, so click the row's "Paid" label.
-  await ozPage.getByRole("listitem").filter({ hasText: "Glinda Guest" }).getByText("Paid").click();
+  const paid = ozPage.getByRole("listitem").filter({ hasText: "Glinda Guest" }).getByText("Paid");
+  await waitForReact(paid);
+  await paid.click();
   await expect(ozPage.getByRole("checkbox", { name: "Glinda Guest paid" })).toBeChecked();
   await ozPage.getByRole("button", { name: "I bought it" }).click();
   await ozPage.getByRole("button", { name: "Yes, I bought it" }).click();
@@ -192,7 +202,9 @@ test("a group gift started from an event's invitation shows to its other guests"
   await signIn(ozPage, oz);
   await ozPage.goto(`/e/${event.slug}/gifts?g=${ozGuest.token}&to=${registry.slug}`);
   await ozPage.waitForURL(new RegExp(`/r/${registry.slug}$`));
-  await ozPage.getByRole("button", { name: "Group gift" }).click();
+  const groupGift = ozPage.getByRole("button", { name: "Group gift" });
+  await waitForReact(groupGift);
+  await groupGift.click();
   await expect(ozPage.getByRole("dialog").getByText(`Guests of ${event.title} will see it`)).toBeVisible();
   await ozPage.getByRole("dialog").getByRole("button", { name: "Start group gift" }).click();
   await ozPage.waitForURL(/\/group-gift\//);
