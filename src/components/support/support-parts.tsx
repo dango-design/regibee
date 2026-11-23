@@ -114,8 +114,10 @@ export function SupportTag({
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
         tone === "gray" && "bg-secondary text-secondary",
         tone === "brand" && "bg-brand-primary text-brand-secondary",
-        tone === "warning" && "bg-warning-primary text-warning-primary",
-        tone === "success" && "bg-success-primary text-success-primary",
+        // The 700 shades: the theme's warning and success text colors are too
+        // light on these backgrounds for small text (WCAG AA needs 4.5:1).
+        tone === "warning" && "bg-warning-primary text-warning-700",
+        tone === "success" && "bg-success-primary text-success-700",
       )}
     >
       {children}
