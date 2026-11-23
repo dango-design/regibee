@@ -20,6 +20,8 @@ on:
       - extension/**
       - "!extension/test/**"
       - "!extension/README.md"
+      # The store listing's text, images and the scripts that make them.
+      - "!extension/store-listing/**"
       # The site files the extension is built from.
       - src/lib/extension.ts
       - src/lib/retailers.ts
