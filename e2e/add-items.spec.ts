@@ -129,10 +129,57 @@ test("an item's barcode stays only while it keeps the link it came from", async 
   // read its page, so there's no new barcode to take its place.
   await card.click();
   dialog = page.getByRole("dialog", { name: "Edit item" });
+  // A filled-in item shows its link on one line until the owner changes it.
+  await dialog.getByRole("button", { name: "Change link" }).click();
   await dialog.getByLabel("Product link").fill(`${shopUrl}/products/organic-cotton-swaddle-set`);
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await expect(dialog).toBeHidden();
   expect(await gtinNow()).toBeNull();
+});
+
+test("a new link replaces an item's name, price and picture, and each one can be undone", async ({ page }) => {
+  const { owner, registry, item } = await createRegistryWithItem();
+  // An item already filled in from another page.
+  await db
+    .from("registry_items")
+    .update({ external_url: `${shopUrl}/products/old-sound-machine`, price: 45 })
+    .eq("id", item.id);
+
+  await signIn(page, owner);
+  await page.goto(`/dashboard/registry/${registry.id}`);
+  const card = page.getByRole("heading", { name: item.title });
+  await waitForReact(card);
+  await card.click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+
+  // Its link sits on one line until the owner changes it.
+  await expect(dialog.getByLabel("Product link")).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Change link" }).click();
+  await fetchFromLink(dialog, `${shopUrl}/products/hatch-rest-sound-machine`);
+
+  // The new page's details replace the old ones, and the link steps back.
+  await expect(dialog.getByLabel("Item name")).toHaveValue("Hatch Rest Sound Machine");
+  await expect(dialog.getByLabel("Price (optional)")).toHaveValue("59.99");
+  await expect(dialog.getByText("Was $45.00")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Change link" })).toBeVisible();
+
+  // The owner keeps their own name.
+  await dialog.locator("p", { hasText: `Was “${item.title}”` }).getByRole("button", { name: "Undo" }).click();
+  await expect(dialog.getByLabel("Item name")).toHaveValue(item.title);
+
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+  const { data: saved } = await db
+    .from("registry_items")
+    .select("title, price, image_url, external_url")
+    .eq("id", item.id)
+    .single();
+  expect(saved).toEqual({
+    title: item.title,
+    price: 59.99,
+    image_url: `${shopUrl}/images/rest.png`,
+    external_url: `${shopUrl}/products/hatch-rest-sound-machine`,
+  });
 });
 
 test("a store that won't let the server in still leaves the link and a name from it", async ({ page }) => {

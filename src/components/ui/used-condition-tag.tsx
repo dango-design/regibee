@@ -17,7 +17,7 @@ export function UsedConditionTag({ condition, className }: UsedConditionTagProps
   const colors = conditionColors[key] || conditionColors["like-new"];
   const label = key.replace("-", " ");
 
-  const fullText = `Open to ${label} used condition`;
+  const fullText = `Open to ${label} hand-me-downs`;
 
   return (
     <span
@@ -36,7 +36,7 @@ export function UsedConditionTag({ condition, className }: UsedConditionTagProps
         <span className={cn("inline-flex shrink-0 items-center rounded px-1.5", colors.badge)}>
           {label}
         </span>
-        <span className="min-w-0 truncate">used condition</span>
+        <span className="min-w-0 truncate">hand-me-downs</span>
       </span>
       <span
         role="tooltip"

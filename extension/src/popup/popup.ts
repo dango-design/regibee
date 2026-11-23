@@ -1067,7 +1067,7 @@ function showProduct(ctx: ProductContext) {
       "div",
       { className: "checks" },
       h("label", { className: "check" }, essential, "Most wanted"),
-      h("label", { className: "check" }, openToUsed, "Open to used")
+      h("label", { className: "check" }, openToUsed, "Open to hand-me-downs")
     ),
     conditionField,
     field("notes", "Note for friends and family (optional)", notes)

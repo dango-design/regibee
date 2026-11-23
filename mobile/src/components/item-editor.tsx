@@ -650,8 +650,8 @@ export function ItemEditor({
           <Divider inset={52} />
           <SwitchRow
             icon="refresh"
-            label="Open to used"
-            description="Guests may give one secondhand."
+            label="Open to hand-me-downs"
+            description="Guests may give a hand-me-down."
             value={openToUsed}
             onValueChange={setOpenToUsed}
           />

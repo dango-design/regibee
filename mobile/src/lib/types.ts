@@ -122,7 +122,7 @@ export interface Gift {
   hide_giver?: boolean;
 }
 
-/** The lowest used condition an owner will accept, as the website offers them (src/lib/extension.ts). */
+/** The lowest condition an owner will take a hand-me-down in, as the website offers them (src/lib/extension.ts). */
 export const USED_CONDITIONS = [
   { id: "like-new", label: "Like new" },
   { id: "very-good", label: "Very good" },
