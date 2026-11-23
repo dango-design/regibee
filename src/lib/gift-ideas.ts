@@ -16,7 +16,7 @@ const PRICE_MAX = 9_999_999_999.99;
 
 export interface GiftIdea {
   id: string;
-  /** Who it's for, as the owner typed it: "Mom". */
+  /** Who it's for, as the owner typed it: "Mom". Empty when they didn't say. */
   recipient: string;
   title: string;
   externalUrl: string | null;
@@ -60,7 +60,8 @@ export function toGiftIdea(row: GiftIdeaRow): GiftIdea {
 
 /** What the website's form, the extension and the app send to save an idea. */
 export interface GiftIdeaInput {
-  recipient: string;
+  /** Who it's for. Optional: leave it empty to decide later. */
+  recipient?: string | null;
   title: string;
   url?: string | null;
   imageUrl?: string | null;
@@ -76,6 +77,7 @@ export interface GiftIdeaInput {
 
 /** The columns to write, checked and cleaned up. */
 export interface GiftIdeaFields {
+  /** Empty when the owner didn't say who it's for. */
   recipient: string;
   title: string;
   external_url: string | null;
@@ -123,15 +125,15 @@ function parsePrice(value: unknown): number | null | false {
 }
 
 /**
- * Checks what was sent to save an idea. Who it's for and its name are
- * required. A bad picture link is dropped, since the owner can't fix it from
- * the form. A bad product link or price is an error, since they can.
+ * Checks what was sent to save an idea. Only its name is required. Who it's
+ * for can be left empty, to decide later. A bad picture link is dropped, since
+ * the owner can't fix it from the form. A bad product link or price is an
+ * error, since they can.
  */
 export function parseGiftIdea(input: unknown): { fields: GiftIdeaFields; error?: undefined } | { error: string; fields?: undefined } {
   const value = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
 
   const recipient = oneLine(value.recipient);
-  if (!recipient) return { error: "Say who it's for." };
   if (recipient.length > RECIPIENT_MAX) return { error: `Keep who it's for under ${RECIPIENT_MAX} characters.` };
 
   const title = oneLine(value.title);
@@ -161,14 +163,21 @@ export function parseGiftIdea(input: unknown): { fields: GiftIdeaFields; error?:
   };
 }
 
-/** What ideas are grouped by: the name without case or extra spaces, so "mom" and "Mom" are one person. */
+/**
+ * What ideas are grouped by: the name without case or extra spaces, so "mom"
+ * and "Mom" are one person. Ideas saved without a name all have the key "".
+ */
 export function recipientKey(name: string): string {
   return oneLine(name).toLowerCase();
 }
 
+/** What the page calls the group of ideas saved without saying who they're for. */
+export const NO_RECIPIENT_LABEL = "Not sure who yet";
+
 export interface RecipientGroup {
+  /** "" for the ideas saved without saying who they're for. */
   key: string;
-  /** The name as it was typed on the newest idea. */
+  /** The name as it was typed on the newest idea. "" for the ideas saved without one. */
   name: string;
   ideas: GiftIdea[];
   /** Ideas not bought yet. */
@@ -180,9 +189,10 @@ function newestFirst(a: { createdAt: string }, b: { createdAt: string }) {
 }
 
 /**
- * Ideas grouped by who they're for, the person with the newest idea first. In
- * each group, ideas not bought yet come first, newest first, then the bought
- * ones, most recently bought first.
+ * Ideas grouped by who they're for, the person with the newest idea first.
+ * Ideas saved without saying who they're for come last, in one group with the
+ * key "". In each group, ideas not bought yet come first, newest first, then
+ * the bought ones, most recently bought first.
  */
 export function groupByRecipient(ideas: GiftIdea[]): RecipientGroup[] {
   const groups = new Map<string, RecipientGroup>();
@@ -203,7 +213,19 @@ export function groupByRecipient(ideas: GiftIdea[]): RecipientGroup[] {
       return newestFirst(a, b);
     });
   }
-  return [...groups.values()];
+  const unnamed = groups.get("");
+  groups.delete("");
+  return unnamed ? [...groups.values(), unnamed] : [...groups.values()];
+}
+
+/** A group's heading: "For Mom", or "Not sure who yet". */
+export function groupHeading(group: Pick<RecipientGroup, "key" | "name">): string {
+  return group.key ? `For ${group.name}` : NO_RECIPIENT_LABEL;
+}
+
+/** A group's name on its own, as in the buttons that pick whose ideas to show: "Mom", or "Not sure who yet". */
+export function groupName(group: Pick<RecipientGroup, "key" | "name">): string {
+  return group.key ? group.name : NO_RECIPIENT_LABEL;
 }
 
 /** The people ideas were saved for, one name each, most recently used first. For suggestions in the form. */

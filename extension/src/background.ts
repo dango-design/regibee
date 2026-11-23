@@ -70,6 +70,8 @@ async function registries(refresh = false): Promise<RegistriesResult> {
 
 /** Puts who an idea was just saved for first in the names the form offers. */
 async function rememberRecipient(name: string): Promise<void> {
+  // An idea saved without saying who it's for has no name to offer.
+  if (!name.trim()) return;
   const { ideaRecipients = [] } = await load("ideaRecipients");
   const key = name.toLowerCase();
   await save({ ideaRecipients: [name, ...ideaRecipients.filter((n) => n.toLowerCase() !== key)].slice(0, 8) });

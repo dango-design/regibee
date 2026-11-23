@@ -14,14 +14,23 @@ import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { deleteGiftIdea, saveGiftIdea, setGiftIdeaBought } from "@/lib/actions/gift-ideas";
 import type { fetchProductDetails } from "@/lib/fetch-product";
-import { groupByRecipient, ideaCount, recentRecipients, type GiftIdea, type RecipientGroup } from "@/lib/gift-ideas";
+import {
+  groupByRecipient,
+  groupHeading,
+  groupName,
+  ideaCount,
+  recentRecipients,
+  type GiftIdea,
+  type RecipientGroup,
+} from "@/lib/gift-ideas";
 import { formatPrice } from "@/lib/money";
 import { cx } from "@/lib/utils/cx";
 
 // The Saved tab's Gift ideas view: things you might give other people,
-// grouped by who they're for. Only you can see them. Ticking "Bought it"
-// shows straight away, and the card says "Saving…" until the server has it.
-// Then the page refreshes from the server.
+// grouped by who they're for, with ideas saved without a person last. Only
+// you can see them. Ticking "Bought it" shows straight away, and the card
+// says "Saving…" until the server has it. Then the page refreshes from the
+// server.
 
 export interface GiftIdeasProps {
   ideas: GiftIdea[];
@@ -174,7 +183,7 @@ function PersonSection({
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
           <h2 id={headingId} className="truncate font-display text-lg font-semibold text-primary">
-            For {group.name}
+            {groupHeading(group)}
           </h2>
           <p className="text-sm text-tertiary">
             {ideaCount(group.openCount)}
@@ -183,7 +192,10 @@ function PersonSection({
         </div>
         {addButton}
       </div>
-      <ul aria-label={`Gift ideas for ${group.name}`} className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul
+        aria-label={group.key ? `Gift ideas for ${group.name}` : "Gift ideas not for anyone yet"}
+        className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {children}
       </ul>
     </section>
@@ -194,7 +206,9 @@ export function GiftIdeas({ ideas, openWithLink, saveAction, deleteAction, setBo
   const router = useRouter();
   const [, startRefresh] = useTransition();
   const [notice, setNotice] = useState("");
-  const [person, setPerson] = useState<string>("all");
+  // The key of the person whose ideas are shown, or null for everyone's. Ideas
+  // saved without a person have the key "".
+  const [person, setPerson] = useState<string | null>(null);
 
   // "Bought it" ticks you've just made, shown until the server's copy catches up.
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
@@ -212,14 +226,14 @@ export function GiftIdeas({ ideas, openWithLink, saveAction, deleteAction, setBo
   const groups = useMemo(() => groupByRecipient(current), [current]);
   const recipients = useMemo(() => recentRecipients(ideas), [ideas]);
   // A person whose last idea was deleted drops back to everyone.
-  const chosen = groups.find((g) => g.key === person) ?? null;
+  const chosen = person === null ? null : (groups.find((g) => g.key === person) ?? null);
   const shown = chosen ? [chosen] : groups;
 
   const dialogProps = { saveAction, deleteAction, readLink };
   const refresh = () => startRefresh(() => router.refresh());
 
   const onSaved = (saved: { recipient: string; title: string }) => {
-    setNotice(`Saved “${saved.title}” for ${saved.recipient}.`);
+    setNotice(saved.recipient ? `Saved “${saved.title}” for ${saved.recipient}.` : `Saved “${saved.title}”.`);
     refresh();
   };
   const onDeleted = (title: string) => {
@@ -291,18 +305,23 @@ export function GiftIdeas({ ideas, openWithLink, saveAction, deleteAction, setBo
               aria-label="Whose ideas to show"
               selectionMode="single"
               disallowEmptySelection
-              selectedKeys={[chosen ? chosen.key : "all"]}
+              selectedKeys={[chosen ? `person:${chosen.key}` : "everyone"]}
               onSelectionChange={(keys) => {
                 const [key] = [...keys];
-                if (key !== undefined) setPerson(String(key));
+                if (key === undefined) return;
+                const id = String(key);
+                setPerson(id.startsWith("person:") ? id.slice("person:".length) : null);
               }}
               className="scrollbar-hide mt-6 flex max-w-full gap-1.5 overflow-x-auto"
             >
-              {[{ key: "all", name: "Everyone", count: current.filter((i) => !i.boughtAt).length }, ...groups.map((g) => ({ key: g.key, name: g.name, count: g.openCount }))].map(
+              {[
+                { id: "everyone", name: "Everyone", count: current.filter((i) => !i.boughtAt).length },
+                ...groups.map((g) => ({ id: `person:${g.key}`, name: groupName(g), count: g.openCount })),
+              ].map(
                 (option) => (
                   <AriaToggleButton
-                    key={option.key}
-                    id={option.key}
+                    key={option.id}
+                    id={option.id}
                     className={({ isSelected, isFocusVisible }) =>
                       cx(
                         "inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-semibold whitespace-nowrap outline-focus-ring transition-colors",
@@ -351,7 +370,7 @@ export function GiftIdeas({ ideas, openWithLink, saveAction, deleteAction, setBo
                       <Button variant="outline" size="sm">
                         <span className="inline-flex items-center gap-1.5">
                           <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
-                          Add an idea<span className="sr-only"> for {group.name}</span>
+                          Add an idea{group.key && <span className="sr-only"> for {group.name}</span>}
                         </span>
                       </Button>
                     }

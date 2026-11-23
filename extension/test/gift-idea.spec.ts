@@ -68,13 +68,14 @@ test("saves the product as a gift idea for someone", async ({ context, worker, e
   await expect(popup.locator("#recipient")).toBeHidden();
   await addTo.selectOption({ label: "Gift ideas" });
 
-  // It needs to know who it's for.
-  await popup.getByRole("button", { name: "Save gift idea" }).click();
-  await expect(popup.getByRole("alert")).toHaveText("Say who it's for.");
-
+  // Names already used are one click away. Clicking the chosen one again takes it off.
   await popup.getByRole("button", { name: "Mom" }).click();
   await expect(popup.locator("#recipient")).toHaveValue("Mom");
   await expect(popup.getByRole("button", { name: "Mom" })).toHaveAttribute("aria-pressed", "true");
+  await popup.getByRole("button", { name: "Mom" }).click();
+  await expect(popup.locator("#recipient")).toHaveValue("");
+  await expect(popup.getByRole("button", { name: "Mom" })).toHaveAttribute("aria-pressed", "false");
+  await popup.getByRole("button", { name: "Mom" }).click();
   await popup.locator("#idea-notes").fill("She liked the green one.");
   await popup.getByRole("button", { name: "Save gift idea" }).click();
 
@@ -102,6 +103,28 @@ test("saves the product as a gift idea for someone", async ({ context, worker, e
   await expect(again.getByLabel("Add to")).toHaveValue("ideas");
   await expect(again.getByRole("button", { name: "Save gift idea" })).toBeVisible();
   await expect(again.locator(".chip").first()).toHaveText("Mom");
+});
+
+test("a gift idea can be saved without saying who it's for", async ({ context, worker, extensionId }) => {
+  const calls = await connect(context, worker, { registries: [], ideaRecipients: ["Mom"] });
+  await openProduct(context);
+  const tabId = await tabIdFor(worker, PRODUCT_URL);
+
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html?tab=${tabId}`);
+  await expect(popup.locator("#title")).toHaveValue("Wool Scarf");
+  await expect(popup.getByLabel("Who's it for? (optional)")).toHaveValue("");
+
+  await popup.getByRole("button", { name: "Save gift idea" }).click();
+  await expect(popup.getByRole("heading", { name: "Saved as a gift idea" })).toBeVisible();
+  const saves = calls.filter((call) => call.path === "/api/extension/ideas");
+  expect(saves).toHaveLength(1);
+  expect((saves[0].body as { idea: { recipient: string } }).idea.recipient).toBe("");
+
+  // No empty name joins the ones offered next time.
+  const again = await context.newPage();
+  await again.goto(`chrome-extension://${extensionId}/popup.html?tab=${tabId}`);
+  await expect(again.locator(".chip")).toHaveText(["Mom"]);
 });
 
 test("someone with no registry can still save a gift idea", async ({ context, worker, extensionId }) => {

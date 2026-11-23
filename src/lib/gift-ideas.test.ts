@@ -2,7 +2,15 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { groupByRecipient, parseGiftIdea, recentRecipients, recipientKey, type GiftIdea } from "./gift-ideas.ts";
+import {
+  groupByRecipient,
+  groupHeading,
+  groupName,
+  parseGiftIdea,
+  recentRecipients,
+  recipientKey,
+  type GiftIdea,
+} from "./gift-ideas.ts";
 
 function idea(id: string, recipient: string, createdAt: string, boughtAt: string | null = null): GiftIdea {
   return {
@@ -18,11 +26,17 @@ function idea(id: string, recipient: string, createdAt: string, boughtAt: string
   };
 }
 
-test("an idea needs who it's for and a name", () => {
-  assert.deepEqual(parseGiftIdea({ title: "Scarf" }), { error: "Say who it's for." });
-  assert.deepEqual(parseGiftIdea({ recipient: "  ", title: "Scarf" }), { error: "Say who it's for." });
+test("an idea needs a name", () => {
   assert.deepEqual(parseGiftIdea({ recipient: "Mom" }), { error: "Give the idea a name." });
-  assert.deepEqual(parseGiftIdea(null), { error: "Say who it's for." });
+  assert.deepEqual(parseGiftIdea({ recipient: "Mom", title: "   " }), { error: "Give the idea a name." });
+  assert.deepEqual(parseGiftIdea(null), { error: "Give the idea a name." });
+});
+
+test("who it's for can be left out", () => {
+  const empty = { recipient: "", title: "Scarf", external_url: null, image_url: null, price: null, notes: null };
+  assert.deepEqual(parseGiftIdea({ title: "Scarf" }), { fields: empty });
+  assert.deepEqual(parseGiftIdea({ recipient: "  ", title: "Scarf" }), { fields: empty });
+  assert.deepEqual(parseGiftIdea({ recipient: null, title: "Scarf" }), { fields: empty });
 });
 
 test("an idea is cleaned up before it's saved", () => {
@@ -87,6 +101,25 @@ test("ideas group by person, newest person first", () => {
   );
 });
 
+test("ideas saved without a person come last, in one group", () => {
+  const groups = groupByRecipient([
+    idea("1", "", "2026-11-06T10:00:00Z"),
+    idea("2", "Mom", "2026-11-01T10:00:00Z"),
+    idea("3", " ", "2026-11-04T10:00:00Z"),
+    idea("4", "Dad", "2026-11-03T10:00:00Z"),
+  ]);
+  assert.deepEqual(
+    groups.map((g) => [g.key, g.ideas.map((i) => i.id)]),
+    [
+      ["dad", ["4"]],
+      ["mom", ["2"]],
+      ["", ["1", "3"]],
+    ],
+  );
+  assert.deepEqual(groups.map(groupHeading), ["For Dad", "For Mom", "Not sure who yet"]);
+  assert.deepEqual(groups.map(groupName), ["Dad", "Mom", "Not sure who yet"]);
+});
+
 test("bought ideas go after the ones still to decide on", () => {
   const [group] = groupByRecipient([
     idea("1", "Mom", "2026-11-01T10:00:00Z", "2026-11-10T10:00:00Z"),
@@ -109,5 +142,7 @@ test("suggested names are one per person, most recent first", () => {
     idea("4", "Sam", "2026-11-02T10:00:00Z"),
   ]);
   assert.deepEqual(names, ["mom", "Dad", "Sam"]);
+  // An idea saved without a person isn't a name to suggest.
+  assert.deepEqual(recentRecipients([idea("1", "Mom", "1"), idea("2", "", "2")]), ["Mom"]);
   assert.deepEqual(recentRecipients([idea("1", "A", "1"), idea("2", "B", "2")], 1), ["B"]);
 });
