@@ -192,6 +192,12 @@ export default async function PublicEventPage({
   const ownEntry = guestLists.find((entry) => entry.isYou) ?? null;
   const ownList = ownEntry?.registry ? myLists.find((list) => list.slug === ownEntry.registry!.slug) : undefined;
   const ownUrl = guest?.wishlist_url || ownEntry?.url || null;
+  // Their row in everyone's wishlists opens their own page for that list.
+  // Only a list their account owns: the owner's page hides what the list
+  // hides from its owner, and a co-manager's shows everything.
+  const wishLists = ownList
+    ? guestLists.map((entry) => (entry === ownEntry ? { ...entry, ownListId: ownList.id } : entry))
+    : guestLists;
   const wishlist: RsvpWishlist | null = everyone
     ? {
         current: ownUrl
@@ -228,7 +234,7 @@ export default async function PublicEventPage({
           event={shown}
           registries={invitationRegistries}
           exchange={exchange}
-          wishLists={showGuestLists ? { lists: guestLists, waitingCount: waiting } : null}
+          wishLists={showGuestLists ? { lists: wishLists, waitingCount: waiting } : null}
           eventSlug={event.slug}
           guestToken={guest?.token ?? null}
           calendar={google ? { google, ics: `/e/${event.slug}/calendar` } : null}

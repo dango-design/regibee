@@ -222,6 +222,12 @@ export interface GuestWishList {
   /** When it's a Regibee list: its title and slug. */
   registry: { title: string; slug: string } | null;
   giftIdeas: string | null;
+  /**
+   * On the viewer's own entry, when their account owns its Regibee list: the
+   * list's id. Their row opens their own page for the list, which hides what
+   * the list hides from its owner. Missing on everyone else's.
+   */
+  ownListId?: string | null;
 }
 
 /** "store.com" from a wishlist's link, for a list that isn't on Regibee. */

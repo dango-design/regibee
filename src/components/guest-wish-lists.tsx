@@ -52,7 +52,10 @@ function ListRow({
   isYou?: boolean;
   detail: string | null;
   giftIdeas?: string | null;
-  /** Where the list opens. Null on your own row, and for a guest with no list. */
+  /**
+   * Where the list opens. Null for a guest with no list, and on your own row
+   * when it's a Regibee list your account doesn't own.
+   */
   href: string | null;
   /** A list on another store's site, which opens in a new tab. */
   external?: boolean;
@@ -129,8 +132,12 @@ function seeListLabel(name: string): string {
  * list. A list the host linked that belongs to a guest comes on that guest's
  * row instead (withGuestsLinkedLists in src/lib/events-server.ts). Anyone
  * with the link sees the host's lists; only the event's guests and hosts see
- * the guests' lists. A guest's own list is first among them, without a
- * button to shop it: nobody sees what's been reserved from their own list.
+ * the guests' lists. A guest's own list is first among them. Nobody shops
+ * their own list, so its button opens their own page for it instead, which
+ * keeps hidden whatever the list hides from its owner (reservationsHiddenFrom
+ * in src/lib/gifts.ts). A Regibee list their account doesn't own, or any
+ * while they're signed out, has no button. One on another store's site
+ * opens there.
  */
 export function GuestWishLists({
   lists,
@@ -151,6 +158,9 @@ export function GuestWishLists({
       : eventSlug && guestToken
       ? `/e/${eventSlug}/gifts?g=${encodeURIComponent(guestToken)}&to=${encodeURIComponent(slug)}`
       : `/r/${slug}`;
+  // Your own list opens on your own page for it, by its id: nobody shops
+  // their own list through the event.
+  const ownHref = (id: string) => `${basePath ?? ""}/dashboard/registry/${id}`;
   // A list the host linked that's also a guest's wishlist shows once, on
   // the guest's row, which knows whether it's yours.
   const guestSlugs = new Set((lists ?? []).flatMap((entry) => (entry.registry ? [entry.registry.slug] : [])));
@@ -214,9 +224,11 @@ export function GuestWishLists({
                 name={owner ?? registry.title}
                 isYou={Boolean(registry.isYours)}
                 detail={owner ? registry.title : null}
-                href={registry.isYours ? null : hrefFor(registry.slug)}
+                href={registry.isYours ? (registry.id ? ownHref(registry.id) : null) : hrefFor(registry.slug)}
                 button={
-                  owner ? (
+                  registry.isYours ? (
+                    "See your list"
+                  ) : owner ? (
                     seeListLabel(owner)
                   ) : (
                     <>
@@ -228,7 +240,19 @@ export function GuestWishLists({
             );
           })}
           {(lists ?? []).map((entry) => {
-            const href = entry.registry ? hrefFor(entry.registry.slug) : entry.url;
+            // Your own row opens your own page for your Regibee list, or a
+            // list you keep on another store's site. A Regibee list your
+            // account doesn't own stays without a link: its pages would show
+            // you what's been reserved on it.
+            const href = entry.isYou
+              ? entry.ownListId
+                ? ownHref(entry.ownListId)
+                : entry.registry
+                  ? null
+                  : entry.url
+              : entry.registry
+                ? hrefFor(entry.registry.slug)
+                : entry.url;
             return (
               <ListRow
                 key={entry.guestId}
@@ -245,10 +269,9 @@ export function GuestWishLists({
                         : "No wishlist yet"
                 }
                 giftIdeas={entry.giftIdeas}
-                // Where a click on the row goes: nowhere on your own row.
-                href={href && !entry.isYou ? href : null}
+                href={href}
                 external={!entry.registry}
-                button={seeListLabel(entry.name)}
+                button={entry.isYou ? "See your list" : seeListLabel(entry.name)}
               />
             );
           })}

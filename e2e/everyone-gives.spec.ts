@@ -160,6 +160,15 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   const mayaSignedIn = await browser.newContext();
   const mayaPage = await mayaSignedIn.newPage();
   await signIn(mayaPage, maya);
+  // Her own row on the invitation opens her own page for the list, not the
+  // event's gift link, and it doesn't show the reservation either.
+  await mayaPage.goto(mayaGuest.rsvpPath);
+  const mayaLists = mayaPage.getByRole("region", { name: "Everyone's wishlists" });
+  await expect(mayaLists.getByRole("link", { name: "See Maya's list" })).toHaveCount(0);
+  await mayaLists.getByRole("link", { name: "See your list" }).click();
+  await mayaPage.waitForURL(`**/dashboard/registry/${mayaList.id}`);
+  await expect(mayaPage.getByText(scarf.title).first()).toBeVisible();
+  await expect(mayaPage.getByText("Ben Brother")).toHaveCount(0);
   await mayaPage.goto(`/dashboard/registry/${mayaList.id}?tab=purchases`);
   await expect(mayaPage.getByText(`Gifts reserved before ${event.title} are revealed`).first()).toBeVisible();
   await expect(mayaPage.getByText("Ben Brother")).toHaveCount(0);
@@ -323,7 +332,8 @@ test("a list the host linked shows like a guest's, with whose it is", async ({ b
   await expect(benPage.getByRole("region", { name: "Gifts" })).toHaveCount(0);
   await benContext.close();
 
-  // Hal sees it as his own, with no button to shop it.
+  // Hal sees it as his own. Its button opens his own page for it, not the
+  // list's link: nobody shops their own list.
   const halContext = await browser.newContext();
   const halPage = await halContext.newPage();
   await signIn(halPage, hal);
@@ -332,6 +342,10 @@ test("a list the host linked shows like a guest's, with whose it is", async ({ b
   await expect(halLists.getByText("(you)")).toBeVisible();
   await expect(halLists.getByText(halList.title)).toBeVisible();
   await expect(halLists.getByRole("link", { name: "See Hal's list" })).toHaveCount(0);
+  await expect(halLists.getByRole("link", { name: "See your list" })).toHaveAttribute(
+    "href",
+    `/dashboard/registry/${halList.id}`,
+  );
   await halContext.close();
 });
 
@@ -375,6 +389,10 @@ test("a host on the guest list who linked their own list has it on their row", a
   await expect(halLists.getByText(halList.title)).toHaveCount(1);
   await expect(halLists.getByText("(you)")).toHaveCount(1);
   await expect(halLists.getByText("Add your wishlist above")).toHaveCount(0);
+  await expect(halLists.getByRole("link", { name: "See your list" })).toHaveAttribute(
+    "href",
+    `/dashboard/registry/${halList.id}`,
+  );
   const step = halPage.getByRole("region", { name: "Your wishlist" });
   await expect(step.getByText(halList.title)).toBeVisible();
   await expect(step.getByRole("button", { name: "Change", exact: true })).toBeVisible();

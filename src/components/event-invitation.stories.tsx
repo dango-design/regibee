@@ -448,8 +448,10 @@ export const EveryoneGivesEveryone: Story = {
     await expect(within(lists).getByText("About $25 a gift.")).toBeVisible();
     const links = within(lists).getAllByRole("link");
     // The host's list looks like a guest's: whose it is, then its name.
+    // Glinda's own opens her own page for it, not the event's gift link.
     await expect(links.map((link) => link.textContent)).toEqual([
       "See Linda's list",
+      "See your list",
       "See Elphaba's list",
       "See Fiyero's list",
     ]);
@@ -457,6 +459,7 @@ export const EveryoneGivesEveryone: Story = {
       "href",
       `/e/${sampleExchangeEvent.slug}/gifts?g=token-g1&to=${hostsList.slug}`,
     );
+    await expect(links[1]).toHaveAttribute("href", "/dashboard/registry/glindas-list");
   },
 };
 

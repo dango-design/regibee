@@ -325,6 +325,7 @@ export const sampleGuestWishLists: GuestWishList[] = [
     url: "https://regibee.com/r/glindas-wishlist-8h3m",
     registry: { title: "Glinda's Christmas List", slug: "glindas-wishlist-8h3m" },
     giftIdeas: null,
+    ownListId: "glindas-list",
   },
   {
     guestId: "g2",
