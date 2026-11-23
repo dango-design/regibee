@@ -9,6 +9,8 @@ import { localSupabase } from "./local-supabase";
 
 export const SITE_URL = "http://localhost:3100";
 export const CRON_SECRET = "e2e-cron-secret";
+/** Where the site sends warnings about itself, such as auth-email-alerts.spec.ts checks. */
+export const ALERT_EMAIL = "site-alerts@example.com";
 
 export const db = createClient(localSupabase().apiUrl, localSupabase().serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },

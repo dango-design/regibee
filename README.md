@@ -253,7 +253,9 @@ Fourteen tables, all with Row Level Security turned on:
 | `NEXT_PUBLIC_SITE_URL` | Client + Server | The site's address, used in links in emails. Defaults to `http://localhost:3000` |
 | `RESEND_API_KEY` | Server only | Resend key for notification emails |
 | `RESEND_TEST_RECIPIENT` | Server only | Optional. Sends every email to this address instead, for testing |
-| `CRON_SECRET` | Server only | Needed by the four daily jobs in `vercel.json`. Vercel Cron sends it, and without it the jobs don't run: no reservation reminders, no releasing reservations that ran out, no completion discount emails, no event reminders the day before, no birthday reminders |
+| `CRON_SECRET` | Server only | Needed by the four daily jobs in `vercel.json`. Vercel Cron sends it, and without it the jobs don't run: no reservation reminders, no releasing reservations that ran out, no completion discount emails, no event reminders the day before, no birthday reminders. Supabase's account email check sends it too, from the `cron_secret` secret in Supabase Vault |
+| `ALERT_EMAIL` | Server only | Where to send warnings about the site itself: when Supabase's hourly limit on account emails is nearly used up, or used up. Without it, nothing is sent. See "Account emails" in [CLAUDE.md](CLAUDE.md) |
+| `AUTH_EMAIL_HOURLY_LIMIT` | Server only | Optional. The number set under Authentication → Rate Limits in Supabase, for those warnings. Defaults to 30 |
 | `EMAIL_TRANSPORT`, `MAILPIT_URL` | Server only | End-to-end tests only. `mailpit` sends every email to the local Mailpit inbox instead of Resend. See [e2e/README.md](e2e/README.md) |
 
 For how the live site, database and visual tests are run, see [CLAUDE.md](CLAUDE.md).
