@@ -13,6 +13,12 @@ const base = {
   publicHref: "#",
 };
 
+// Other people's events you're on the guest list for, with your own reply.
+const invitedBase = {
+  today: SAMPLE_TODAY,
+  href: "#",
+};
+
 const meta: Meta<typeof EventsOverview> = {
   title: "Pages/Events",
   component: EventsOverview,
@@ -75,6 +81,89 @@ export const WithEvents: Story = {
         time: "1 – 4 PM PST",
         imageUrl: null,
         summary: { guests: 18, attending: 22, maybe: 0, pending: 2, invited: 18 },
+      },
+    ],
+    invited: [
+      {
+        ...invitedBase,
+        id: "game-night",
+        title: "Game Night at Priya's",
+        eventType: "gathering",
+        eventDate: "2026-03-07",
+        time: "7 – 10 PM PST",
+        imageUrl: null,
+        hostedBy: "Priya",
+        rsvp: "pending",
+      },
+      {
+        ...invitedBase,
+        id: "graduation",
+        title: "Jordan's Graduation Party",
+        eventType: "graduation",
+        eventDate: "2026-05-30",
+        time: "3 – 6 PM PDT",
+        imageUrl: null,
+        hostedBy: "The Parks",
+        rsvp: "yes",
+      },
+      {
+        ...invitedBase,
+        id: "potluck",
+        title: "Neighborhood Potluck",
+        eventType: "other",
+        eventDate: null,
+        time: null,
+        imageUrl: null,
+        hostedBy: null,
+        rsvp: "maybe",
+      },
+    ],
+    invitedPast: [
+      {
+        ...invitedBase,
+        id: "new-year",
+        title: "New Year's Eve Party",
+        eventType: "holiday",
+        eventDate: "2025-12-31",
+        time: "9 PM – 1 AM PST",
+        imageUrl: null,
+        hostedBy: "Sam & Alex",
+        rsvp: "no",
+      },
+    ],
+  },
+};
+
+/**
+ * Someone who hosts nothing but is on two guest lists sees them under
+ * Invited, not the "Plan your first event" card.
+ */
+export const InvitedOnly: Story = {
+  args: {
+    upcoming: [],
+    past: [],
+    invited: [
+      {
+        ...invitedBase,
+        id: "shower",
+        title: sampleEvent.title,
+        eventType: "baby_shower",
+        eventDate: sampleEvent.event_date,
+        time: formatEventTime(sampleEvent),
+        imageUrl: sampleEvent.image_url,
+        hostedBy: sampleEvent.hosted_by,
+        rsvp: "yes",
+      },
+      {
+        ...invitedBase,
+        id: "game-night",
+        title: "Game Night at Priya's",
+        eventType: "gathering",
+        eventDate: "2026-03-07",
+        time: "7 – 10 PM PST",
+        imageUrl: null,
+        hostedBy: "Priya",
+        rsvp: "pending",
       },
     ],
   },

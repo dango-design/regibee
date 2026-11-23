@@ -256,6 +256,14 @@ export const RSVP_LABELS: Record<RsvpStatus, string> = {
   pending: "No reply",
 };
 
+/** A guest's own reply, as their Events tab shows it on an event they're invited to. */
+export const MY_RSVP_LABELS: Record<RsvpStatus, string> = {
+  yes: "You're going",
+  maybe: "You said maybe",
+  no: "You can't go",
+  pending: "You haven't replied",
+};
+
 export interface RsvpSummary {
   /** Guests on the list. */
   guests: number;

@@ -28,6 +28,7 @@ import {
   getPendingListRequests,
   getSignupSheet,
   listEventsForUser,
+  listInvitedEventsForUser,
   listLinkedEventsForUser,
   listOtherEventsForCopy,
 } from "@/lib/events-server";
@@ -43,20 +44,26 @@ import type {
   EventPageData,
   EventsTabCard,
   EventsTabData,
+  EventsTabInvite,
   GroupPageData,
   PlanPickerData,
 } from "@/lib/events-page-types";
 
 export type * from "@/lib/events-page-types";
 
-/** The Events tab: your events, events that link your lists, and your groups. */
+/**
+ * The Events tab: events you host, events you're invited to, other people's
+ * events that link your lists, and your groups.
+ */
 export async function loadEventsTab(): Promise<EventsTabData | null> {
   // Guests (anonymous sessions) don't have events.
   const viewer = await getViewer();
   if (!viewer) return null;
 
-  const [events, linkedEvents, groups] = await Promise.all([
+  const [events, invitedEvents, linkedEvents, groups] = await Promise.all([
     listEventsForUser(viewer.id),
+    // Invitations to the account's email count only once it's confirmed.
+    listInvitedEventsForUser({ id: viewer.id, email: viewer.email_confirmed_at ? (viewer.email ?? null) : null }),
     listLinkedEventsForUser(viewer.id),
     listGroupsForOwner(viewer.id),
   ]);
@@ -80,12 +87,36 @@ export async function loadEventsTab(): Promise<EventsTabData | null> {
     if (event.event_date && event.event_date < today) past.push(card);
     else upcoming.push(card);
   }
-  // The list comes soonest first, with no-date events last. Past events read
+  const invited: EventsTabInvite[] = [];
+  const invitedPast: EventsTabInvite[] = [];
+  for (const event of invitedEvents) {
+    const invite: EventsTabInvite = {
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      eventType: event.event_type,
+      eventDate: event.event_date,
+      time: formatEventTime(event),
+      imageUrl: event.image_url,
+      hostedBy: event.hosted_by,
+      rsvp: event.rsvp_status,
+      guestToken: event.guest_token,
+    };
+    if (event.event_date && event.event_date < today) invitedPast.push(invite);
+    else invited.push(invite);
+  }
+
+  // The lists come soonest first, with no-date events last. Past events read
   // better most recent first.
   past.reverse();
+  invitedPast.reverse();
 
+  // An event you're invited to shows under Invited, with your reply, even
+  // when it also links your list.
+  const invitedIds = new Set(invitedEvents.map((event) => event.id));
   const linked = linkedEvents
     .filter((event) => !event.event_date || event.event_date >= today)
+    .filter((event) => !invitedIds.has(event.id))
     .map((event) => ({
       id: event.id,
       slug: event.slug,
@@ -94,7 +125,7 @@ export async function loadEventsTab(): Promise<EventsTabData | null> {
       registryTitles: event.registryTitles,
     }));
 
-  return { upcoming, past, linked, groups, today };
+  return { upcoming, past, invited, invitedPast, linked, groups, today };
 }
 
 /** An event's manage page, for its owner and co-hosts. Null for anyone else. */

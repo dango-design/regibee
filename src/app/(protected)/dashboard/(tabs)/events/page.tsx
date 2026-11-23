@@ -22,11 +22,28 @@ export default async function EventsPage() {
     badge: event.coHost ? "Co-host" : undefined,
   });
 
+  // Someone else's event opens its invitation on the viewer's own guest link,
+  // so they can RSVP.
+  const toInviteCard = (event: (typeof data.invited)[number]) => ({
+    id: event.id,
+    title: event.title,
+    eventType: event.eventType,
+    eventDate: event.eventDate,
+    time: event.time,
+    imageUrl: event.imageUrl,
+    today: data.today,
+    hostedBy: event.hostedBy,
+    rsvp: event.rsvp,
+    href: `/e/${event.slug}?g=${encodeURIComponent(event.guestToken)}`,
+  });
+
   return (
     <>
       <EventsOverview
         upcoming={data.upcoming.map(toCard)}
         past={data.past.map(toCard)}
+        invited={data.invited.map(toInviteCard)}
+        invitedPast={data.invitedPast.map(toInviteCard)}
         linked={data.linked.map((event) => ({
           id: event.id,
           title: event.title,

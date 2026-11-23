@@ -116,6 +116,66 @@ export async function listEventsForUser(userId: string): Promise<EventListEntry[
   return (data || []) as EventListEntry[];
 }
 
+export type InvitedEventEntry = Pick<
+  EventDetails,
+  "id" | "slug" | "title" | "event_type" | "event_date" | "start_time" | "end_time" | "time_zone" | "image_url" | "hosted_by"
+> & {
+  rsvp_status: EventGuest["rsvp_status"];
+  /** The user's own guest link token. */
+  guest_token: string;
+};
+
+/**
+ * Events someone else hosts where the user is on the guest list. A guest row
+ * is the user's when it's linked to their account (they were invited from a
+ * follow), or when it has the email address on their account and no other
+ * account. Pass the email only once it's confirmed, so nobody sees
+ * invitations sent to an address they haven't shown is theirs. Events the
+ * user owns or co-hosts are left out: they're the user's to manage.
+ */
+export async function listInvitedEventsForUser(viewer: {
+  id: string;
+  email: string | null;
+}): Promise<InvitedEventEntry[]> {
+  type GuestRow = { event_id: string; rsvp_status: EventGuest["rsvp_status"]; token: string };
+  const fields = "event_id, rsvp_status, token";
+  // Guest emails are stored lowercased.
+  const email = viewer.email?.trim().toLowerCase() || null;
+  const [byAccount, byEmail, hosted] = await Promise.all([
+    supabaseAdmin.from("event_guests").select(fields).eq("profile_id", viewer.id),
+    email
+      ? supabaseAdmin.from("event_guests").select(fields).eq("email", email).is("profile_id", null)
+      : Promise.resolve({ data: [] as GuestRow[], error: null }),
+    supabaseAdmin.from("event_hosts").select("event_id").eq("user_id", viewer.id),
+  ]);
+  if (byAccount.error || byEmail.error) {
+    console.error("[events] Failed to list invitations:", byAccount.error ?? byEmail.error);
+  }
+
+  const hostedIds = new Set((hosted.data || []).map((h) => h.event_id as string));
+  // One guest row per event. A row linked to the account comes first and wins.
+  const guestByEvent = new Map<string, GuestRow>();
+  for (const row of [...(byAccount.data || []), ...(byEmail.data || [])] as GuestRow[]) {
+    if (!hostedIds.has(row.event_id) && !guestByEvent.has(row.event_id)) guestByEvent.set(row.event_id, row);
+  }
+  if (guestByEvent.size === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("events")
+    .select("id, slug, title, event_type, event_date, start_time, end_time, time_zone, image_url, hosted_by")
+    .in("id", [...guestByEvent.keys()])
+    // A host on their own guest list sees the event under the ones they host.
+    .neq("owner_id", viewer.id)
+    .order("event_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) console.error("[events] Failed to list invited events:", error);
+
+  return ((data || []) as Omit<InvitedEventEntry, "rsvp_status" | "guest_token">[]).map((event) => {
+    const guest = guestByEvent.get(event.id)!;
+    return { ...event, rsvp_status: guest.rsvp_status, guest_token: guest.token };
+  });
+}
+
 /** Ids of the registries the user owns or helps manage. */
 async function managedRegistryIds(userId: string): Promise<string[]> {
   const [{ data: managed }, { data: owned }] = await Promise.all([
