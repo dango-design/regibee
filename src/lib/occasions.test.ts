@@ -95,7 +95,7 @@ test("gift plans fit who it's for", () => {
   assert.equal(planNeedsEvent("ask"), true);
 });
 
-test("Christmas and a holiday party start with each guest linking their own wish list", () => {
+test("Christmas and a holiday party start with each guest linking their own wishlist", () => {
   for (const id of ["christmas", "holiday_party"] as const) {
     const occasion = occasionFor(id);
     // The picker asks who it's for, with everyone taking part first...

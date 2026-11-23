@@ -2,7 +2,7 @@
 // shows it (src/components/exchange-manager.tsx), in its words. A name draw
 // shows who's in, who won't draw each other, and the draw. An
 // everyone-gives-everyone exchange shows who's taking part and who has added
-// a wish list. Every change runs the website's own server action.
+// a wishlist. Every change runs the website's own server action.
 
 import { useState, type ReactNode } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
@@ -81,7 +81,7 @@ function PanelCard({
 // ── Everyone gives everyone ──────────────────────────────────
 
 /**
- * Who's taking part and who has added a wish list. There's nothing to draw.
+ * Who's taking part and who has added a wishlist. There's nothing to draw.
  * The host sees whether a guest added a list, not the list itself.
  */
 function EveryoneGivesPanel({
@@ -102,7 +102,7 @@ function EveryoneGivesPanel({
     <PanelCard
       icon="people"
       title="Everyone gives everyone"
-      summary={`${exchange.budget ? `About ${exchange.budget} a gift · ` : ""}Guests link wish lists when they RSVP`}
+      summary={`${exchange.budget ? `About ${exchange.budget} a gift · ` : ""}Guests link wishlists when they RSVP`}
       onEditSettings={onEditSettings}
     >
       <Text variant="callout">
@@ -114,7 +114,7 @@ function EveryoneGivesPanel({
                 : withList.length === 1
                   ? "1 has"
                   : `${withList.length} have`
-            } added a wish list.`}
+            } added a wishlist.`}
         {waiting > 0 ? ` ${waiting === 1 ? "1 guest hasn't" : `${waiting} guests haven't`} answered yet.` : ""}
       </Text>
 
@@ -124,7 +124,7 @@ function EveryoneGivesPanel({
             <View
               key={g.id}
               accessible
-              accessibilityLabel={`${g.name}${g.wishlist_url ? ", has a wish list" : ", no wish list yet"}`}
+              accessibilityLabel={`${g.name}${g.wishlist_url ? ", has a wishlist" : ", no wishlist yet"}`}
               style={[styles.chip, { backgroundColor: theme.surface }]}
             >
               {g.wishlist_url ? (

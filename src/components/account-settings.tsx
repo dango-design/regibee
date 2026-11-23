@@ -286,7 +286,7 @@ export function AccountSettings({
               <CardHeader>
                 <SectionTitle sectionId="gift-profile">Gift profile</SectionTitle>
                 <CardDescription>
-                  Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wish lists
+                  Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wishlists
                   and your profile, so anyone with those links sees them.
                 </CardDescription>
               </CardHeader>

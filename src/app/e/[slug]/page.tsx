@@ -143,14 +143,14 @@ export default async function PublicEventPage({
     : null;
 
   // Everyone gives everyone: the event's guests and hosts see everyone's
-  // wish lists. A signed-in guest can pick one of their own lists after they
+  // wishlists. A signed-in guest can pick one of their own lists after they
   // RSVP. Private lists are left out, since nobody else can open them.
   const everyone = exchangeKind(exchange) === "everyone";
   const [isHost, guestLists, waiting, myLists] = everyone
     ? await Promise.all([
         viewer ? getEventForManager(event.id, viewer.id).then(Boolean) : false,
-        // A list the host linked that belongs to a guest without a wish list
-        // is theirs, on their row and in their wish list step.
+        // A list the host linked that belongs to a guest without a wishlist
+        // is theirs, on their row and in their wishlist step.
         getGuestWishLists(event.id, guest?.id ?? null).then((lists) => withGuestsLinkedLists(lists, registries)),
         supabaseAdmin
           .from("event_guests")
@@ -187,7 +187,7 @@ export default async function PublicEventPage({
       return { ...list, ownerName: named ?? list.honoree, isYours };
     }),
   );
-  // The guest's own wish list, for the step after their RSVP: the one they
+  // The guest's own wishlist, for the step after their RSVP: the one they
   // added, or else their own list the host linked.
   const ownEntry = guestLists.find((entry) => entry.isYou) ?? null;
   const ownList = ownEntry?.registry ? myLists.find((list) => list.slug === ownEntry.registry!.slug) : undefined;

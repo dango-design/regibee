@@ -50,12 +50,12 @@ function invitationRegistry(registry: DemoRegistry): InvitationRegistry {
   };
 }
 
-/** A guest's wish list, when it's one of the demo's registries. */
+/** A guest's wishlist, when it's one of the demo's registries. */
 function demoList(today: string, guest: Pick<EventGuest, "wishlist_registry_id">): DemoRegistry | null {
   return guest.wishlist_registry_id ? findDemoRegistry(today, { id: guest.wishlist_registry_id }) : null;
 }
 
-/** Everyone's wish lists, like getGuestWishLists in src/lib/events-server.ts. */
+/** Everyone's wishlists, like getGuestWishLists in src/lib/events-server.ts. */
 function guestWishLists(today: string, guests: EventGuest[], viewerId: string | null): GuestWishList[] {
   return guests
     .filter((g) => g.in_exchange)
@@ -77,7 +77,7 @@ function guestWishLists(today: string, guests: EventGuest[], viewerId: string | 
 /**
  * A demo event as guests see it. Like src/app/e/[slug]/page.tsx: `token` is
  * the guest's own RSVP link (?g=), which greets them by name, shows who they
- * drew in a Secret Santa, and marks their own wish list. Without one, anyone
+ * drew in a Secret Santa, and marks their own wishlist. Without one, anyone
  * can RSVP when the event allows it.
  */
 export function DemoPublicEvent({ slug, token }: { slug: string; token: string | null }) {
@@ -89,7 +89,7 @@ export function DemoPublicEvent({ slug, token }: { slug: string; token: string |
 }
 
 function GuestPage({ event, token, today }: { event: DemoEvent; token: string | null; today: string }) {
-  // RSVPs change these, so the wish lists, sign-ups and a meal train's
+  // RSVPs change these, so the wishlists, sign-ups and a meal train's
   // address update the way the real page does after it reloads.
   const [guests, setGuests] = useState(event.guests);
   const [claims, setClaims] = useState<SignupClaim[]>(event.signup?.claims ?? []);
@@ -148,7 +148,7 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
       rsvp_note: input.note?.trim() || null,
       responded_at: new Date().toISOString(),
       answers: storedAnswers(input.answers),
-      // Like the real RSVP, one without a wish list keeps the one saved.
+      // Like the real RSVP, one without a wishlist keeps the one saved.
       ...(choice && {
         in_exchange: choice.join,
         ...(choice.wishlistUrl !== undefined && {
@@ -195,7 +195,7 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
     return { error: null };
   };
 
-  // The wish list step after an RSVP. The demo has no accounts, so like a
+  // The wishlist step after an RSVP. The demo has no accounts, so like a
   // signed-out guest's, it offers making an account or logging in.
   const me = guests.find((g) => g.id === (guest?.id ?? VISITOR_ID)) ?? null;
 

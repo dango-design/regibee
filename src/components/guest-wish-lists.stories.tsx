@@ -3,7 +3,7 @@ import { expect, within } from "storybook/test";
 import { GuestWishLists } from "./guest-wish-lists";
 import { sampleExchangeEvent, sampleGuestWishLists } from "@/lib/event-sample-data";
 
-// Everyone's wish lists on an everyone-gives-everyone invitation
+// Everyone's wishlists on an everyone-gives-everyone invitation
 // (src/components/event-invitation.tsx): the lists the host linked, then each
 // guest's. Only the event's guests and hosts see the guests' lists.
 
@@ -39,8 +39,8 @@ export const AsAGuest: Story = {};
 
 /**
  * The host linked their own list to the event. It shows first, and like a
- * guest's: whose it is, then its name. A list that's also a guest's wish
- * list shows once, on the guest's row.
+ * guest's: whose it is, then its name. A list that's also a guest's
+ * wishlist shows once, on the guest's row.
  */
 export const WithTheHostsList: Story = {
   args: {

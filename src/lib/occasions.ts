@@ -47,7 +47,7 @@ export interface Occasion {
   /**
    * What a new event of this kind starts with. The host can change all of it.
    * `exchange` starts the guests giving each other gifts: "draw" draws names
-   * (a Secret Santa), and "everyone" has each guest link their own wish list
+   * (a Secret Santa), and "everyone" has each guest link their own wishlist
    * when they RSVP (src/lib/events.ts, ExchangeKind).
    * `signup` starts a sign-up sheet from that preset (src/lib/signups.ts).
    * `questions` are what the RSVP asks besides how many are coming
@@ -130,13 +130,13 @@ export const OCCASIONS = [
     list: CHRISTMAS_LIST,
     // A family Christmas where everyone gives everyone comes first: it's
     // the event most families plan on Regibee once a year. Each guest links
-    // their own wish list.
+    // their own wishlist.
     audiences: ["everyone", "no_one", "me", "us", "child"],
     defaults: { exchange: "everyone" },
   },
   {
     // A party for the winter holidays, whatever each family celebrates. Like a
-    // family Christmas, everyone gives everyone from their own wish lists. A
+    // family Christmas, everyone gives everyone from their own wishlists. A
     // party for no one in particular, like a work one, can draw names instead.
     id: "holiday_party",
     label: "Holiday party",
@@ -318,7 +318,7 @@ export function listTitleFor(occasion: Occasion, name: string): string {
  * - new_list: make a gift list now, owned by whoever is making the plan.
  * - link: link a list that already exists, by its share link.
  * - ask: email the honoree an invitation to make a list, linked once it exists.
- * - everyone: everyone gives everyone. Each guest links a wish list when they RSVP.
+ * - everyone: everyone gives everyone. Each guest links a wishlist when they RSVP.
  * - exchange: draw names (a Secret Santa).
  * - signup: a sign-up sheet, for things to bring or days to help (src/lib/signups.ts).
  * - no_gifts: a "No gifts, please" note.
@@ -333,7 +333,7 @@ export const GIFT_PLAN_LABELS: Record<GiftPlan, { label: string; hint: string }>
   ask: { label: "Ask them to make one", hint: "We email them an invitation, and their list is linked as soon as it exists." },
   everyone: {
     label: "Everyone gives everyone",
-    hint: "Each person links a wish list when they RSVP, and everyone shops from everyone's lists.",
+    hint: "Each person links a wishlist when they RSVP, and everyone shops from everyone's lists.",
   },
   exchange: { label: "Draw names", hint: "Everyone adds a wishlist when they join, then gives one gift to the person they draw." },
   signup: { label: "A sign-up sheet", hint: "Guests pick what they'll bring, or a day to help." },
@@ -425,7 +425,7 @@ export function planNeedsEvent(gifts: GiftPlan): boolean {
 /**
  * The gift plan the picker starts with, already picked, for who it's for.
  * Christmas and a holiday party for everyone taking part start with everyone
- * giving everyone, so each guest links their own wish list. Null when nothing
+ * giving everyone, so each guest links their own wishlist. Null when nothing
  * starts picked. The host can pick another plan, or none.
  */
 export function startingGiftPlan(audience: Audience, occasion?: Pick<Occasion, "defaults"> | null): GiftPlan | null {

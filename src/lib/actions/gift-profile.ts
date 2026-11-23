@@ -90,7 +90,7 @@ export async function saveListGiftProfile(registryId: string, input: unknown) {
   }
   if (!registry) return { error: "We couldn't find that list." };
   if (registry.registry_type !== "personal") {
-    return { error: "Only wish lists can have a gift profile." };
+    return { error: "Only wishlists can have a gift profile." };
   }
 
   const settings = { ...((registry.settings as Record<string, unknown> | null) ?? {}) };

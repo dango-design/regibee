@@ -5,7 +5,7 @@ import { cx } from "@/lib/utils/cx";
 
 /**
  * Birthdays in the next 30 days of people the viewer follows, who approved
- * them. Each one opens that person's wish list, or their profile when they
+ * them. Each one opens that person's wishlist, or their profile when they
  * have several. Renders nothing when there are none.
  */
 export function BirthdaysComingUp({
@@ -50,7 +50,7 @@ export function BirthdaysComingUp({
                   </span>
                   <span className="mt-0.5 block text-sm text-tertiary">
                     {formatBirthdayDate(birthday.date)}
-                    <span className="sr-only">. {birthday.linkTo === "list" ? "Opens their wish list" : "Opens their profile"}</span>
+                    <span className="sr-only">. {birthday.linkTo === "list" ? "Opens their wishlist" : "Opens their profile"}</span>
                   </span>
                 </span>
                 <span

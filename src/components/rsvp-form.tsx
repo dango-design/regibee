@@ -82,7 +82,7 @@ export interface RsvpFormProps {
   /** The event's gift exchange, when it has one. A missing kind is a draw. */
   exchange?: { kind?: ExchangeKind; mailed: boolean; drawn: boolean } | null;
   /**
-   * Everyone gives everyone: the guest's wish list and lists to pick from, for
+   * Everyone gives everyone: the guest's wishlist and lists to pick from, for
    * the step after they say they're coming (rsvp-wishlist-step.tsx).
    */
   wishlist?: RsvpWishlist | null;
@@ -118,7 +118,7 @@ export function RsvpForm({
   submitAction = submitRsvp,
 }: RsvpFormProps) {
   const router = useRouter();
-  // Everyone gives everyone: everyone who's coming takes part, with a wish list.
+  // Everyone gives everyone: everyone who's coming takes part, with a wishlist.
   const everyone = exchange?.kind === "everyone";
   const exchangeOnly = Boolean(exchange?.mailed) && !everyone;
   // No party to come to: no party size, and answers that fit.
@@ -314,7 +314,7 @@ export function RsvpForm({
       partySize: size,
       kidsCount: showKids ? Math.min(Number(kids), size) : 0,
       note,
-      // When everyone gives everyone, the wish list comes after, in its own step.
+      // When everyone gives everyone, the wishlist comes after, in its own step.
       exchange: exchange
         ? everyone
           ? { join: inExchange }
@@ -504,7 +504,7 @@ export function RsvpForm({
 
         {everyone && attending && !guest?.wishlistUrl && !guest?.giftIdeas && (
           <p className="rounded-xl bg-secondary p-3 text-sm text-secondary">
-            Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wish list, so the others know
+            Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wishlist, so the others know
             what you&apos;d like.
           </p>
         )}

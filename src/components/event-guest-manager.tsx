@@ -95,7 +95,7 @@ export interface EventGuestManagerProps {
   askKids?: boolean;
   /** Whether the event has a gift exchange, to show who's in it. */
   hasExchange?: boolean;
-  /** The exchange is everyone gives everyone: show who added a wish list. */
+  /** The exchange is everyone gives everyone: show who added a wishlist. */
   everyoneGives?: boolean;
   /** Other events the host can copy guests from. */
   copySources?: { id: string; title: string; guestCount: number }[];
@@ -703,8 +703,8 @@ export function EventGuestManager({
                       <span className="rounded-full bg-mint-50 px-2 py-0.5 text-xs font-medium text-mint-800">
                         {everyoneGives
                           ? guest.wishlist_url
-                            ? "Wish list added"
-                            : "No wish list yet"
+                            ? "Wishlist added"
+                            : "No wishlist yet"
                           : `Gift exchange${guest.wishlist_url || guest.gift_ideas ? " · wishlist added" : ""}`}
                       </span>
                     )}

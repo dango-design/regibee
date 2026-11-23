@@ -341,7 +341,7 @@ function birthdayWishlist(today: string): DemoRegistry {
 }
 
 /**
- * Remi & Max's Christmas list. It's their wish list on the family Christmas
+ * Remi & Max's Christmas list. It's their wishlist on the family Christmas
  * (src/lib/demo-events.ts), where everyone gives everyone.
  */
 function christmasList(today: string): DemoRegistry {
@@ -354,7 +354,7 @@ function christmasList(today: string): DemoRegistry {
     event_date: demoChristmas(today),
     honoree_names: "Remi & Max",
     description:
-      "Our wish list for the family Christmas. Bring gifts to dinner, or ship them to us if you can't make it.",
+      "Our wishlist for the family Christmas. Bring gifts to dinner, or ship them to us if you can't make it.",
     // Private: only approved followers see it on the profile. Family gets the link from the invitation.
     is_public: false,
     listed_on_profile: true,
@@ -539,7 +539,7 @@ function friendsRegistries(today: string): DemoRegistry[] {
       description: "Ho ho ho. Nothing fancy!",
       is_public: true,
       owner: DEMO_OZ,
-      categories: [{ id: "o-cat-1", name: "Wish list", sort_order: 0 }],
+      categories: [{ id: "o-cat-1", name: "Wishlist", sort_order: 0 }],
       items: [
         item({ id: "o-item-1", title: "Hot Air Balloon Ride Gift Card", category_id: "o-cat-1", price: 250, is_essential: true }),
         item({ id: "o-item-2", title: "Wool Top Hat", category_id: "o-cat-1", price: 75, sort_order: 1 }),

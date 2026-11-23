@@ -70,7 +70,7 @@ export interface EventInvitationProps {
   /** The event's gift exchange, when it has one. */
   exchange?: Pick<GiftExchange, "kind" | "budget" | "draw_by" | "mailed" | "drawn_at"> | null;
   /**
-   * Everyone gives everyone: each guest's wish list, for the event's guests
+   * Everyone gives everyone: each guest's wishlist, for the event's guests
    * and hosts only. They share one section with the lists the host linked.
    * Leave it out for anyone else, who sees only the host's lists there.
    */

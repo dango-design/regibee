@@ -391,7 +391,7 @@ export const ChristmasInvitation: Story = {
   },
 };
 
-// A guest who said yes without a wish list yet is asked to add one.
+// A guest who said yes without a wishlist yet is asked to add one.
 export const ChristmasRsvpWithoutWishlist: Story = {
   args: {
     subject: "You're going to Christmas at Aunt Linda's",

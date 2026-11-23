@@ -316,7 +316,7 @@ export const sampleEveryoneExchange: GiftExchange = {
   draw_by: null,
 };
 
-/** Everyone's wish lists, as Glinda sees them on her own invitation link. */
+/** Everyone's wishlists, as Glinda sees them on her own invitation link. */
 export const sampleGuestWishLists: GuestWishList[] = [
   {
     guestId: "g1",

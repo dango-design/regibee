@@ -1,5 +1,5 @@
 // "Everyone gives everyone" events: a family Christmas where every guest
-// links a wish list. Guests see each other's lists and which of the other
+// links a wishlist. Guests see each other's lists and which of the other
 // guests reserved what, never on their own list. A list that hides what's
 // been reserved from its owner shows them the gifts, and who gave them, from
 // the day after the event, with one email.
@@ -45,19 +45,19 @@ async function createEveryoneEvent(hostId: string, guests: { name: string; email
   return { event, guests: saved.map((g) => ({ ...g, rsvpPath: `/e/${event.slug}?g=${g.token}` })) };
 }
 
-/** RSVPs "Going" from a guest's own link. The next step asks for a wish list. */
+/** RSVPs "Going" from a guest's own link. The next step asks for a wishlist. */
 async function rsvpGoing(page: Page, rsvpPath: string) {
   await page.goto(rsvpPath);
   await waitForReact(page.getByRole("button", { name: "Going" }));
   await page.getByRole("button", { name: "Going" }).click();
   await page.getByRole("button", { name: "Send RSVP" }).click();
   await expect(page.getByRole("heading", { name: /You're going/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Now add your wish list" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Now add your wishlist" })).toBeVisible();
 }
 
 /**
- * RSVPs "Going" from a guest's own link, logs in from the wish list step,
- * and links one of the account's lists. A wish list here is a Regibee list,
+ * RSVPs "Going" from a guest's own link, logs in from the wishlist step,
+ * and links one of the account's lists. A wishlist here is a Regibee list,
  * so it takes an account.
  */
 async function rsvpWithOwnList(
@@ -68,7 +68,7 @@ async function rsvpWithOwnList(
 ) {
   await rsvpGoing(page, rsvpPath);
   // The step's own Log in, not the one in the top bar. It has no way to paste a link.
-  const step = page.getByRole("region", { name: "Now add your wish list" });
+  const step = page.getByRole("region", { name: "Now add your wishlist" });
   await expect(step.getByRole("button", { name: /Paste a link/ })).toHaveCount(0);
   await step.getByRole("link", { name: "Log in" }).click();
   await page.waitForURL(/\/login\?redirect=/);
@@ -80,7 +80,7 @@ async function rsvpWithOwnList(
   const use = page.getByRole("button", { name: `Use ${list.title}` });
   await waitForReact(use);
   await use.click();
-  await expect(page.getByRole("heading", { name: "Your wish list" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your wishlist" })).toBeVisible();
 }
 
 /** The purchases on a list that its owner can read with the anon key, as the mobile app does. */
@@ -127,7 +127,7 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   const benContext = await browser.newContext();
   const benPage = await benContext.newPage();
   await benPage.goto(benGuest.rsvpPath);
-  const lists = benPage.getByRole("region", { name: "Everyone's wish lists" });
+  const lists = benPage.getByRole("region", { name: "Everyone's wishlists" });
   await expect(lists.getByText(mayaList.title)).toBeVisible();
   await lists.getByRole("link", { name: "See Maya's list" }).click();
   await benPage.waitForURL(`**/r/${mayaList.slug}`);
@@ -140,7 +140,7 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   const cleoPage = await cleoContext.newPage();
   await rsvpGoing(cleoPage, cleoGuest.rsvpPath);
   await cleoPage
-    .getByRole("region", { name: "Everyone's wish lists" })
+    .getByRole("region", { name: "Everyone's wishlists" })
     .getByRole("link", { name: "See Maya's list" })
     .click();
   await cleoPage.waitForURL(`**/r/${mayaList.slug}`);
@@ -191,7 +191,7 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   await mayaSignedIn.close();
 });
 
-test("a guest without an account makes one and a wish list right after they RSVP", async ({ page }) => {
+test("a guest without an account makes one and a wishlist right after they RSVP", async ({ page }) => {
   // A sign-up and its confirmation email: longer than one RSVP.
   test.setTimeout(90_000);
   const hal = await createAccount("Hal Host");
@@ -200,12 +200,12 @@ test("a guest without an account makes one and a wish list right after they RSVP
   const [nina] = guests;
 
   await rsvpGoing(page, nina.rsvpPath);
-  // Her confirmation asks for a wish list too.
+  // Her confirmation asks for a wishlist too.
   const confirmation = await waitForEmail(email, `You're going to ${event.title}`);
-  expect(confirmation.html).toContain("Add your wish list.");
+  expect(confirmation.html).toContain("Add your wishlist.");
 
-  // "Make a free wish list" makes an account, and comes back to her invitation.
-  await page.getByRole("link", { name: "Make a free wish list" }).click();
+  // "Make a free wishlist" makes an account, and comes back to her invitation.
+  await page.getByRole("link", { name: "Make a free wishlist" }).click();
   await page.waitForURL(/\/signup\?redirect=/);
   await waitForReact(page.locator("form"));
   await page.getByLabel("Your name").fill("Nina Niece");
@@ -218,11 +218,11 @@ test("a guest without an account makes one and a wish list right after they RSVP
   await page.waitForURL(new RegExp(`/e/${event.slug}\\?g=${nina.token}`));
 
   // Signed in now, one button makes her list and links it.
-  const make = page.getByRole("button", { name: "Make my wish list" });
+  const make = page.getByRole("button", { name: "Make my wishlist" });
   await waitForReact(make);
   await make.click();
   await expect(page.getByRole("link", { name: "Add things to your list" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Your wish list" }).getByText("Nina's Christmas List")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Your wishlist" }).getByText("Nina's Christmas List")).toBeVisible();
 
   const { data: guest } = await db.from("event_guests").select("wishlist_registry_id").eq("id", nina.id).single();
   const { data: list } = await db
@@ -258,8 +258,8 @@ test("a guest logs in after they RSVP and links a list they already have", async
   await hostContext.close();
 
   await rsvpGoing(page, guests[0].rsvpPath);
-  // The wish list step's own Log in, not the one in the top bar.
-  await page.getByRole("region", { name: "Now add your wish list" }).getByRole("link", { name: "Log in" }).click();
+  // The wishlist step's own Log in, not the one in the top bar.
+  await page.getByRole("region", { name: "Now add your wishlist" }).getByRole("link", { name: "Log in" }).click();
   await page.waitForURL(/\/login\?redirect=/);
   await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(olive.email);
@@ -309,11 +309,11 @@ test("a list the host linked shows like a guest's, with whose it is", async ({ b
   const { error: linkError } = await db.from("event_registries").insert({ event_id: event.id, registry_id: halList.id });
   if (linkError) throw linkError;
 
-  // Ben, a guest, sees Hal's list in everyone's wish lists, by Hal's name.
+  // Ben, a guest, sees Hal's list in everyone's wishlists, by Hal's name.
   const benContext = await browser.newContext();
   const benPage = await benContext.newPage();
   await benPage.goto(guests[0].rsvpPath);
-  const lists = benPage.getByRole("region", { name: "Everyone's wish lists" });
+  const lists = benPage.getByRole("region", { name: "Everyone's wishlists" });
   await expect(lists.getByText("Hal Host", { exact: true })).toBeVisible();
   await expect(lists.getByText(halList.title)).toBeVisible();
   await expect(lists.getByRole("link", { name: "See Hal's list" })).toHaveAttribute(
@@ -328,7 +328,7 @@ test("a list the host linked shows like a guest's, with whose it is", async ({ b
   const halPage = await halContext.newPage();
   await signIn(halPage, hal);
   await halPage.goto(`/e/${event.slug}`);
-  const halLists = halPage.getByRole("region", { name: "Everyone's wish lists" });
+  const halLists = halPage.getByRole("region", { name: "Everyone's wishlists" });
   await expect(halLists.getByText("(you)")).toBeVisible();
   await expect(halLists.getByText(halList.title)).toBeVisible();
   await expect(halLists.getByRole("link", { name: "See Hal's list" })).toHaveCount(0);
@@ -345,7 +345,7 @@ test("a host on the guest list who linked their own list has it on their row", a
   ]);
   const { error: linkError } = await db.from("event_registries").insert({ event_id: event.id, registry_id: halList.id });
   if (linkError) throw linkError;
-  // Both said they're coming, and neither has added a wish list.
+  // Both said they're coming, and neither has added a wishlist.
   const { error: rsvpError } = await db
     .from("event_guests")
     .update({ rsvp_status: "yes", in_exchange: true })
@@ -357,7 +357,7 @@ test("a host on the guest list who linked their own list has it on their row", a
   const benContext = await browser.newContext();
   const benPage = await benContext.newPage();
   await benPage.goto(benGuest.rsvpPath);
-  const lists = benPage.getByRole("region", { name: "Everyone's wish lists" });
+  const lists = benPage.getByRole("region", { name: "Everyone's wishlists" });
   await expect(lists.getByText(halList.title)).toHaveCount(1);
   await expect(lists.getByRole("link", { name: "See Hal's list" })).toHaveAttribute(
     "href",
@@ -366,16 +366,16 @@ test("a host on the guest list who linked their own list has it on their row", a
   await expect(lists.getByText("1 of 2 hasn't added a list yet.")).toBeVisible();
   await benContext.close();
 
-  // Hal sees it on his own row, and his RSVP's wish list step shows it as his.
+  // Hal sees it on his own row, and his RSVP's wishlist step shows it as his.
   const halContext = await browser.newContext();
   const halPage = await halContext.newPage();
   await signIn(halPage, hal);
   await halPage.goto(halGuest.rsvpPath);
-  const halLists = halPage.getByRole("region", { name: "Everyone's wish lists" });
+  const halLists = halPage.getByRole("region", { name: "Everyone's wishlists" });
   await expect(halLists.getByText(halList.title)).toHaveCount(1);
   await expect(halLists.getByText("(you)")).toHaveCount(1);
-  await expect(halLists.getByText("Add your wish list above")).toHaveCount(0);
-  const step = halPage.getByRole("region", { name: "Your wish list" });
+  await expect(halLists.getByText("Add your wishlist above")).toHaveCount(0);
+  const step = halPage.getByRole("region", { name: "Your wishlist" });
   await expect(step.getByText(halList.title)).toBeVisible();
   await expect(step.getByRole("button", { name: "Change", exact: true })).toBeVisible();
   await halContext.close();

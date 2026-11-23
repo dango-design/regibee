@@ -4,8 +4,8 @@
 // a list kept for a child (see 20261112062844_gift_profiles_and_birthday_reminders.sql).
 // Every field is optional.
 //
-// Who sees what: sizes, likes and the rest show on the owner's personal wish
-// lists and their profile page, so anyone with a link sees them. The birthday
+// Who sees what: sizes, likes and the rest show on the owner's personal
+// wishlists and their profile page, so anyone with a link sees them. The birthday
 // shows only to the owner and to followers they approved.
 //
 // No imports, so tests can run this file with Node directly.
@@ -239,7 +239,7 @@ export interface UpcomingBirthday {
   name: string;
   /** The next birthday, YYYY-MM-DD. */
   date: string;
-  /** A path on the site: their wish list, or their profile. */
+  /** A path on the site: their wishlist, or their profile. */
   href: string;
   /** What the link opens. */
   linkTo: "list" | "profile";
@@ -257,7 +257,7 @@ export interface BirthdayListCandidate {
 }
 
 /**
- * The wish list a birthday links to: the person's only current personal list
+ * The wishlist a birthday links to: the person's only current personal list
  * on their profile, or their only birthday list among several. Otherwise null,
  * and the link goes to their profile, which lists them all.
  */

@@ -64,7 +64,7 @@ async function addToMyGiftsCookie(
  * - On the list of the person the guest drew in a gift exchange, the gift is
  *   a Secret Santa's: hide_giver is set, so the list's owners see "Secret
  *   Santa" instead of the giver's name and email.
- * - On another list the guest's event links, or another guest's wish list
+ * - On another list the guest's event links, or another guest's wishlist
  *   when everyone gives everyone, only the event guest is saved. The other
  *   guests then see who reserved it (src/app/r/[slug]/page.tsx).
  * - Anywhere else, nothing changes.
@@ -334,7 +334,7 @@ export async function replaceRegistryLink(
     return { error: "We couldn't make a new link. Try again." };
   }
 
-  // Gift exchange guests who added this list as their wish list keep its link
+  // Gift exchange guests who added this list as their wishlist keep its link
   // on their RSVP, and their Secret Santa finds the list through it. Those
   // people were given the list on purpose, so their copy gets the new link.
   const { error: wishlistError } = await supabaseAdmin
@@ -342,7 +342,7 @@ export async function replaceRegistryLink(
     .update({ wishlist_url: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/r/${slug}` })
     .eq("wishlist_registry_id", registryId);
   if (wishlistError) {
-    console.error("[registry] Failed to update wish list links on RSVPs:", wishlistError);
+    console.error("[registry] Failed to update wishlist links on RSVPs:", wishlistError);
   }
 
   revalidatePath(`/dashboard/registry/${registryId}`, "layout");

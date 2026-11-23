@@ -51,7 +51,7 @@ export const GiftsForAParty: Story = {
 
 /**
  * A holiday party, like a family Christmas, starts with everyone giving
- * everyone already picked: each guest links their own wish list when they
+ * everyone already picked: each guest links their own wishlist when they
  * RSVP. The host can pick Draw names instead, or unpick it and skip.
  */
 export const HolidayParty: Story = {

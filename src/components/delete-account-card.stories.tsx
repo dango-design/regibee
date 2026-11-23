@@ -8,7 +8,7 @@ import type { AccountDeletionSummary } from "@/lib/account-deletion-summary";
 const mixed: AccountDeletionSummary = {
   deleted: [{ title: "Max's 30th Birthday", gifts: 3 }],
   handedOver: [{ title: "Remi & Max's Baby Registry", newOwner: "Remi Kim" }],
-  leaving: [{ title: "Grandma Dorothy's Wish List" }],
+  leaving: [{ title: "Grandma Dorothy's Wishlist" }],
   events: 2,
 };
 

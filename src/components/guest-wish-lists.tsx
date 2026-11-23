@@ -124,7 +124,7 @@ function seeListLabel(name: string): string {
 }
 
 /**
- * Everyone's wish lists, on an everyone-gives-everyone invitation: the
+ * Everyone's wishlists, on an everyone-gives-everyone invitation: the
  * budget and the host's note, the lists the host linked, and each guest's
  * list. A list the host linked that belongs to a guest comes on that guest's
  * row instead (withGuestsLinkedLists in src/lib/events-server.ts). Anyone
@@ -151,7 +151,7 @@ export function GuestWishLists({
       : eventSlug && guestToken
       ? `/e/${eventSlug}/gifts?g=${encodeURIComponent(guestToken)}&to=${encodeURIComponent(slug)}`
       : `/r/${slug}`;
-  // A list the host linked that's also a guest's wish list shows once, on
+  // A list the host linked that's also a guest's wishlist shows once, on
   // the guest's row, which knows whether it's yours.
   const guestSlugs = new Set((lists ?? []).flatMap((entry) => (entry.registry ? [entry.registry.slug] : [])));
   const linked = registries.filter((registry) => !guestSlugs.has(registry.slug));
@@ -177,7 +177,7 @@ export function GuestWishLists({
         </span>
         <div className="min-w-0 pt-1">
           <h2 id="wish-lists-heading" className="font-medium text-primary">
-            Everyone&apos;s wish lists
+            Everyone&apos;s wishlists
           </h2>
           {giftNote && <p className="mt-1 whitespace-pre-line text-secondary">{giftNote}</p>}
           {budget && <p className="mt-1 text-secondary">About {budget} a gift.</p>}
@@ -241,8 +241,8 @@ export function GuestWishLists({
                     : entry.url
                       ? `A list on ${storeName(entry.url)}`
                       : entry.isYou
-                        ? "Add your wish list above"
-                        : "No wish list yet"
+                        ? "Add your wishlist above"
+                        : "No wishlist yet"
                 }
                 giftIdeas={entry.giftIdeas}
                 // Where a click on the row goes: nowhere on your own row.

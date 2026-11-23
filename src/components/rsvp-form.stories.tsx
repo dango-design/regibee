@@ -55,7 +55,7 @@ export const PartyWithExchange: Story = {
 /**
  * Everyone gives everyone, for a guest signed in with lists of their own.
  * The RSVP asks only whether they're coming. Once they send it, the next step
- * asks for their wish list, with their lists to pick from.
+ * asks for their wishlist, with their lists to pick from.
  */
 export const EveryoneGivesEveryone: Story = {
   args: {
@@ -75,10 +75,10 @@ export const EveryoneGivesEveryone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Going" }));
-    await expect(canvas.getByText(/Once you send your RSVP, you.ll add your wish list/)).toBeVisible();
+    await expect(canvas.getByText(/Once you send your RSVP, you.ll add your wishlist/)).toBeVisible();
     await expect(canvas.queryByRole("checkbox", { name: /Join the gift exchange/ })).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Send RSVP" }));
-    await expect(canvas.getByRole("heading", { name: "Now add your wish list" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Now add your wishlist" })).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Use Fiyero's Christmas List" })).toBeVisible();
   },
 };
@@ -97,7 +97,7 @@ export const EveryoneGivesEveryoneSignedOut: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Maybe" }));
     await userEvent.click(canvas.getByRole("button", { name: "Send RSVP" }));
-    await expect(canvas.getByRole("link", { name: "Make a free wish list" })).toHaveAttribute(
+    await expect(canvas.getByRole("link", { name: "Make a free wishlist" })).toHaveAttribute(
       "href",
       `/signup?redirect=${encodeURIComponent(`/e/${sampleExchangeEvent.slug}?g=token-g4#wishlist`)}`,
     );
