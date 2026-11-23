@@ -410,8 +410,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 the product to a registry or save it as a gift idea, which only you can see.
               </li>
               <li>
-                <strong className="font-semibold text-primary">Links you paste on regibee.com.</strong> When you paste
-                a link from one of those stores while adding an item, the extension may open it in a background tab,
+                <strong className="font-semibold text-primary">Store links on regibee.com, when you ask.</strong> When
+                you paste a link from one of those stores while adding an item, or click &ldquo;Fill them in&rdquo; on
+                a list whose items are missing a photo or price, the extension may open each link in a background tab,
                 read the product, and close the tab.
               </li>
             </List>

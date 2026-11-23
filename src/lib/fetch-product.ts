@@ -82,6 +82,22 @@ function inExtensionTurn<T>(task: () => Promise<T>): Promise<T> {
   return result;
 }
 
+/** Whether the Regibee extension on this computer can read store pages for the site. */
+export async function extensionReadsProducts(): Promise<boolean> {
+  const features = await extensionFeatures();
+  return Boolean(features?.includes("read-product"));
+}
+
+/**
+ * Reads a product link with the extension only, after any read before it.
+ * Null when the extension couldn't: the page wasn't a product page, or the
+ * store showed a robot check. Check extensionReadsProducts first.
+ */
+export function readProductWithExtension(url: string): Promise<ReadProduct | null> {
+  const secureUrl = url.replace(/^http:\/\//i, "https://");
+  return inExtensionTurn(() => readWithExtension(secureUrl));
+}
+
 interface Read {
   answer: Promise<ProductDetails>;
   /** True once the extension has started reading the page. */

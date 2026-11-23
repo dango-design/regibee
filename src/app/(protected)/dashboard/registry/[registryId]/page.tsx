@@ -15,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddItemDialog } from "@/components/add-item-dialog";
 import { ItemCard } from "@/components/item-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
+import { MissingDetailsNotice } from "@/components/missing-details-notice";
+import { DetailReview } from "@/components/detail-review";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { RegistryTabs } from "@/components/registry-tabs";
 import { StorePerksCard } from "@/components/store-perks-card";
@@ -74,6 +76,8 @@ export default async function RegistryManagePage({
     eventPromptDismissed,
     showPlanEventButton,
     pendingSuggestionCount,
+    missingDetails = [],
+    detailReview = [],
   } = data;
   const registryLinkStores = data.storesWithRegistryLinks;
   const allSuggestions = data.suggestions;
@@ -264,6 +268,11 @@ export default async function RegistryManagePage({
                 <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} openWithLink={sharedLink ?? undefined} />
               </div>
             </div>
+
+            <DetailReview registryId={registryId} reviews={detailReview} className="mb-6" />
+
+            {/* Always there, so it keeps reading while the page refreshes after each item. */}
+            <MissingDetailsNotice registryId={registryId} items={missingDetails} className="mb-6" />
 
             {plainLinkGroups.length > 0 && (
               <div className="mb-6">
