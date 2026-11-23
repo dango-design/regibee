@@ -15,6 +15,8 @@ export interface NavAccount {
   profilePath: string;
   email: string | null;
   followRequestCount: number;
+  /** On the support team: the menu links to /support (src/lib/support.ts). */
+  support?: boolean;
 }
 
 // Signed-in people get just the logo and their account menu. The logo goes to
