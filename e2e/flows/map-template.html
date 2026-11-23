@@ -1,0 +1,609 @@
+<title>{{TITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Geist:wght@400..600&family=Geist+Mono:wght@400..500&display=swap">
+<style>
+  /* Layout: a short header, then one wide canvas that scrolls sideways.
+     The canvas has a row per lane (host, email, guest) and a column per step.
+     Colors and type follow Regibee's own: deep teal, Bricolage Grotesque, Geist. */
+  :root {
+    --bg: #ffffff;
+    --ground: #f1f5f6;
+    --ink: #0f2a33;
+    --muted: #586c74;
+    --line: #d3dde0;
+    --brand: #004659;
+    --on-brand: #ffffff;
+    --card: #ffffff;
+    --host: #0b6b82;
+    --host-tint: #e2f1f5;
+    --email: #5b5f97;
+    --email-tint: #eceef6;
+    --guest: #8a6400;
+    --guest-tint: #fbf2cd;
+    --edge: #5d7f8a;
+    --shadow: 0 1px 2px rgba(15, 42, 51, 0.08), 0 4px 14px rgba(15, 42, 51, 0.07);
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+    --body: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --z: 1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1618;
+      --ground: #131f22;
+      --ink: #e6eef0;
+      --muted: #95a8ae;
+      --line: #2b3b40;
+      --brand: #7fd0e3;
+      --on-brand: #06262e;
+      --card: #1a282c;
+      --host: #7fd0e3;
+      --host-tint: #12333c;
+      --email: #b3b7ee;
+      --email-tint: #23263c;
+      --guest: #ecc866;
+      --guest-tint: #3a3113;
+      --edge: #7f9da6;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1618;
+    --ground: #131f22;
+    --ink: #e6eef0;
+    --muted: #95a8ae;
+    --line: #2b3b40;
+    --brand: #7fd0e3;
+    --on-brand: #06262e;
+    --card: #1a282c;
+    --host: #7fd0e3;
+    --host-tint: #12333c;
+    --email: #b3b7ee;
+    --email-tint: #23263c;
+    --guest: #ecc866;
+    --guest-tint: #3a3113;
+    --edge: #7f9da6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-block: 28px 20px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 650; letter-spacing: -0.015em; line-height: 1.1; }
+  h2 { font-size: 19px; font-weight: 650; }
+  p { margin: 0; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--host); }
+  .lede { max-width: 62ch; color: var(--muted); font-size: 16px; margin-top: 8px; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .facts b { color: var(--ink); font-weight: 600; }
+  .facts code { font-family: var(--mono); font-size: 12px; }
+
+  .bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    margin-top: 22px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 320px; min-width: 0; }
+  .chip, .zoom button {
+    font: inherit; font-size: 13px; font-weight: 500; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; cursor: pointer;
+  }
+  .chip:hover, .zoom button:hover { border-color: var(--edge); }
+  .chip span { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .zoom { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+  .zoom button { padding: 5px 10px; }
+  .zoom button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  button:focus-visible, .frame:focus-visible { outline: 2px solid var(--host); outline-offset: 2px; }
+
+  /* The canvas */
+  .scroller {
+    margin-top: 14px;
+    background: var(--ground);
+    border-block: 1px solid var(--line);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    cursor: grab;
+  }
+  .scroller.dragging { cursor: grabbing; user-select: none; }
+  .canvas {
+    position: relative;
+    display: grid;
+    width: max-content;
+    column-gap: calc(64px + 36px * var(--z));
+    row-gap: 64px;
+    padding: 20px 48px 40px 0;
+    align-items: start;
+  }
+  .band { grid-column: 1 / -1; align-self: stretch; margin-block: -18px; border-radius: 0; opacity: 0.55; }
+  .band.host { background: var(--host-tint); }
+  .band.email { background: var(--email-tint); }
+  .band.guest { background: var(--guest-tint); }
+  .lane-label {
+    grid-column: 1; position: sticky; left: 0; z-index: 4; align-self: stretch;
+    width: 92px; margin-block: -18px; padding: 18px 10px 18px max(14px, env(safe-area-inset-left, 0px));
+    font-size: 12px; line-height: 1.3; color: var(--muted);
+    border-right: 1px solid var(--line);
+  }
+  .lane-label.host { background: var(--host-tint); }
+  .lane-label.email { background: var(--email-tint); }
+  .lane-label.guest { background: var(--guest-tint); }
+  .lane-label b { display: block; font-family: var(--display); font-size: 15px; font-weight: 650; }
+  .lane-label.host b { color: var(--host); }
+  .lane-label.email b { color: var(--email); }
+  .lane-label.guest b { color: var(--guest); }
+  .corner { grid-column: 1; grid-row: 1; position: sticky; left: 0; z-index: 4; width: 92px; align-self: stretch; background: var(--ground); }
+
+  .phase {
+    grid-row: 1; position: relative; z-index: 2;
+    border-top: 3px solid var(--brand); padding-top: 8px; min-width: 0;
+  }
+  .phase h3 { font-size: 17px; font-weight: 650; }
+  .phase h3 span { color: var(--muted); font-weight: 500; margin-right: 6px; font-variant-numeric: tabular-nums; }
+  .phase p { font-size: 13px; color: var(--muted); max-width: 46ch; }
+
+  .step { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .step.host { width: calc(300px * var(--z)); }
+  .step.email { width: calc(250px * var(--z)); }
+  .step.guest { width: calc(190px * var(--z)); }
+  .step.guest.wide { width: calc(300px * var(--z)); }
+  /* Two lines tall, so screens in a lane line up whether a title wraps or not. */
+  .head { display: flex; gap: 8px; align-items: flex-start; min-height: 36px; }
+  .num {
+    flex: none; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; line-height: 22px; text-align: center; font-variant-numeric: tabular-nums;
+    color: var(--on-brand); background: var(--brand);
+  }
+  .head h4 { margin: 0; font-family: var(--body); font-size: 13.5px; font-weight: 600; line-height: 1.3; text-wrap: balance; }
+  .trigger {
+    position: absolute; bottom: 100%; left: 0; margin-bottom: 6px; white-space: nowrap; font-size: 11.5px; font-weight: 500; color: var(--muted);
+    border: 1px dashed var(--edge); border-radius: 999px; padding: 2px 9px; background: var(--bg);
+  }
+  .frame {
+    display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 8px;
+    background: #fff; overflow: hidden; cursor: zoom-in; box-shadow: var(--shadow);
+  }
+  .step.guest:not(.wide) .frame { border-radius: 14px; }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .frame:hover { border-color: var(--edge); }
+  .note { font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+  .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+  .who { font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; }
+  .step.host .who { color: var(--host); }
+  .step.email .who { color: var(--email); }
+  .step.guest .who { color: var(--guest); }
+
+  svg.edges { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
+  svg.edges path { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+  svg.edges marker path { fill: var(--edge); stroke: none; }
+  .via {
+    position: absolute; z-index: 3; pointer-events: none;
+    font-size: 11px; font-weight: 500; line-height: 1.25; color: var(--ink); text-align: center;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px;
+  }
+
+  /* Below the canvas */
+  .after { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px 40px; padding-block: 28px 48px; }
+  .after section { min-width: 0; }
+  .after ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+  .after li + li { margin-top: 6px; }
+  .after p { margin-top: 10px; color: var(--muted); font-size: 14px; max-width: 62ch; }
+  .after code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+
+  /* The full-page view */
+  dialog {
+    width: min(1340px, 100vw - 24px); max-width: none; height: min(100dvh - 24px, 1100px); max-height: none;
+    padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink);
+    overflow: hidden;
+  }
+  dialog::backdrop { background: rgba(6, 22, 27, 0.62); }
+  .view { display: flex; flex-direction: column; height: 100%; }
+  .view header {
+    display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-bottom: 1px solid var(--line);
+  }
+  .view header .text { flex: 1; min-width: 0; }
+  .view header h2 { font-size: 18px; }
+  .view header p { font-size: 13.5px; color: var(--muted); margin-top: 3px; max-width: 80ch; }
+  .view header .meta { margin-top: 5px; }
+  .view .nav { display: flex; gap: 6px; flex: none; }
+  .view .nav button {
+    font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  }
+  .view .nav button:disabled { opacity: 0.4; cursor: default; }
+  .view .shot { flex: 1; min-height: 0; overflow: auto; background: var(--ground); padding: 16px; }
+  .view .shot img { display: block; margin: 0 auto; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+
+  @media (max-width: 640px) {
+    .lane-label, .corner { width: 64px; }
+    .lane-label { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: 4px; font-size: 11px; }
+    .lane-label b { font-size: 13px; }
+    .view header { flex-wrap: wrap; }
+  }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Regibee flow map</p>
+  <h1 id="title"></h1>
+  <p class="lede" id="summary"></p>
+  <p class="facts" id="facts"></p>
+  <div class="bar">
+    <div class="chips" id="chips" role="group" aria-label="Jump to a phase"></div>
+    <div class="zoom" role="group" aria-label="Screen size">
+      Size
+      <button type="button" data-z="0.7" aria-pressed="false">S</button>
+      <button type="button" data-z="1" aria-pressed="true">M</button>
+      <button type="button" data-z="1.5" aria-pressed="false">L</button>
+    </div>
+  </div>
+</div>
+
+<div class="scroller" id="scroller" tabindex="0" aria-label="Flow map. Scroll sideways to follow the flow.">
+  <div class="canvas" id="canvas">
+    <svg class="edges" id="edges" aria-hidden="true">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z"></path>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+</div>
+
+<div class="wrap after">
+  <section>
+    <h2>How to read it</h2>
+    <ul>
+      <li>Each screen is a real page or email from the site, running on a test database. The people are made up.</li>
+      <li>Time runs left to right. An arrow's label is the button or link that leads to the next screen.</li>
+      <li>The host is on a laptop. Guests are on a phone, since most open an invitation from an email or a text.</li>
+      <li>Long pages are cropped to the part the step is about. Select a screen to see the whole page.</li>
+    </ul>
+  </section>
+  <section id="noticed-section" hidden>
+    <h2>Noticed while capturing</h2>
+    <ul id="noticed"></ul>
+  </section>
+  <section id="not-covered-section" hidden>
+    <h2>Not in this map yet</h2>
+    <ul id="not-covered"></ul>
+  </section>
+  <section>
+    <h2>How it was made</h2>
+    <p>A Playwright script walks the flow the way the end-to-end tests do and saves each step. Run it again after a change and the map shows the new pages.</p>
+    <p><code>npx playwright test --config e2e/flows/playwright.config.ts</code></p>
+    <p><code id="build-cmd"></code></p>
+  </section>
+</div>
+
+<dialog id="viewer" aria-labelledby="view-title">
+  <div class="view">
+    <header>
+      <div class="text">
+        <p class="who" id="view-who"></p>
+        <h2 id="view-title"></h2>
+        <p id="view-note"></p>
+        <p class="meta" id="view-meta"></p>
+      </div>
+      <div class="nav">
+        <button type="button" id="prev" aria-label="Previous step">←</button>
+        <button type="button" id="next" aria-label="Next step">→</button>
+        <button type="button" id="close">Close</button>
+      </div>
+    </header>
+    <div class="shot" id="view-shot"><img id="view-img" alt=""></div>
+  </div>
+</dialog>
+
+<script>
+  const DATA = {{DATA}};
+  const LANES = [
+    { id: "host", label: "Host", sub: "on a laptop" },
+    { id: "email", label: "Email", sub: "in an inbox" },
+    { id: "guest", label: "Guest", sub: "on a phone" },
+  ];
+  // How much of a long page a card shows, in the page's own pixels.
+  const WINDOW = { host: 960, guest: 880, email: Infinity };
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const steps = DATA.steps;
+  const byId = new Map(steps.map((s) => [s.id, s]));
+
+  $("title").textContent = DATA.title;
+  $("summary").textContent = DATA.summary;
+  const facts = $("facts");
+  const fact = (label, value, code) => {
+    const span = el("span");
+    span.append(el("b", "", label + " "));
+    span.append(code ? el("code", "", value) : document.createTextNode(value));
+    facts.append(span);
+  };
+  fact("Screens", String(steps.filter((s) => s.lane !== "email").length));
+  fact("Emails", String(steps.filter((s) => s.lane === "email").length));
+  fact("Captured", DATA.captured);
+  fact("Commit", DATA.commit, true);
+  $("build-cmd").textContent = "node e2e/flows/build-map.mjs " + DATA.flow;
+
+  for (const [key, section] of [["noticed", "noticed-section"], ["notCovered", "not-covered-section"]]) {
+    const items = DATA[key] || [];
+    if (!items.length) continue;
+    $(section).hidden = false;
+    const list = $(key === "noticed" ? "noticed" : "not-covered");
+    for (const item of items) list.append(el("li", "", item));
+  }
+
+  // ── The canvas ──────────────────────────────────────────────────────────
+  const canvas = $("canvas");
+  canvas.style.gridTemplateColumns = `max-content repeat(${steps.length}, max-content)`;
+  canvas.append(el("div", "corner"));
+  const bands = {};
+  LANES.forEach((lane, i) => {
+    const band = el("div", "band " + lane.id);
+    band.style.gridRow = String(i + 2);
+    canvas.append(band);
+    bands[lane.id] = band;
+    const label = el("div", "lane-label " + lane.id);
+    label.style.gridRow = String(i + 2);
+    label.append(el("b", "", lane.label), document.createTextNode(lane.sub));
+    canvas.append(label);
+  });
+
+  const phaseEls = [];
+  DATA.phases.forEach((phase, i) => {
+    const own = steps.filter((s) => s.phase === phase.title);
+    if (!own.length) return;
+    const node = el("div", "phase");
+    node.style.gridColumn = `${own[0].n + 1} / ${own[own.length - 1].n + 2}`;
+    const h = el("h3");
+    h.append(el("span", "", String(i + 1)), document.createTextNode(phase.title));
+    node.append(h, el("p", "", phase.summary));
+    canvas.append(node);
+    phaseEls.push(node);
+    const chip = el("button", "chip");
+    chip.type = "button";
+    chip.append(el("span", "", String(i + 1)), document.createTextNode(phase.title));
+    chip.addEventListener("click", () => {
+      const scroller = $("scroller");
+      scroller.scrollTo({ left: node.offsetLeft - 110, behavior: "smooth" });
+    });
+    $("chips").append(chip);
+  });
+
+  const frames = new Map();
+  for (const step of steps) {
+    const card = el("article", `step ${step.lane}`);
+    // A guest with an account, seen on a laptop.
+    if (step.lane === "guest" && step.width > 600) card.classList.add("wide");
+    card.style.gridColumn = String(step.n + 1);
+    card.style.gridRow = String(LANES.findIndex((l) => l.id === step.lane) + 2);
+    if (step.trigger) card.append(el("span", "trigger", "Starts: " + step.trigger));
+    const head = el("div", "head");
+    head.append(el("span", "num", String(step.n)), el("h4", "", step.title));
+    card.append(head);
+
+    const frame = el("button", "frame");
+    frame.type = "button";
+    frame.setAttribute("aria-label", `Step ${step.n}: ${step.title}. Show the whole page.`);
+    const win = Math.min(step.height, step.lane === "guest" && step.width > 600 ? WINDOW.host : WINDOW[step.lane]);
+    frame.style.aspectRatio = `${step.width} / ${win}`;
+    const img = el("img");
+    img.src = step.file;
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.draggable = false;
+    if (step.height > win) {
+      const top = Math.max(0, Math.min((step.focusY ?? 0) - win / 2, step.height - win));
+      img.style.objectPosition = `50% ${(top / (step.height - win)) * 100}%`;
+    }
+    frame.append(img);
+    frame.addEventListener("click", () => open(step.n));
+    card.append(frame);
+    frames.set(step.id, frame);
+
+    card.append(el("p", "who", step.who));
+    card.append(el("p", "note", step.note));
+    card.append(el("p", "meta", step.route ?? `Subject: ${step.subject}`));
+    canvas.append(card);
+  }
+
+  // ── Arrows ──────────────────────────────────────────────────────────────
+  const svg = $("edges");
+  const NS = "http://www.w3.org/2000/svg";
+  function rounded(points, r = 9) {
+    let d = `M${points[0][0]},${points[0][1]}`;
+    for (let i = 1; i < points.length - 1; i++) {
+      const [x0, y0] = points[i - 1], [x1, y1] = points[i], [x2, y2] = points[i + 1];
+      const d1 = Math.hypot(x1 - x0, y1 - y0), d2 = Math.hypot(x2 - x1, y2 - y1);
+      if (!d1 || !d2) continue;
+      const rr = Math.min(r, d1 / 2, d2 / 2);
+      d += ` L${x1 - ((x1 - x0) / d1) * rr},${y1 - ((y1 - y0) / d1) * rr} Q${x1},${y1} ${x1 + ((x2 - x1) / d2) * rr},${y1 + ((y2 - y1) / d2) * rr}`;
+    }
+    const last = points[points.length - 1];
+    return d + ` L${last[0]},${last[1]}`;
+  }
+
+  function draw() {
+    svg.querySelectorAll("path.edge").forEach((p) => p.remove());
+    canvas.querySelectorAll(".via").forEach((p) => p.remove());
+    const origin = canvas.getBoundingClientRect();
+    svg.setAttribute("width", canvas.scrollWidth);
+    svg.setAttribute("height", canvas.scrollHeight);
+    const box = (node) => {
+      const r = node.getBoundingClientRect();
+      return { l: r.left - origin.left, r: r.right - origin.left, t: r.top - origin.top, b: r.bottom - origin.top, cy: (r.top + r.bottom) / 2 - origin.top, h: r.height };
+    };
+    const lane = Object.fromEntries(LANES.map((l) => [l.id, box(bands[l.id])]));
+    // The space between two lanes, where long arrows run.
+    const gutter = { top: (lane.host.b + lane.email.t) / 2, bottom: (lane.email.b + lane.guest.t) / 2 };
+    const gap = parseFloat(getComputedStyle(canvas).columnGap);
+    const laneIndex = (id) => LANES.findIndex((l) => l.id === id);
+
+    const edges = [];
+    for (const to of steps) for (const id of to.after) edges.push({ from: byId.get(id), to });
+    const exits = new Map();
+    const long = [];
+    const label = (text, x, y, align) => {
+      if (!text) return;
+      const node = el("span", "via", text);
+      node.style.maxWidth = align === "center" ? `${gap - 10}px` : "220px";
+      canvas.append(node);
+      const w = node.offsetWidth, h = node.offsetHeight;
+      node.style.left = `${align === "center" ? x - w / 2 : align === "end" ? x - w : x}px`;
+      node.style.top = `${y - h / 2}px`;
+    };
+    const path = (d) => {
+      const node = document.createElementNS(NS, "path");
+      node.setAttribute("class", "edge");
+      node.setAttribute("d", d);
+      node.setAttribute("marker-end", "url(#arrow)");
+      svg.append(node);
+    };
+
+    for (const edge of edges) {
+      const a = box(frames.get(edge.from.id)), b = box(frames.get(edge.to.id));
+      const used = exits.get(edge.from.id) ?? 0;
+      exits.set(edge.from.id, used + 1);
+      const next = edge.to.n === edge.from.n + 1;
+      if (next && edge.from.lane === edge.to.lane) {
+        const y = a.t + Math.min(a.h, b.h) / 2;
+        path(`M${a.r},${y} L${b.l - 2},${y}`);
+        label(edge.to.via, (a.r + b.l) / 2, y - 16, "center");
+      } else if (next) {
+        const mid = (a.r + b.l) / 2;
+        path(`M${a.r},${a.cy} C${mid},${a.cy} ${mid},${b.cy} ${b.l - 2},${b.cy}`);
+        label(edge.to.via, mid, (a.cy + b.cy) / 2, "center");
+      } else {
+        // Runs in the space next to the target's lane, on the side the arrow comes from.
+        const src = laneIndex(edge.from.lane), dst = laneIndex(edge.to.lane);
+        const where = dst === 0 ? "top" : dst === 2 ? "bottom" : src === 0 ? "top" : "bottom";
+        long.push({ edge, a, b, where, startY: Math.min(a.cy + 14 * used, a.b - 8), x1: a.r + gap * 0.3, x2: b.l - gap * 0.3 });
+      }
+    }
+
+    // Long arrows that overlap sideways each get their own track.
+    for (const where of ["top", "bottom"]) {
+      const group = long.filter((l) => l.where === where).sort((p, q) => p.x1 - q.x1);
+      const ends = [];
+      for (const item of group) {
+        let track = ends.findIndex((end) => end < item.x1 - 4);
+        if (track < 0) track = ends.length;
+        ends[track] = item.x2;
+        item.track = track;
+      }
+      for (const item of group) {
+        const y = gutter[where] + (item.track - (ends.length - 1) / 2) * 13;
+        path(rounded([[item.a.r, item.startY], [item.x1, item.startY], [item.x1, y], [item.x2, y], [item.x2, item.b.cy], [item.b.l - 2, item.b.cy]]));
+        label(item.edge.to.via, item.x2 - 14, y, "end");
+      }
+    }
+  }
+
+  let queued = 0;
+  const redraw = () => {
+    cancelAnimationFrame(queued);
+    queued = requestAnimationFrame(draw);
+  };
+  new ResizeObserver(redraw).observe(canvas);
+  document.fonts?.ready.then(redraw);
+  redraw();
+
+  // ── Size ────────────────────────────────────────────────────────────────
+  const zoomButtons = [...document.querySelectorAll(".zoom button")];
+  const setZoom = (z) => {
+    document.documentElement.style.setProperty("--z", z);
+    zoomButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.z === String(z))));
+    try { localStorage.setItem("flow-map-size", z); } catch {}
+  };
+  zoomButtons.forEach((b) => b.addEventListener("click", () => setZoom(b.dataset.z)));
+  try {
+    const saved = localStorage.getItem("flow-map-size");
+    if (saved && zoomButtons.some((b) => b.dataset.z === saved)) setZoom(saved);
+    // A phone starts at the small size, so more than one screen fits.
+    else if (window.innerWidth < 640) document.documentElement.style.setProperty("--z", "0.7"), zoomButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.z === "0.7")));
+  } catch {}
+
+  // ── Drag sideways with a mouse ──────────────────────────────────────────
+  const scroller = $("scroller");
+  let drag = null;
+  scroller.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    drag = { x: event.clientX, left: scroller.scrollLeft, moved: false };
+  });
+  window.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    const dx = event.clientX - drag.x;
+    if (Math.abs(dx) > 4) {
+      drag.moved = true;
+      scroller.classList.add("dragging");
+    }
+    if (drag.moved) scroller.scrollLeft = drag.left - dx;
+  });
+  window.addEventListener("pointerup", () => {
+    if (!drag) return;
+    const moved = drag.moved;
+    drag = null;
+    scroller.classList.remove("dragging");
+    // A drag that ends on a screen shouldn't open it.
+    if (moved) scroller.addEventListener("click", (event) => event.stopPropagation(), { capture: true, once: true });
+  });
+
+  // ── The whole page ──────────────────────────────────────────────────────
+  const viewer = $("viewer");
+  let current = 0;
+  function show(n) {
+    const step = steps[n - 1];
+    current = n;
+    $("view-who").textContent = `${n} of ${steps.length} · ${step.who}`;
+    $("view-who").className = "who";
+    $("view-title").textContent = step.title;
+    $("view-note").textContent = step.note;
+    $("view-meta").textContent = step.route ?? `Subject: ${step.subject} · From: ${step.from}`;
+    const img = $("view-img");
+    img.src = step.file;
+    img.alt = `Screenshot: ${step.title}`;
+    img.style.width = step.width + "px";
+    $("view-shot").scrollTop = 0;
+    $("prev").disabled = n === 1;
+    $("next").disabled = n === steps.length;
+  }
+  function open(n) {
+    show(n);
+    if (!viewer.open) viewer.showModal();
+    history.replaceState(null, "", "#step-" + n);
+  }
+  $("prev").addEventListener("click", () => current > 1 && open(current - 1));
+  $("next").addEventListener("click", () => current < steps.length && open(current + 1));
+  $("close").addEventListener("click", () => viewer.close());
+  viewer.addEventListener("click", (event) => event.target === viewer && viewer.close());
+  viewer.addEventListener("close", () => history.replaceState(null, "", location.pathname + location.search));
+  viewer.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") $("prev").click();
+    if (event.key === "ArrowRight") $("next").click();
+  });
+  const fromHash = () => {
+    const match = location.hash.match(/^#step-(\d+)$/);
+    if (match && steps[Number(match[1]) - 1]) open(Number(match[1]));
+  };
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
+</script>
