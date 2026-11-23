@@ -309,60 +309,9 @@ export function rsvpStatsText(summary: Pick<RsvpSummary, "guests" | "attending" 
     .join(" · ");
 }
 
-const EMAIL_PATTERN = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]+$/;
-
-export function isEmail(value: string): boolean {
-  return value.length <= 254 && EMAIL_PATTERN.test(value);
-}
-
-export interface ParsedGuest {
-  name: string;
-  email: string | null;
-}
-
-/**
- * Reads a pasted guest list, one guest per line. Understands the ways people
- * copy addresses: "Glinda Upland <glinda@example.com>", "Glinda, glinda@…",
- * a tab between them (from a spreadsheet), or a name or an address alone.
- * Lines it can't make sense of come back in `skipped`.
- */
-export function parseGuestList(text: string): { guests: ParsedGuest[]; skipped: string[] } {
-  const guests: ParsedGuest[] = [];
-  const skipped: string[] = [];
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const angle = line.match(/^(.*?)<\s*([^>]+?)\s*>\s*$/);
-    let name: string;
-    let email: string | null = null;
-    if (angle) {
-      name = angle[1].replace(/^["'\s]+|["',\s]+$/g, "");
-      email = angle[2];
-    } else {
-      const found = line.match(/[^\s,;<>"]+@[^\s,;<>"]+/);
-      if (found) {
-        email = found[0];
-        name = line.replace(found[0], "").replace(/^[\s,;\t"']+|[\s,;\t"']+$/g, "");
-      } else {
-        name = line.replace(/[\t,;]+/g, " ").trim();
-      }
-    }
-
-    if (email && !isEmail(email)) {
-      skipped.push(line);
-      continue;
-    }
-    // An address alone: use the part before the @ until the host names them.
-    if (!name && email) name = email.split("@")[0];
-    if (!name || name.length > 100) {
-      skipped.push(line);
-      continue;
-    }
-    guests.push({ name, email: email ? email.toLowerCase() : null });
-  }
-  return { guests, skipped };
-}
+// Checking typed and pasted guests lives in its own file, so its tests can run
+// without the rest of this one. Everything that used it from here still can.
+export { isEmail, parseGuestList, type ParsedGuest } from "./guest-input";
 
 // ── Dates and times ──────────────────────────────────────────
 

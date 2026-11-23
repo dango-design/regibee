@@ -5,16 +5,17 @@
 
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Pressable, Share, StyleSheet, View } from "react-native";
 
 import type { EventPageData } from "@shared/events-page-types";
 import { exchangeKind, isEmail, parseGuestList, RSVP_LABELS, summarizeRsvps, type EventGuest, type ParsedGuest, type RsvpStatus } from "@shared/events";
+import { filledGuestRows, readGuestRows } from "@shared/guest-input";
 import { canEmail, emailLabel } from "@shared/guest-emails";
 import { answerLines, mealCounts, storedAnswers } from "@shared/rsvp-questions";
 
 import { InviteFollowed } from "@/components/event/invite-followed";
-import { Button, Card, Chip, Divider, Field, haptic, Pill, Stepper, Text } from "@/components/ui";
+import { Button, Card, Chip, Divider, Field, haptic, IconButton, Pill, Stepper, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useRunEventAction } from "@/lib/events-data";
 import { initials } from "@/lib/format";
@@ -83,8 +84,13 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
   const { event, guests } = data;
   const summary = summarizeRsvps(guests);
   const [filter, setFilter] = useState<Filter>("all");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  // The add guests form: a name and an optional email on each row, like the
+  // website's GuestRowsForm (src/components/guest-rows-form.tsx).
+  const nextRowId = useRef(1);
+  const [rows, setRows] = useState<{ id: number; name: string; email: string }[]>(() => [{ id: 0, name: "", email: "" }]);
+  const [invalid, setInvalid] = useState<{ id: number; field: "name" | "email"; text: string } | null>(null);
+  // The row the host just added, to type in next.
+  const [focusRowId, setFocusRowId] = useState<number | null>(null);
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -136,29 +142,43 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
     }
   }
 
-  function add(list: ParsedGuest[]) {
+  function add(list: ParsedGuest[], from: "rows" | "pasted") {
     return attempt(
       "add",
       () => run<{ added: number; alreadyListed: number }>("events.addEventGuests", event.id, list),
       (r) => {
-        setName("");
-        setEmail("");
-        setPasted("");
+        if (from === "rows") setRows([{ id: nextRowId.current++, name: "", email: "" }]);
+        else setPasted("");
         return addedText(r.added, r.alreadyListed);
       }
     );
   }
 
-  function addOne() {
-    if (!name.trim()) {
-      setMessage({ text: "Add the guest's name.", error: true });
+  function changeRow(id: number, field: "name" | "email", value: string) {
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+    if (invalid?.id === id && invalid.field === field) setInvalid(null);
+  }
+
+  function addRow() {
+    const id = nextRowId.current++;
+    setRows((current) => [...current, { id, name: "", email: "" }]);
+    setFocusRowId(id);
+  }
+
+  function removeRow(id: number) {
+    setRows((current) => current.filter((row) => row.id !== id));
+    if (invalid?.id === id) setInvalid(null);
+  }
+
+  function addRows() {
+    const result = readGuestRows(rows);
+    if (result.guests === null) {
+      haptic("warning");
+      setInvalid({ id: rows[result.row].id, field: result.field, text: result.error });
       return;
     }
-    if (email.trim() && !isEmail(email.trim())) {
-      setMessage({ text: "That email address doesn't look right.", error: true });
-      return;
-    }
-    add([{ name: name.trim(), email: email.trim() || null }]);
+    setInvalid(null);
+    add(result.guests, "rows");
   }
 
   function addPasted() {
@@ -166,7 +186,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
       setMessage({ text: "Paste one guest per line, like: Glinda Upland, glinda@example.com", error: true });
       return;
     }
-    add(pastePreview.guests);
+    add(pastePreview.guests, "pasted");
   }
 
   function send(kind: "invite" | "remind") {
@@ -313,7 +333,15 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text variant="headline">Add guests</Text>
-          <Button title={pasting ? "Add one at a time" : "Paste a list"} size="small" variant="ghost" onPress={() => setPasting(!pasting)} />
+          <Button
+            title={pasting ? "Type them in" : "Paste a list"}
+            size="small"
+            variant="ghost"
+            onPress={() => {
+              setPasting(!pasting);
+              setFocusRowId(null);
+            }}
+          />
         </View>
         {pasting ? (
           <>
@@ -340,19 +368,71 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
           </>
         ) : (
           <>
-            <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />
-            <Field
-              label="Email (optional)"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="emailAddress"
-              returnKeyType="done"
-              onSubmitEditing={addOne}
+            {rows.map((row, index) => {
+              // The first row has the fields' labels. Each row after it has a
+              // heading with a button that takes it away.
+              const first = index === 0;
+              const errorFor = (field: "name" | "email") =>
+                invalid?.id === row.id && invalid.field === field ? invalid.text : null;
+              return (
+                <View key={row.id} style={{ gap: spacing.sm }}>
+                  {first ? null : (
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                        Guest {index + 1}
+                      </Text>
+                      <IconButton
+                        icon="close"
+                        size={18}
+                        accessibilityLabel={`Remove guest ${index + 1}`}
+                        onPress={() => removeRow(row.id)}
+                      />
+                    </View>
+                  )}
+                  <Field
+                    label={first ? "Name" : undefined}
+                    placeholder={first ? undefined : "Name"}
+                    accessibilityLabel={first ? undefined : `Guest ${index + 1} name`}
+                    value={row.name}
+                    onChangeText={(value) => changeRow(row.id, "name", value)}
+                    error={errorFor("name")}
+                    autoFocus={row.id === focusRowId}
+                    autoCapitalize="words"
+                    textContentType="name"
+                  />
+                  <Field
+                    label={first ? "Email (optional)" : undefined}
+                    placeholder={first ? undefined : "Email (optional)"}
+                    accessibilityLabel={first ? undefined : `Guest ${index + 1} email`}
+                    value={row.email}
+                    onChangeText={(value) => changeRow(row.id, "email", value)}
+                    error={errorFor("email")}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                    returnKeyType="done"
+                    onSubmitEditing={addRows}
+                  />
+                </View>
+              );
+            })}
+            <Button
+              title="Add another guest"
+              icon="add"
+              size="small"
+              variant="secondary"
+              disabled={busy === "add"}
+              onPress={addRow}
+              style={{ alignSelf: "flex-start" }}
             />
-            <Button title="Add" icon="add" size="medium" loading={busy === "add"} onPress={addOne} />
+            <Button
+              title={filledGuestRows(rows) > 1 ? `Add ${filledGuestRows(rows)} guests` : "Add"}
+              icon="personAdd"
+              size="medium"
+              loading={busy === "add"}
+              onPress={addRows}
+            />
           </>
         )}
         {followedPeople.length > 0 || data.groups.length > 0 || data.copySources.length > 0 ? (

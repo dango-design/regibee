@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { GuestRowsForm } from "@/components/guest-rows-form";
 import { InviteFollowedDialog } from "@/components/invite-followed-dialog";
 import {
   addEventGuests,
@@ -30,7 +31,6 @@ import {
   updateEventGuest,
 } from "@/lib/actions/events";
 import {
-  isEmail,
   parseGuestList,
   RSVP_LABELS,
   summarizeRsvps,
@@ -216,8 +216,6 @@ export function EventGuestManager({
   const actions = { ...DEFAULT_ACTIONS, ...actionOverrides };
   const summary = summarizeRsvps(guests);
   const [filter, setFilter] = useState<Filter>("all");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState("");
   const [adding, setAdding] = useState(false);
@@ -265,23 +263,6 @@ export function EventGuestManager({
     );
     router.refresh();
     return true;
-  };
-
-  const handleAddOne = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const trimmedEmail = email.trim();
-    if (!name.trim()) {
-      setAddError("Add the guest's name.");
-      return;
-    }
-    if (trimmedEmail && !isEmail(trimmedEmail)) {
-      setAddError("That email address doesn't look right.");
-      return;
-    }
-    if (await add([{ name: name.trim(), email: trimmedEmail || null }])) {
-      setName("");
-      setEmail("");
-    }
   };
 
   const handleAddPasted = async () => {
@@ -498,10 +479,10 @@ export function EventGuestManager({
             }}
             className="cursor-pointer text-sm font-medium text-brand-600 hover:underline max-sm:-my-3 max-sm:min-h-11"
           >
-            {pasting ? "Add one at a time" : "Paste a list"}
+            {pasting ? "Type them in" : "Paste a list"}
           </button>
         </div>
-        {pasting ? (
+        {pasting && (
           <div className="mt-3 flex flex-col gap-3">
             <TextArea
               aria-label="Guest list"
@@ -529,35 +510,11 @@ export function EventGuestManager({
               </Button>
             </div>
           </div>
-        ) : (
-          <form onSubmit={handleAddOne} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-            {/* A guest's details, not the owner's, so no autofill. */}
-            <Input
-              label="Name"
-              value={name}
-              onChange={setName}
-              autoComplete="off"
-              enterKeyHint="next"
-              className="sm:flex-1"
-              maxLength={100}
-            />
-            <Input
-              label="Email (optional)"
-              type="email"
-              value={email}
-              onChange={setEmail}
-              autoComplete="off"
-              enterKeyHint="done"
-              className="sm:flex-1"
-            />
-            <Button type="submit" disabled={adding} className="h-10">
-              <span className="inline-flex items-center gap-1.5">
-                {adding ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
-                Add
-              </span>
-            </Button>
-          </form>
         )}
+        {/* Hidden rather than gone while pasting, so the rows typed stay. */}
+        <div hidden={pasting}>
+          <GuestRowsForm adding={adding} onAdd={add} onInvalid={setAddError} />
+        </div>
         {followedPeople.length > 0 && (
           <div className="mt-3 border-t border-secondary pt-3">
             <Button variant="outline" onClick={() => setPickingFollowed(true)} disabled={adding}>
