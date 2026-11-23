@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 21, 2026",
+  effectiveDate: "November 22, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -271,7 +271,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               If you save gift ideas for other people, we keep what you save: the name you give the person, such as
               &ldquo;Mom&rdquo;, and the idea&apos;s name, link, price, picture and your note, and the product&apos;s
-              barcode number when the store&apos;s page shows it. Only you can see them.
+              barcode number when the store&apos;s page shows it. No one else using Regibee can see them.
               They aren&apos;t on any registry and have no link, we never show them to the person or anyone else, and
               we don&apos;t email anyone about them.
             </P>
@@ -612,7 +612,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               Every connection to Regibee is encrypted. Access rules in the database let each person reach only what
               they&apos;re allowed to. Guest lists, gift exchanges, groups, group gifts, follows, blocks and the
-              notes of birthday emails sent can be read only by our server. No system
+              notes of birthday emails sent can be read only by our server. Our support team can access the
+              information in your account, including private registries and gift ideas, when they need to help with
+              a problem. No system
               is perfectly secure, so if you find a problem, please email us at <ContactEmail />.
             </P>
           </Section>

@@ -3,10 +3,13 @@
 // here, so they show the same items, gifts and notices.
 //
 // Server-only: it reads with the service-role client after checking that the
-// signed-in user manages the list.
+// signed-in user manages the list, or is on the support team
+// (loadListPageForSupport).
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSupportViewer } from "@/lib/support";
 import {
   parseHiddenPlainLinkItems,
   parseRetailerRegistries,
@@ -40,13 +43,11 @@ import type {
 
 export type * from "@/lib/list-page-types";
 
-type ServerClient = Awaited<ReturnType<typeof createClient>>;
-
 // Purchases of this registry's items and gift funds, newest first. Each query
 // joins to the registry it belongs to, so Postgres only looks at this
 // registry's purchases. Without that filter, it checks the purchases access
 // rule against every purchase in the table.
-async function loadRegistryPurchases(supabase: ServerClient, registryId: string) {
+async function loadRegistryPurchases(supabase: SupabaseClient, registryId: string) {
   const [{ data: itemPurchases }, { data: fundPurchases }] = await Promise.all([
     supabase
       .from("purchases")
@@ -163,6 +164,72 @@ export async function loadListPage(registryId: string): Promise<ListPageData | n
   // otherwise. Co-managers still see it all.
   const hideReservations = reservationsHiddenFrom(registry, user.id);
 
+  return buildListPage(registry, {
+    userId: user.id,
+    isAnonymous: Boolean(user.is_anonymous),
+    isOwner,
+    client: supabase,
+    hideReservations,
+    hiddenItemsFor: isOwner && registry.owner_id === user.id && !hideReservations ? user.id : null,
+  });
+}
+
+/**
+ * Loads a list's manage page as its owner sees it, for the support team's
+ * read-only page (src/app/(protected)/support/lists/[registryId]/page.tsx).
+ * Null unless the signed-in account is on the support team, or when the list
+ * doesn't exist.
+ *
+ * With `showHiddenGifts`, it also shows the gifts the owner hid from
+ * themselves. The page records each time it does.
+ *
+ * Not in src/lib/app-loaders.ts: the phone app has no support pages.
+ */
+export async function loadListPageForSupport(
+  registryId: string,
+  { showHiddenGifts }: { showHiddenGifts: boolean },
+): Promise<{ page: ListPageData; ownerHidesGifts: boolean } | null> {
+  if (!(await getSupportViewer())) return null;
+  const { data: registry } = await supabaseAdmin.from("registries").select("*").eq("id", registryId).maybeSingle();
+  if (!registry) return null;
+
+  const ownerId = registry.owner_id as string;
+  const hiddenHere = reservationsHiddenFrom(registry, ownerId);
+  const page = await buildListPage(registry, {
+    userId: ownerId,
+    isAnonymous: false,
+    isOwner: true,
+    client: supabaseAdmin,
+    hideReservations: hiddenHere && !showHiddenGifts,
+    hiddenItemsFor: showHiddenGifts || hiddenHere ? null : ownerId,
+  });
+
+  // Whether anything on the page is hidden from the owner: this list hides
+  // what's been reserved, or an item on it is also on a list that does.
+  const ownerHidesGifts =
+    hiddenHere ||
+    (!showHiddenGifts && (await itemsHiddenFromOwner(page.items.map((i) => i.id), ownerId)).size > 0);
+  return { page, ownerHidesGifts };
+}
+
+/** Whose view of the list to build, once the caller has checked access. */
+interface ListPageViewer {
+  /** The signed-in manager, or the owner when the support team opens it. */
+  userId: string;
+  isAnonymous: boolean;
+  isOwner: boolean;
+  /** Reads categories, purchases, suggestions and funds. */
+  client: SupabaseClient;
+  /** Show only revealed gifts, as the owner sees them with reservations hidden. */
+  hideReservations: boolean;
+  /** Hide the gifts of items that another list hides from this owner. Null to show them. */
+  hiddenItemsFor: string | null;
+}
+
+async function buildListPage(registry: ListPageData["registry"], viewer: ListPageViewer): Promise<ListPageData> {
+  const registryId = registry.id;
+  const { client: supabase, hideReservations } = viewer;
+
   const [
     { data: categories },
     { data: items },
@@ -180,7 +247,7 @@ export async function loadListPage(registryId: string): Promise<ListPageData | n
     loadRegistryPurchases(supabase, registryId),
     supabase.from("suggestions").select("*").eq("registry_id", registryId).order("created_at", { ascending: false }),
     supabase.from("cash_funds").select("*").eq("registry_id", registryId).order("created_at"),
-    listEventsForRegistry(registryId, user.id),
+    listEventsForRegistry(registryId, viewer.userId),
     hideReservations ? getGiftsRevealedThrough(registryId) : null,
     hideReservations ? getEventsForReveal(registryId) : [],
   ]);
@@ -191,7 +258,7 @@ export async function loadListPage(registryId: string): Promise<ListPageData | n
   const { purchases: placedPurchases, otherListsByItem, hiddenItemIds } = await loadPlacementDetails(
     listItems,
     registryId,
-    isOwner && registry.owner_id === user.id && !hideReservations ? user.id : null,
+    viewer.hiddenItemsFor,
   );
   // A gift belongs to the item. If another list it's on hides what's been
   // reserved from the owner, this page hides that item's gifts too.
@@ -277,12 +344,12 @@ export async function loadListPage(registryId: string): Promise<ListPageData | n
   // Guests (anonymous sessions) can't make events, so they get no prompt to.
   // Once a manager dismisses the prompt, a smaller button in the header takes
   // its place.
-  const canPlanEvents = !user.is_anonymous;
+  const canPlanEvents = !viewer.isAnonymous;
   const eventPromptDismissed = settings?.event_prompt_dismissed === true;
 
   return {
     registry,
-    isOwner,
+    isOwner: viewer.isOwner,
     categories: (categories || []) as ListPageCategory[],
     items: allItems,
     funds: allFunds,
