@@ -56,11 +56,24 @@ type Story = StoryObj<typeof UpcomingEvents>;
 // Soonest first. Tomorrow's stands out.
 export const ThreeComingUp: Story = {};
 
-// An event today, and a shower a friend is throwing, which opens its invitation.
+// An event today, a party you're invited to and haven't answered, and a
+// shower a friend is throwing. The last two open their invitations.
 export const TodayAndCelebratingYou: Story = {
   args: {
     events: [
       { ...santa, id: "cookies", eventType: "holiday", eventDate: TODAY, title: "Cookie Swap" },
+      {
+        id: "game-night",
+        slug: "game-night-at-priyas-3h6d",
+        title: "Game Night at Priya's",
+        eventType: "gathering",
+        eventDate: "2026-11-28",
+        time: "7 – 10 PM PST",
+        role: "guest",
+        summary: null,
+        rsvp: "pending",
+        guestToken: "sample-guest-token",
+      },
       {
         id: "friends-shower",
         slug: "shower-for-remi-and-max-9q3w",

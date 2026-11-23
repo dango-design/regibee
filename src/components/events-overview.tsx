@@ -1,14 +1,25 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { CalendarHeart, Gift, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EventCard, type EventCardProps } from "@/components/event-card";
+import { EventCard, InvitedEventCard, type EventCardProps, type InvitedEventCardProps } from "@/components/event-card";
+
+type HostCard = EventCardProps & { id: string };
+type InviteCard = InvitedEventCardProps & { id: string };
 
 export interface EventsOverviewProps {
-  /** Today and later, soonest first. Events with no date come last. */
-  upcoming: (EventCardProps & { id: string })[];
-  /** Before today, most recent first. */
-  past: (EventCardProps & { id: string })[];
+  /** Events you host or co-host, today and later, soonest first. Events with no date come last. */
+  upcoming: HostCard[];
+  /** Events you hosted or co-hosted, before today, most recent first. */
+  past: HostCard[];
+  /**
+   * Other people's events you're on the guest list for, today and later,
+   * soonest first. Events with no date come last.
+   */
+  invited?: InviteCard[];
+  /** Other people's events you were on the guest list for, before today, most recent first. */
+  invitedPast?: InviteCard[];
   /** Put in front of the New link. The demo passes "/demo". */
   basePath?: string;
   /**
@@ -67,8 +78,38 @@ function LinkedEvents({ linked }: { linked: NonNullable<EventsOverviewProps["lin
   );
 }
 
-export function EventsOverview({ upcoming, past, basePath = "", linked = [] }: EventsOverviewProps) {
-  const none = upcoming.length === 0 && past.length === 0;
+/**
+ * Past events you hosted and ones you were invited to, most recent first.
+ * Past events always have a date.
+ */
+function mergePast(past: HostCard[], invitedPast: InviteCard[]) {
+  return [
+    ...past.map((card) => ({ kind: "host" as const, card })),
+    ...invitedPast.map((card) => ({ kind: "guest" as const, card })),
+  ].sort((a, b) => (b.card.eventDate ?? "").localeCompare(a.card.eventDate ?? ""));
+}
+
+function EventsSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="mt-10 first:mt-0">
+      <h2 id={id} className="text-xl font-semibold">
+        {title}
+      </h2>
+      <div className="mt-4 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{children}</div>
+    </section>
+  );
+}
+
+export function EventsOverview({
+  upcoming,
+  past,
+  invited = [],
+  invitedPast = [],
+  basePath = "",
+  linked = [],
+}: EventsOverviewProps) {
+  const pastEvents = mergePast(past, invitedPast);
+  const none = upcoming.length === 0 && invited.length === 0 && pastEvents.length === 0;
 
   return (
     <div className="container mx-auto px-4 pt-6 pb-8">
@@ -100,25 +141,35 @@ export function EventsOverview({ upcoming, past, basePath = "", linked = [] }: E
           </CardContent>
         </Card>
       ) : (
-        <>
+        <div className="mt-8">
           {upcoming.length > 0 && (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <EventsSection id="hosting-events-heading" title="Hosting">
               {upcoming.map(({ id, ...card }) => (
-                <EventCard key={id} {...card} />
+                <EventCard key={id} {...card} headingLevel={3} />
               ))}
-            </div>
+            </EventsSection>
           )}
-          {past.length > 0 && (
-            <>
-              <h2 className="mt-10 text-xl font-semibold">Past events</h2>
-              <div className="mt-4 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {past.map(({ id, ...card }) => (
-                  <EventCard key={id} {...card} headingLevel={3} />
-                ))}
-              </div>
-            </>
+          {invited.length > 0 && (
+            <EventsSection id="invited-events-heading" title="Invited">
+              {invited.map(({ id, ...card }) => (
+                <InvitedEventCard key={id} {...card} headingLevel={3} />
+              ))}
+            </EventsSection>
           )}
-        </>
+          {pastEvents.length > 0 && (
+            <EventsSection id="past-events-heading" title="Past events">
+              {pastEvents.map((entry) => {
+                if (entry.kind === "host") {
+                  const { id, ...card } = entry.card;
+                  return <EventCard key={id} {...card} headingLevel={3} />;
+                }
+                // Among the ones you hosted, say which you were invited to.
+                const { id, ...card } = entry.card;
+                return <InvitedEventCard key={id} {...card} badge="Invited" headingLevel={3} />;
+              })}
+            </EventsSection>
+          )}
+        </div>
       )}
     </div>
   );

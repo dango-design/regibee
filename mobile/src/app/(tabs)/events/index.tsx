@@ -7,12 +7,12 @@ import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
-import { eventTypeLabel, formatShortEventDate } from "@shared/events";
-import type { EventsTabCard } from "@shared/events-page-types";
+import { eventTypeLabel, formatShortEventDate, MY_RSVP_LABELS, type RsvpStatus } from "@shared/events";
+import type { EventsTabCard, EventsTabInvite } from "@shared/events-page-types";
 import { memberCountLabel } from "@shared/groups";
 import { countdownLabel } from "@shared/occasions";
 
-import { Icon } from "@/components/icon";
+import { Icon, type IconName } from "@/components/icon";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, EmptyState, ErrorState, Field, IconButton, LoadingState, Pill, Section, Text } from "@/components/ui";
 import { useSession } from "@/lib/auth";
@@ -39,7 +39,10 @@ export default function EventsScreen() {
   }
 
   const data = tab.data;
-  const none = data ? data.upcoming.length === 0 && data.past.length === 0 : false;
+  // A server from before invitations were listed sends none.
+  const invited = data?.invited ?? [];
+  const pastEvents = data ? mergePast(data.past, data.invitedPast ?? []) : [];
+  const none = data ? data.upcoming.length === 0 && invited.length === 0 && pastEvents.length === 0 : false;
 
   return (
     <>
@@ -101,22 +104,42 @@ export default function EventsScreen() {
                 message="A baby shower, a birthday, a holiday party: upload your invitation, email it to guests, and see who's coming. Link your registry so guests know what to bring."
                 action={<Button title="Plan an event" icon="add" onPress={() => router.push("/new")} />}
               />
-            ) : (
+            ) : null}
+
+            {data.upcoming.length > 0 ? (
               <View style={{ gap: spacing.md }}>
+                <Text variant="title" style={{ fontSize: 20 }}>
+                  Hosting
+                </Text>
                 {data.upcoming.map((event) => (
                   <EventCard key={event.id} event={event} today={data.today} />
                 ))}
               </View>
-            )}
+            ) : null}
 
-            {data.past.length > 0 ? (
+            {invited.length > 0 ? (
+              <View style={{ gap: spacing.md }}>
+                <Text variant="title" style={{ fontSize: 20, marginTop: spacing.md }}>
+                  Invited
+                </Text>
+                {invited.map((event) => (
+                  <InviteCard key={event.id} event={event} today={data.today} />
+                ))}
+              </View>
+            ) : null}
+
+            {pastEvents.length > 0 ? (
               <View style={{ gap: spacing.md }}>
                 <Text variant="title" style={{ fontSize: 20, marginTop: spacing.md }}>
                   Past events
                 </Text>
-                {data.past.map((event) => (
-                  <EventCard key={event.id} event={event} today={data.today} />
-                ))}
+                {pastEvents.map((entry) =>
+                  entry.kind === "host" ? (
+                    <EventCard key={entry.event.id} event={entry.event} today={data.today} />
+                  ) : (
+                    <InviteCard key={entry.event.id} event={entry.event} today={data.today} showInvited />
+                  ),
+                )}
               </View>
             ) : null}
 
@@ -170,6 +193,75 @@ function EventCard({ event, today }: { event: EventsTabCard; today: string }) {
       <Text variant="footnote" tone="tertiary">
         {stats}
       </Text>
+    </Card>
+  );
+}
+
+/**
+ * Past events the viewer hosted and ones they were invited to, most recent
+ * first, as the website's Events tab (src/components/events-overview.tsx)
+ * lists them. Past events always have a date.
+ */
+function mergePast(past: EventsTabCard[], invitedPast: EventsTabInvite[]) {
+  return [
+    ...past.map((event) => ({ kind: "host" as const, event })),
+    ...invitedPast.map((event) => ({ kind: "guest" as const, event })),
+  ].sort((a, b) => (b.event.eventDate ?? "").localeCompare(a.event.eventDate ?? ""));
+}
+
+const REPLY_PILLS: Record<RsvpStatus, { tone: "neutral" | "tint" | "success"; icon: IconName }> = {
+  yes: { tone: "success", icon: "checkCircle" },
+  maybe: { tone: "neutral", icon: "info" },
+  no: { tone: "neutral", icon: "close" },
+  pending: { tone: "tint", icon: "mail" },
+};
+
+/**
+ * Someone else's event the viewer is invited to, as the website's
+ * InvitedEventCard (src/components/event-card.tsx) shows it: their own reply,
+ * not the host's counts. It opens the invitation on their guest link, where
+ * they can RSVP.
+ */
+function InviteCard({ event, today, showInvited = false }: { event: EventsTabInvite; today: string; showInvited?: boolean }) {
+  const theme = useTheme();
+  const reply = REPLY_PILLS[event.rsvp];
+  const upcoming = !event.eventDate || event.eventDate >= today;
+  return (
+    <Card
+      onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/e/${event.slug}?g=${encodeURIComponent(event.guestToken)}`)}
+      accessibilityRole="link"
+    >
+      <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
+        {event.imageUrl ? (
+          <Image source={{ uri: event.imageUrl }} style={styles.thumb} contentFit="cover" />
+        ) : (
+          <View style={[styles.thumb, { backgroundColor: theme.accentSoft, alignItems: "center", justifyContent: "center" }]}>
+            <Icon name="party" size={24} color={theme.onAccentSoft} />
+          </View>
+        )}
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text variant="caption" tone="tertiary" style={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+            {eventTypeLabel(event.eventType)}
+          </Text>
+          <Text variant="headline" numberOfLines={2}>
+            {event.title}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+            {event.eventDate && upcoming ? (
+              <Pill label={countdownLabel(event.eventDate, today, "personal")} tone="tint" icon="calendar" />
+            ) : null}
+            {showInvited ? <Pill label="Invited" icon="mail" /> : null}
+          </View>
+        </View>
+        <Icon name="external" size={14} color={theme.textTertiary} />
+      </View>
+      <Text variant="footnote" tone="secondary">
+        {event.eventDate ? `${formatShortEventDate(event.eventDate)}${event.time ? ` · ${event.time}` : ""}` : "No date yet"}
+        {event.hostedBy ? ` · Hosted by ${event.hostedBy}` : ""}
+      </Text>
+      <View style={{ flexDirection: "row" }}>
+        <Pill label={MY_RSVP_LABELS[event.rsvp]} tone={reply.tone} icon={reply.icon} />
+      </View>
     </Card>
   );
 }
