@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 22, 2026",
+  effectiveDate: "November 23, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
