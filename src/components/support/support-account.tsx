@@ -2,6 +2,7 @@
 // view" in CLAUDE.md.
 
 import { eventTypeLabel } from "@/lib/events";
+import { NO_RECIPIENT_LABEL } from "@/lib/gift-ideas";
 import { formatPrice } from "@/lib/money";
 import { LIST_ACCESS, listVisibility } from "@/lib/list-access";
 import { occasionLabel } from "@/lib/registry-copy";
@@ -116,7 +117,7 @@ export function SupportAccountView({ account }: { account: SupportAccount }) {
                 {idea.boughtAt && <SupportTag tone="success">Bought</SupportTag>}
               </div>
               <p className="text-tertiary">
-                For {idea.recipient}
+                {idea.recipient ? <>For {idea.recipient}</> : NO_RECIPIENT_LABEL}
                 {idea.price !== null && ` · ${formatPrice(idea.price)}`} · Saved {supportDate(idea.createdAt)}
                 {idea.externalUrl && (
                   <>
