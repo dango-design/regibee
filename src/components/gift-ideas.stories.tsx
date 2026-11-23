@@ -79,6 +79,23 @@ export const OnePerson: Story = {
   },
 };
 
+/**
+ * Two ideas saved without saying who they're for. They come last, under "Not
+ * sure who yet", after the people.
+ */
+export const NotSureWhoYet: Story = {
+  name: "Not sure who yet",
+  args: {
+    ideas: [
+      idea("10", "", "Pottery class for two", 120, "https://www.example.com/pottery", {
+        notes: "Could be a good birthday gift for someone.",
+      }),
+      ...ideas,
+      idea("3", "", "Puzzle of a map of the city", 28, null),
+    ],
+  },
+};
+
 /** Just after ticking "Bought it": the card says it's saving until the server has it. */
 export const Saving: Story = {
   args: { setBoughtAction: () => new Promise<never>(() => {}) },

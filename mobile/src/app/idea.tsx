@@ -1,7 +1,7 @@
 // Save or edit a gift idea: something you might give someone else, which only
 // you can see. The website's "Save a gift idea" dialog
 // (src/components/gift-idea-dialog.tsx), with the app's product reader to
-// fill in a link's name, price and picture.
+// fill in a link's name, price and picture. Who it's for is optional.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -87,10 +87,6 @@ export default function IdeaScreen() {
 
   function submit() {
     setError(null);
-    if (!recipient.trim()) {
-      setError("Say who it's for.");
-      return;
-    }
     if (!title.trim()) {
       setError("Say what it is.");
       return;
@@ -148,7 +144,7 @@ export default function IdeaScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
         <View style={{ gap: spacing.sm }}>
           <Field
-            label="Who's it for?"
+            label="Who's it for? (optional)"
             value={recipient}
             onChangeText={setRecipient}
             placeholder="Mom, Sam, my brother…"
@@ -156,14 +152,18 @@ export default function IdeaScreen() {
           />
           {recipients.length > 0 ? (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              {recipients.map((name) => (
-                <Chip
-                  key={recipientKey(name)}
-                  label={name}
-                  selected={recipientKey(name) === recipientKey(recipient)}
-                  onPress={() => setRecipient(name)}
-                />
-              ))}
+              {recipients.map((name) => {
+                const selected = recipientKey(name) === recipientKey(recipient);
+                // Tapping the chosen name again takes it off.
+                return (
+                  <Chip
+                    key={recipientKey(name)}
+                    label={name}
+                    selected={selected}
+                    onPress={() => setRecipient(selected ? "" : name)}
+                  />
+                );
+              })}
             </View>
           ) : null}
         </View>

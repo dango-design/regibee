@@ -8,7 +8,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
-import { groupByRecipient, ideaCount, type GiftIdea } from "@shared/gift-ideas";
+import { groupByRecipient, groupName, ideaCount, type GiftIdea } from "@shared/gift-ideas";
 import type { SavedItem, SavedList } from "@shared/saved-items-types";
 
 import { Icon } from "@/components/icon";
@@ -323,15 +323,17 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
   const ideas = useGiftIdeas();
   const pull = usePullToRefresh(ideas.refetch);
   const bought = useSetIdeaBought();
-  const [person, setPerson] = useState("all");
+  // The key of the person whose ideas are shown, or null for everyone's. Ideas
+  // saved without a person have the key "".
+  const [person, setPerson] = useState<string | null>(null);
   const groups = useMemo(() => groupByRecipient(ideas.data ?? []), [ideas.data]);
-  const chosen = groups.find((g) => g.key === person) ?? null;
+  const chosen = person === null ? null : (groups.find((g) => g.key === person) ?? null);
   const shownGroups = chosen ? [chosen] : groups;
 
   return (
     <FlatList
       data={shownGroups}
-      keyExtractor={(g) => g.key}
+      keyExtractor={(g) => `person:${g.key}`}
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120, flexGrow: 1 }}
@@ -352,10 +354,10 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
               <Chip
                 label={`Everyone ${(ideas.data ?? []).filter((i) => !i.boughtAt).length}`}
                 selected={!chosen}
-                onPress={() => setPerson("all")}
+                onPress={() => setPerson(null)}
               />
               {groups.map((g) => (
-                <Chip key={g.key} label={`${g.name} ${g.openCount}`} selected={chosen?.key === g.key} onPress={() => setPerson(g.key)} />
+                <Chip key={g.key} label={`${groupName(g)} ${g.openCount}`} selected={chosen?.key === g.key} onPress={() => setPerson(g.key)} />
               ))}
             </ScrollView>
           ) : null}
@@ -365,7 +367,7 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
         <View style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View>
-              <Text variant="headline">{group.name}</Text>
+              <Text variant="headline">{groupName(group)}</Text>
               <Text variant="footnote" tone="tertiary">
                 {ideaCount(group.ideas.length)}
               </Text>

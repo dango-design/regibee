@@ -1,6 +1,6 @@
 // Gift ideas: things someone might give another person, saved where only
-// they can see them. An owner saves one by hand and one shared from a phone,
-// marks one as bought, edits and deletes. Another account can't read any of
+// they can see them. An owner saves one by hand, one shared from a phone and
+// one without saying who it's for, marks one as bought, edits and deletes. Another account can't read any of
 // it, even with the anon key that ships in the browser.
 
 import { createClient } from "@supabase/supabase-js";
@@ -28,9 +28,9 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
   let dialog = page.getByRole("dialog", { name: "Save a gift idea" });
   await expect(dialog.getByText("Only you can see your gift ideas.")).toBeVisible();
   await dialog.getByRole("button", { name: "Save idea" }).click();
-  // The browser asks for who it's for before anything is sent.
+  // The browser asks for a name before anything is sent.
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Who's it for?").fill("Mom");
+  await dialog.getByLabel("Who's it for? (optional)").fill("Mom");
   await dialog.getByLabel("What is it?").fill("Wool scarf in green");
   await dialog.getByLabel("Price (optional)").fill("48");
   await dialog.getByLabel("Note (optional)").fill("She liked the green one at the market.");
@@ -59,7 +59,7 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
   await expect(dialog.getByText("We couldn't read that page. Your link and name are kept.")).toBeVisible();
   // People already saved for are one tap away.
   await dialog.getByRole("button", { name: "Mom" }).click();
-  await expect(dialog.getByLabel("Who's it for?")).toHaveValue("Mom");
+  await expect(dialog.getByLabel("Who's it for? (optional)")).toHaveValue("Mom");
   await dialog.getByRole("button", { name: "Save idea" }).click();
   await expect(dialog).toBeHidden();
   await expect(mom.getByRole("link", { name: /Pour-over coffee set/ })).toHaveAttribute(
@@ -71,14 +71,27 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
   // ── A second person, and filtering by person ──
   await page.getByRole("button", { name: "Save a gift idea" }).click();
   dialog = page.getByRole("dialog", { name: "Save a gift idea" });
-  await dialog.getByLabel("Who's it for?").fill("Sam");
+  await dialog.getByLabel("Who's it for? (optional)").fill("Sam");
   await dialog.getByLabel("What is it?").fill("Climbing chalk bag");
   await dialog.getByRole("button", { name: "Save idea" }).click();
   await expect(dialog).toBeHidden();
   const sam = page.getByRole("region", { name: "For Sam" });
   await expect(sam).toBeVisible();
+
+  // ── One saved without saying who it's for ──
+  await page.getByRole("button", { name: "Save a gift idea" }).click();
+  dialog = page.getByRole("dialog", { name: "Save a gift idea" });
+  await expect(dialog.getByLabel("Who's it for? (optional)")).toHaveValue("");
+  await dialog.getByLabel("What is it?").fill("Pottery class for two");
+  await dialog.getByRole("button", { name: "Save idea" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Saved “Pottery class for two”.")).toBeVisible();
+  const notSure = page.getByRole("region", { name: "Not sure who yet" });
+  await expect(notSure.getByRole("heading", { name: "Pottery class for two" })).toBeVisible();
+
   await page.getByRole("radiogroup", { name: "Whose ideas to show" }).getByRole("radio", { name: /Mom/ }).click();
   await expect(sam).toBeHidden();
+  await expect(notSure).toBeHidden();
   await expect(mom).toBeVisible();
 
   // ── Bought it ──
@@ -112,7 +125,7 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
 
   await page.getByRole("button", { name: "Edit Pour-over coffee set" }).click();
   dialog = page.getByRole("dialog", { name: "Edit gift idea" });
-  await dialog.getByLabel("Who's it for?").fill("Dad");
+  await dialog.getByLabel("Who's it for? (optional)").fill("Dad");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dialog).toBeHidden();
   const dad = page.getByRole("region", { name: "For Dad" });
@@ -128,6 +141,7 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
 
   const { data: rows } = await db.from("gift_ideas").select("recipient, title, bought_at").eq("owner_id", owner.id);
   expect(rows?.map((r) => [r.recipient, r.title, Boolean(r.bought_at)]).sort()).toEqual([
+    ["", "Pottery class for two", false],
     ["Mom", "Wool scarf in green", true],
     ["Sam", "Climbing chalk bag", false],
   ]);

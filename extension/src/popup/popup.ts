@@ -776,14 +776,13 @@ function showProduct(ctx: ProductContext) {
     placeholder: "For example, which size or color you'd like.",
   }) as HTMLTextAreaElement;
 
-  // ── Gift idea: who it's for, and a note only the owner sees ──
+  // ── Gift idea: who it's for (optional), and a note only the owner sees ──
   const recipient = h("input", {
     id: "recipient",
     type: "text",
     maxlength: 80,
     autocomplete: "off",
     placeholder: "Mom, Sam, my brother…",
-    required: true,
   }) as HTMLInputElement;
   const chips = ctx.ideaRecipients.slice(0, 6).map((name) =>
     h(
@@ -793,7 +792,9 @@ function showProduct(ctx: ProductContext) {
         className: "chip",
         "aria-pressed": "false",
         onclick: () => {
-          recipient.value = name;
+          // Clicking the chosen name again takes it off.
+          const chosen = recipient.value.replace(/\s+/g, " ").trim().toLowerCase() === name.toLowerCase();
+          recipient.value = chosen ? "" : name;
           syncChips();
         },
       },
@@ -989,12 +990,6 @@ function showProduct(ctx: ProductContext) {
   ideaButton.addEventListener("click", async () => {
     error.hidden = true;
     const who = recipient.value.replace(/\s+/g, " ").trim();
-    if (!who) {
-      error.textContent = "Say who it's for.";
-      error.hidden = false;
-      recipient.focus();
-      return;
-    }
     const name = title.value.replace(/\s+/g, " ").trim();
     if (!name) {
       error.textContent = "Give the idea a name.";
@@ -1057,7 +1052,7 @@ function showProduct(ctx: ProductContext) {
     h(
       "div",
       { className: "field" },
-      h("label", { for: "recipient" }, "Who's it for?"),
+      h("label", { for: "recipient" }, "Who's it for? (optional)"),
       recipient,
       chips.length > 0 && h("div", { className: "chips", role: "group", "aria-label": "People you've saved ideas for" }, ...chips)
     )
@@ -1127,7 +1122,7 @@ function showProduct(ctx: ProductContext) {
   if (canAddToList) void checkDuplicate();
 }
 
-/** The gift idea was saved. */
+/** The gift idea was saved. `recipient` is empty when the owner didn't say who it's for. */
 function showIdeaSaved(user: { name: string }, recipient: string) {
   render(
     header(user),
@@ -1138,7 +1133,7 @@ function showIdeaSaved(user: { name: string }, recipient: string) {
         "div",
         { className: "done", role: "status" },
         icon(CIRCLE_CHECK, 36),
-        h("h1", {}, `Saved for ${recipient}`),
+        h("h1", {}, recipient ? `Saved for ${recipient}` : "Saved as a gift idea"),
         h("p", { className: "lead" }, "It's in your gift ideas on Regibee. Only you can see it.")
       ),
       h(

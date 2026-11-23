@@ -26,7 +26,8 @@ import { cx } from "@/lib/utils/cx";
 
 // Saves a gift idea for someone else, or changes one. Who it's for comes
 // first: a link shared from a phone is read on its own, so most of the time
-// picking the person is all that's left. Nothing here is ever shown to them.
+// picking the person is all that's left. It's optional, so an idea can be
+// saved before deciding who it's for. Nothing here is ever shown to them.
 
 export interface GiftIdeaDialogProps {
   /** The button that opens the dialog. */
@@ -287,14 +288,13 @@ export function GiftIdeaDialog({
         <form onSubmit={save} className="min-w-0 space-y-5">
           <div className="space-y-2">
             <Input
-              label="Who's it for?"
+              label="Who's it for? (optional)"
               placeholder="Mom, Sam, my brother…"
               value={recipient}
               onChange={setRecipient}
               maxLength={RECIPIENT_MAX}
               autoComplete="off"
               enterKeyHint="next"
-              isRequired
             />
             {recipients.length > 0 && (
               <ul aria-label="People you've saved ideas for" className="flex flex-wrap gap-1.5">
@@ -305,7 +305,8 @@ export function GiftIdeaDialog({
                       <button
                         type="button"
                         aria-pressed={chosen}
-                        onClick={() => setRecipient(name)}
+                        // Tapping the chosen name again takes it off.
+                        onClick={() => setRecipient(chosen ? "" : name)}
                         className={cx(
                           "min-h-9 cursor-pointer rounded-full px-3 text-sm font-medium outline-focus-ring transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
                           chosen
