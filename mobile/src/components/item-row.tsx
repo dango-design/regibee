@@ -13,10 +13,15 @@ import { formatPrice } from "@/lib/format";
 import { spacing, useTheme } from "@/lib/theme";
 import { USED_CONDITIONS, type Item } from "@/lib/types";
 
-/** "Open to very good hand-me-downs", as the website's item card tags it (src/components/ui/used-condition-tag.tsx). */
+/**
+ * "Open to like-new hand-me-downs", as the website's item card tags it
+ * (src/components/ui/used-condition-tag.tsx). Before a noun, "like-new" takes
+ * a hyphen and "very good" doesn't.
+ */
 function usedLabel(item: Item) {
-  const condition = USED_CONDITIONS.find((c) => c.id === (item.minimum_condition ?? "like-new"));
-  return `Open to ${(condition?.label ?? "Like new").toLowerCase()} hand-me-downs`;
+  const condition = USED_CONDITIONS.find((c) => c.id === item.minimum_condition) ?? USED_CONDITIONS[0];
+  const words = condition.id === "like-new" ? "like-new" : condition.label.toLowerCase();
+  return `Open to ${words} hand-me-downs`;
 }
 
 export interface ItemActions {
