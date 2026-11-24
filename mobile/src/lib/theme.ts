@@ -1,7 +1,7 @@
 // Regibee's colors, from the website's tokens (src/styles/theme.css):
 // teal brand, warm grays, and the bee's yellow.
 
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 
 const palette = {
   brand50: "#F0FAFC",
@@ -116,3 +116,12 @@ export const fonts = {
   displayHeavy: "BricolageGrotesque_800ExtraBold",
   displayMedium: "BricolageGrotesque_600SemiBold",
 } as const;
+
+// Options for a screen with a large title, like each tab's first screen.
+// On iOS 26 and later the header's background colour is drawn over a large
+// title and hides it once the screen has a scroll view, so those versions get
+// no header background. The screen's own background shows through instead.
+const coversLargeTitle = Platform.OS === "ios" && parseInt(String(Platform.Version), 10) >= 26;
+export const largeTitleOptions = coversLargeTitle
+  ? ({ headerLargeTitle: true, headerStyle: undefined } as const)
+  : ({ headerLargeTitle: true } as const);

@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import { fonts, useTheme } from "@/lib/theme";
+import { fonts, largeTitleOptions, useTheme } from "@/lib/theme";
 
 export default function EventsLayout() {
   const theme = useTheme();
@@ -16,7 +16,7 @@ export default function EventsLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Events", headerLargeTitle: true }} />
+      <Stack.Screen name="index" options={{ title: "Events", ...largeTitleOptions }} />
       <Stack.Screen name="[eventId]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
       <Stack.Screen name="group/[groupId]" options={{ title: "Group", headerBackButtonDisplayMode: "minimal" }} />
     </Stack>
