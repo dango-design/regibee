@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { GuestRowsForm } from "@/components/guest-rows-form";
 import { InviteFollowedDialog } from "@/components/invite-followed-dialog";
+import { GuestFollowButton, type FollowActions } from "@/components/follow-button";
 import {
   addEventGuests,
   copyGuestsFromEvent,
@@ -112,6 +113,8 @@ export interface EventGuestManagerProps {
   signups?: Record<string, string[]>;
   /** The event's RSVP questions, to show each guest's answers. */
   questions?: RsvpQuestion[];
+  /** Stand-ins for the follow server actions, for stories and the demo. */
+  followActions?: FollowActions;
 }
 
 type Filter = "all" | RsvpStatus;
@@ -211,6 +214,7 @@ export function EventGuestManager({
   eventTitle = "",
   signups,
   questions = [],
+  followActions,
 }: EventGuestManagerProps) {
   const router = useRouter();
   const actions = { ...DEFAULT_ACTIONS, ...actionOverrides };
@@ -690,6 +694,18 @@ export function EventGuestManager({
                     <p className="mt-1 text-sm whitespace-pre-line text-secondary">“{guest.rsvp_note}”</p>
                   )}
                 </div>
+                {/* A guest with a Regibee account this host may be shown
+                    (src/lib/guest-follow-rules.ts). */}
+                {guest.follow && (
+                  <GuestFollowButton
+                    key={`${guest.follow.publicId}:${guest.follow.state}`}
+                    publicId={guest.follow.publicId}
+                    name={guest.name}
+                    state={guest.follow.state}
+                    followsYou={guest.follow.followsYou}
+                    {...followActions}
+                  />
+                )}
                 <Button
                   variant="ghost"
                   size="icon-sm"

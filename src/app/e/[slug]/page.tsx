@@ -32,6 +32,7 @@ import {
   type EventGuest,
 } from "@/lib/events";
 import { getViewer, getViewerRelation } from "@/lib/viewer";
+import { guestFollowsFor } from "@/lib/guest-follows";
 
 // Event pages are read with the service-role client, always filtered by the
 // slug in the URL (and a guest's token). The event tables have no access rules
@@ -192,12 +193,34 @@ export default async function PublicEventPage({
   const ownEntry = guestLists.find((entry) => entry.isYou) ?? null;
   const ownList = ownEntry?.registry ? myLists.find((list) => list.slug === ownEntry.registry!.slug) : undefined;
   const ownUrl = guest?.wishlist_url || ownEntry?.url || null;
+  // A signed-in guest or host gets a Follow button beside each other guest
+  // who has an account they may be shown (src/lib/guest-follow-rules.ts).
+  // The guests' emails and account ids are read here and stay on the server.
+  const guestFollows =
+    showGuestLists && viewer && guestLists.some((entry) => !entry.isYou)
+      ? await supabaseAdmin
+          .from("event_guests")
+          .select("id, email, profile_id")
+          .eq("event_id", event.id)
+          .eq("in_exchange", true)
+          .then(({ data }) =>
+            guestFollowsFor(
+              viewer.id,
+              ((data || []) as { id: string; email: string | null; profile_id: string | null }[]).filter(
+                (row) => row.id !== guest?.id,
+              ),
+              "guest",
+            ),
+          )
+      : null;
   // Their row in everyone's wishlists opens their own page for that list.
   // Only a list their account owns: the owner's page hides what the list
   // hides from its owner, and a co-manager's shows everything.
-  const wishLists = ownList
-    ? guestLists.map((entry) => (entry === ownEntry ? { ...entry, ownListId: ownList.id } : entry))
-    : guestLists;
+  const wishLists = guestLists.map((entry) => ({
+    ...entry,
+    ...(ownList && entry === ownEntry ? { ownListId: ownList.id } : {}),
+    ...(guestFollows?.has(entry.guestId) ? { follow: guestFollows.get(entry.guestId) } : {}),
+  }));
   const wishlist: RsvpWishlist | null = everyone
     ? {
         current: ownUrl
