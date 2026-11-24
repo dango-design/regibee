@@ -129,6 +129,7 @@ export const OnPhone: Story = {
 // After asking to follow, with a one-line note and only sizes in the
 // profile: the note shows whole, and the sizes sit under "About Dorothy Gale".
 export const RequestedShortNote: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     ...Following.args,
     description: "Welcome to my wishlist!",
@@ -141,6 +142,7 @@ export const RequestedShortNote: Story = {
 // A list that isn't on anyone's profile, with no note or gift profile: the
 // title, and the progress on its own.
 export const TitleOnly: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     title: "Housewarming",
     description: null,

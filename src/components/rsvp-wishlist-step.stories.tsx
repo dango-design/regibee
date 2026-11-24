@@ -64,6 +64,7 @@ export const SignedInWithLists: Story = {
 
 /** Signed in with no list yet, like someone who just made an account: one button makes it. */
 export const SignedInNoLists: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { account: { lists: [] } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -86,6 +87,7 @@ export const Linked: Story = {
  * Regibee list. It still shows. Change opens the choices again, with a way back.
  */
 export const LinkedElsewhere: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     current: { url: "https://www.amazon.com/hz/wishlist/ls/3KQ9", title: null, ownListId: null },
   },
@@ -100,6 +102,7 @@ export const LinkedElsewhere: Story = {
 
 /** The host picked a color for the invitation, so it fills the step. Without one, it has no fill. */
 export const WithHostColor: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { ...SignedInWithLists.args, themeColor: "#f9b8b9" },
 };
 

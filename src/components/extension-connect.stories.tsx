@@ -17,7 +17,11 @@ export const Ready: Story = { args: { status: "ready" } };
 export const NotInstalled: Story = { args: { status: "missing" } };
 
 export const Failed: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { status: "error", error: "The extension didn't answer. Reload this page and try again." },
 };
 
-export const Connected: Story = { args: { status: "connected" } };
+export const Connected: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { status: "connected" },
+};

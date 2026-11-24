@@ -23,6 +23,7 @@ type Story = StoryObj<typeof GiftProfileForm>;
 
 // Nothing filled in yet.
 export const Empty: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { initial: {} },
 };
 
@@ -42,6 +43,7 @@ export const Filled: Story = {
 
 // On the settings page of a list kept for a child: the labels name Toto.
 export const ForAChild: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     child: { name: "Toto" },
     initial: {

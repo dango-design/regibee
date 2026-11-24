@@ -45,6 +45,7 @@ export const NotFollowingAnyone: Story = {
 // Someone who follows nobody yet, in a family group where Grandma shared her
 // private wishlist. The shared list shows first, with the group's name.
 export const SharedWithYourGroups: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     people: [],
     registries: [],

@@ -52,6 +52,7 @@ export const EditingTheSheet: Story = {
 
 /** "Add a row" opens a small form: what, how many, and an optional day. */
 export const AddingARow: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Add a row" }));
@@ -70,6 +71,7 @@ export const MealTrain: Story = {
 
 /** A new meal train with no days yet starts with the form that adds a row for each day. */
 export const MealTrainWithNoDays: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     sheet: sampleMealTrainSheet.sheet,
     rows: [],

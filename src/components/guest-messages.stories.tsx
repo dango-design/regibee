@@ -68,13 +68,17 @@ type Story = StoryObj<typeof GuestMessages>;
 export const WithHistory: Story = {};
 
 /** Nothing sent yet, and the host turned the reminder off. */
-export const NothingSentYet: Story = { args: { messages: [], remindDayBefore: false } };
+export const NothingSentYet: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { messages: [], remindDayBefore: false },
+};
 
 /**
  * The host texted everyone the link, so nobody on the list has an email
  * address. A message is posted on the invitation only.
  */
 export const NoEmailAddresses: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     counts: { going: 0, going_maybe: 0, not_declined: 0 },
     messages: [

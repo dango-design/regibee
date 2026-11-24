@@ -99,7 +99,7 @@ function EventCardHeading({
       <p className={cx("text-xs font-semibold tracking-wide uppercase", theme.text)}>{eventTypeLabel(eventType)}</p>
       <div className="mt-1 flex items-start gap-2">
         <Heading className="min-w-0 flex-1 text-lg leading-snug font-semibold text-primary">
-          <Link href={href} className="card-link hover:underline">
+          <Link href={href} className="card-link">
             {title}
           </Link>
         </Heading>

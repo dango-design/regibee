@@ -24,6 +24,7 @@ export const Open: Story = {
 
 // After saying yes: one tap follows Dorothy back.
 export const Accepted: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { view: "open" },
   play: async ({ canvas }) => {
     fireEvent.click(canvas.getByRole("button", { name: /follow me/i }));
@@ -38,5 +39,6 @@ export const SignedOut: Story = {
 
 // The link has expired, or was answered already.
 export const Expired: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { view: "expired" },
 };

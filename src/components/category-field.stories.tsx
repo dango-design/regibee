@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CategoryField } from "./category-field";
 
 const CATEGORIES = [
@@ -38,13 +38,17 @@ const meta: Meta<typeof Field> = {
 export default meta;
 type Story = StoryObj<typeof Field>;
 
-export const Chosen: Story = {};
+// The edit item dialog's stories already show the field like this.
+export const Chosen: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+};
 
 // A click opens the list of categories, with the chosen one checked.
 export const Open: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole("combobox", { name: "Category" }));
-    await expect(await within(document.body).findByRole("option", { name: "Nursery & Sleep" })).toBeVisible();
+    // The list fades in, so wait for it instead of checking once.
+    await waitFor(() => expect(within(document.body).getByRole("option", { name: "Nursery & Sleep" })).toBeVisible());
   },
 };
 

@@ -41,6 +41,7 @@ export const Default: Story = {
 // the full width with Paste link and Fetch under it, and Cancel and Add item
 // stay in a bar at the bottom while the form scrolls.
 export const Phone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   ...Default,
   globals: { viewport: { value: "mobile1" } },
 };

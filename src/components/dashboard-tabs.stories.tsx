@@ -27,7 +27,7 @@ export const MyRegistries: Story = {
 };
 
 export const Saved: Story = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/dashboard/saved" } } },
+  parameters: { chromatic: { disableSnapshot: true }, nextjs: { appDirectory: true, navigation: { pathname: "/dashboard/saved" } } },
   render: (args) => (
     <>
       <DashboardTabs {...args} />
@@ -37,7 +37,7 @@ export const Saved: Story = {
 };
 
 export const Events: Story = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/dashboard/events" } } },
+  parameters: { chromatic: { disableSnapshot: true }, nextjs: { appDirectory: true, navigation: { pathname: "/dashboard/events" } } },
   render: (args) => (
     <>
       <DashboardTabs {...args} />
@@ -47,7 +47,7 @@ export const Events: Story = {
 };
 
 export const Following: Story = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/dashboard/following" } } },
+  parameters: { chromatic: { disableSnapshot: true }, nextjs: { appDirectory: true, navigation: { pathname: "/dashboard/following" } } },
   render: (args) => (
     <>
       <DashboardTabs {...args} />

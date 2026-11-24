@@ -88,7 +88,7 @@ export function UpcomingEvents({
               >
                 <CountdownTile days={daysUntil(event.eventDate, today)} eventType={event.eventType} />
                 <span className="min-w-0 flex-1">
-                  <span className="line-clamp-2 font-medium break-words text-primary group-hover:underline">
+                  <span className="line-clamp-2 font-medium break-words text-primary">
                     {event.title}
                   </span>
                   <span className="sr-only">. {countdownLabel(event.eventDate, today, "personal")}. </span>

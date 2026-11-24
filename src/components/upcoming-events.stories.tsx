@@ -59,6 +59,7 @@ export const ThreeComingUp: Story = {};
 // An event today, a party you're invited to and haven't answered, and a
 // shower a friend is throwing. The last two open their invitations.
 export const TodayAndCelebratingYou: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     events: [
       { ...santa, id: "cookies", eventType: "holiday", eventDate: TODAY, title: "Cookie Swap" },

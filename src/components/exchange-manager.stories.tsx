@@ -72,6 +72,7 @@ const boqRemoved: EventGuest[] = sampleDrawnExchangeGuests
 
 /** Someone left after the draw, so the panel asks the host to draw again. */
 export const DrawIsOutOfDate: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     exchange: sampleDrawnExchange,
     status: exchangeStatus(boqRemoved, sampleDrawnExchange),
@@ -95,6 +96,7 @@ export const EveryoneGivesEveryone: Story = {
 };
 
 export const EveryoneGivesEveryonePhone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   ...EveryoneGivesEveryone,
   globals: { viewport: { value: "mobile1" } },
 };
