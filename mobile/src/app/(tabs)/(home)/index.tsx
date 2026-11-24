@@ -61,7 +61,7 @@ export default function RegistriesScreen() {
                       ? "1 person wants to follow you"
                       : `${data.followRequestCount} people want to follow you`
                   }
-                  message="People you approve can see the private registries on your profile."
+                  message="People you approve can see the registries you show to followers on your profile."
                   action={{ title: "Review requests", onPress: () => router.push("/account/follows") }}
                 />
               ) : null}

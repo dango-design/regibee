@@ -190,7 +190,7 @@ export function FollowLists({
         <CardHeader>
           <SectionTitle sectionId="follow-requests">Follow requests</SectionTitle>
           <CardDescription>
-            People you approve can see the private registries on your profile, and your birthday.
+            People you approve can see the registries you show to followers on your profile, and your birthday.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -258,8 +258,9 @@ export function FollowLists({
         <CardHeader>
           <SectionTitle sectionId="followers">Followers</SectionTitle>
           <CardDescription>
-            They can see your private registries and your birthday. Follow them back to see theirs.
-            Mutual means you follow each other.
+            They can see the registries you show to followers on your profile, and your birthday. Follow them
+            back to see theirs. Friends are the ones you follow too: they also see the registries you show only
+            to friends.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

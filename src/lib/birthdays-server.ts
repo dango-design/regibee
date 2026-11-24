@@ -8,11 +8,18 @@
 // of the parent who keeps the list, and only while that list is on the
 // parent's profile, since that's where followers see it.
 //
+// A list its owner shows only to friends on their profile (profileAudience in
+// src/lib/list-access.ts) goes only to friends here too: a follower who isn't
+// a friend gets no link to it, and doesn't hear about a child's birthday kept
+// on it.
+//
 // These read `follows` and `profiles` with the service-role client. They take
 // raw user ids, so only call them with an id you got from auth, or from the
 // cron job. Never export them from a "use server" file.
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { mutualFollowIds } from "@/lib/follows";
+import { profileAudience } from "@/lib/list-access";
 import { displayName, profilePath } from "@/lib/profile-link";
 import { sendBirthdayReminder } from "@/lib/email";
 import {
@@ -37,7 +44,7 @@ interface Person {
 // Only what the birthday code needs from a list's settings. The rest of
 // settings holds the shipping address and payment handles, so it isn't read.
 const LIST_COLUMNS =
-  "id, slug, title, honoree_names, owner_id, registry_type, event_type, event_date, for_child:settings->for_child, child_birthday:settings->gift_profile->birthday";
+  "id, slug, title, honoree_names, owner_id, registry_type, event_type, event_date, is_public, is_private, listed_on_profile, profile_audience, for_child:settings->for_child, child_birthday:settings->gift_profile->birthday";
 
 interface ListedList extends BirthdayListCandidate {
   id: string;
@@ -45,12 +52,30 @@ interface ListedList extends BirthdayListCandidate {
   honoree_names: string | null;
   owner_id: string;
   child_birthday: unknown;
+  is_public: boolean;
+  is_private: boolean | null;
+  listed_on_profile: boolean;
+  profile_audience: string | null;
 }
 
 /** A birthday, and whose followers hear about it. */
 interface BirthdaySubject extends UpcomingBirthday {
   /** Whose approved followers see this birthday. */
   ownerId: string;
+  /** The birthday is on a list only the owner's friends see, so only they hear about it. */
+  friendsOnly?: boolean;
+  /** Where the owner's friends are sent, when it's a list other followers don't see. */
+  forFriends?: Pick<UpcomingBirthday, "href" | "linkTo">;
+}
+
+/**
+ * The birthday as one follower gets it, or null when it's only for friends
+ * and they aren't one. `isFriend`: the owner follows them back, approved.
+ */
+function birthdayFor(subject: BirthdaySubject, isFriend: boolean): BirthdaySubject | null {
+  if (subject.friendsOnly && !isFriend) return null;
+  const { forFriends, ...rest } = subject;
+  return isFriend && forFriends ? { ...rest, ...forFriends } : rest;
 }
 
 /**
@@ -68,6 +93,7 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
     .eq("listed_on_profile", true);
   if (error) console.error("[birthdays] Failed to read listed lists:", error);
   const lists = (listed ?? []) as unknown as ListedList[];
+  const friendsOnly = (list: ListedList) => profileAudience(list) === "friends";
 
   const subjects: BirthdaySubject[] = [];
   const inRange = (date: string) => date <= until;
@@ -77,10 +103,14 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
     if (!birthday) continue;
     const date = nextAnnualDate(birthday, today);
     if (!inRange(date)) continue;
+    const theirs = lists.filter((l) => l.owner_id === person.id);
+    // Every follower gets the best list they can all see. Friends get the
+    // best of all the lists, when that's a different one.
     const list = pickBirthdayList(
-      lists.filter((l) => l.owner_id === person.id),
+      theirs.filter((l) => !friendsOnly(l)),
       today,
     );
+    const friendsList = pickBirthdayList(theirs, today);
     subjects.push({
       key: `${person.id}:${date}`,
       ownerId: person.id,
@@ -88,6 +118,9 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
       date,
       href: list ? `/r/${list.slug}` : profilePath(person),
       linkTo: list ? "list" : "profile",
+      ...(friendsList && friendsList.slug !== list?.slug
+        ? { forFriends: { href: `/r/${friendsList.slug}`, linkTo: "list" as const } }
+        : {}),
     });
   }
 
@@ -106,6 +139,7 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
       href: `/r/${list.slug}`,
       linkTo: "list",
       parentName: displayName(parent),
+      ...(friendsOnly(list) ? { friendsOnly: true } : {}),
     });
   }
 
@@ -129,9 +163,18 @@ export async function listUpcomingBirthdays(userId: string, today: string): Prom
   const people = ((data ?? []) as unknown as { person: Person | null }[])
     .map((row) => row.person)
     .filter((p): p is Person => Boolean(p));
-  const subjects = await birthdaysOf(people, today, addDays(today, BIRTHDAYS_AHEAD_DAYS));
+  const [subjects, friendIds] = await Promise.all([
+    birthdaysOf(people, today, addDays(today, BIRTHDAYS_AHEAD_DAYS)),
+    mutualFollowIds(
+      userId,
+      people.map((p) => p.id),
+    ),
+  ]);
   // ownerId stays on the server.
-  return subjects.map(({ ownerId: _ownerId, ...birthday }) => birthday);
+  return subjects
+    .map((subject) => birthdayFor(subject, friendIds.has(subject.ownerId)))
+    .filter((subject): subject is BirthdaySubject => subject !== null)
+    .map(({ ownerId: _ownerId, ...birthday }) => birthday);
 }
 
 // ── The daily reminder ───────────────────────────────────────────────────
@@ -222,12 +265,38 @@ export async function processBirthdayReminders(now = new Date()) {
     followee_id: string;
     follower: { id: string; full_name: string | null; email_birthday_reminders: boolean } | null;
   };
+  const follows = ((followRows ?? []) as unknown as FollowRow[]).filter(
+    (row) => row.follower && row.follower.email_birthday_reminders !== false,
+  );
+
+  // The followers each owner follows back, approved: their friends. Only read
+  // when a birthday depends on it.
+  const friendPairs = new Set<string>();
+  const ownersWithFriendLists = [
+    ...new Set(subjects.filter((s) => s.friendsOnly || s.forFriends).map((s) => s.ownerId)),
+  ];
+  if (ownersWithFriendLists.length > 0) {
+    const { data: backRows, error: backError } = await supabaseAdmin
+      .from("follows")
+      .select("follower_id, followee_id")
+      .in("follower_id", ownersWithFriendLists)
+      .eq("status", "approved");
+    if (backError) throw backError;
+    for (const row of backRows ?? []) friendPairs.add(`${row.follower_id}:${row.followee_id}`);
+  }
+
   const byFollower = new Map<string, { name: string | null; subjects: BirthdaySubject[] }>();
-  for (const row of (followRows ?? []) as unknown as FollowRow[]) {
-    if (!row.follower || row.follower.email_birthday_reminders === false) continue;
-    const entry = byFollower.get(row.follower.id) ?? { name: row.follower.full_name, subjects: [] };
-    entry.subjects.push(...subjects.filter((s) => s.ownerId === row.followee_id));
-    byFollower.set(row.follower.id, entry);
+  for (const row of follows) {
+    const follower = row.follower!;
+    const isFriend = friendPairs.has(`${row.followee_id}:${follower.id}`);
+    const theirs = subjects
+      .filter((s) => s.ownerId === row.followee_id)
+      .map((s) => birthdayFor(s, isFriend))
+      .filter((s): s is BirthdaySubject => s !== null);
+    if (theirs.length === 0) continue;
+    const entry = byFollower.get(follower.id) ?? { name: follower.full_name, subjects: [] };
+    entry.subjects.push(...theirs);
+    byFollower.set(follower.id, entry);
   }
 
   let sent = 0;

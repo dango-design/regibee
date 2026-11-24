@@ -395,7 +395,7 @@ export function followRequestHtml(opts: {
   return withEmailFont(`
     <p>Hi there,</p>
     <p><strong>${name}</strong> asked to follow you on Regibee.</p>
-    <p>If you approve, they'll see the private registries on your profile as well as your public ones. If you don't know them, you can decline the request or block them.</p>
+    <p>If you approve, they'll see the registries you show to followers on your profile, as well as the ones you show to everyone. If you don't know them, you can decline the request or block them.</p>
     <p style="margin: 24px 0;">
       <a href="${escapeHtml(opts.reviewUrl)}" style="background-color: #004659; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
         Review request

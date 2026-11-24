@@ -10,14 +10,21 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, St
 
 import { parseGiftProfile } from "@shared/gift-profile";
 import { readReservationPrivacy } from "@shared/gifts";
-import { LIST_ACCESS, LIST_VISIBILITIES, listVisibility, type ListVisibility } from "@shared/list-access";
+import {
+  LIST_ACCESS,
+  LIST_VISIBILITIES,
+  listVisibility,
+  profileAudience,
+  type ListVisibility,
+  type ProfileAudience,
+} from "@shared/list-access";
 import { copyFor } from "@shared/registry-copy";
 import { isLinkForStore, isStoreId, MAX_RETAILER_REGISTRIES, parseRetailerRegistries, STORES, type StoreId } from "@shared/retailers";
 
 import { DateField } from "@/components/date-field";
 import { GiftProfileForm } from "@/components/gift-profile-form";
 import { Icon } from "@/components/icon";
-import { ProfileListingSwitch } from "@/components/profile-listing-switch";
+import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import {
   Button,
   Card,
@@ -170,7 +177,7 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
   const [eventDate, setEventDate] = useState<string | null>(r.event_date);
   const [description, setDescription] = useState(r.description ?? "");
   const [visibility, setVisibility] = useState<ListVisibility>(listVisibility(r));
-  const [listed, setListed] = useState(Boolean(r.listed_on_profile));
+  const [audience, setAudience] = useState<ProfileAudience>(profileAudience(r));
   const [error, setError] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [confirmingLink, setConfirmingLink] = useState(false);
@@ -199,7 +206,7 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
       return;
     }
     save.mutate(
-      { title, honoreeNames: honorees, eventDate, description, visibility, listedOnProfile: listed },
+      { title, honoreeNames: honorees, eventDate, description, visibility, profileAudience: audience },
       { onSuccess: () => markSaved(), onError: (e) => setError(errorMessage(e)) }
     );
   }
@@ -281,10 +288,10 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
         ) : null}
       </View>
       {isOwner ? (
-        <ProfileListingSwitch
+        <ProfileAudienceChips
           visibility={visibility}
-          value={listed}
-          onValueChange={setListed}
+          value={audience}
+          onValueChange={setAudience}
           hasShippingAddress={Boolean((r.settings as Record<string, unknown> | null)?.shipping_address)}
         />
       ) : null}

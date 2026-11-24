@@ -35,6 +35,8 @@ export interface AccountRegistry {
   is_public: boolean;
   is_private?: boolean;
   listed_on_profile: boolean;
+  /** The owner's choice of who sees it on their profile. Read it with profileAudience. */
+  profile_audience?: string | null;
   has_shipping_address: boolean;
   registry_type: RegistryType;
   event_type: PersonalEventType | null;

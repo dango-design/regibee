@@ -4,13 +4,19 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ProfileListingSwitch } from "@/components/profile-listing-switch";
+import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import { Button, Chip, Field, IconButton, Section, SwitchRow, Text } from "@/components/ui";
 import { errorMessage, useCreateRegistry } from "@/lib/data";
 import { formatEventDate, toYmd } from "@/lib/format";
 import { spacing, useTheme } from "@/lib/theme";
 import type { EventType, RegistryType } from "@/lib/types";
-import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@shared/list-access";
+import {
+  DEFAULT_LIST_VISIBILITY,
+  LIST_ACCESS,
+  LIST_VISIBILITIES,
+  type ListVisibility,
+  type ProfileAudience,
+} from "@shared/list-access";
 import { LIST_OCCASIONS } from "@shared/occasions";
 import { copyFor, REGISTRY_OCCASION_CHOICES } from "@shared/registry-copy";
 
@@ -36,7 +42,7 @@ export default function NewRegistryScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
-  const [listedOnProfile, setListedOnProfile] = useState(false);
+  const [profileAudience, setProfileAudience] = useState<ProfileAudience>("hidden");
   const [description, setDescription] = useState("");
   const [showPayments, setShowPayments] = useState(false);
   const [venmo, setVenmo] = useState("");
@@ -58,7 +64,7 @@ export default function NewRegistryScreen() {
         eventType: registryType === "personal" ? eventType : null,
         eventDate: date ? toYmd(date) : null,
         visibility,
-        listedOnProfile: visibility !== "private" && listedOnProfile,
+        profileAudience,
         description,
         venmo,
         paypal,
@@ -179,8 +185,8 @@ export default function NewRegistryScreen() {
           <Text variant="footnote" tone="tertiary">
             {LIST_ACCESS[visibility].description}
           </Text>
-          <ProfileListingSwitch visibility={visibility} value={listedOnProfile} onValueChange={setListedOnProfile} />
         </View>
+        <ProfileAudienceChips visibility={visibility} value={profileAudience} onValueChange={setProfileAudience} />
 
         <Field
           label="Message to guests (optional)"

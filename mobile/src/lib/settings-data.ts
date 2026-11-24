@@ -6,14 +6,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { GiftProfile } from "@shared/gift-profile";
-import type { ListVisibility } from "@shared/list-access";
+import type { ListVisibility, ProfileAudience } from "@shared/list-access";
 import type { RetailerRegistry } from "@shared/retailers";
 
 import { act, form, runAction } from "@/lib/api";
 import { useSession } from "@/lib/auth";
 import { keys } from "@/lib/data";
 import { demo, DEMO_USER_ID, isDemo } from "@/lib/demo";
-import { visibilityColumns } from "@shared/list-access";
+import { profileAudienceColumns, profileAudienceFields, visibilityColumns } from "@shared/list-access";
 
 /** Runs a settings change, then reloads the list and the home screen. */
 function useSettingsChange<V, R = unknown>(registryId: string, run: (variables: V) => Promise<R>) {
@@ -35,7 +35,8 @@ export interface ListDetailsInput {
   eventDate: string | null;
   description: string;
   visibility: ListVisibility;
-  listedOnProfile: boolean;
+  /** Who sees it on the owner's profile. Only the owner's choice is saved. */
+  profileAudience: ProfileAudience;
 }
 
 /** The General section's "Save changes" (updateRegistry). */
@@ -48,7 +49,7 @@ export function useSaveListDetails(registryId: string) {
         event_date: input.eventDate,
         description: input.description.trim() || null,
         ...visibilityColumns(input.visibility),
-        listed_on_profile: input.visibility !== "private" && input.listedOnProfile,
+        ...profileAudienceColumns(input.profileAudience, input.visibility),
       });
     }
     await act(
@@ -60,7 +61,7 @@ export function useSaveListDetails(registryId: string) {
         eventDate: input.eventDate ?? "",
         description: input.description.trim(),
         visibility: input.visibility,
-        listedOnProfile: String(input.visibility !== "private" && input.listedOnProfile),
+        ...profileAudienceFields(input.profileAudience, input.visibility),
       })
     );
   });

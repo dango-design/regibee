@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { LISTED_REGISTRY_COLUMNS, type ListedRegistry } from "@/lib/registry-listing";
+import { profileAudience, seesOnProfile } from "@/lib/list-access";
+import { LISTED_REGISTRY_COLUMNS, PROFILE_AUDIENCE_COLUMNS, type ListedRegistry, type ProfileAudienceRow } from "@/lib/registry-listing";
 
 // Server-side reads of `follows`, which the API roles can't reach (see
 // 012_follows.sql). These take raw user ids, so only call them from server
@@ -113,8 +114,9 @@ export async function listFollows(userId: string) {
 }
 
 // Everyone the user follows, plus the registries listed by the people who've
-// approved them. Approved followers see private listed registries too, the same
-// as on each profile.
+// approved them: the same lists the user sees on each of their profiles. A
+// list its owner shows only to friends is left out unless the owner follows
+// the user back.
 export async function listFollowingFeed(userId: string) {
   const [{ data: rows }, { data: followerRows }] = await Promise.all([
     supabaseAdmin
@@ -152,14 +154,20 @@ export async function listFollowingFeed(userId: string) {
 
   const { data: listed } = await supabaseAdmin
     .from("registries")
-    .select(`${LISTED_REGISTRY_COLUMNS}, owner_id`)
+    .select(`${LISTED_REGISTRY_COLUMNS}, ${PROFILE_AUDIENCE_COLUMNS}, owner_id`)
     .in("owner_id", [...approvedOwners.keys()])
     .eq("listed_on_profile", true);
 
-  // owner_id is only used to match owners here; it isn't passed on.
-  const registries: FeedRegistry[] = ((listed || []) as (ListedRegistry & { owner_id: string })[]).map(
-    ({ owner_id, ...registry }) => ({ ...registry, owner: approvedOwners.get(owner_id)! }),
-  );
+  // owner_id and the audience columns are only used to choose and match
+  // lists here; they aren't passed on.
+  const registries: FeedRegistry[] = ((listed || []) as unknown as (ListedRegistry & ProfileAudienceRow & { owner_id: string })[])
+    .filter((registry) =>
+      seesOnProfile(profileAudience(registry), followerIds.has(registry.owner_id) ? "friend" : "follower"),
+    )
+    .map(({ owner_id, is_private: _private, listed_on_profile: _listed, profile_audience: _audience, ...registry }) => ({
+      ...registry,
+      owner: approvedOwners.get(owner_id)!,
+    }));
 
   return { people, registries };
 }

@@ -1,47 +1,74 @@
 "use client";
 
-import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { PROFILE_LISTING, type ListVisibility } from "@/lib/list-access";
+import { SelectField } from "@/components/base/select/select-field";
+import {
+  PROFILE_AUDIENCE,
+  PROFILE_AUDIENCE_LINK_NOTE,
+  clampProfileAudience,
+  profileAudienceChoices,
+  type ListVisibility,
+  type ProfileAudience,
+} from "@/lib/list-access";
+
+/** What the field says under the choice: who sees the list, and what the choice doesn't change. */
+export function profileAudienceHint(audience: ProfileAudience, hasShippingAddress = false): string {
+  let hint: string = PROFILE_AUDIENCE[audience].description;
+  // Friends and followers are about the profile only. Say so, or the choice
+  // reads as who can open the list.
+  if (audience === "friends" || audience === "followers") hint += ` ${PROFILE_AUDIENCE_LINK_NOTE}`;
+  if (audience !== "hidden" && hasShippingAddress) {
+    hint += " Anyone who reserves a gift can see your shipping address.";
+  }
+  return hint;
+}
 
 /**
- * Whether a list shows on its owner's profile. The label says who will see
- * it there, because that depends on who can open the list. Private lists
- * can't be on a profile, so for those it says so instead of asking.
+ * Who sees a list on its owner's profile: nobody, friends, followers or
+ * everyone. The choices depend on who can open the list: only a public list
+ * can show to everyone, and a private list can't be on a profile, so for
+ * those it says so instead of asking.
+ *
+ * `audience` is the owner's choice. When the list's access doesn't allow it,
+ * the field shows and sends the nearest choice that it does allow, and keeps
+ * the owner's choice in case they switch the access back.
  */
 export function ProfileListingField({
   visibility,
-  isSelected,
+  audience,
   onChange,
   hasShippingAddress = false,
 }: {
   visibility: ListVisibility;
-  isSelected: boolean;
-  onChange: (selected: boolean) => void;
+  audience: ProfileAudience;
+  onChange: (audience: ProfileAudience) => void;
   hasShippingAddress?: boolean;
 }) {
   if (visibility === "private") {
     return (
       <div>
+        <input type="hidden" name="profileAudience" value="hidden" />
         <input type="hidden" name="listedOnProfile" value="false" />
         <p className="text-sm text-tertiary">Private lists don&apos;t show on your profile.</p>
       </div>
     );
   }
 
-  const listing = PROFILE_LISTING[visibility];
-  let hint: string = listing.description;
-  if (isSelected && hasShippingAddress) {
-    hint += " Anyone who reserves a gift can see your shipping address.";
-  }
+  const shown = clampProfileAudience(audience, visibility);
 
   return (
     <div>
-      <input type="hidden" name="listedOnProfile" value={isSelected ? "true" : "false"} />
-      <Checkbox
-        isSelected={isSelected}
-        onChange={onChange}
-        label={<span className="font-normal">{listing.label}</span>}
-        hint={hint}
+      <input type="hidden" name="profileAudience" value={shown} />
+      {/* Kept for anything that still reads the old field. */}
+      <input type="hidden" name="listedOnProfile" value={shown === "hidden" ? "false" : "true"} />
+      <SelectField
+        label="Who sees it on your profile"
+        value={shown}
+        onChange={(value) => onChange(value as ProfileAudience)}
+        options={profileAudienceChoices(visibility).map((value) => ({
+          value,
+          label: PROFILE_AUDIENCE[value].label,
+        }))}
+        hint={profileAudienceHint(shown, hasShippingAddress)}
       />
     </div>
   );

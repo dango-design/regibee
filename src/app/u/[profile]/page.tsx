@@ -9,9 +9,12 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getViewer, getViewerRelation, seesBirthday } from "@/lib/viewer";
 import { parseGiftProfile, withoutBirthday } from "@/lib/gift-profile";
 import { sharedRegistrySlugsFrom } from "@/lib/groups-server";
+import { profileAudience, profileViewer, seesOnProfile } from "@/lib/list-access";
 import {
   LISTED_REGISTRY_COLUMNS,
+  PROFILE_AUDIENCE_COLUMNS,
   type ListedRegistry,
+  type ProfileAudienceRow,
 } from "@/lib/registry-listing";
 import { displayName, profilePath, publicIdFromPath } from "@/lib/profile-link";
 import { profilePhotoUrl } from "@/lib/profile-photos";
@@ -96,15 +99,20 @@ export default async function ProfilePage({
     notFound();
   }
 
-  // Private registries are only for the owner, approved followers, and
-  // people in a group the owner shared that registry with (by a confirmed
-  // email). Someone who blocked the owner doesn't get the group's lists.
-  const seesAllPrivate = isOwnProfile || followState === "approved";
-  const viewer = seesAllPrivate || followState === "blocked" ? null : await getViewer();
+  // The owner chooses who sees each list here: friends, followers or everyone
+  // (profileAudience). A list also shows to people in a group the owner
+  // shared it with (by a confirmed email), whatever that choice is. Someone
+  // who blocked the owner doesn't get the group's lists.
+  const viewerKind = profileViewer({
+    isOwner: isOwnProfile,
+    follows: followState === "approved",
+    followedBack: relation.followsYou,
+  });
+  const viewer = isOwnProfile || followState === "blocked" ? null : await getViewer();
   const [{ data: listed }, sharedSlugs, giftRow] = await Promise.all([
     supabaseAdmin
       .from("registries")
-      .select(LISTED_REGISTRY_COLUMNS)
+      .select(`${LISTED_REGISTRY_COLUMNS}, ${PROFILE_AUDIENCE_COLUMNS}`)
       .eq("owner_id", profile.id)
       .eq("listed_on_profile", true),
     viewer
@@ -118,9 +126,10 @@ export default async function ProfilePage({
   const showBirthday = seesBirthday(relation);
   const fullGiftProfile = parseGiftProfile(giftRow.error ? null : giftRow.data?.gift_profile);
   const giftProfile = showBirthday ? fullGiftProfile : withoutBirthday(fullGiftProfile);
-  const registries = ((listed || []) as ListedRegistry[]).filter(
-    (registry) => seesAllPrivate || registry.is_public || sharedSlugs.has(registry.slug),
-  );
+  // The audience columns are only for choosing; they aren't sent on.
+  const registries: ListedRegistry[] = ((listed || []) as unknown as (ListedRegistry & ProfileAudienceRow)[])
+    .filter((registry) => seesOnProfile(profileAudience(registry), viewerKind) || sharedSlugs.has(registry.slug))
+    .map(({ is_private: _private, listed_on_profile: _listed, profile_audience: _audience, ...registry }) => registry);
 
   return (
     <div className="min-h-screen flex flex-col">

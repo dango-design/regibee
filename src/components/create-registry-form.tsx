@@ -18,7 +18,16 @@ import {
   type StepNav,
 } from "@/components/step-sections";
 import { createRegistry } from "@/lib/actions/registry";
-import { DEFAULT_LIST_VISIBILITY, LIST_ACCESS, LIST_VISIBILITIES, type ListVisibility } from "@/lib/list-access";
+import {
+  DEFAULT_LIST_VISIBILITY,
+  LIST_ACCESS,
+  LIST_VISIBILITIES,
+  PROFILE_AUDIENCE,
+  clampProfileAudience,
+  defaultProfileAudience,
+  type ListVisibility,
+  type ProfileAudience,
+} from "@/lib/list-access";
 import { REGISTRY_OCCASION_CHOICES, copyFor } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 
@@ -46,7 +55,7 @@ const VISIBILITY_ICONS: Record<ListVisibility, typeof Lock> = {
 export interface CreateRegistryFormProps {
   /**
    * False for guests (anonymous sessions), who have no profile page, so the
-   * "Show on my profile" choice is left out.
+   * "Who sees it on your profile" choice is left out.
    */
   canListOnProfile?: boolean;
   /**
@@ -81,7 +90,7 @@ export function CreateRegistryForm({
   const [titleError, setTitleError] = useState(false);
   const [eventDate, setEventDate] = useState("");
   const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
-  const [listedChoice, setListedChoice] = useState<boolean | null>(null);
+  const [audienceChoice, setAudienceChoice] = useState<ProfileAudience | null>(null);
   const [description, setDescription] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [venmo, setVenmo] = useState("");
@@ -94,7 +103,10 @@ export function CreateRegistryForm({
 
   // Personal registries are shown on the profile by default. Baby registries
   // aren't, because showing one could announce a pregnancy.
-  const isListed = listedChoice ?? registryType === "personal";
+  const audience = clampProfileAudience(
+    audienceChoice ?? (registryType === "personal" ? defaultProfileAudience(visibility) : "hidden"),
+    visibility,
+  );
 
   const copy = copyFor({
     registryType,
@@ -141,7 +153,7 @@ export function CreateRegistryForm({
     }
     if (type !== registryType) {
       setRegistryType(type);
-      setListedChoice(null);
+      setAudienceChoice(null);
     }
   };
 
@@ -198,7 +210,7 @@ export function CreateRegistryForm({
   const occasion = REGISTRY_OCCASION_CHOICES.find((option) => option.value === eventType);
   const privacySummary = [
     LIST_ACCESS[visibility].short,
-    canListOnProfile && visibility !== "private" ? (isListed ? "on your profile" : "not on your profile") : null,
+    canListOnProfile && visibility !== "private" ? PROFILE_AUDIENCE[audience].short : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -340,8 +352,8 @@ export function CreateRegistryForm({
               <div className="mt-4">
                 <ProfileListingField
                   visibility={visibility}
-                  isSelected={isListed}
-                  onChange={setListedChoice}
+                  audience={audience}
+                  onChange={setAudienceChoice}
                 />
               </div>
             )}

@@ -103,7 +103,7 @@ export default function FollowsScreen() {
               Follow requests
             </Text>
             <Text variant="footnote" tone="secondary">
-              People you approve can see the private registries on your profile, and your birthday.
+              People you approve can see the registries you show to followers on your profile, and your birthday.
             </Text>
             {justApproved.map((person) => (
               <PersonRow key={person.public_id} person={person} mutual={isMutual(person)}>
@@ -141,8 +141,8 @@ export default function FollowsScreen() {
             Followers
           </Text>
           <Text variant="footnote" tone="secondary">
-            They can see your private registries and your birthday. Follow them back to see theirs. Mutual means you follow
-            each other.
+            They can see the registries you show to followers on your profile, and your birthday. Follow them back to see
+            theirs. Friends are the ones you follow too: they also see the registries you show only to friends.
           </Text>
           {followers.length === 0 ? (
             <Text variant="footnote" tone="tertiary">
@@ -265,7 +265,7 @@ function PersonRow({
         >
           {displayName(person)}
         </Text>
-        {mutual ? <Pill label="Mutual" tone="success" /> : null}
+        {mutual ? <Pill label="Friends" tone="success" /> : null}
         {detail ? (
           <Text variant="footnote" tone="tertiary">
             · {detail}

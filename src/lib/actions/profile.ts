@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
+import { listVisibility, parseProfileAudience, profileAudienceColumns, type ProfileAudience } from "@/lib/list-access";
 import { PROFILE_PHOTOS_BUCKET, profilePhotoFileName } from "@/lib/profile-photos";
 
 const MAX_NAME_LENGTH = 80;
@@ -99,6 +100,47 @@ export async function setProfilePhoto(photoUrl: string | null) {
   return { success: true };
 }
 
+/**
+ * Chooses who sees one of the account's lists on its profile: nobody,
+ * friends, followers or everyone (src/lib/list-access.ts).
+ */
+export async function setRegistryProfileAudience(registryId: string, audience: ProfileAudience) {
+  const { user, supabase, error: authError } = await requireAccount();
+  if (!user) return { error: authError };
+  if (!parseProfileAudience(audience)) return { error: "Choose who sees this list on your profile." };
+
+  const { data: list } = await supabase
+    .from("registries")
+    .select("is_public, is_private")
+    .eq("id", registryId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (!list) return { error: "Only lists you own can be shown on your profile." };
+
+  const visibility = listVisibility(list);
+  if (visibility === "private" && audience !== "hidden") {
+    return { error: "Private lists can't be shown on your profile." };
+  }
+  if (audience === "everyone" && visibility !== "public") {
+    return { error: "Only a public list can show to everyone on your profile." };
+  }
+
+  const { error } = await supabase
+    .from("registries")
+    .update(profileAudienceColumns(audience, visibility))
+    .eq("id", registryId)
+    .eq("owner_id", user.id);
+  if (error) return { error: error.message };
+
+  revalidateProfilePages();
+  revalidatePath(`/dashboard/registry/${registryId}`);
+  return { success: true };
+}
+
+/**
+ * Older versions of the phone app call this. It puts a list on the profile or
+ * takes it off, and leaves who sees it there as it was.
+ */
 export async function setRegistryListed(registryId: string, listed: boolean) {
   const { user, supabase, error: authError } = await requireAccount();
   if (!user) return { error: authError };
