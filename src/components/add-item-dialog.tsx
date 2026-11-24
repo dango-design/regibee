@@ -8,6 +8,7 @@ import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
 import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
+import { CategoryField } from "@/components/category-field";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Select } from "@/components/base/select/select";
@@ -158,10 +159,6 @@ export function AddItemDialog({
   const [brokenCandidates, setBrokenCandidates] = useState<Set<string>>(new Set());
   const [categoryId, setCategoryId] = useState<string | undefined>(defaultValues?.categoryId);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [addingCategory, setAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [creatingCategory, setCreatingCategory] = useState(false);
-  const [categoryError, setCategoryError] = useState("");
 
   const [externalUrl, setExternalUrl] = useState(openWithLink?.url || "");
 
@@ -398,9 +395,6 @@ export function AddItemDialog({
     setChosenListId(id);
     setCategories(list.categories);
     setCategoryId(undefined);
-    setAddingCategory(false);
-    setNewCategoryName("");
-    setCategoryError("");
   };
 
   const handleSubmit = async (formData: FormData) => {
@@ -577,90 +571,22 @@ export function AddItemDialog({
             hint="Guests see it tagged Most wanted."
           />
 
-          <div className="space-y-1.5">
-            {addingCategory ? (
-              <div className="space-y-1.5">
-                <Label>New category</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    name="newCategoryName"
-                    placeholder="e.g., Kitchen"
-                    value={newCategoryName}
-                    onChange={setNewCategoryName}
-                    autoComplete="off"
-                    className="flex-1 max-sm:basis-full"
-                  />
-                  <Button
-                    type="button"
-                    disabled={!newCategoryName.trim() || creatingCategory}
-                    onClick={async () => {
-                      setCreatingCategory(true);
-                      setCategoryError("");
-                      const result = await createCategory(
-                        registryId,
-                        newCategoryName.trim(),
-                      );
-                      if (result?.error) {
-                        setCategoryError(result.error);
-                      } else if (result?.category) {
-                        const next = categories.some((c) => c.id === result.category.id)
-                          ? categories
-                          : [...categories, result.category];
-                        setCategories(next);
-                        setCategoryId(result.category.id);
-                        setAddingCategory(false);
-                        setNewCategoryName("");
-                      }
-                      setCreatingCategory(false);
-                    }}
-                  >
-                    {creatingCategory ? "Adding..." : "Add"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setAddingCategory(false);
-                      setNewCategoryName("");
-                      setCategoryError("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-                {categoryError && (
-                  <p className="text-xs text-error-primary">{categoryError}</p>
-                )}
-              </div>
-            ) : (
-              <>
-                <Select
-                  name="categoryId"
-                  label="Category"
-                  selectedKey={categoryId ?? null}
-                  onSelectionChange={(key) =>
-                    setCategoryId(key?.toString() || undefined)
-                  }
-                  placeholder={
-                    categories.length === 0
-                      ? "No categories yet"
-                      : "No category"
-                  }
-                  items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
-                  isDisabled={categories.length === 0}
-                >
-                  {(item) => <Select.Item id={item.id} label={item.label} />}
-                </Select>
-                <button
-                  type="button"
-                  onClick={() => setAddingCategory(true)}
-                  className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:pr-3"
-                >
-                  + New category
-                </button>
-              </>
-            )}
-          </div>
+          <CategoryField
+            name="categoryId"
+            categories={categories}
+            value={categoryId}
+            onChange={setCategoryId}
+            onCreate={async (name) => {
+              const result = await createCategory(registryId, name);
+              if (result?.error) return result.error;
+              if (result?.category) {
+                const made = result.category;
+                setCategories((before) => (before.some((c) => c.id === made.id) ? before : [...before, made]));
+                setCategoryId(made.id);
+              }
+              return null;
+            }}
+          />
 
           <div className="space-y-1.5">
             <ItemImageField

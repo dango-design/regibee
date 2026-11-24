@@ -1,13 +1,17 @@
 "use client";
 
 import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
-import { Check, ExternalLink, Info, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Camera, Check, ExternalLink, ImagePlus, Images, Info, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Clipboard, Link01 } from "@untitledui/icons";
+import { Button as AriaButton } from "react-aria-components";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
 import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
+import { CategoryField } from "@/components/category-field";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Select } from "@/components/base/select/select";
 import {
@@ -34,7 +38,6 @@ import { classifyStoreLink, type RetailerRegistry, type StoreId } from "@/lib/re
 import { cn } from "@/lib/utils";
 import { StoreLinkNotice } from "@/components/store-link-notice";
 import { ItemImage } from "@/components/item-image";
-import { PhotoUploadButton } from "@/components/photo-upload-button";
 import { readLinkMessages, storeNameForLink } from "@/components/add-item-dialog";
 import { uploadRegistryPhoto } from "@/lib/upload-registry-photo";
 
@@ -75,6 +78,11 @@ interface EditItemDialogProps {
    * on those lists too, and removing it here keeps it there.
    */
   otherLists?: string[];
+  /**
+   * Photos to offer as soon as the dialog opens. The dialog finds them itself
+   * by reading the link, which stories can't do, so stories pass them.
+   */
+  photosToOffer?: string[];
 }
 
 /** What reading a link replaced, so the owner can undo each change. */
@@ -156,34 +164,39 @@ function TogglePill({
 }) {
   const Icon = pressed ? Check : Plus;
   return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      title={title}
-      onClick={onPress}
-      className={cn(
-        "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold transition-colors max-sm:min-h-11",
-        pressed
-          ? "border-brand-500 bg-brand-50 text-brand-700"
-          : "border-primary bg-primary text-secondary hover:bg-primary_hover",
-      )}
-    >
-      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      {children}
-    </button>
+    <Tooltip title={title}>
+      <AriaButton
+        aria-pressed={pressed}
+        onPress={onPress}
+        className={cn(
+          "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold outline-brand transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 pressing:scale-[0.97] max-sm:min-h-11",
+          pressed
+            ? "border-brand-500 bg-brand-50 text-brand-700 hover:bg-brand-100"
+            : "border-primary bg-primary text-secondary hover:bg-primary_hover pressing:bg-tertiary",
+        )}
+      >
+        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {children}
+      </AriaButton>
+    </Tooltip>
   );
 }
+
+// A button that reads as a link, like Undo. It darkens and underlines under
+// the pointer and while pressed, as the shared Button's link variant does.
+const textButton =
+  "cursor-pointer rounded font-semibold text-brand-secondary underline decoration-transparent underline-offset-2 outline-brand transition duration-100 hover:text-brand-secondary_hover hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 active:text-brand-secondary_hover active:decoration-current";
+
+// The buttons in the grey link bar. The shared Button's hover colour is the
+// bar's own grey, so they get the next grey up, and one more while pressed.
+const barButton = "hover:bg-secondary_hover pressing:bg-quaternary";
 
 /** "Was $32.99 · Undo", under a field that reading a link changed. */
 function WasLine({ children, onUndo }: { children: ReactNode; onUndo: () => void }) {
   return (
     <p className="flex min-w-0 items-center gap-1 text-xs text-tertiary">
       <span className="min-w-0 truncate">{children}</span>
-      <button
-        type="button"
-        onClick={onUndo}
-        className="shrink-0 px-1 font-semibold text-brand-600 hover:underline max-sm:min-h-11 max-sm:px-2"
-      >
+      <button type="button" onClick={onUndo} className={cn(textButton, "shrink-0 px-1 max-sm:min-h-11 max-sm:px-2")}>
         Undo
       </button>
     </p>
@@ -209,6 +222,7 @@ export function EditItemDialog({
   linkedRegistries,
   storesWithRegistryLinks,
   otherLists = [],
+  photosToOffer = [],
 }: EditItemDialogProps) {
   const isBaby = registryType === "baby";
   const copy = copyFor({ registryType, eventType });
@@ -237,19 +251,22 @@ export function EditItemDialog({
   const [categoryId, setCategoryId] = useState<string | undefined>(
     item.category_id ?? undefined,
   );
-  const [addingCategory, setAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [creatingCategory, setCreatingCategory] = useState(false);
-  const [categoryError, setCategoryError] = useState("");
   // The owner asked to change the link. An item without one starts that way.
   const [linkOpen, setLinkOpen] = useState(!item.external_url);
   // The link before Change link, so Keep the current link can put it back.
   const [linkBefore, setLinkBefore] = useState<string | null>(null);
   const [replaced, setReplaced] = useState<Replaced>(NOTHING_REPLACED);
-  const [imageCandidates, setImageCandidates] = useState<string[]>([]);
+  const [imageCandidates, setImageCandidates] = useState<string[]>(photosToOffer);
   const [brokenCandidates, setBrokenCandidates] = useState<Set<string>>(new Set());
   const [showImageLink, setShowImageLink] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  // Looking on the store's page for photos only, from the photo's menu.
+  const [findingPhotos, setFindingPhotos] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState("");
+  const photoRead = useRef(0);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const imageLinkRef = useRef<HTMLInputElement>(null);
 
   const urlRef = useRef<HTMLInputElement>(null);
   const openUrl = openableLink(externalUrl);
@@ -461,6 +478,72 @@ export function EditItemDialog({
     void handleScrape(shared.url, { fromTap: true });
   };
 
+  /**
+   * Looks on the store's page for photos, and changes nothing else. The owner
+   * picks one of them. With no photo yet, the first one is used.
+   */
+  const findPhotos = async () => {
+    const url = withScheme(externalUrl.trim());
+    if (!openUrl || findingPhotos) return;
+    const run = ++photoRead.current;
+    setFindingPhotos(true);
+    setPhotoStatus("");
+    setUploadError(null);
+    const result = await fetchProductDetails(url);
+    if (run !== photoRead.current) return;
+    setFindingPhotos(false);
+    const store = storeNameForLink(url);
+    const found = result.error ? [] : (result.imageUrls ?? (result.imageUrl ? [result.imageUrl] : []));
+    if (found.length === 0) {
+      setPhotoStatus(
+        result.error
+          ? `We couldn't read ${store}'s page. Upload a photo or paste an image link instead.`
+          : `We found no photos on ${store}'s page.`,
+      );
+      return;
+    }
+    setImageCandidates(found);
+    setBrokenCandidates(new Set());
+    picturesFrom.current = url;
+    if (!imageUrl) setImageUrl(found[0]);
+    else if (found.length === 1 && found[0] === imageUrl) setPhotoStatus(`${store} has only this photo.`);
+  };
+
+  const uploadPhoto = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
+    setPhotoStatus("");
+    const result = await uploadRegistryPhoto(registryId, file);
+    if ("error" in result) {
+      setUploadError(result.error);
+    } else {
+      setImageUrl(result.url);
+      setShowImageLink(false);
+    }
+    setUploading(false);
+  };
+
+  const choosePhotoAction = (action: string) => {
+    if (action === "upload") fileRef.current?.click();
+    if (action === "find") void findPhotos();
+    if (action === "link") {
+      setShowImageLink(true);
+      requestAnimationFrame(() => imageLinkRef.current?.focus());
+    }
+  };
+
+  /** Makes a category from the Category field and puts the item in it. */
+  const addCategory = async (name: string): Promise<string | null> => {
+    const result = await createCategory(registryId, name);
+    if (result?.error) return result.error;
+    if (result?.category) {
+      const made = result.category;
+      setCategories((before) => (before.some((c) => c.id === made.id) ? before : [...before, made]));
+      setCategoryId(made.id);
+    }
+    return null;
+  };
+
   const changeLink = () => {
     setLinkBefore(externalUrl);
     setLinkOpen(true);
@@ -523,6 +606,8 @@ export function EditItemDialog({
     filledFrom.current = null;
     readGtin.current = null;
     setScraping(false);
+    photoRead.current++;
+    setFindingPhotos(false);
   };
 
   /** Closes after saving or deleting. The form already shows the saved item, so it stays as it is. */
@@ -570,9 +655,6 @@ export function EditItemDialog({
     setExternalUrl(item.external_url || "");
     setTaxInfo(null);
     setCategoryId(item.category_id ?? undefined);
-    setAddingCategory(false);
-    setNewCategoryName("");
-    setCategoryError("");
     setLinkOpen(!item.external_url);
     setLinkBefore(null);
     setReplaced(NOTHING_REPLACED);
@@ -581,6 +663,7 @@ export function EditItemDialog({
     picturesFrom.current = null;
     setShowImageLink(false);
     setUploadError(null);
+    setPhotoStatus("");
   };
 
   const onOtherLists = otherLists.length > 0;
@@ -600,7 +683,16 @@ export function EditItemDialog({
       closeWithNewPage(() => setDeleting(false));
     });
   };
-  const removeLabel = deleting ? "Removing..." : onOtherLists ? "Remove from list" : "Remove item";
+  const removeLabel = onOtherLists ? "Remove from list" : "Remove item";
+  // The info button shows these under the pointer, and in a box when tapped.
+  const guestHelp = [
+    ["Most wanted", "tags it so guests spot it first."],
+    ["Open to hand-me-downs", "lets guests give one that's been used, in at least the condition you pick."],
+    [copy.selfPurchasedLabel, "means you bought it already. Guests can pay you back for it instead of buying one."],
+  ];
+  // One photo that's already the item's photo leaves nothing to pick.
+  const showPhotoChoices = photoChoices.length > 1 || (photoChoices.length === 1 && photoChoices[0] !== imageUrl);
+  const photoBusy = uploading || findingPhotos;
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
@@ -633,7 +725,7 @@ export function EditItemDialog({
                     // start reading the link this button puts back.
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={keepCurrentLink}
-                    className="text-sm font-semibold text-brand-600 hover:underline max-sm:min-h-11"
+                    className={cn(textButton, "text-sm max-sm:min-h-11")}
                   >
                     Keep the current link
                   </button>
@@ -729,14 +821,14 @@ export function EditItemDialog({
                     {shortLink(externalUrl)}
                   </span>
                 </div>
-                <div className="ml-auto flex shrink-0 items-center">
+                <div className="ml-auto flex shrink-0 items-center gap-1">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     onClick={readAgain}
                     title="Read the page again"
-                    aria-label="Read the page again"
+                    className={cn("size-9", barButton)}
                   >
                     <RefreshCw className="h-4 w-4" />
                   </Button>
@@ -749,17 +841,18 @@ export function EditItemDialog({
                       if (openUrl) window.open(openUrl, "_blank", "noopener,noreferrer");
                     }}
                     title="Open link in a new tab"
-                    aria-label="Open link in a new tab"
+                    className={cn("size-9", barButton)}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={changeLink}
-                    className="min-h-9 shrink-0 rounded-md px-2.5 text-sm font-semibold text-brand-600 hover:bg-primary_hover max-sm:min-h-11"
+                    className={cn("h-9 px-3 text-brand-secondary hover:text-brand-secondary_hover", barButton)}
                   >
                     Change link
-                  </button>
+                  </Button>
                 </div>
               </div>
               {scrapeStatus && (
@@ -782,13 +875,55 @@ export function EditItemDialog({
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] md:gap-8">
             <div className="flex min-w-0 flex-col gap-3">
-              <ItemImage
-                size="fill"
-                imageUrl={imageUrl || null}
-                title={title || item.title}
-                categoryName={categoryName}
-                className="h-40 md:h-64"
-              />
+              <div className="relative">
+                <ItemImage
+                  size="fill"
+                  imageUrl={imageUrl || null}
+                  title={title || item.title}
+                  categoryName={categoryName}
+                  className="h-40 md:h-64"
+                />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    // Cleared, so picking the same file again still uploads it.
+                    event.target.value = "";
+                    if (file) void uploadPhoto(file);
+                  }}
+                />
+                {/* Owners rarely change a photo once there is one, so the
+                    three ways to do it sit in a menu on the photo's corner. */}
+                <Dropdown.Root>
+                  <AriaButton
+                    isDisabled={photoBusy}
+                    className="absolute right-2 bottom-2 inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full bg-primary/90 px-2.5 text-xs font-semibold text-secondary shadow-xs ring-1 ring-primary outline-brand backdrop-blur-sm transition duration-100 ring-inset hover:bg-primary hover:text-secondary_hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default pressing:scale-[0.97] max-sm:min-h-11 max-sm:px-3.5"
+                  >
+                    {photoBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                    {uploading ? "Uploading…" : findingPhotos ? "Looking…" : imageUrl ? "Change photo" : "Add photo"}
+                  </AriaButton>
+                  <Dropdown.Popover placement="bottom end" className="w-60">
+                    <Dropdown.Menu
+                      aria-label={imageUrl ? "Change photo" : "Add photo"}
+                      selectionMode="none"
+                      onAction={(key) => choosePhotoAction(String(key))}
+                    >
+                      <Dropdown.Item id="upload" icon={ImagePlus} label="Upload a photo" />
+                      <Dropdown.Item id="link" icon={Link01} label="Paste an image link" />
+                      {openUrl && storeName && <Dropdown.Item id="find" icon={Images} label={`Look for photos on ${storeName}`} />}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              </div>
               {replaced.imageUrl !== null && (
                 <WasLine
                   onUndo={() => {
@@ -799,66 +934,70 @@ export function EditItemDialog({
                   New photo from {storeName}.
                 </WasLine>
               )}
-              {photoChoices.length > 1 && (
-                <div role="group" aria-label="Photos from this page" className="flex gap-2 overflow-x-auto pb-1">
-                  {photoChoices.map((candidate) => {
-                    const selected = candidate === imageUrl;
-                    return (
-                      <button
-                        key={candidate}
-                        type="button"
-                        onClick={() => setImageUrl(candidate)}
-                        aria-label="Use this photo"
-                        aria-pressed={selected}
-                        className={cn(
-                          "relative size-14 shrink-0 overflow-hidden rounded-md border-2 bg-tertiary transition",
-                          selected ? "border-brand-600 ring-2 ring-brand-600/30" : "border-transparent hover:border-secondary",
-                        )}
-                      >
-                        <img
-                          src={candidate}
-                          alt=""
-                          className="size-full object-cover"
-                          onError={() =>
-                            setBrokenCandidates((prev) => {
-                              const next = new Set(prev);
-                              next.add(candidate);
-                              return next;
-                            })
-                          }
-                        />
-                      </button>
-                    );
-                  })}
+              {showPhotoChoices && (
+                <div className="space-y-1.5">
+                  {/* An item shows one photo, so say that these are choices. */}
+                  <p id={`${uid}-photos`} className="text-xs text-tertiary">
+                    <span className="font-semibold text-secondary">Pick one photo.</span> Guests see the one with the
+                    check.
+                  </p>
+                  <div role="group" aria-labelledby={`${uid}-photos`} className="flex gap-2 overflow-x-auto p-0.5 pb-1">
+                    {photoChoices.map((candidate, index) => {
+                      const selected = candidate === imageUrl;
+                      return (
+                        <button
+                          key={candidate}
+                          type="button"
+                          onClick={() => {
+                            setImageUrl(candidate);
+                            setPhotoStatus("");
+                          }}
+                          aria-label={`Photo ${index + 1}`}
+                          aria-pressed={selected}
+                          className={cn(
+                            "relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-md bg-tertiary ring-2 transition duration-100 active:scale-[0.97]",
+                            selected ? "ring-brand-600" : "ring-transparent hover:ring-border-primary",
+                          )}
+                        >
+                          <img
+                            src={candidate}
+                            alt=""
+                            className={cn("size-full object-cover transition", !selected && "opacity-80 hover:opacity-100")}
+                            onError={() =>
+                              setBrokenCandidates((prev) => {
+                                const next = new Set(prev);
+                                next.add(candidate);
+                                return next;
+                              })
+                            }
+                          />
+                          {selected && (
+                            <span className="absolute right-0.5 bottom-0.5 flex size-4 items-center justify-center rounded-full bg-brand-600 text-white">
+                              <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <PhotoUploadButton
-                  upload={(file) => uploadRegistryPhoto(registryId, file)}
-                  onUploaded={(url) => {
-                    setImageUrl(url);
-                    setShowImageLink(false);
-                  }}
-                  onError={setUploadError}
-                />
-                <button
-                  type="button"
-                  aria-expanded={showImageLink}
-                  onClick={() => setShowImageLink((shown) => !shown)}
-                  className="text-sm font-semibold text-brand-600 hover:underline max-sm:min-h-11"
-                >
-                  Use an image link
-                </button>
-              </div>
+              {photoStatus && (
+                <p role="status" className="text-xs text-tertiary">
+                  {photoStatus}
+                </p>
+              )}
               {uploadError && <p className="text-xs text-error-primary">{uploadError}</p>}
               {showImageLink && (
                 <Input
+                  ref={imageLinkRef}
                   label="Image link"
                   placeholder="https://www.example.com/photo.jpg"
                   value={imageUrl}
                   onChange={(url) => {
                     setImageUrl(url);
                     setUploadError(null);
+                    setPhotoStatus("");
                   }}
                   inputMode="url"
                   autoComplete="off"
@@ -935,80 +1074,16 @@ export function EditItemDialog({
                   min={1}
                   defaultValue={item.quantity_needed.toString()}
                 />
-                <div className="col-span-2 min-w-0 space-y-1.5 md:col-span-1">
-                  <Select
+                <div className="col-span-2 min-w-0 md:col-span-1">
+                  <CategoryField
                     name="categoryId"
-                    label="Category"
-                    selectedKey={categoryId ?? null}
-                    onSelectionChange={(key) => setCategoryId(key?.toString() || undefined)}
-                    placeholder={categories.length === 0 ? "No categories yet" : "No category"}
-                    items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
-                    isDisabled={categories.length === 0}
-                  >
-                    {(catItem) => <Select.Item id={catItem.id} label={catItem.label} />}
-                  </Select>
-                  {!addingCategory && (
-                    <button
-                      type="button"
-                      onClick={() => setAddingCategory(true)}
-                      className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:pr-3"
-                    >
-                      + New category
-                    </button>
-                  )}
+                    categories={categories}
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    onCreate={addCategory}
+                  />
                 </div>
               </div>
-
-              {addingCategory && (
-                <div className="space-y-1.5">
-                  <Label>New category</Label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      name="newCategoryName"
-                      placeholder="e.g., Kitchen"
-                      value={newCategoryName}
-                      onChange={setNewCategoryName}
-                      autoComplete="off"
-                      className="flex-1 max-sm:basis-full"
-                    />
-                    <Button
-                      type="button"
-                      disabled={!newCategoryName.trim() || creatingCategory}
-                      onClick={async () => {
-                        setCreatingCategory(true);
-                        setCategoryError("");
-                        const result = await createCategory(registryId, newCategoryName.trim());
-                        if (result?.error) {
-                          setCategoryError(result.error);
-                        } else if (result?.category) {
-                          const next = categories.some((c) => c.id === result.category.id)
-                            ? categories
-                            : [...categories, result.category];
-                          setCategories(next);
-                          setCategoryId(result.category.id);
-                          setAddingCategory(false);
-                          setNewCategoryName("");
-                        }
-                        setCreatingCategory(false);
-                      }}
-                    >
-                      {creatingCategory ? "Adding..." : "Add"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setAddingCategory(false);
-                        setNewCategoryName("");
-                        setCategoryError("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  {categoryError && <p className="text-xs text-error-primary">{categoryError}</p>}
-                </div>
-              )}
 
               <TextArea
                 label="Note for guests (optional)"
@@ -1019,23 +1094,38 @@ export function EditItemDialog({
               />
 
               {/* Owners change these rarely, so they share one row. The info
-                  button explains all three, since a tooltip doesn't work on
-                  a phone. */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1">
+                  button explains all three: under the pointer on a computer,
+                  and in a box below when tapped, since a phone can't hover. */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-0.5">
                   <span id={`${uid}-guests`} className="text-sm font-medium text-secondary">
                     For guests
                   </span>
-                  <button
-                    type="button"
-                    aria-label="What these mean"
-                    aria-expanded={guestInfoOpen}
-                    aria-controls={`${uid}-guests-info`}
-                    onClick={() => setGuestInfoOpen((shown) => !shown)}
-                    className="inline-flex size-8 items-center justify-center rounded-full text-fg-quaternary hover:text-fg-secondary max-sm:size-11"
+                  <Tooltip
+                    isDisabled={guestInfoOpen}
+                    delay={150}
+                    title={
+                      <span className="flex flex-col gap-1.5 py-0.5 font-normal">
+                        {guestHelp.map(([name, what]) => (
+                          <span key={name}>
+                            <span className="font-semibold">{name}</span> {what}
+                          </span>
+                        ))}
+                      </span>
+                    }
                   >
-                    <Info className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                    {/* Negative margins keep the button's size from making
+                        the row taller than the other fields' labels. */}
+                    <AriaButton
+                      aria-label="What these mean"
+                      aria-expanded={guestInfoOpen}
+                      aria-controls={`${uid}-guests-info`}
+                      onPress={() => setGuestInfoOpen((shown) => !shown)}
+                      className="-my-1.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-fg-quaternary outline-brand transition duration-100 hover:bg-primary_hover hover:text-fg-secondary focus-visible:outline-2 pressing:bg-tertiary max-sm:-my-3 max-sm:size-11"
+                    >
+                      <Info className="h-4 w-4" aria-hidden="true" />
+                    </AriaButton>
+                  </Tooltip>
                 </div>
                 <div role="group" aria-labelledby={`${uid}-guests`} className="flex flex-wrap gap-1.5">
                   <TogglePill
@@ -1062,17 +1152,11 @@ export function EditItemDialog({
                 </div>
                 {guestInfoOpen && (
                   <div id={`${uid}-guests-info`} className="space-y-1 rounded-lg bg-secondary px-3 py-2.5 text-sm text-secondary">
-                    <p>
-                      <span className="font-semibold text-primary">Most wanted</span> tags it so guests spot it first.
-                    </p>
-                    <p>
-                      <span className="font-semibold text-primary">Open to hand-me-downs</span> lets guests give one
-                      that&apos;s been used, in at least the condition you pick.
-                    </p>
-                    <p>
-                      <span className="font-semibold text-primary">{copy.selfPurchasedLabel}</span> means you bought
-                      it already. Guests can pay you back for it instead of buying one.
-                    </p>
+                    {guestHelp.map(([name, what]) => (
+                      <p key={name}>
+                        <span className="font-semibold text-primary">{name}</span> {what}
+                      </p>
+                    ))}
                   </div>
                 )}
                 {openToUsed && (
@@ -1094,27 +1178,21 @@ export function EditItemDialog({
 
           {error && <p className="text-sm text-error-primary">{error}</p>}
 
-          {/* Three buttons don't fit a phone's sticky bar, so on phones
-              Remove item sits above it, at the end of the form. */}
-          <Button
-            type="button"
-            variant="destructive-outline"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="w-full sm:hidden"
-          >
-            {removeLabel}
-          </Button>
+          {/* Most owners never remove an item here, so it's a grey icon that
+              turns red under the pointer. Being small, it fits a phone's
+              sticky bar beside the other two. */}
           <DialogFooter sticky className="sm:items-center">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
+              title={removeLabel}
               onClick={handleDelete}
               disabled={deleting}
-              className="mr-auto inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-error-primary hover:bg-error-primary/5 disabled:opacity-50 max-sm:hidden"
+              className="mr-auto size-10 text-fg-quaternary hover:bg-error-primary hover:text-fg-error-primary pressing:bg-error-primary pressing:text-fg-error-primary max-sm:flex-none!"
             >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-              {removeLabel}
-            </button>
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
             <Button type="button" variant="outline" onClick={() => changeOpen(false)}>
               Cancel
             </Button>

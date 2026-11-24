@@ -74,8 +74,8 @@ export const PlainLinkWarning: Story = {
   },
 };
 
-// Open to hand-me-downs shows the minimum condition, and the info button
-// explains the three options.
+// Open to hand-me-downs shows the minimum condition. The info button explains
+// the three options: under the pointer, and in a box once it's clicked.
 export const GuestOptions: Story = {
   args: {
     item: { ...meta.args!.item!, is_open_to_used: true, minimum_condition: "very-good" },
@@ -84,6 +84,34 @@ export const GuestOptions: Story = {
     const body = within(document.body);
     await userEvent.click(await body.findByRole("button", { name: "What these mean" }));
     await waitFor(() => expect(body.getByText(/lets guests give one that's been used/)).toBeVisible());
+  },
+};
+
+// With a photo, the ways to change it sit in a menu on the photo's corner.
+export const ChangingThePhoto: Story = {
+  args: {
+    item: { ...meta.args!.item!, image_url: "/hero/bottle.svg" },
+  },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "Change photo" }));
+    await waitFor(() => expect(body.getByRole("menuitem", { name: "Upload a photo" })).toBeVisible());
+    await waitFor(() => expect(body.getByRole("menuitem", { name: "Look for photos on Amazon" })).toBeVisible());
+  },
+};
+
+// A store's page often has several photos. The item shows one, so the row
+// says to pick one, and the one in use has a check.
+export const PickingAPhoto: Story = {
+  args: {
+    item: { ...meta.args!.item!, image_url: "/hero/bottle.svg" },
+    photosToOffer: ["/hero/bottle.svg", "/hero/bib.svg", "/hero/socks.svg"],
+  },
+  play: async () => {
+    const body = within(document.body);
+    await expect(await body.findByRole("button", { name: "Photo 1" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(body.getByRole("button", { name: "Photo 2" }));
+    await expect(body.getByRole("button", { name: "Photo 2" })).toHaveAttribute("aria-pressed", "true");
   },
 };
 
