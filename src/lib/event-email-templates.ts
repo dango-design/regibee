@@ -2,8 +2,11 @@
  * HTML for the emails about co-hosts, linked registries and gift exchanges.
  * Pure functions, like src/lib/email-templates.ts: event-email.ts sends them
  * and Storybook previews them. Every value is escaped, because guests and
- * hosts type names, wishlists and addresses.
+ * hosts type names, wishlists and addresses. Every template returns its HTML
+ * through withEmailFont, which sets the font.
  */
+
+import { withEmailFont } from "./email-font.ts";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) =>
@@ -35,26 +38,26 @@ export function registryLinkedHtml(opts: {
   registryDashboardUrl: string;
 }): string {
   const when = opts.eventDate ? ` on ${escapeHtml(opts.eventDate)}` : "";
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p><strong>${escapeHtml(opts.linkedByName)}</strong> linked your registry <em>${escapeHtml(opts.registryTitle)}</em> to <strong>${escapeHtml(opts.eventTitle)}</strong>${when}.</p>
     <p>Guests see your registry on the invitation, so they know what to bring. ${escapeHtml(opts.linkedByName)} can't change your registry or see who gave what.</p>
     ${button(opts.eventUrl, "See the invitation")}
     <p style="color:#555;font-size:14px;">Didn't expect this? You can unlink your registry from <a href="${escapeHtml(opts.registryDashboardUrl)}" style="color:#004659;">your registry's page</a>.</p>
     <p style="color:#888;font-size:13px;">You're getting this because you manage this registry on Regibee.</p>
-  `;
+  `);
 }
 
 /** Invites someone to co-host an event. */
 export function coHostInviteHtml(opts: { inviterName: string; eventTitle: string; inviteUrl: string }): string {
-  return `
+  return withEmailFont(`
     <p>Hi,</p>
     <p><strong>${escapeHtml(opts.inviterName)}</strong> asked you to co-host <strong>${escapeHtml(opts.eventTitle)}</strong> on Regibee.</p>
     <p>Co-hosts can edit the event, add guests, send invitations and reminders, see RSVPs and draw names.</p>
     ${button(opts.inviteUrl, "Co-host this event")}
     <p style="color:#888;font-size:13px;">Or copy this link: ${escapeHtml(opts.inviteUrl)}</p>
     <p style="color:#888;font-size:13px;">The invitation expires in 14 days. If you don't know ${escapeHtml(opts.inviterName)}, you can ignore this email.</p>
-  `;
+  `);
 }
 
 /**
@@ -71,14 +74,14 @@ export function listRequestHtml(opts: {
   requestUrl: string;
 }): string {
   const when = opts.eventDate ? ` on ${escapeHtml(opts.eventDate)}` : "";
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.honoreeName)},</p>
     <p><strong>${escapeHtml(opts.hostName)}</strong> is planning <strong>${escapeHtml(opts.eventTitle)}</strong>${when} on Regibee, and asked you to make a ${escapeHtml(opts.listNoun)} so guests know what you'd like.</p>
     <p>Add things from any store. Your list is linked to the invitation as soon as you make it, and guests reserve gifts without needing an account. ${escapeHtml(opts.hostName)} can't change your list.</p>
     ${button(opts.requestUrl, `Make my ${opts.listNoun}`)}
     <p style="color:#888;font-size:13px;">Or copy this link: ${escapeHtml(opts.requestUrl)}</p>
     <p style="color:#888;font-size:13px;">If you don't know ${escapeHtml(opts.hostName)}, you can ignore this email.</p>
-  `;
+  `);
 }
 
 /** Tells one person in a gift exchange whose name they drew. */
@@ -120,7 +123,7 @@ export function exchangeAssignmentHtml(opts: {
       ? `<p>${escapeHtml(opts.gifteeName)} hasn't added a wishlist or gift ideas yet. Your link below shows them as soon as they do.</p>`
       : "";
 
-  return `
+  return withEmailFont(`
     <div style="max-width:560px;margin:0 auto;">
       <p>Hi ${escapeHtml(opts.giverName)},</p>
       ${
@@ -135,5 +138,5 @@ export function exchangeAssignmentHtml(opts: {
       ${button(opts.pageUrl, "See your Secret Santa page")}
       <p style="color:#888;font-size:13px;">This link is just for you. It always shows your person's latest wishlist${opts.mailed ? " and address" : ""}.</p>
     </div>
-  `;
+  `);
 }

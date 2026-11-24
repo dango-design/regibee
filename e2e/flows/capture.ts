@@ -127,15 +127,14 @@ export class FlowCapture {
   }
 
   /**
-   * A screenshot of an email, drawn from its HTML. The event emails set no
-   * font, so each mail app uses its own. This uses Arial, as Gmail does.
+   * A screenshot of an email, drawn from its HTML, in the font the email sets.
    */
   async email(browser: Browser, email: ReceivedEmail, shot: Omit<Shot, "lane">) {
     const width = 600;
     const context = await browser.newContext({ viewport: { width, height: 200 }, deviceScaleFactor: 2 });
     const page = await context.newPage();
     await page.setContent(email.html, { waitUntil: "load" });
-    await page.addStyleTag({ content: "html { font-family: Arial, Helvetica, sans-serif; font-size: 14px; } body { margin: 0; padding: 20px; }" });
+    await page.addStyleTag({ content: "body { margin: 0; padding: 20px; }" });
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
     await page.setViewportSize({ width, height });
     const file = `${String(this.steps.length + 1).padStart(2, "0")}-${shot.id}.jpg`;

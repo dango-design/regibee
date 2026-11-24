@@ -1,11 +1,16 @@
 /**
  * Pure HTML template functions for all Regibee emails.
  * Used by email.ts for sending and by Storybook for visual preview.
+ *
+ * Every template returns its HTML through withEmailFont, which sets the font.
+ * A new template must too, or mail apps with no font of their own show it in
+ * Times.
  */
 
 import { answerLabel } from "@/lib/rsvp-questions";
 import { formatPrice } from "@/lib/money";
 import { formatBirthdayDate } from "@/lib/gift-profile";
+import { withEmailFont } from "./email-font.ts";
 
 // Every value that goes into an email is escaped: guests type names, messages
 // and suggestions on a public page, and owners and managers set titles, names,
@@ -74,7 +79,7 @@ export function itemReservedBuyerHtml(opts: {
   const qtyText = opts.quantity > 1 ? ` (×${opts.quantity})` : "";
   const buyLabel = opts.storeName ? `Buy at ${opts.storeName}` : "Buy it";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.buyerName)},</p>
     <p>You reserved <strong>${escapeHtml(opts.itemTitle)}</strong>${qtyText} on <em>${escapeHtml(opts.registryTitle)}</em>. It's held for you for ${opts.holdDays} days, so nobody else buys it.</p>
     ${registryStoreLine(opts.parentName, opts.registryStoreName)}
@@ -86,7 +91,7 @@ export function itemReservedBuyerHtml(opts: {
       { href: opts.releaseUrl, label: "I'm not getting it" },
     ])}
     <p style="color:#888;font-size:13px;">If you don't confirm within ${opts.holdDays} days, the item goes back on the list for other guests. You're receiving this because you reserved a gift on a Regibee registry.</p>
-  `;
+  `);
 }
 
 /** Sent once, the day before a guest's reservation runs out. */
@@ -107,7 +112,7 @@ export function itemReservationReminderBuyerHtml(opts: {
   const buyLabel = opts.storeName ? `Buy at ${opts.storeName}` : "Buy it";
   const hours = opts.hoursLeft === 1 ? "about an hour" : `about ${opts.hoursLeft} hours`;
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.buyerName)},</p>
     <p>Your reservation of <strong>${escapeHtml(opts.itemTitle)}</strong> on <em>${escapeHtml(opts.registryTitle)}</em> ends in ${hours}. After that, it goes back on the list for other guests.</p>
     ${registryStoreLine(opts.parentName, opts.registryStoreName)}
@@ -119,7 +124,7 @@ export function itemReservationReminderBuyerHtml(opts: {
       { href: opts.releaseUrl, label: "I'm not getting it" },
     ])}
     <p style="color:#888;font-size:13px;">You're receiving this because you reserved a gift on a Regibee registry.</p>
-  `;
+  `);
 }
 
 /** Sent when a reservation ran out and the item went back on the list. */
@@ -129,13 +134,13 @@ export function itemReservationEndedBuyerHtml(opts: {
   registryTitle: string;
   registryUrl?: string;
 }): string {
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.buyerName)},</p>
     <p>Your reservation of <strong>${escapeHtml(opts.itemTitle)}</strong> on <em>${escapeHtml(opts.registryTitle)}</em> ended, so it's back on the list for other guests.</p>
     <p>If you bought it anyway, or still want to, reserve it again on the registry. If someone else has, you could pick another gift.</p>
     ${textLinks([{ href: opts.registryUrl, label: "View Registry" }])}
     <p style="color:#888;font-size:13px;">You're receiving this because you reserved a gift on a Regibee registry.</p>
-  `;
+  `);
 }
 
 /** Sent when a guest says they bought the item. */
@@ -150,7 +155,7 @@ export function itemGivenBuyerHtml(opts: {
 }): string {
   const qtyText = opts.quantity > 1 ? ` (×${opts.quantity})` : "";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.buyerName)},</p>
     <p>Thanks for giving <strong>${escapeHtml(opts.itemTitle)}</strong>${qtyText} from <em>${escapeHtml(opts.registryTitle)}</em>!</p>
     <p>${escapeHtml(opts.parentName)} will see it's from you, and will really appreciate it.</p>
@@ -159,7 +164,7 @@ export function itemGivenBuyerHtml(opts: {
       { href: opts.undoUrl, label: "Undo this gift" },
     ])}
     <p style="color:#888;font-size:13px;">You're receiving this because you gave a gift on a Regibee registry.</p>
-  `;
+  `);
 }
 
 /**
@@ -181,7 +186,7 @@ export function itemCoveredBuyerHtml(opts: {
   const qtyText = opts.quantity > 1 ? ` (×${opts.quantity})` : "";
   const sent = opts.amount != null ? `<strong>${formatPrice(opts.amount)}</strong>` : "money";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.buyerName)},</p>
     <p>Thanks for sending ${sent} for <strong>${escapeHtml(opts.itemTitle)}</strong>${qtyText} on <em>${escapeHtml(opts.registryTitle)}</em>!</p>
     <p>${escapeHtml(opts.parentName)} will see it's from you, and will really appreciate it.</p>
@@ -190,7 +195,7 @@ export function itemCoveredBuyerHtml(opts: {
       { href: opts.undoUrl, label: "Undo this gift" },
     ])}
     <p style="color:#888;font-size:13px;">Didn't send it after all? Undo the gift, and it goes back on the list. You're receiving this because you gave a gift on a Regibee registry.</p>
-  `;
+  `);
 }
 
 export function cashFundContributionBuyerHtml(opts: {
@@ -208,14 +213,14 @@ export function cashFundContributionBuyerHtml(opts: {
     ? `<p style="margin: 16px 0;"><a href="${escapeHtml(opts.registryUrl)}" style="color:#004659;">View Registry</a></p>`
     : "";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.buyerName)},</p>
     <p>Thanks for contributing <strong>${formatted}</strong> to <strong>${escapeHtml(opts.fundTitle)}</strong> on <em>${escapeHtml(opts.registryTitle)}</em>!</p>
     <p>${escapeHtml(opts.parentName)} will really appreciate it.</p>
     ${paymentBlock}
     ${linkBlock}
     <p style="color:#888;font-size:13px;">You're receiving this because you contributed to a cash fund on a Regibee registry.</p>
-  `;
+  `);
 }
 
 // ── Owner Notifications ──────────────────────────────────────
@@ -237,14 +242,14 @@ export function itemGivenOwnerHtml(opts: {
     ? `<p style="background:#EAFBF5;border:1px solid #A0E4D4;border-radius:12px;padding:12px 14px;color:#074D31;">This is the first gift from your ${escapeHtml(opts.welcomeBox.storeName)} registry, so you may be able to request your ${escapeHtml(opts.welcomeBox.storeName)} ${escapeHtml(opts.welcomeBox.boxName)} now. <a href="${escapeHtml(opts.welcomeBox.perksLink)}" style="color:#004659;">See your store perks</a></p>`
     : "";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p><strong>${escapeHtml(opts.buyerName)}</strong> bought <strong>${escapeHtml(opts.itemTitle)}</strong>${qtyText} from your registry <em>${escapeHtml(opts.registryTitle)}</em>.</p>
     ${opts.message ? `<p>Their message: "${escapeHtml(opts.message)}"</p>` : ""}
     ${welcomeBlock}
     <p style="margin: 16px 0;"><a href="${escapeHtml(opts.dashboardLink)}" style="color:#004659;">View on Dashboard</a></p>
     <p style="color:#888;font-size:13px;">You're receiving this because someone interacted with your registry.</p>
-  `;
+  `);
 }
 
 /** Sent to the owners and managers when a guest says they sent the money for an item the owners bought. */
@@ -262,14 +267,14 @@ export function itemCoveredOwnerHtml(opts: {
   const qtyText = opts.quantity > 1 ? ` (×${opts.quantity})` : "";
   const sent = opts.amount != null ? `<strong>${formatPrice(opts.amount)}</strong>` : "money";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p><strong>${escapeHtml(opts.buyerName)}</strong> sent you ${sent} for <strong>${escapeHtml(opts.itemTitle)}</strong>${qtyText} on your registry <em>${escapeHtml(opts.registryTitle)}</em>.</p>
     <p>It went straight to you, so look for it in Venmo, PayPal or Zelle.</p>
     ${opts.message ? `<p>Their message: "${escapeHtml(opts.message)}"</p>` : ""}
     <p style="margin: 16px 0;"><a href="${escapeHtml(opts.dashboardLink)}" style="color:#004659;">View on Dashboard</a></p>
     <p style="color:#888;font-size:13px;">You're receiving this because someone interacted with your registry.</p>
-  `;
+  `);
 }
 
 export function cashFundContributionOwnerHtml(opts: {
@@ -283,13 +288,13 @@ export function cashFundContributionOwnerHtml(opts: {
 }): string {
   const formatted = formatPrice(opts.amount);
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p><strong>${escapeHtml(opts.buyerName)}</strong> contributed <strong>${formatted}</strong> to your cash fund <strong>${escapeHtml(opts.fundTitle)}</strong> on <em>${escapeHtml(opts.registryTitle)}</em>.</p>
     ${opts.message ? `<p>Their message: "${escapeHtml(opts.message)}"</p>` : ""}
     <p style="margin: 16px 0;"><a href="${escapeHtml(opts.dashboardLink)}" style="color:#004659;">View on Dashboard</a></p>
     <p style="color:#888;font-size:13px;">You're receiving this because someone interacted with your registry.</p>
-  `;
+  `);
 }
 
 export function newSuggestionOwnerHtml(opts: {
@@ -302,13 +307,13 @@ export function newSuggestionOwnerHtml(opts: {
 }): string {
   const priceText = opts.price ? ` (${formatPrice(opts.price)})` : "";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p><strong>${escapeHtml(opts.suggestedByName)}</strong> suggested adding <strong>${escapeHtml(opts.title)}</strong>${priceText} to your registry <em>${escapeHtml(opts.registryTitle)}</em>.</p>
     ${opts.notes ? `<p>Their note: "${escapeHtml(opts.notes)}"</p>` : ""}
     <p>Head to your dashboard to accept or decline this suggestion.</p>
     <p style="color:#888;font-size:13px;">You're receiving this because someone interacted with your registry.</p>
-  `;
+  `);
 }
 
 /**
@@ -324,13 +329,13 @@ export function giftsRevealedOwnerHtml(opts: {
   listUrl: string;
 }): string {
   const gifts = opts.giftCount === 1 ? "1 gift" : `${opts.giftCount} gifts`;
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p>${escapeHtml(opts.eventTitle)} is over, so the gifts reserved from <em>${escapeHtml(opts.registryTitle)}</em> aren't a secret anymore. <strong>${gifts}</strong> came from it.</p>
     <p>See what people picked, and who to thank.</p>
     <p style="margin: 24px 0;">${buttonLink(opts.listUrl, "See your gifts")}</p>
     <p style="color:#888;font-size:13px;">Anything reserved from now on stays hidden from you, as before. You're receiving this because your list hides what's been reserved from you and was part of ${escapeHtml(opts.eventTitle)}.</p>
-  `;
+  `);
 }
 
 // ── Store perks ──────────────────────────────────────────────
@@ -347,14 +352,14 @@ export function completionDiscountOwnerHtml(opts: {
     .join("");
   const one = opts.stores.length === 1;
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.ownerName)},</p>
     <p>Your due date is coming up, so ${one ? "this store's completion discount" : "these stores' completion discounts"} may be open now. ${one ? "It's" : "Each is"} a discount on what's still left on your store registry.</p>
     <ul style="padding-left:20px;">${items}</ul>
     <p>Rules differ by store, so check ${one ? "the store's" : "each store's"} terms before you buy.</p>
     <p style="margin: 16px 0;"><a href="${escapeHtml(opts.perksLink)}" style="color:#004659;">See your store perks</a></p>
     <p style="color:#888;font-size:13px;">You're receiving this because you linked store registries to <em>${escapeHtml(opts.registryTitle)}</em>. You can turn off these emails on its Store perks tab.</p>
-  `;
+  `);
 }
 
 // ── Invitations ──────────────────────────────────────────────
@@ -364,7 +369,7 @@ export function managerInviteHtml(opts: {
   registryTitle: string;
   inviteUrl: string;
 }): string {
-  return `
+  return withEmailFont(`
     <p>Hi there,</p>
     <p><strong>${escapeHtml(opts.inviterName)}</strong> invited you to help manage the registry <strong>${escapeHtml(opts.registryTitle)}</strong>.</p>
     <p>As a manager, you'll be able to add and edit items, view gift activity, and help organize the registry.</p>
@@ -375,7 +380,7 @@ export function managerInviteHtml(opts: {
     </p>
     <p style="color:#888;font-size:13px;">Or copy this link: ${escapeHtml(opts.inviteUrl)}</p>
     <p style="color:#888;font-size:13px;">This invite expires in 7 days.</p>
-  `;
+  `);
 }
 
 // ── Follows ──────────────────────────────────────────────────
@@ -387,7 +392,7 @@ export function followRequestHtml(opts: {
   settingsUrl: string;
 }): string {
   const name = escapeHtml(opts.followerName);
-  return `
+  return withEmailFont(`
     <p>Hi there,</p>
     <p><strong>${name}</strong> asked to follow you on Regibee.</p>
     <p>If you approve, they'll see the private registries on your profile as well as your public ones. If you don't know them, you can decline the request or block them.</p>
@@ -398,7 +403,7 @@ export function followRequestHtml(opts: {
     </p>
     <p style="color:#888;font-size:13px;">See their profile: ${escapeHtml(opts.profileUrl)}</p>
     <p style="color:#888;font-size:13px;">You're getting this because someone asked to follow you on Regibee. To stop these emails, turn them off on your account page: ${escapeHtml(opts.settingsUrl)}</p>
-  `;
+  `);
 }
 
 export function followInviteHtml(opts: {
@@ -407,7 +412,7 @@ export function followInviteHtml(opts: {
 }): string {
   const name = escapeHtml(opts.inviterName);
   const inviteUrl = escapeHtml(opts.inviteUrl);
-  return `
+  return withEmailFont(`
     <p>Hi there,</p>
     <p><strong>${name}</strong> would like to follow you on Regibee, the gift registry for babies, birthdays and other occasions.</p>
     <p>If you say yes, they'll see the registries you choose to show on your Regibee profile. You can say yes with a free account, and remove them as a follower whenever you like.</p>
@@ -418,7 +423,7 @@ export function followInviteHtml(opts: {
     </p>
     <p style="color:#888;font-size:13px;">Or copy this link: ${inviteUrl}</p>
     <p style="color:#888;font-size:13px;">You're getting this because ${name} entered your email address on Regibee. If you don't know them, you can ignore this email. The invite expires in 30 days.</p>
-  `;
+  `);
 }
 
 // ── Birthdays ────────────────────────────────────────────────
@@ -489,11 +494,11 @@ export function birthdayReminderHtml(opts: {
     </ul>
     <p>Each wishlist shows what they'd love and what's already taken.</p>`;
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.toName || "there")},</p>
     ${body}
     <p style="color:#888;font-size:13px;">You're getting this because you follow ${opts.birthdays.length === 1 ? "them" : "these people"} on Regibee and they shared their birthday with their followers. <a href="${escapeHtml(opts.settingsUrl)}" style="color:#888;">Turn off birthday emails</a></p>
-  `;
+  `);
 }
 
 // ── Events ───────────────────────────────────────────────────
@@ -639,7 +644,7 @@ export function eventInvitationHtml(opts: {
     ? `<p style="color:#555;font-size:13px;">Please reply by ${escapeHtml(event.rsvpBy)}.</p>`
     : "";
 
-  return `
+  return withEmailFont(`
     <div style="max-width:560px;margin:0 auto;">
       ${image}
       <p>Hi ${escapeHtml(opts.guestName)},</p>
@@ -655,7 +660,7 @@ export function eventInvitationHtml(opts: {
       <p style="color:#888;font-size:13px;">This link is just for you, so you can change your answer later. Or copy it: ${escapeHtml(opts.rsvpUrl)}</p>
       <p style="color:#888;font-size:13px;">You're getting this because ${escapeHtml(opts.hostName)} added you to the guest list for ${escapeHtml(event.title)} on Regibee. Reply to this email to reach them.</p>
     </div>
-  `;
+  `);
 }
 
 const RSVP_PHRASES: Record<"yes" | "no" | "maybe", string> = {
@@ -719,7 +724,7 @@ export function rsvpGuestConfirmationHtml(opts: {
         }`
       : "";
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.guestName)},</p>
     ${headline}
     ${signedUp}
@@ -730,7 +735,7 @@ export function rsvpGuestConfirmationHtml(opts: {
     ${registryLine(event)}
     <p style="margin:16px 0;"><a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">See the invitation or change your RSVP</a></p>
     <p style="color:#888;font-size:13px;">You're getting this because you replied to an invitation on Regibee.</p>
-  `;
+  `);
 }
 
 /** Tells the host that a guest replied. */
@@ -772,7 +777,7 @@ export function rsvpHostNotificationHtml(opts: {
     ? ""
     : `<p>So far, ${opts.attending === 1 ? "1 person is" : `${opts.attending} people are`} coming and ${pendingText} replied.</p>`;
 
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.hostName)},</p>
     <p><strong>${escapeHtml(opts.guestName)}</strong> ${answer}${to} <em>${escapeHtml(opts.eventTitle)}</em>.</p>
     ${opts.newGuest ? `<p style="color:#555;">They RSVPed from the event link, so they're now on your guest list.</p>` : ""}
@@ -782,7 +787,7 @@ export function rsvpHostNotificationHtml(opts: {
     ${counts}
     <p style="margin: 16px 0;"><a href="${escapeHtml(opts.manageUrl)}" style="color:#004659;">See your guest list</a></p>
     <p style="color:#888;font-size:13px;">You're getting this because you asked to hear about RSVPs. You can turn these emails off on the event's Edit page.</p>
-  `;
+  `);
 }
 
 // ── Updates to guests (#100) ─────────────────────────────────
@@ -796,7 +801,7 @@ export function guestMessageHtml(opts: {
   body: string;
   rsvpUrl: string;
 }): string {
-  return `
+  return withEmailFont(`
     <div style="max-width:560px;margin:0 auto;">
       <p>Hi ${escapeHtml(opts.guestName)},</p>
       <p><strong>${escapeHtml(opts.hostName)}</strong> sent a message about <strong>${escapeHtml(opts.eventTitle)}</strong>:</p>
@@ -804,7 +809,7 @@ export function guestMessageHtml(opts: {
       <p style="margin:16px 0;"><a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">See the invitation or change your RSVP</a></p>
       <p style="color:#888;font-size:13px;">Reply to this email to reach ${escapeHtml(opts.hostName)}. You're getting this because you're on the guest list for ${escapeHtml(opts.eventTitle)} on Regibee.</p>
     </div>
-  `;
+  `);
 }
 
 /** Sent when the host changes the date, time or place. */
@@ -827,7 +832,7 @@ export function eventChangedHtml(opts: {
   const calendar = opts.calendarUrl
     ? `<p><a href="${escapeHtml(opts.calendarUrl)}" style="color:#004659;">Add the new time to Google Calendar</a></p>`
     : "";
-  return `
+  return withEmailFont(`
     <div style="max-width:560px;margin:0 auto;">
       <p>Hi ${escapeHtml(opts.guestName)},</p>
       <p><strong>${escapeHtml(opts.hostName)}</strong> changed the details of <strong>${escapeHtml(event.title)}</strong>.</p>
@@ -837,7 +842,7 @@ export function eventChangedHtml(opts: {
       <p>If this changes your plans, <a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">change your RSVP</a> so the host knows.</p>
       <p style="color:#888;font-size:13px;">Reply to this email to reach ${escapeHtml(opts.hostName)}. You're getting this because you're on the guest list for ${escapeHtml(event.title)} on Regibee.</p>
     </div>
-  `;
+  `);
 }
 
 /** The day before the event, to everyone who said they're going. */
@@ -859,7 +864,7 @@ export function dayBeforeReminderHtml(opts: {
     signups.length > 0
       ? `<p style="margin-bottom:0;"><strong>You're bringing:</strong></p>${signupList(signups)}`
       : "";
-  return `
+  return withEmailFont(`
     <div style="max-width:560px;margin:0 auto;">
       <p>Hi ${escapeHtml(opts.guestName)},</p>
       <p><strong>${escapeHtml(event.title)}</strong> is tomorrow. See you there!</p>
@@ -869,5 +874,5 @@ export function dayBeforeReminderHtml(opts: {
       <p>Can't make it after all? <a href="${escapeHtml(opts.rsvpUrl)}" style="color:#004659;">Change your RSVP</a> so ${escapeHtml(opts.hostName)} knows.</p>
       <p style="color:#888;font-size:13px;">You're getting this because you said you're going to ${escapeHtml(event.title)} on Regibee.</p>
     </div>
-  `;
+  `);
 }
