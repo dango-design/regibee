@@ -4,9 +4,17 @@
 // a list kept for a child (see 20261112062844_gift_profiles_and_birthday_reminders.sql).
 // Every field is optional.
 //
-// Who sees what: sizes, likes and the rest show on the owner's personal
-// wishlists and their profile page, so anyone with a link sees them. The birthday
-// shows only to the owner and to followers they approved.
+// Who sees what of a person's own gift profile, on their profile page and
+// their personal wishlists:
+// - Sizes, colors, likes, things to skip and notes show only to the person
+//   and to people they follow who follow them back. They can be sensitive.
+// - The birthday shows to the person and to every follower they approved,
+//   who also get it on their Following page and in a reminder email.
+// visibleGiftProfile applies both rules. A child's list shows its own gift
+// profile to anyone who opens that list, apart from the birthday.
+//
+// A profile's public note (profiles.public_note) is separate: anyone who
+// opens the profile sees it. cleanPublicNote is at the end of this file.
 //
 // No imports, so tests can run this file with Node directly.
 
@@ -146,6 +154,19 @@ export function withoutBirthday(profile: GiftProfile): GiftProfile {
   return rest;
 }
 
+/**
+ * The parts of a gift profile a viewer may see. `details` is everything but
+ * the birthday. Run it on the server, so the rest never reaches the browser.
+ */
+export function visibleGiftProfile(
+  profile: GiftProfile,
+  sees: { details: boolean; birthday: boolean },
+): GiftProfile {
+  const visible: GiftProfile = sees.details ? withoutBirthday(profile) : {};
+  if (sees.birthday && profile.birthday) visible.birthday = profile.birthday;
+  return visible;
+}
+
 const MONTHS = [
   "January",
   "February",
@@ -274,4 +295,27 @@ export function pickBirthdayList<T extends BirthdayListCandidate>(lists: T[], to
 /** Soonest first, then by name. */
 export function sortBirthdays<T extends { date: string; name: string }>(birthdays: T[]): T[] {
   return [...birthdays].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+}
+
+// ── Public note ──────────────────────────────────────────────────────────
+
+/** The longest public note. The database checks the same number. */
+export const MAX_PUBLIC_NOTE_LENGTH = 500;
+
+/**
+ * A profile's public note, which anyone who opens the profile sees. Keeps
+ * line breaks, but not runs of blank lines. Null when there's nothing left.
+ */
+export function cleanPublicNote(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const note = value
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, MAX_PUBLIC_NOTE_LENGTH)
+    .trim();
+  return note || null;
 }

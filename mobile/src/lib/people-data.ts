@@ -81,15 +81,17 @@ export function useRunPeopleAction() {
   };
 }
 
-/** "Your profile": the name and the three switches. */
+/** "Your profile": the name, the public note and the three switches. */
 export function profileForm(input: {
   fullName: string;
   discoverable: boolean;
   findableByEmail: boolean;
   emailFollowRequests: boolean;
+  publicNote: string;
 }) {
   return form({
     fullName: input.fullName,
+    publicNote: input.publicNote,
     discoverable: String(input.discoverable),
     findableByEmail: String(input.findableByEmail),
     emailFollowRequests: String(input.emailFollowRequests),

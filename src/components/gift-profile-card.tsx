@@ -9,11 +9,15 @@ export interface GiftProfileCardProps {
   name: string;
   /**
    * Shows the birthday. Only for the person themselves and the followers they
-   * approved, never for everyone with a link.
+   * approved, never for everyone with a link. The rest of the card is only
+   * for the person and the people they follow who follow them back, so pass
+   * a profile that holds no more than the viewer may see (visibleGiftProfile).
    */
   showBirthday?: boolean;
   /** Goes next to the heading, like an Edit link on your own profile. */
   action?: ReactNode;
+  /** A line under the heading, like who can see the card, on your own profile. */
+  caption?: ReactNode;
   className?: string;
 }
 
@@ -63,7 +67,14 @@ function Row({
  * What someone likes and their sizes, for the people giving them gifts.
  * Renders nothing when there's nothing to show.
  */
-export function GiftProfileCard({ profile, name, showBirthday = false, action, className }: GiftProfileCardProps) {
+export function GiftProfileCard({
+  profile,
+  name,
+  showBirthday = false,
+  action,
+  caption,
+  className,
+}: GiftProfileCardProps) {
   const birthday = showBirthday && profile.birthday ? formatBirthday(profile.birthday) : null;
   if (!hasGiftDetails(profile) && !birthday) return null;
 
@@ -77,6 +88,7 @@ export function GiftProfileCard({ profile, name, showBirthday = false, action, c
         <h2 className="min-w-0 break-words font-semibold text-primary">About {name}</h2>
         {action}
       </div>
+      {caption && <p className="mt-1 text-xs text-tertiary">{caption}</p>}
       <dl className="mt-3 space-y-3">
         {birthday && (
           <Row icon={Cake} label="Birthday">
