@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { Toaster } from "@/components/ui/sonner";
 import { fontVariables } from "./fonts";
 import "./globals.css";
@@ -38,6 +40,11 @@ export default function RootLayout({
       <body
         className="font-sans antialiased"
       >
+        {/* It reads the address's query string, which needs a Suspense
+            boundary so pages can still be built ahead of time. */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         {children}
         <Toaster />
       </body>
