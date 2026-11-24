@@ -168,7 +168,9 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Still accept a PR's changes on its branch build before merging. Accepting records that someone reviewed them, and turns the PR's "UI Tests" check green. The Accept and merge button that follows the review page does both steps.
 - On a branch build, accept only the changes that branch made.
 - Merging before the branch's `chromatic` check finishes is fine. It can cost extra snapshots, but development speed matters more.
-- The free plan includes 5,000 snapshots a month. When they run out, Chromatic pauses testing and review until the next month.
+- The free plan includes 5,000 snapshots a month. When they run out, Chromatic pauses testing and review until the billing month resets. The Billing page in Chromatic shows the date.
+- While it's paused, the `chromatic` job still passes and still publishes the Storybook, but it takes no snapshots. The build reads `PASSED` with 0 changes and has `isLimited: true`. That means nothing was tested, not that nothing changed. `UI Tests` and `UI Review` stay pending on every PR, so don't wait for them, and there is nothing to accept. Merge on the other checks, and look at changed stories yourself in the published Storybook or a local one.
+- Changes merged while Chromatic is paused get no snapshot. When it resumes, `onlyChanged` only captures stories affected by later commits, so those stories may keep their old baselines until a later PR touches them, and that PR's build then shows the earlier changes too.
 - Storybook can't render async server components. Put a page's markup in a plain component and write the story for that. The landing page works this way.
 
 ## End-to-end tests

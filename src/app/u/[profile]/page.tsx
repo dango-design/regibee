@@ -9,6 +9,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getViewer, getViewerRelation, seesBirthday, seesGiftDetails } from "@/lib/viewer";
 import { cleanPublicNote, parseGiftProfile, visibleGiftProfile } from "@/lib/gift-profile";
 import { sharedRegistrySlugsFrom } from "@/lib/groups-server";
+import { listSharedEvents } from "@/lib/shared-events-server";
 import { profileAudience, profileViewer, seesOnProfile } from "@/lib/list-access";
 import {
   LISTED_REGISTRY_COLUMNS,
@@ -20,6 +21,8 @@ import { displayName, profilePath, publicIdFromPath } from "@/lib/profile-link";
 import { profilePhotoUrl } from "@/lib/profile-photos";
 
 type Profile = { id: string; public_id: string; full_name: string | null; avatar_url: string | null };
+/** The profile, and its account's email once confirmed. The email is for matching guest rows and stays on the server. */
+type FoundProfile = Profile & { confirmedEmail: string | null };
 
 // Old links used usernames, which had this format (see 011_public_profiles.sql).
 const OLD_USERNAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
@@ -29,7 +32,7 @@ const OLD_USERNAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 // is only reachable by people who were given its link or found it in search.
 // Links from before usernames were removed are looked up by username, and the
 // page redirects them to the current link.
-const getProfile = cache(async (segment: string): Promise<Profile | null> => {
+const getProfile = cache(async (segment: string): Promise<FoundProfile | null> => {
   const value = segment.toLowerCase();
   const columns = "id, public_id, full_name, avatar_url";
 
@@ -50,7 +53,7 @@ const getProfile = cache(async (segment: string): Promise<Profile | null> => {
   const { data: account } = await supabaseAdmin.auth.admin.getUserById(profile.id);
   if (!account?.user || account.user.is_anonymous) return null;
 
-  return profile;
+  return { ...profile, confirmedEmail: account.user.email_confirmed_at ? (account.user.email ?? null) : null };
 });
 
 export async function generateMetadata({
@@ -108,8 +111,11 @@ export default async function ProfilePage({
     follows: followState === "approved",
     followedBack: relation.followsYou,
   });
+  // The signed-in viewer, for the group's lists and the events they share
+  // with this person. Neither is for the owner or for someone who blocked them.
   const viewer = isOwnProfile || followState === "blocked" ? null : await getViewer();
-  const [{ data: listed }, sharedSlugs, giftRow, noteRow] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: listed }, sharedSlugs, giftRow, noteRow, sharedEvents] = await Promise.all([
     supabaseAdmin
       .from("registries")
       .select(`${LISTED_REGISTRY_COLUMNS}, ${PROFILE_AUDIENCE_COLUMNS}`)
@@ -124,6 +130,13 @@ export default async function ProfilePage({
     // Separate too. It errors until 20261124084611_profile_public_note.sql
     // has run, which counts as no note.
     supabaseAdmin.from("profiles").select("public_note").eq("id", profile.id).maybeSingle(),
+    viewer
+      ? listSharedEvents(
+          { id: viewer.id, email: viewer.email_confirmed_at ? (viewer.email ?? null) : null },
+          { id: profile.id, email: profile.confirmedEmail },
+          today,
+        )
+      : Promise.resolve([]),
   ]);
   // Sizes, likes and the rest are for the person and the people they follow
   // who follow them back. The birthday is for every follower they approved.
@@ -148,7 +161,8 @@ export default async function ProfilePage({
           fullName={profile.full_name}
           photoUrl={profilePhotoUrl(profile)}
           registries={registries}
-          today={new Date().toISOString().slice(0, 10)}
+          sharedEvents={sharedEvents}
+          today={today}
           isOwnProfile={isOwnProfile}
           publicNote={publicNote}
           giftProfile={giftProfile}
