@@ -3,9 +3,8 @@
 import { useRouter } from "next/navigation";
 import { ChevronDown, LifeBuoy, LogOut, Settings, UserPlus, UserRound } from "lucide-react";
 import { Button as AriaButton, RouterProvider } from "react-aria-components";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { initialsFor } from "@/lib/initials";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { cx } from "@/lib/utils/cx";
 import type { NavAccount } from "@/components/nav-bar";
 
@@ -42,9 +41,7 @@ export function AccountMenu({ account, basePath, demo }: { account: NavAccount; 
             )
           }
         >
-          <Avatar size="lg">
-            <AvatarFallback className="font-medium text-secondary">{initialsFor(account.name)}</AvatarFallback>
-          </Avatar>
+          <ProfileAvatar size="lg" name={account.name} photoUrl={account.photoUrl} fallbackClassName="text-secondary" />
           <ChevronDown aria-hidden="true" className="hidden h-4 w-4 text-tertiary md:block" />
           {count > 0 && (
             <span

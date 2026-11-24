@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 import {
   SECTION_NAV_GRID,
@@ -19,12 +20,16 @@ import { DeleteAccountCard } from "@/components/delete-account-card";
 import { FollowLists } from "@/components/follow-lists";
 import { GiftProfileForm, type SaveGiftProfile } from "@/components/gift-profile-form";
 import { BirthdayEmailsSetting } from "@/components/birthday-emails-setting";
-import { saveProfile, setRegistryListed } from "@/lib/actions/profile";
+import { PhotoUploadButton } from "@/components/photo-upload-button";
+import { ProfileAvatar } from "@/components/profile-avatar";
+import { saveProfile, setProfilePhoto, setRegistryListed } from "@/lib/actions/profile";
 import { saveGiftProfile } from "@/lib/actions/gift-profile";
 import type { GiftProfile } from "@/lib/gift-profile";
 import { occasionLabel } from "@/lib/registry-copy";
 import { LIST_ACCESS, listVisibility } from "@/lib/list-access";
-import { profilePath } from "@/lib/profile-link";
+import { displayName, profilePath } from "@/lib/profile-link";
+import { uploadProfilePhoto } from "@/lib/upload-profile-photo";
+import type { PhotoUploadResult } from "@/lib/upload-registry-photo";
 import { cx } from "@/lib/utils/cx";
 import type { FollowPerson, PersonSummary } from "@/lib/follows";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
@@ -103,6 +108,8 @@ export function AccountSettings({
   registries,
   saveAction = saveProfile,
   listAction = setRegistryListed,
+  uploadPhoto,
+  photoAction = setProfilePhoto,
   follows,
   followActions,
   giftProfile,
@@ -115,6 +122,8 @@ export function AccountSettings({
   profile: {
     public_id: string;
     full_name: string | null;
+    /** The profile photo's URL. */
+    avatar_url?: string | null;
     discoverable?: boolean;
     findable_by_email?: boolean;
     email_follow_requests?: boolean;
@@ -128,6 +137,10 @@ export function AccountSettings({
   };
   saveAction?: typeof saveProfile;
   listAction?: typeof setRegistryListed;
+  /** Uploads a profile photo. The site uploads to the account's folder; the demo makes a local URL. */
+  uploadPhoto?: (file: File) => Promise<PhotoUploadResult>;
+  /** Saves or removes the profile photo. */
+  photoAction?: (photoUrl: string | null) => Promise<{ error?: string | null; success?: boolean }>;
   /** Stand-ins for the follow lists' server actions. The demo passes them. */
   followActions?: Pick<
     React.ComponentProps<typeof FollowLists>,
@@ -144,7 +157,11 @@ export function AccountSettings({
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
 }) {
+  const router = useRouter();
   const [savedName, setSavedName] = useState(profile.full_name);
+  const [photoUrl, setPhotoUrl] = useState(profile.avatar_url ?? null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -162,6 +179,20 @@ export function AccountSettings({
 
   // The link has the name in it, so it follows the saved name.
   const link = `${basePath}${profilePath({ public_id: profile.public_id, full_name: savedName })}`;
+
+  // The photo saves as soon as it's uploaded or removed, apart from the form
+  // below, so there's no second step to forget.
+  const savePhoto = async (url: string | null) => {
+    const result = await photoAction(url);
+    if (result?.error) {
+      setPhotoError(result.error);
+      return;
+    }
+    setPhotoError(null);
+    setPhotoUrl(url);
+    // The menu at the top of the page shows it too.
+    router.refresh();
+  };
 
   const handleSave = async (formData: FormData) => {
     setSaving(true);
@@ -220,6 +251,47 @@ export function AccountSettings({
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-6 flex items-center gap-4">
+                <ProfileAvatar
+                  name={displayName({ full_name: savedName })}
+                  photoUrl={photoUrl}
+                  className="size-20"
+                  fallbackClassName="text-2xl"
+                />
+                <div className="min-w-0 space-y-2">
+                  <div>
+                    <p className="text-sm font-medium text-secondary">Profile photo</p>
+                    <p className="text-xs text-tertiary">
+                      Shown on your profile. Without one, people see your initials.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <PhotoUploadButton
+                      label={photoUrl ? "Change photo" : "Upload photo"}
+                      upload={uploadPhoto ?? ((file) => uploadProfilePhoto(profile.public_id, file))}
+                      onUploaded={savePhoto}
+                      onError={setPhotoError}
+                    />
+                    {photoUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-10"
+                        disabled={removingPhoto}
+                        onClick={async () => {
+                          setRemovingPhoto(true);
+                          await savePhoto(null);
+                          setRemovingPhoto(false);
+                        }}
+                      >
+                        {removingPhoto ? "Removing..." : "Remove"}
+                      </Button>
+                    )}
+                  </div>
+                  {photoError && <p className="text-xs text-error-primary">{photoError}</p>}
+                </div>
+              </div>
+
               {/* onSubmit, not action: React resets a form after its action runs, which
                   would put the checkboxes back. */}
               <form

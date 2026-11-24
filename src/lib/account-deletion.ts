@@ -21,10 +21,12 @@
 //   (20261116012811_delete_gifts_with_items.sql); this covers a database that
 //   hasn't run that file.
 // - Uploaded photos and invitation pictures live in Storage, in folders named
-//   for each registry and event. Those folders are emptied.
+//   for each registry and event, and the profile photo in a folder named for
+//   the profile's public id. Those folders are emptied.
 
 import type { AccountDeletionSummary } from "@/lib/account-deletion-summary";
 import { EVENT_IMAGES_BUCKET } from "@/lib/event-images";
+import { PROFILE_PHOTOS_BUCKET } from "@/lib/profile-photos";
 import { REGISTRY_PHOTOS_BUCKET } from "@/lib/registry-photos";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -203,7 +205,12 @@ export function summarizeAccountDeletion(plan: AccountDeletionPlan): AccountDele
  * after putting back any registries it had started to hand over.
  */
 export async function deleteAccount(userId: string): Promise<void> {
-  const plan = await planAccountDeletion(userId);
+  const [plan, { data: profile }] = await Promise.all([
+    planAccountDeletion(userId),
+    // Read now: the profile goes with the account.
+    supabaseAdmin.from("profiles").select("public_id").eq("id", userId).maybeSingle(),
+  ]);
+  const profileFolder = (profile?.public_id as string | undefined) ?? null;
 
   try {
     // 1. Hand over shared registries.
@@ -230,6 +237,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     }),
     ...plan.deleted.map((r) => emptyFolder(REGISTRY_PHOTOS_BUCKET, r.id)),
     ...plan.eventIds.map((id) => emptyFolder(EVENT_IMAGES_BUCKET, id)),
+    ...(profileFolder ? [emptyFolder(PROFILE_PHOTOS_BUCKET, profileFolder)] : []),
   ]);
   for (const result of cleanup) {
     if (result.status === "rejected") console.error(result.reason);

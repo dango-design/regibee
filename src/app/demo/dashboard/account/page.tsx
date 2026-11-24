@@ -6,6 +6,7 @@ import { DEMO_ME_ID, demoEvents } from "@/lib/demo-events";
 import { demoOwnRegistries } from "@/lib/demo-registries";
 import { useDemoToday } from "../../demo-today";
 import { DemoOwnerShell } from "../../_components/demo-shell";
+import { demoUpload } from "../../_components/demo-manage-registry";
 
 /** The demo's Account page. Like src/app/(protected)/dashboard/account/page.tsx. */
 export default function DemoAccountPage() {
@@ -33,6 +34,9 @@ export default function DemoAccountPage() {
         follows={DEMO_FOLLOWS}
         saveAction={demoOk}
         listAction={demoOk}
+        // The photo stays in the browser. Nothing is uploaded.
+        uploadPhoto={demoUpload}
+        photoAction={demoOk}
         followActions={{
           approveAction: demoOk,
           removeAction: demoOk,

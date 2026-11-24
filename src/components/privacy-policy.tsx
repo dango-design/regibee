@@ -151,6 +151,11 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               Profiles are hidden from search engines.
             </P>
             <P>
+              You can add a profile photo, which anyone who opens your profile can see. Before it&apos;s uploaded,
+              your browser makes a small square copy of it, which leaves out the photo&apos;s other details, such
+              as where it was taken. We delete it when you change or remove it, or delete your account.
+            </P>
+            <P>
               Signed-in people can find you on Regibee by name if you turn that on, and by typing your whole email
               address unless you turn that off. The &ldquo;Let friends find me&rdquo; box when you sign up covers
               both, and each has its own setting on your Account page. Search never shows your email address.

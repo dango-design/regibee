@@ -62,6 +62,14 @@ export const WithRegistries: Story = {
   },
 };
 
+// A profile with a photo, which shows instead of the initials.
+export const WithPhoto: Story = {
+  args: {
+    photoUrl: "/hero/panda.svg",
+    isOwnProfile: true,
+  },
+};
+
 // A visitor who doesn't follow yet, and nothing they can see: the empty state.
 export const VisitorNotFollowing: Story = {
   args: {

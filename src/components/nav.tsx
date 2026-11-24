@@ -1,6 +1,7 @@
 import { NavBar, type NavAccount } from "@/components/nav-bar";
 import { countFollowRequests } from "@/lib/follows";
 import { profilePath } from "@/lib/profile-link";
+import { profilePhotoUrl } from "@/lib/profile-photos";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { isSupportAccount } from "@/lib/support";
 import { getViewer } from "@/lib/viewer";
@@ -14,7 +15,7 @@ export async function Nav({ returnTo }: { returnTo?: string } = {}) {
   let account: NavAccount | null = null;
   if (viewer) {
     const [{ data: profile }, followRequestCount, support] = await Promise.all([
-      supabaseAdmin.from("profiles").select("public_id, full_name").eq("id", viewer.id).single(),
+      supabaseAdmin.from("profiles").select("public_id, full_name, avatar_url").eq("id", viewer.id).single(),
       countFollowRequests(viewer.id),
       isSupportAccount(viewer.id),
     ]);
@@ -22,6 +23,7 @@ export async function Nav({ returnTo }: { returnTo?: string } = {}) {
     account = {
       name: profile?.full_name?.trim() || viewer.email || "Your account",
       profilePath: profile ? profilePath(profile) : "/dashboard/account",
+      photoUrl: profile ? profilePhotoUrl(profile) : null,
       email: viewer.email ?? null,
       followRequestCount,
       support,

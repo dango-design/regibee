@@ -22,6 +22,11 @@ type Story = StoryObj<typeof NavBar>;
 
 export const SignedIn: Story = {};
 
+// The menu button shows the profile photo instead of initials.
+export const SignedInWithPhoto: Story = {
+  args: { account: { ...account, photoUrl: "/hero/panda.svg" } },
+};
+
 export const WithFollowRequests: Story = {
   args: { account: { ...account, followRequestCount: 3 } },
 };
