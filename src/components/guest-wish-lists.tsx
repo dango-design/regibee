@@ -96,10 +96,11 @@ function ListRow({
       </div>
       {(href || follow) && (
         // Follow keeps doing its own thing: it sits above the row's link.
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        // On a phone the list's button fills the row, beside Follow when there is one.
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           {follow && <span className="card-action inline-flex">{follow}</span>}
           {href && (
-            <Button variant="outline" size="sm" className="card-action shrink-0 max-sm:min-h-11" asChild>
+            <Button variant="outline" size="sm" className="card-action shrink-0 max-sm:min-h-11 max-sm:flex-1" asChild>
               <a href={href} {...linkProps}>
                 <span className="inline-flex items-center gap-1.5">
                   {button}
