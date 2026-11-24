@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CalendarHeart, Gift, Loader2, Pencil, Trash2, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -16,6 +17,7 @@ import {
   renameGroup,
 } from "@/lib/actions/groups";
 import { startGroupExchange } from "@/lib/actions/events";
+import { deletePhrase } from "@/lib/delete-confirmation";
 import { formatShortEventDate, isEmail, parseGuestList } from "@/lib/events";
 import { emailLabel } from "@/lib/guest-emails";
 import { memberCountLabel, type GroupEvent, type GroupMember, type Person } from "@/lib/groups";
@@ -383,33 +385,29 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
 
           <Card className="border-error-primary/50 py-0">
             <CardContent className="flex flex-col gap-2 p-4">
-              {confirmDelete ? (
-                <>
-                  <p className="text-sm text-secondary">
-                    Delete &ldquo;{group.name}&rdquo;? Events keep their guests. Shared lists stop being shared with these
-                    people.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="destructive" size="sm" onClick={removeGroup} disabled={busy !== null}>
-                      {busy === "delete" ? "Deleting…" : "Delete group"}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
-                      Keep it
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <Button variant="ghost" size="sm" className="self-start" onClick={() => setConfirmDelete(true)}>
-                  <span className="inline-flex items-center gap-1.5 text-error-primary">
-                    <Trash2 className="size-4" />
-                    Delete group
-                  </span>
-                </Button>
-              )}
+              <Button variant="ghost" size="sm" className="self-start" onClick={() => setConfirmDelete(true)}>
+                <span className="inline-flex items-center gap-1.5 text-error-primary">
+                  <Trash2 className="size-4" />
+                  Delete group
+                </span>
+              </Button>
             </CardContent>
           </Card>
         </aside>
       </div>
+      <ConfirmDeleteDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete “${group.name}”?`}
+        description="Events keep their guests. Shared lists stop being shared with these people. This can't be undone."
+        // A group with people in it asks the owner to type a sentence first.
+        phrase={members.length > 0 ? deletePhrase("group") : null}
+        confirmLabel="Delete group"
+        cancelLabel="Keep it"
+        working={busy === "delete"}
+        error={confirmDelete ? error : ""}
+        onConfirm={removeGroup}
+      />
     </div>
   );
 }

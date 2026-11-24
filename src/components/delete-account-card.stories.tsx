@@ -34,23 +34,24 @@ const open: Story["play"] = async ({ canvas, userEvent }) => {
   await screen.findByRole("list");
 };
 
-// What happens to each registry and event, then the word to type. The button
-// stays off until it's typed.
+// What happens to each registry and event, then the sentence to type. The
+// button stays off until it's typed.
 export const Confirm: Story = { play: open };
 
-// A new account with nothing in it yet: only the profile and sign-in go.
+// A new account with nothing in it yet: only the profile and sign-in go, and
+// there's nothing to type.
 export const NewAccount: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   args: { loadSummary: async () => ({ deleted: [], handedOver: [], leaving: [], events: 0 }) },
   play: open,
 };
 
-// "delete" typed, so the button is on.
+// The sentence is typed, so the button is on.
 export const ReadyToDelete: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   play: async (context) => {
     await open(context);
-    await context.userEvent.type(screen.getByLabelText(/to confirm/i), "delete");
+    await context.userEvent.type(screen.getByRole("textbox", { name: /to confirm/i }), "I want to delete my account");
   },
 };
 
@@ -59,7 +60,7 @@ export const Failed: Story = {
   args: { deleteAction: async () => ({ error: "We couldn't delete your account. Try again." }) },
   play: async (context) => {
     await open(context);
-    await context.userEvent.type(screen.getByLabelText(/to confirm/i), "delete");
+    await context.userEvent.type(screen.getByRole("textbox", { name: /to confirm/i }), "I want to delete my account");
     const dialog = within(screen.getByRole("dialog"));
     await context.userEvent.click(dialog.getByRole("button", { name: /delete account/i }));
     await dialog.findByText(/couldn't delete/i);

@@ -36,5 +36,15 @@ const choose =
 /** "Plan it again" says what the copy keeps before making it. */
 export const PlanAgain: Story = { play: choose("Plan it again") };
 
-/** "Delete event" asks first, and says how many guests go with it. */
+/**
+ * "Delete event" asks first, and says how many guests go with it. An event
+ * with guests also asks for a sentence before the button turns on.
+ */
 export const Delete: Story = { play: choose("Delete event") };
+
+/** An event with no guests yet asks with the buttons alone. */
+export const DeleteNewEvent: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { guestCount: 0 },
+  play: choose("Delete event"),
+};

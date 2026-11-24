@@ -144,7 +144,7 @@ test("deleting an account deletes its profile photo", async ({ page }) => {
 
   await page.getByRole("button", { name: "Delete account" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Type “delete” to confirm").fill("delete");
+  // The account has no registries or events, so there's nothing to type.
   await dialog.getByRole("button", { name: "Delete account" }).click();
   await page.waitForURL((url) => url.pathname === "/");
 

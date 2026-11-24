@@ -13,7 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { deleteEvent, planEventAgain } from "@/lib/actions/events";
+import { deletePhrase } from "@/lib/delete-confirmation";
 
 type Choice = "plan-again" | "delete";
 
@@ -127,31 +129,23 @@ export function EventActionsMenu({
       </Dialog>
 
       {isOwner && (
-        <Dialog open={open === "delete"} onOpenChange={onOpenChange}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete this event?</DialogTitle>
-              <DialogDescription>
-                {guestCount > 0
-                  ? `The event page stops working and the guest list of ${guestCount} is deleted. This can't be undone.`
-                  : "The event page stops working. This can't be undone."}
-              </DialogDescription>
-            </DialogHeader>
-            {error && (
-              <p role="alert" className="text-sm text-error-primary">
-                {error}
-              </p>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(null)} disabled={working}>
-                Keep it
-              </Button>
-              <Button variant="destructive" onClick={remove} disabled={working}>
-                {working ? "Deleting…" : "Delete event"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ConfirmDeleteDialog
+          open={open === "delete"}
+          onOpenChange={onOpenChange}
+          title="Delete this event?"
+          description={
+            guestCount > 0
+              ? `The event page stops working and the guest list of ${guestCount} is deleted. This can't be undone.`
+              : "The event page stops working. This can't be undone."
+          }
+          // An event with guests asks the owner to type a sentence first.
+          phrase={guestCount > 0 ? deletePhrase("event") : null}
+          confirmLabel="Delete event"
+          cancelLabel="Keep it"
+          working={working}
+          error={error}
+          onConfirm={remove}
+        />
       )}
     </>
   );

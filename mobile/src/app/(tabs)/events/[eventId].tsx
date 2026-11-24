@@ -9,8 +9,10 @@ import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { Alert, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
 
+import { deletePhrase } from "@shared/delete-confirmation";
 import { formatEventDate } from "@shared/events";
 
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { ExchangePanel } from "@/components/event/exchange-panel";
 import { GuestsPanel } from "@/components/event/guests-panel";
 import { HostsPanel } from "@/components/event/hosts-panel";
@@ -32,6 +34,9 @@ export default function EventScreen() {
   const pull = usePullToRefresh(page.refetch);
   const { run } = useRunEventAction();
   const [uploading, setUploading] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const data = page.data;
 
   if (!data) {
@@ -83,34 +88,30 @@ export default function EventScreen() {
             {
               text: "Delete event",
               style: "destructive" as const,
-              onPress: () =>
-                Alert.alert(
-                  "Delete this event?",
-                  data!.guests.length > 0
-                    ? `The event page stops working and the guest list of ${data!.guests.length} is deleted. This can't be undone.`
-                    : "The event page stops working. This can't be undone.",
-                  [
-                    { text: "Keep it", style: "cancel" },
-                    {
-                      text: "Delete event",
-                      style: "destructive",
-                      onPress: async () => {
-                        try {
-                          // The website goes back to the Events tab afterwards.
-                          await run("events.deleteEvent", event.id);
-                          router.back();
-                        } catch (e) {
-                          Alert.alert("It wasn't deleted", errorMessage(e));
-                        }
-                      },
-                    },
-                  ]
-                ),
+              onPress: () => {
+                setDeleteError(null);
+                setConfirmingDelete(true);
+              },
             },
           ]
         : []),
       { text: "Cancel", style: "cancel" as const },
     ]);
+  }
+
+  async function deleteEvent() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // The website goes back to the Events tab afterwards.
+      await run("events.deleteEvent", event.id);
+      setConfirmingDelete(false);
+      router.back();
+    } catch (e) {
+      setDeleteError(errorMessage(e));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function changePicture() {
@@ -265,6 +266,23 @@ export default function EventScreen() {
         <MessagesPanel data={data} onChangeReminder={edit} />
         <HostsPanel data={data} onLeft={() => router.back()} />
       </ScrollView>
+      <ConfirmDelete
+        visible={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        title="Delete this event?"
+        message={
+          data.guests.length > 0
+            ? `The event page stops working and the guest list of ${data.guests.length} is deleted. This can't be undone.`
+            : "The event page stops working. This can't be undone."
+        }
+        // An event with guests asks the owner to type a sentence first.
+        phrase={data.guests.length > 0 ? deletePhrase("event") : null}
+        confirmLabel="Delete event"
+        cancelLabel="Keep it"
+        working={deleting}
+        error={deleteError}
+        onConfirm={deleteEvent}
+      />
     </>
   );
 }

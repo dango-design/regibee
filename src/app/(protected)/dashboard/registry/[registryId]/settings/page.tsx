@@ -16,7 +16,6 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import {
   updateRegistry,
   updateRegistryPhoto,
-  deleteRegistry,
   updatePaymentMethods,
   updateShippingAddress,
   updateZipCode,
@@ -29,6 +28,7 @@ import {
   listInvites,
 } from "@/lib/actions/registry";
 import { CategoryManager } from "@/components/category-manager";
+import { DeleteRegistryCard } from "@/components/delete-registry-card";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { ListAccessField } from "@/components/list-access-field";
 import {
@@ -299,16 +299,6 @@ export default function RegistrySettingsPage() {
       });
     }
     setSavingAddress(false);
-  };
-
-  const handleDelete = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this registry? This action cannot be undone."
-      )
-    )
-      return;
-    await deleteRegistry(registryId);
   };
 
   const handleInviteByEmail = async (e: React.FormEvent) => {
@@ -910,26 +900,7 @@ export default function RegistrySettingsPage() {
           </Card>
 
           {/* Only owners can delete a registry. */}
-          {isOwner && (
-            <Card id="delete-registry" className={cx("border-error-primary/50", SECTION_SCROLL_MARGIN)}>
-              <CardHeader>
-                <SectionTitle
-                  sectionId="delete-registry"
-                  className="font-sans leading-none font-semibold tracking-normal text-error-primary"
-                >
-                  Delete registry
-                </SectionTitle>
-                <CardDescription>
-                  Permanently delete this registry and all its items
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="destructive" onClick={handleDelete}>
-                  Delete registry
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          {isOwner && <DeleteRegistryCard registryId={registryId} />}
         </div>
       </div>
     </div>
