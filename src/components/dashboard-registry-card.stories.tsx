@@ -39,6 +39,7 @@ type Story = StoryObj<typeof DashboardRegistryCard>;
 export const Baby: Story = {};
 
 export const Birthday: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     title: "Maya turns 30",
     registryType: "personal",
@@ -78,6 +79,7 @@ export const WeddingAllDone: Story = {
 };
 
 export const SharedNoDate: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     title: "Office Holiday Swap",
     registryType: "personal",

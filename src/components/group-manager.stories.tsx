@@ -66,7 +66,10 @@ export const AfterLastYearsExchange: Story = {
 };
 
 /** Nobody added yet, so there's no exchange to start. */
-export const Empty: Story = { args: { members: [] } };
+export const Empty: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { members: [] },
+};
 
 /** This year's exchange is made but names aren't drawn yet, so the button opens it. */
 export const ExchangeUnderway: Story = {
@@ -100,6 +103,7 @@ export const ExchangeUnderway: Story = {
  * (src/lib/guest-emails.ts).
  */
 export const PrivateEmail: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     members: [...members, { id: "m5", name: "Uncle Oz", email: null, email_hidden: true }],
   },

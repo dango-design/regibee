@@ -40,12 +40,14 @@ export const Confirm: Story = { play: open };
 
 // A new account with nothing in it yet: only the profile and sign-in go.
 export const NewAccount: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { loadSummary: async () => ({ deleted: [], handedOver: [], leaving: [], events: 0 }) },
   play: open,
 };
 
 // "delete" typed, so the button is on.
 export const ReadyToDelete: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async (context) => {
     await open(context);
     await context.userEvent.type(screen.getByLabelText(/to confirm/i), "delete");

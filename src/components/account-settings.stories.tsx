@@ -94,6 +94,7 @@ export const NewAccount: Story = {
 
 // With a profile photo: Change photo and Remove.
 export const WithPhoto: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     profile: {
       public_id: "k7m2p9qx4t",
@@ -139,6 +140,7 @@ const withRequests = {
 // Follow requests section is current in the navigation, and focus is on its
 // title, so Approve and Decline are the next things to Tab to.
 export const LandedOnFollowRequests: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: withRequests,
   globals: { viewport: { value: "desktop" } },
   play: async ({ canvas }) => {

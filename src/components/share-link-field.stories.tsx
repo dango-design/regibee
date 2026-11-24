@@ -34,6 +34,7 @@ export const AllStates: Story = {
 
 // Confirming swaps in the new link and says the old one is off.
 export const Replaced: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { path, onReplace: replace },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

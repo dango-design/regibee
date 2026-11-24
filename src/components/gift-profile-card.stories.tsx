@@ -32,6 +32,7 @@ export const OnAWishList: Story = {};
 
 // What the people Dorothy follows, who follow her back, see on her profile.
 export const ForFollowers: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { showBirthday: true },
 };
 

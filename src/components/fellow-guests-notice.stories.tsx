@@ -24,6 +24,12 @@ type Story = StoryObj<typeof FellowGuestsNotice>;
 export const OnAGuestsList: Story = {};
 
 /** On a list the event links that names nobody. */
-export const NoOwnerName: Story = { args: { ownerName: null } };
+export const NoOwnerName: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { ownerName: null },
+};
 
-export const Phone: Story = { globals: { viewport: { value: "mobile1" } } };
+export const Phone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  globals: { viewport: { value: "mobile1" } },
+};

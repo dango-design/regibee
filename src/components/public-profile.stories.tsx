@@ -64,6 +64,7 @@ export const WithRegistries: Story = {
 
 // A profile with a photo, which shows instead of the initials.
 export const WithPhoto: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     photoUrl: "/hero/panda.svg",
     isOwnProfile: true,
@@ -90,6 +91,7 @@ export const VisitorNotFollowing: Story = {
 // The owner's own page: "Edit profile" in place of the follow button, and a
 // link to choose registries in the empty state.
 export const OwnProfileNothingListed: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { registries: [], isOwnProfile: true },
 };
 

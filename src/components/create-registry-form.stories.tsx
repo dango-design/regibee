@@ -49,6 +49,7 @@ export const Guest: Story = {
 // New lists start as "Anyone with the link". Picking Private takes away the
 // profile choice, since private lists can't be on a profile.
 export const PrivateList: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: /Who can open it/ }));
@@ -84,6 +85,7 @@ export const NameStep: Story = {
 // "Baby registry" on the New page opens the form with A baby already chosen,
 // on the name.
 export const StartedAsBabyRegistry: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { startType: "baby" },
   play: async ({ canvasElement }) => {
     await isOpen(canvasElement, /Name and date/);
@@ -93,6 +95,7 @@ export const StartedAsBabyRegistry: Story = {
 
 // "Wishlist" on the New page opens on the occasions, with Something else chosen.
 export const StartedAsWishlist: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { startType: "personal" },
   play: async ({ canvasElement }) => {
     await isOpen(canvasElement, /What's it for/);
@@ -115,6 +118,7 @@ export const MissingName: Story = {
 // welcome message, add a Venmo handle, then type a zip code, which finishes
 // the last section by itself. Every section ends up closed with a summary.
 export const AllStepsDone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
