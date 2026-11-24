@@ -55,3 +55,13 @@ export const getViewerRelation = cache(async (ownerId: string): Promise<ViewerRe
 export function seesBirthday(relation: Pick<ViewerRelation, "state" | "isOwner">): boolean {
   return relation.isOwner || relation.state === "approved";
 }
+
+/**
+ * Whether the viewer may see this person's sizes, likes and the rest of their
+ * gift profile: they're the person, or the two follow each other, both
+ * approved. Never just anyone with a link, and not a follower the person
+ * doesn't follow back.
+ */
+export function seesGiftDetails(relation: Pick<ViewerRelation, "state" | "isOwner" | "followsYou">): boolean {
+  return relation.isOwner || (relation.state === "approved" && relation.followsYou);
+}

@@ -6,6 +6,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Share, View } from "react-native";
 
+import { MAX_PUBLIC_NOTE_LENGTH } from "@shared/gift-profile";
 import { LIST_ACCESS, listVisibility } from "@shared/list-access";
 import type { AccountRegistry } from "@shared/people-page-types";
 import { profilePath } from "@shared/profile-link";
@@ -62,10 +63,19 @@ export default function ProfileScreen() {
 function ProfileCard({
   profile,
 }: {
-  profile: { public_id: string; full_name: string | null; discoverable: boolean; findable_by_email: boolean; email_follow_requests: boolean };
+  profile: {
+    public_id: string;
+    full_name: string | null;
+    discoverable: boolean;
+    findable_by_email: boolean;
+    email_follow_requests: boolean;
+    // Missing from a website that doesn't have the public note yet.
+    public_note?: string | null;
+  };
 }) {
   const { run, isPending } = useRunPeopleAction();
   const [name, setName] = useState(profile.full_name ?? "");
+  const [note, setNote] = useState(profile.public_note ?? "");
   const [discoverable, setDiscoverable] = useState(profile.discoverable);
   const [findable, setFindable] = useState(profile.findable_by_email);
   const [emails, setEmails] = useState(profile.email_follow_requests);
@@ -84,7 +94,7 @@ function ProfileCard({
     try {
       await run(
         "profile.saveProfile",
-        profileForm({ fullName: name, discoverable, findableByEmail: findable, emailFollowRequests: emails })
+        profileForm({ fullName: name, publicNote: note, discoverable, findableByEmail: findable, emailFollowRequests: emails })
       );
       haptic("success");
       setSaved(true);
@@ -99,7 +109,7 @@ function ProfileCard({
         Your profile
       </Text>
       <Text variant="footnote" tone="secondary">
-        One link to all the registries you choose below. Anyone with the link can see your name and those registries.
+        One link to all the registries you choose below. Anyone with the link can see your name, your public note and those registries.
       </Text>
       <Field
         label="Name"
@@ -108,6 +118,15 @@ function ProfileCard({
         hint="Shown on your profile, and to people you ask to follow"
         autoCapitalize="words"
         textContentType="name"
+      />
+      <Field
+        label="Public note"
+        value={note}
+        onChangeText={setNote}
+        hint="Optional. Anyone who opens your profile sees this, under your name."
+        placeholder="Anything you'd like everyone to know"
+        maxLength={MAX_PUBLIC_NOTE_LENGTH}
+        multiline
       />
       <View style={{ marginHorizontal: -spacing.lg }}>
         <SwitchRow
