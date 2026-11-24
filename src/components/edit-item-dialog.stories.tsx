@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { EditItemDialog } from "./edit-item-dialog";
 
 const CATEGORIES = [
@@ -58,7 +58,9 @@ export const ChangingTheLink: Story = {
     const body = within(document.body);
     await userEvent.click(await body.findByRole("button", { name: "Change link" }));
     await expect(body.getByLabelText("Product link")).toHaveFocus();
-    await expect(body.getByRole("button", { name: "Keep the current link" })).toBeVisible();
+    // The dialog may still be fading in, and a fading element doesn't count
+    // as visible yet, so this waits instead of checking once.
+    await waitFor(() => expect(body.getByRole("button", { name: "Keep the current link" })).toBeVisible());
   },
 };
 
