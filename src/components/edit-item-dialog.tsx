@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
+import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { Check, ExternalLink, Info, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Clipboard, Link01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
@@ -213,7 +213,10 @@ export function EditItemDialog({
   const isBaby = registryType === "baby";
   const copy = copyFor({ registryType, eventType });
   const uid = useId();
-  const [loading, setLoading] = useState(false);
+  // True from Save until the dialog closes or shows an error. The form's
+  // action runs in a transition, where a plain state change wouldn't show
+  // until the action ends, so "Saving..." would never appear.
+  const [loading, setLoading] = useOptimistic(false);
   const [deleting, setDeleting] = useState(false);
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
@@ -503,16 +506,13 @@ export function EditItemDialog({
     const result = await updateRegistryItem(item.id, registryId, formData);
     if (result?.error) {
       setError(result.error);
-      setLoading(false);
       return;
     }
     // Apply the self-purchase toggle via the dedicated action if it changed.
     if (parentPurchased !== item.is_parent_purchased) {
       await toggleParentPurchased(item.id, registryId, parentPurchased);
     }
-    closeAfterSaving();
-    setScrapeStatus("");
-    setLoading(false);
+    closeWithNewPage(() => setScrapeStatus(""));
   };
 
   /** Stops listening to a read still under way. */
@@ -532,6 +532,21 @@ export function EditItemDialog({
     setLinkBefore(null);
     setReplaced(NOTHING_REPLACED);
     onOpenChange(false);
+  };
+
+  /**
+   * Closes once the list behind the dialog shows the change. A save or delete
+   * returns before the page's new items arrive. Closed right away, the list
+   * would show the old photo and name, or the deleted item, until they do.
+   * The dialog stays on "Saving..." or "Removing..." for that time instead.
+   * This only works inside a transition that awaited the action: React then
+   * shows these updates together with the page's.
+   */
+  const closeWithNewPage = (alsoDo: () => void) => {
+    startTransition(() => {
+      closeAfterSaving();
+      alsoDo();
+    });
   };
 
   // Back to the item as saved, so reopening the dialog starts fresh.
@@ -575,13 +590,15 @@ export function EditItemDialog({
       : `Delete "${item.title}"? This cannot be undone.`;
     if (!confirm(question)) return;
     setDeleting(true);
-    const result = await deleteRegistryItem(item.id, registryId);
-    if (result?.error) {
-      setError(result.error);
-    } else {
-      closeAfterSaving();
-    }
-    setDeleting(false);
+    startTransition(async () => {
+      const result = await deleteRegistryItem(item.id, registryId);
+      if (result?.error) {
+        setError(result.error);
+        setDeleting(false);
+        return;
+      }
+      closeWithNewPage(() => setDeleting(false));
+    });
   };
   const removeLabel = deleting ? "Removing..." : onOtherLists ? "Remove from list" : "Remove item";
 
