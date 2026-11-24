@@ -7,6 +7,7 @@ import {
   type Props as UntitledProps,
   styles as untitledStyles,
 } from "@/components/base/buttons/button"
+import { Tooltip } from "@/components/base/tooltip/tooltip"
 import { cn } from "@/lib/utils"
 import { cx } from "@/lib/utils/cx"
 
@@ -119,12 +120,13 @@ function Button({
   }
 
   // Regular button rendering via Untitled UI Button.
-  // React Aria's Button drops the title attribute, so an icon-only button
-  // named only by title would have no accessible name. Use title as its
-  // aria-label instead.
+  // React Aria's Button drops the title attribute, so the browser never shows
+  // its tooltip, and an icon-only button named only by title would have no
+  // accessible name. So title becomes our own tooltip, shown on hover and on
+  // keyboard focus, and an icon-only button's aria-label.
   const { type = "button", onClick, title, ...rest } = props
   const ariaLabel = rest["aria-label"] ?? (isIconSize ? title : undefined)
-  return (
+  const button = (
     <UntitledButton
       color={utColor}
       size={utSize}
@@ -142,6 +144,7 @@ function Button({
       {children}
     </UntitledButton>
   )
+  return title ? <Tooltip title={title}>{button}</Tooltip> : button
 }
 
 export { Button, buttonVariants }
