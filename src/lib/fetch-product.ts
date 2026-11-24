@@ -23,8 +23,9 @@ export type ProductDetails = Awaited<ReturnType<typeof scrapeProductUrl>>;
 // The extension answers a hello straight away when it's installed.
 const HELLO_TIMEOUT_MS = 500;
 // Opening the tab, loading the page and reading it. The extension stops
-// waiting for the page after 15 seconds.
-const READ_TIMEOUT_MS = 30_000;
+// waiting for the page after 15 seconds. It reads one link at a time for
+// every Regibee tab, so this read can also wait for one another tab asked for.
+const READ_TIMEOUT_MS = 45_000;
 
 type WithoutSource<T> = T extends unknown ? Omit<T, "source"> : never;
 
@@ -70,10 +71,12 @@ function readWithExtension(url: string): Promise<ReadProduct | null> {
   return answer.then((message) => (message ? parseReadProduct(message.product) : null));
 }
 
-// The extension reads one page at a time and refuses another request while
-// it's busy. A refused read would fall back to the server, which Amazon
-// blocks, so the owner would see an error while the first read was about to
-// work. So each read through the extension waits for the one before it.
+// The extension reads one page at a time. Versions before 0.2.2 refuse
+// another request while they're busy. A refused read would fall back to the
+// server, which Amazon blocks, so the owner would see an error while the
+// first read was about to work. So each read through the extension waits for
+// the one before it. From 0.2.2 the extension also makes reads from other
+// Regibee tabs take turns, which this page can't see.
 let extensionTurn: Promise<unknown> = Promise.resolve();
 
 function inExtensionTurn<T>(task: () => Promise<T>): Promise<T> {

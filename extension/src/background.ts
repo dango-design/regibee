@@ -289,14 +289,8 @@ function waitForLoad(tabId: number, timeoutMs: number): Promise<chrome.tabs.Tab>
   });
 }
 
-let readingProduct = false;
-
 /** Opens a store product link in a background tab and reads the product. Null when it couldn't. */
-async function readProductLink(url: string, from: chrome.tabs.Tab | undefined): Promise<ReadProduct | null> {
-  if (!extensionCanReadLink(url)) throw new Error("The extension can't read that link.");
-  // One at a time: the dialog waits for each answer anyway.
-  if (readingProduct) throw new Error("The extension is already reading a page.");
-  readingProduct = true;
+async function readProductTab(url: string, from: chrome.tabs.Tab | undefined): Promise<ReadProduct | null> {
   let tabId: number | undefined;
   try {
     const tab = await chrome.tabs.create({
@@ -317,12 +311,32 @@ async function readProductLink(url: string, from: chrome.tabs.Tab | undefined): 
     const page = injection?.result as ProductPage | undefined;
     return page?.isProduct ? parseReadProduct(page) : null;
   } finally {
-    readingProduct = false;
     if (tabId !== undefined) {
       readingTabs.delete(tabId);
       await chrome.tabs.remove(tabId).catch(() => {});
     }
   }
+}
+
+// One read at a time, so a row of store tabs never opens at once. Every
+// Regibee tab shares this worker, and two of them can ask at the same
+// moment. Each read starts when the one before it ends, whichever tab asked.
+// Refusing the second one made the site fall back to its own server, which
+// Amazon blocks.
+let lastRead: Promise<unknown> = Promise.resolve();
+
+/** Reads a store product link for a Regibee page, after any read already under way. */
+function readProductLink(url: string, from: chrome.tabs.Tab | undefined): Promise<ReadProduct | null> {
+  if (!extensionCanReadLink(url)) return Promise.reject(new Error("The extension can't read that link."));
+  const read = lastRead.then(async () => {
+    // The Regibee tab that asked may have closed while this read waited.
+    // Nothing is listening for the answer then, so don't open the store.
+    if (from?.id !== undefined && !(await chrome.tabs.get(from.id).catch(() => null))) return null;
+    return readProductTab(url, from);
+  });
+  // A failed read mustn't stop the ones after it.
+  lastRead = read.catch(() => {});
+  return read;
 }
 
 async function handle(request: BackgroundRequest, sender: chrome.runtime.MessageSender): Promise<unknown> {
