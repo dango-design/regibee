@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Calendar, CookingPot, PartyPopper } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProfileRegistryCard } from "@/components/profile-registry-card";
 import { PandaMark } from "@/components/panda-mark";
@@ -6,16 +8,56 @@ import { GiftProfileCard } from "@/components/gift-profile-card";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { hasGiftDetails, type GiftProfile } from "@/lib/gift-profile";
 import { displayName as nameToShow } from "@/lib/profile-link";
+import { eventHasPassed, eventTypeLabel } from "@/lib/events";
+import type { SharedEvent } from "@/lib/shared-events";
 import {
   isPastEvent,
   sortListedRegistries,
   type ListedRegistry,
 } from "@/lib/registry-listing";
 
+/** One event the viewer and this person both go to. The whole row opens it. */
+function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today: string; basePath: string }) {
+  const Icon = event.eventType === "meal_train" ? CookingPot : PartyPopper;
+  return (
+    <Link
+      href={`${basePath}${event.href}`}
+      className="group clickable-card flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10">
+        <Icon aria-hidden="true" className="h-5 w-5 text-brand-600 motion-safe:group-hover:animate-wiggle" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block break-words font-medium text-primary group-hover:underline">{event.title}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-tertiary">
+          <span>{eventTypeLabel(event.eventType)}</span>
+          {event.eventDate && (
+            <span className="inline-flex items-center gap-1">
+              <Calendar aria-hidden="true" className="h-3.5 w-3.5" />
+              {/* With the year, like the registries above: past events can be years old. */}
+              {`${new Date(event.eventDate + "T00:00:00").toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}${event.time ? ` · ${event.time}` : ""}`}
+            </span>
+          )}
+        </span>
+      </span>
+      {eventHasPassed({ event_date: event.eventDate }, today) && (
+        <Badge variant="secondary" className="shrink-0">
+          Past
+        </Badge>
+      )}
+    </Link>
+  );
+}
+
 export function PublicProfile({
   fullName,
   photoUrl,
   registries,
+  sharedEvents = [],
   today,
   isOwnProfile = false,
   followAction,
@@ -27,6 +69,12 @@ export function PublicProfile({
   /** The profile photo. Without one, the circle shows the name's initials. */
   photoUrl?: string | null;
   registries: ListedRegistry[];
+  /**
+   * Events the viewer and this person both went to or are going to, in the
+   * order to show them (src/lib/shared-events.ts). Empty for a signed-out
+   * viewer and on someone's own profile.
+   */
+  sharedEvents?: SharedEvent[];
   today: string;
   isOwnProfile?: boolean;
   followAction?: React.ReactNode;
@@ -110,6 +158,20 @@ export function PublicProfile({
                 isPast={isPastEvent(registry, today)}
                 basePath={basePath}
               />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sharedEvents.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold">Events together</h2>
+          <p className="mt-1 text-sm text-tertiary">
+            Events you and {displayName} both went to or are going to. Only you see this.
+          </p>
+          <div className="mt-3 flex flex-col gap-3">
+            {sharedEvents.map((event) => (
+              <SharedEventCard key={event.id} event={event} today={today} basePath={basePath} />
             ))}
           </div>
         </div>

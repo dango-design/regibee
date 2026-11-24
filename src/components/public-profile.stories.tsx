@@ -62,6 +62,49 @@ export const WithRegistries: Story = {
   },
 };
 
+// A signed-in visitor who goes to some of the same events: they show under
+// the registries, upcoming first, then past.
+export const WithSharedEvents: Story = {
+  args: {
+    sharedEvents: [
+      {
+        id: "1",
+        title: "Friendsgiving potluck",
+        eventType: "potluck",
+        eventDate: "2026-11-21",
+        time: "5 – 9 PM PST",
+        href: "/e/friendsgiving?g=token",
+      },
+      {
+        id: "2",
+        title: "Remi & Max's baby shower",
+        eventType: "baby_shower",
+        eventDate: null,
+        time: null,
+        href: "/dashboard/events/2",
+      },
+      {
+        id: "3",
+        title: "Jo's 30th birthday",
+        eventType: "birthday",
+        eventDate: "2026-08-15",
+        time: "7 PM PDT",
+        href: "/e/jo-30?g=token",
+      },
+    ],
+    followAction: (
+      <FollowButton
+        publicId="k7m2p9qx4t"
+        name="Remi & Max"
+        state="approved"
+        followsYou
+        returnTo="/u/remi-max-k7m2p9qx4t"
+        cancelAction={mockFollow}
+      />
+    ),
+  },
+};
+
 // A profile with a photo, which shows instead of the initials.
 export const WithPhoto: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
