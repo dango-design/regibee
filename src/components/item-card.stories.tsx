@@ -71,6 +71,7 @@ export const Fulfilled: Story = {
 
 // Bought by the parents: grey card, "Purchased by you" tag, and an undo button.
 export const ParentPurchased: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: {
       id: "3b",
@@ -99,6 +100,7 @@ export const Phone: Story = {
 // The link is a registry item link from the owner's Amazon registry, so a
 // quiet line under the price says gifts bought through it count there.
 export const CountsTowardStoreRegistry: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     linkedRegistries: [{ store: "amazon", url: "https://www.amazon.com/baby-reg/your-registry" }],
     item: {

@@ -46,6 +46,7 @@ export const RegistryLink: Story = {};
 
 // No link yet, so there's nothing to open.
 export const NoLink: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: { ...meta.args!.item!, external_url: null },
   },

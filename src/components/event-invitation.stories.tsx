@@ -79,6 +79,7 @@ export const NoPictureAlreadyReplied: Story = {
 
 /** A guest from their invitation link picks Going, so the party size shows. */
 export const ChoosingGoing: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { event: { ...sampleEvent, image_url: null }, registry: null, calendar: null },
   render: (args) => (
     <EventInvitation
@@ -108,6 +109,7 @@ export const ChoosingGoing: Story = {
 
 /** The host turned off open RSVPs, and this visitor has no personal link. */
 export const InviteOnly: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { event: { ...sampleEvent, image_url: null }, registry: null },
   render: (args) => (
     <EventInvitation
@@ -149,6 +151,7 @@ const hostUpdates: InvitationUpdate[] = [
  * message and the new time show on the invitation, newest first.
  */
 export const WithHostUpdates: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { event: { ...sampleEvent, image_url: null }, updates: hostUpdates },
   render: (args) => (
     <EventInvitation
@@ -336,6 +339,7 @@ const mealTrainRows = signupRowsForGuest(sampleMealTrainSheet, "g4", SAMPLE_TODA
  * stays hidden until they pick a day.
  */
 export const MealTrainBeforeSigningUp: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     event: withAddressFor(sampleMealTrainEvent, false),
     registry: null,
@@ -468,6 +472,7 @@ export const EveryoneGivesEveryone: Story = {
  * the RSVP card and everyone's wishlists, which have no fill without one.
  */
 export const EveryoneGivesEveryoneWithHostColor: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   ...EveryoneGivesEveryone,
   args: {
     ...EveryoneGivesEveryone.args,
@@ -477,6 +482,7 @@ export const EveryoneGivesEveryoneWithHostColor: Story = {
 };
 
 export const EveryoneGivesEveryonePhone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   ...EveryoneGivesEveryone,
   play: undefined,
   globals: { viewport: { value: "mobile1" } },
@@ -487,6 +493,7 @@ export const EveryoneGivesEveryonePhone: Story = {
  * exchange works and the host's list, but not the guests' lists.
  */
 export const EveryoneGivesEveryoneVisitor: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     ...EveryoneGivesEveryone.args,
     wishLists: null,

@@ -104,6 +104,8 @@ one example and give the count. Show new stories with their head image only.
 
 ## 5. Accessibility
 
+Chromatic's accessibility tests are turned off for this project (see "Visual tests" in CLAUDE.md), so builds carry no accessibility data. Say so in the page, and skip the rest of this step. If they are turned back on:
+
 Call `chromatic_list_accessibility_changes` on both builds. A rule with
 `regressionCount` above 0 on the base build but not on the head build was fixed
 by the PR. One with `regressionCount` above 0 on the head build is new, and goes

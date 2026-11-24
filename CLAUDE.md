@@ -134,7 +134,16 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 ## Visual tests (Chromatic)
 
-- `.github/workflows/chromatic.yml` runs Chromatic on every push. It snapshots only the stories the commit affects.
+- `.github/workflows/chromatic.yml` runs Chromatic on every push. It snapshots only the stories the commit affects: Chromatic follows imports from each changed file up to the stories that use it (`onlyChanged` in `chromatic.config.json`).
+- Chromatic's accessibility tests are turned off on the project's Manage page, since 2026-11-24. They cost a second snapshot for every story. `@storybook/addon-a11y` is still installed, so the Accessibility panel works in local Storybook.
+- Chromatic snapshots 244 of the 379 stories. The rest have `parameters: { chromatic: { disableSnapshot: true } }`: they still show in Storybook, but Chromatic takes no picture of them and doesn't run their `play` function. They are states close to one that is snapshotted, such as a second phone view or another occasion's wording.
+- When you add stories, leave snapshots on for the ones that show a different layout or a state people often reach: the default, empty, an error, an open dialog, one phone view. Turn them off for the others. Every story file keeps at least one snapshot.
+- `untraced` in `chromatic.config.json` lists files Chromatic leaves out of that check. A change to one of them re-captures nothing, and Chromatic doesn't follow imports through it. The list holds:
+  - Code that only runs on the server: `src/lib/actions/**`, `src/lib/*-server.ts`, `src/lib/*-email.ts` and the server helpers named there. Components import server actions, and the actions import most of `src/lib`, so before this a change to one server file re-captured about half of all stories. A story can't run server code, so nothing is lost. Name a new server-only file `<name>-server.ts` so the list covers it.
+  - `mobile/**`. A change to the phone app's `package.json` used to re-capture every story.
+  - `public/**`. Chromatic can't tell which stories use an image, so a changed image used to re-capture every story. Now it re-captures none. After changing an image a story shows, look at that story yourself.
+- `npx chromatic trace <changed files>` lists the story files a change would re-capture. It needs `npm run build-storybook -- --stats-json` first, and a `--untraced <glob>` for each entry in the list.
+- A change to `src/app/globals.css`, `src/app/fonts.ts`, `.storybook/` or the root `package.json` still re-captures every snapshotted story.
 - Builds on `main` accept their own changes (`autoAcceptChanges: main`). That keeps `main`'s baselines current, even when a PR merges before anyone accepted it.
 - Still accept a PR's changes on its branch build before merging. Accepting records that someone reviewed them, and turns the PR's "UI Tests" check green. The Accept and merge button that follows the review page does both steps.
 - On a branch build, accept only the changes that branch made.

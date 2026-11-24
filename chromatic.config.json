@@ -1,3 +1,19 @@
 {
-  "projectId": "Project:699985adca9a5d19b5523928"
+  "$schema": "https://www.chromatic.com/config-file.schema.json",
+  "projectId": "Project:699985adca9a5d19b5523928",
+  "onlyChanged": true,
+  "untraced": [
+    "src/lib/actions/**",
+    "src/lib/*-server.ts",
+    "src/lib/*-email.ts",
+    "src/lib/email.ts",
+    "src/lib/email-budget.ts",
+    "src/lib/mailer.ts",
+    "src/lib/supabase-admin.ts",
+    "src/lib/require-account.ts",
+    "src/lib/app-request.ts",
+    "src/utils/supabase/server.ts",
+    "mobile/**",
+    "public/**"
+  ]
 }

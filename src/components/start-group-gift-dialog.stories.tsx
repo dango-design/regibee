@@ -40,10 +40,12 @@ export const FromAnEventOnAPhone: Story = {
 
 /** An item with a photo shows it under the title. */
 export const WithPhoto: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: { id: "2", title: "Glass Baby Bottles, 4 Pack", price: 34.99, image_url: "/hero/bottle.svg" } },
 };
 
 /** Starting one needs an account. People who chip in don't. */
 export const SignedOut: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { signedIn: false },
 };

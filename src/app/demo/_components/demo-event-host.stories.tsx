@@ -16,12 +16,15 @@ type Story = StoryObj<typeof DemoEventHost>;
 export const BabyShower: Story = { args: { eventId: "baby-shower" } };
 
 // Max's dinner, where four guests haven't been sent the invitation yet.
-export const NotSentYet: Story = { args: { eventId: "max-30th" } };
+export const NotSentYet: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { eventId: "max-30th" },
+};
 
 // Christmas dinner, where everyone gives everyone: who added a wishlist, and
 // the "Bring a dish" sheet.
 export const FamilyChristmas: Story = {
-  parameters: demoPageParameters("/demo/dashboard/events/christmas"),
+  parameters: { ...demoPageParameters("/demo/dashboard/events/christmas"), chromatic: { disableSnapshot: true } },
   args: { eventId: "christmas" },
 };
 

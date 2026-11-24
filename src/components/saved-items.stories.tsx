@@ -98,6 +98,7 @@ export const Default: Story = {};
 
 /** Everything, gifted items and things Sam already has included. */
 export const All: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole("radio", { name: /^All/ }));
   },
@@ -127,6 +128,7 @@ export const Selected: Story = {
  * and Save an item starts on the first list.
  */
 export const NoWishlistYet: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   name: "No wishlist yet",
   args: {
     lists: [kidsList, babyRegistry],
@@ -146,6 +148,7 @@ export const Empty: Story = {
  * wanted (the server masks them) and a note says why.
  */
 export const HidesReservations: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   name: "Hides what's been reserved",
   args: {
     lists: [{ ...myWishlist, hidesReservations: true }, kidsList, birthday, babyRegistry],
@@ -160,6 +163,7 @@ export const Phone: Story = {
 
 /** The bulk bar on a phone. */
 export const PhoneSelected: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   name: "Phone, selected",
   globals: { viewport: { value: "mobile1" } },
   play: Selected.play,
@@ -167,5 +171,6 @@ export const PhoneSelected: Story = {
 
 /** The placeholder while the tab loads. */
 export const Loading: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   render: () => <SavedSkeleton />,
 };
