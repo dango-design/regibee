@@ -11,8 +11,11 @@
  *
  * The keys of AUTH_EMAILS are Supabase's names for the templates.
  *
- * Keep this file free of imports: Node runs it directly to write the files.
+ * Node runs this file directly to write the files. So it may only import
+ * files that have no imports of their own, by their full name ("./x.ts").
  */
+
+import { EMAIL_FONT_FAMILY } from "./email-font.ts";
 
 /** Supabase replaces this with the email's link when it sends it. */
 export const SUPABASE_LINK = "{{ .ConfirmationURL }}";
@@ -24,7 +27,7 @@ const LINK_LIFETIME = "1 hour";
 const finePrint = "margin:16px 0 0;color:#535862;font-size:13px;";
 
 function layout(heading: string, body: string): string {
-  return `<div style="max-width:480px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#181d27;">
+  return `<div style="max-width:480px;margin:0 auto;font-family:${EMAIL_FONT_FAMILY};font-size:15px;line-height:1.6;color:#181d27;">
   <p style="margin:0;padding:32px 0 24px;text-align:center;font-size:20px;font-weight:600;color:#004659;">Regibee</p>
   <h1 style="margin:0 0 16px;text-align:center;font-size:18px;">${heading}</h1>
 ${body}

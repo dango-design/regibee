@@ -3,8 +3,11 @@
  * like src/lib/email-templates.ts: group-gift-email.ts sends them and
  * Storybook previews them. Every value is escaped, because pledgers type
  * their names on a page anyone with the link can open, and the organizer
- * writes the payback note.
+ * writes the payback note. Every template returns its HTML through
+ * withEmailFont, which sets the font.
  */
+
+import { withEmailFont } from "./email-font.ts";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) =>
@@ -39,7 +42,7 @@ export function groupGiftStartedHtml(opts: {
   paybackNote?: string | null;
   shareUrl: string;
 }): string {
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.organizerName)},</p>
     <p>Your group gift for ${escapeHtml(opts.recipientName)} is set up: <strong>${escapeHtml(opts.itemTitle)}</strong>${
       opts.goal ? `, collecting ${escapeHtml(opts.goal)}` : ""
@@ -50,7 +53,7 @@ export function groupGiftStartedHtml(opts: {
     ${button(opts.shareUrl, "Open the group gift")}
     <p>When you've bought it, mark it bought on that page, and ${escapeHtml(opts.recipientName)} hears about it the usual way. ${escapeHtml(opts.recipientName)} only sees it's from you and others, never who chipped in.</p>
     <p style="${FOOTNOTE_STYLE}">Anyone with the link can see the group gift and chip in, so only share it with people you trust. You're receiving this because you started a group gift on Regibee.</p>
-  `;
+  `);
 }
 
 /** Sent to someone who chipped in, with their own link to change it. */
@@ -64,13 +67,13 @@ export function groupGiftPledgedHtml(opts: {
   paybackNote?: string | null;
   pledgeUrl: string;
 }): string {
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.pledgerName)},</p>
     <p>You're chipping in <strong>${escapeHtml(opts.amount)}</strong> toward <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}. ${escapeHtml(opts.organizerName)} is buying it, so send the money to them.</p>
     ${paybackBox(opts.organizerName, opts.paybackNote)}
     ${button(opts.pledgeUrl, "See the group gift")}
     <p style="${FOOTNOTE_STYLE}">Use that link to change your amount or take it back. It's yours, so don't forward this email. You're receiving this because you chipped in on a Regibee group gift.</p>
-  `;
+  `);
 }
 
 /** Tells the organizer that someone chipped in. */
@@ -84,13 +87,13 @@ export function groupGiftNewPledgeHtml(opts: {
   progress: string;
   shareUrl: string;
 }): string {
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.organizerName)},</p>
     <p><strong>${escapeHtml(opts.pledgerName)}</strong> is chipping in <strong>${escapeHtml(opts.amount)}</strong> toward <strong>${escapeHtml(opts.itemTitle)}</strong>. That's ${escapeHtml(opts.progress)}.</p>
     <p>Mark it paid on the group gift page once they've sent it.</p>
     ${button(opts.shareUrl, "Open the group gift")}
     <p style="${FOOTNOTE_STYLE}">You're receiving this because you started a group gift on Regibee.</p>
-  `;
+  `);
 }
 
 /** Tells someone who chipped in that the organizer called the gift off. */
@@ -102,7 +105,7 @@ export function groupGiftCalledOffHtml(opts: {
   /** The organizer had marked their pledge paid. */
   paid: boolean;
 }): string {
-  return `
+  return withEmailFont(`
     <p>Hi ${escapeHtml(opts.pledgerName)},</p>
     <p>${escapeHtml(opts.organizerName)} called off the group gift of <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}, so you don't need to chip in.</p>
     <p>${
@@ -111,5 +114,5 @@ export function groupGiftCalledOffHtml(opts: {
         : `If you already sent ${escapeHtml(opts.organizerName)} money for it, ask them to send it back.`
     }</p>
     <p style="${FOOTNOTE_STYLE}">You're receiving this because you chipped in on a Regibee group gift.</p>
-  `;
+  `);
 }

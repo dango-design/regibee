@@ -42,9 +42,6 @@ test("event hosting flow", async ({ page, browser }) => {
       "A guest changing their answer, and the host's reminder to guests who haven't replied.",
       "The phone app.",
     ],
-    noticed: [
-      "The event emails set no font, so each mail app shows them in its own. The account emails (confirm your email, reset your password) do set one. The emails here are drawn in Arial, as Gmail shows them.",
-    ],
   });
   const HOST = "Maya (host)";
 

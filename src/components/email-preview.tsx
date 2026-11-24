@@ -18,9 +18,11 @@ export function EmailPreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(300);
 
+  // No font here: the preview shows the font the email sets itself. An email
+  // that sets none shows in Times, as it would in some mail apps.
   const fullHtml = `<!DOCTYPE html>
 <html><head><style>
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 24px; color: #333; line-height: 1.6; font-size: 14px; }
+body { margin: 24px; color: #333; line-height: 1.6; font-size: 14px; }
 a { color: #004659; }
 </style></head><body>${html}</body></html>`;
 

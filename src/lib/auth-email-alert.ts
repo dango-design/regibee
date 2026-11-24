@@ -6,7 +6,10 @@
 //
 // A pg_cron job calls /api/cron/auth-emails every 5 minutes, which counts the
 // emails sent in the last hour and emails ALERT_EMAIL. This file decides when
-// and what to send. It has no imports, so its tests run without the server.
+// and what to send. It imports only the emails' font, so its tests run
+// without the server.
+
+import { withEmailFont } from "./email-font.ts";
 
 /** Supabase's limit for a new project with its own SMTP server. */
 export const DEFAULT_AUTH_EMAIL_HOURLY_LIMIT = 30;
@@ -60,14 +63,14 @@ export function authEmailAlert(opts: {
       ? `<p>Supabase has sent all ${limit} of the account emails it allows in an hour. Until some of them are an hour old, new sign-ups and password resets fail, on the website and in the phone app.</p>`
       : `<p>Supabase has sent ${emails} of the ${limit} account emails it allows in an hour. Once it reaches ${limit}, new sign-ups and password resets fail until some of them are an hour old.</p>`;
 
-  const html = [
+  const html = withEmailFont([
     opening,
     `<p>Account emails are the ones that confirm a new account's email address and reset a password.</p>`,
     `<p>To allow more, raise "Rate limit for sending emails" under ${rateLimits} in Supabase. ` +
       `Check first that Resend's plan can send that many. ` +
       `Then set AUTH_EMAIL_HOURLY_LIMIT in Vercel to the new number and redeploy, so these warnings use it.</p>`,
     `<p>This email comes at most once an hour.</p>`,
-  ].join("\n");
+  ].join("\n"));
 
   const subject =
     kind === "auth-emails-limit"
