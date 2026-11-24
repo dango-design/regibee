@@ -54,7 +54,7 @@ export const PrivateList: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: /Who can open it/ }));
     await expect(canvas.getByRole("button", { name: /Anyone with the link/ })).toHaveAttribute("aria-pressed", "true");
-    await expect(canvas.getByRole("checkbox", { name: /Show to people who follow me/ })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /Who sees it on your profile/ })).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: /^Private/ }));
     await expect(canvas.getByText("Private lists don't show on your profile.")).toBeVisible();
     await settle();

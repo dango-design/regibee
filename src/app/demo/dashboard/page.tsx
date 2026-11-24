@@ -94,7 +94,7 @@ export default function DemoDashboardPage() {
                   {requestCount === 1 ? "1 person wants to follow you" : `${requestCount} people want to follow you`}
                 </p>
                 <p className="text-sm text-tertiary">
-                  People you approve can see the private registries on your profile.
+                  People you approve can see the registries you show to followers on your profile.
                 </p>
               </div>
             </div>

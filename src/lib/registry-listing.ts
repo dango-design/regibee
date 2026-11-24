@@ -10,6 +10,19 @@ export type ListedRegistry = Pick<
   "slug" | "title" | "event_date" | "registry_type" | "event_type" | "is_public"
 >;
 
+/**
+ * What profileAudience (src/lib/list-access.ts) needs, besides is_public, to
+ * work out who sees a list on its owner's profile. Read them on the server to
+ * choose which lists to show, and leave them out of what a page sends on.
+ */
+export const PROFILE_AUDIENCE_COLUMNS = "is_private, listed_on_profile, profile_audience";
+
+export interface ProfileAudienceRow {
+  is_private: boolean | null;
+  listed_on_profile: boolean;
+  profile_audience: string | null;
+}
+
 export function isPastEvent(
   registry: Pick<Registry, "event_date">,
   today: string,

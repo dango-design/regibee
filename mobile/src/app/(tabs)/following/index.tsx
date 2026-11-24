@@ -156,7 +156,7 @@ export default function FollowingScreen() {
                     {index > 0 ? <Divider inset={52} /> : null}
                     <NavRow
                       icon="person"
-                      label={`${displayName(person)}${person.mutual ? " · Mutual" : ""}`}
+                      label={`${displayName(person)}${person.mutual ? " · Friends" : ""}`}
                       detail={person.status === "pending" ? "Waiting for approval" : undefined}
                       external
                       onPress={() => open(profilePath(person))}

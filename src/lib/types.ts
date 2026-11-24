@@ -32,6 +32,8 @@ export interface Registry {
   /** Only the owner and co-managers can open it (src/lib/list-access.ts). */
   is_private: boolean;
   listed_on_profile: boolean;
+  /** Who sees it on the owner's profile. Read it with profileAudience (src/lib/list-access.ts). */
+  profile_audience?: string | null;
   description: string | null;
   photo_url: string | null;
   settings: RegistrySettings;

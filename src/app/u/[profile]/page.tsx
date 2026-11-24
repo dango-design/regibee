@@ -10,9 +10,12 @@ import { getViewer, getViewerRelation, seesBirthday, seesGiftDetails } from "@/l
 import { cleanPublicNote, parseGiftProfile, visibleGiftProfile } from "@/lib/gift-profile";
 import { sharedRegistrySlugsFrom } from "@/lib/groups-server";
 import { listSharedEvents } from "@/lib/shared-events-server";
+import { profileAudience, profileViewer, seesOnProfile } from "@/lib/list-access";
 import {
   LISTED_REGISTRY_COLUMNS,
+  PROFILE_AUDIENCE_COLUMNS,
   type ListedRegistry,
+  type ProfileAudienceRow,
 } from "@/lib/registry-listing";
 import { displayName, profilePath, publicIdFromPath } from "@/lib/profile-link";
 import { profilePhotoUrl } from "@/lib/profile-photos";
@@ -99,19 +102,23 @@ export default async function ProfilePage({
     notFound();
   }
 
-  // Private registries are only for the owner, approved followers, and
-  // people in a group the owner shared that registry with (by a confirmed
-  // email). Someone who blocked the owner doesn't get the group's lists.
-  const seesAllPrivate = isOwnProfile || followState === "approved";
-  const viewer = seesAllPrivate || followState === "blocked" ? null : await getViewer();
-  // Events this person and a signed-in viewer both go to. Not for someone
-  // who blocked this person.
-  const eventsViewer = isOwnProfile || followState === "blocked" ? null : await getViewer();
+  // The owner chooses who sees each list here: friends, followers or everyone
+  // (profileAudience). A list also shows to people in a group the owner
+  // shared it with (by a confirmed email), whatever that choice is. Someone
+  // who blocked the owner doesn't get the group's lists.
+  const viewerKind = profileViewer({
+    isOwner: isOwnProfile,
+    follows: followState === "approved",
+    followedBack: relation.followsYou,
+  });
+  // The signed-in viewer, for the group's lists and the events they share
+  // with this person. Neither is for the owner or for someone who blocked them.
+  const viewer = isOwnProfile || followState === "blocked" ? null : await getViewer();
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: listed }, sharedSlugs, giftRow, noteRow, sharedEvents] = await Promise.all([
     supabaseAdmin
       .from("registries")
-      .select(LISTED_REGISTRY_COLUMNS)
+      .select(`${LISTED_REGISTRY_COLUMNS}, ${PROFILE_AUDIENCE_COLUMNS}`)
       .eq("owner_id", profile.id)
       .eq("listed_on_profile", true),
     viewer
@@ -123,9 +130,9 @@ export default async function ProfilePage({
     // Separate too. It errors until 20261124084611_profile_public_note.sql
     // has run, which counts as no note.
     supabaseAdmin.from("profiles").select("public_note").eq("id", profile.id).maybeSingle(),
-    eventsViewer
+    viewer
       ? listSharedEvents(
-          { id: eventsViewer.id, email: eventsViewer.email_confirmed_at ? (eventsViewer.email ?? null) : null },
+          { id: viewer.id, email: viewer.email_confirmed_at ? (viewer.email ?? null) : null },
           { id: profile.id, email: profile.confirmedEmail },
           today,
         )
@@ -141,9 +148,10 @@ export default async function ProfilePage({
   });
   // The public note is for everyone who opens the profile.
   const publicNote = cleanPublicNote(noteRow.error ? null : noteRow.data?.public_note);
-  const registries = ((listed || []) as ListedRegistry[]).filter(
-    (registry) => seesAllPrivate || registry.is_public || sharedSlugs.has(registry.slug),
-  );
+  // The audience columns are only for choosing; they aren't sent on.
+  const registries: ListedRegistry[] = ((listed || []) as unknown as (ListedRegistry & ProfileAudienceRow)[])
+    .filter((registry) => seesOnProfile(profileAudience(registry), viewerKind) || sharedSlugs.has(registry.slug))
+    .map(({ is_private: _private, listed_on_profile: _listed, profile_audience: _audience, ...registry }) => registry);
 
   return (
     <div className="min-h-screen flex flex-col">
