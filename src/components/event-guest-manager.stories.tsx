@@ -261,3 +261,34 @@ export const FixingAGuestRow: Story = {
     await expect(args.actions?.addGuests).not.toHaveBeenCalled();
   },
 };
+
+/**
+ * A guest with a Regibee account the host may be shown gets a Follow button
+ * on their row: Follow, Follow back for someone who follows the host,
+ * Requested while they haven't approved, then Following or Mutual. Guests
+ * with no account, like the last ones here, get none.
+ */
+export const FollowingGuests: Story = {
+  args: {
+    followActions: { requestAction: fn(async () => ({ success: true })), cancelAction: fn(async () => ({ success: true })) },
+    guests: sampleGuests.map((guest, index) => ({
+      ...guest,
+      follow: (
+        [
+          { publicId: "abcdefghjk", state: "none", followsYou: false },
+          { publicId: "bcdefghjkm", state: "none", followsYou: true },
+          { publicId: "cdefghjkmn", state: "pending", followsYou: false },
+          { publicId: "defghjkmnp", state: "approved", followsYou: false },
+          { publicId: "efghjkmnpq", state: "approved", followsYou: true },
+        ] as const
+      )[index],
+    })),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const follow = canvas.getAllByRole("button", { name: /^Follow / })[0];
+    await userEvent.click(follow);
+    await expect(args.followActions?.requestAction).toHaveBeenCalledWith("abcdefghjk");
+    await expect(canvas.getAllByRole("button", { name: /^Requested / })).toHaveLength(2);
+  },
+};

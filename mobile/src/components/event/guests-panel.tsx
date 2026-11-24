@@ -643,6 +643,60 @@ function GuestRow({
   );
 }
 
+/**
+ * Follow, for a guest with a Regibee account this host may be shown: the
+ * website's GuestFollowButton (src/components/follow-button.tsx). It's in the
+ * guest's details, since the whole row is already one button.
+ */
+function GuestFollow({ guest, follow }: { guest: EventGuest; follow: NonNullable<EventGuest["follow"]> }) {
+  const { run } = useRunEventAction();
+  const [state, setState] = useState(follow.state);
+  const [busy, setBusy] = useState(false);
+
+  async function go(action: string, next: typeof state) {
+    setBusy(true);
+    try {
+      await run(action, follow.publicId);
+      haptic("success");
+      setState(next);
+    } catch (e) {
+      Alert.alert("That didn't work", errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state === "approved") {
+    return (
+      <Text variant="footnote" tone="secondary">
+        {follow.followsYou ? "You follow each other." : `You follow ${guest.name}.`}
+      </Text>
+    );
+  }
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" }}>
+      <Button
+        size="small"
+        variant="secondary"
+        loading={busy}
+        title={state === "pending" ? "Requested" : follow.followsYou ? "Follow back" : "Follow"}
+        accessibilityLabel={`${state === "pending" ? "Requested" : follow.followsYou ? "Follow back" : "Follow"} ${guest.name}`}
+        onPress={() => {
+          if (state === "none") go("follows.requestFollow", "pending");
+          else
+            Alert.alert(`Withdraw your request to follow ${guest.name}?`, undefined, [
+              { text: "Keep it", style: "cancel" },
+              { text: "Withdraw", style: "destructive", onPress: () => go("follows.cancelFollow", "none") },
+            ]);
+        }}
+      />
+      <Text variant="footnote" tone="tertiary" style={{ flexShrink: 1 }}>
+        {state === "pending" ? `Waiting for ${guest.name} to approve.` : `${guest.name} approves every follower.`}
+      </Text>
+    </View>
+  );
+}
+
 /** A guest's details, opened from their row: the website's guest dialog. */
 function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: EventGuest; onClose: () => void }) {
   const theme = useTheme();
@@ -702,6 +756,7 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
             ? `Invited ${formatShortDate(guest.invited_at)}, no reply yet`
             : "Not invited yet"}
       </Text>
+      {guest.follow ? <GuestFollow guest={guest} follow={guest.follow} /> : null}
       <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" />
       {guest.from_account ? (
         <View style={{ gap: 2 }}>

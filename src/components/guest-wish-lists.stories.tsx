@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { GuestWishLists } from "./guest-wish-lists";
 import { sampleExchangeEvent, sampleGuestWishLists } from "@/lib/event-sample-data";
 
@@ -172,4 +172,33 @@ export const Phone: Story = {
 /** The host picked a color for the invitation, so it fills the section. */
 export const WithHostColor: Story = {
   args: { themeColor: "#a0e4d4" },
+};
+
+/**
+ * Signed in, a guest gets a Follow button beside each other guest who has a
+ * Regibee account they may be shown. Boq has none, so his row has no button.
+ */
+export const FollowingOtherGuests: Story = {
+  args: {
+    followActions: { requestAction: fn(async () => ({ success: true })), cancelAction: fn(async () => ({ success: true })) },
+    lists: sampleGuestWishLists.map((entry) =>
+      entry.guestId === "g2"
+        ? { ...entry, follow: { publicId: "abcdefghjk", state: "none" as const, followsYou: false } }
+        : entry.guestId === "g4"
+          ? { ...entry, follow: { publicId: "bcdefghjkm", state: "approved" as const, followsYou: true } }
+          : entry,
+    ),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Follow Elphaba Thropp" }));
+    await expect(args.followActions?.requestAction).toHaveBeenCalledWith("abcdefghjk");
+    await expect(canvas.getByRole("button", { name: "Requested Elphaba Thropp" })).toBeVisible();
+  },
+};
+
+/** On a phone, Follow sits beside the list's button, under the name. */
+export const FollowingOtherGuestsOnAPhone: Story = {
+  args: FollowingOtherGuests.args,
+  globals: { viewport: { value: "mobile1" } },
 };

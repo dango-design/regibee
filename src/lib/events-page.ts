@@ -36,6 +36,7 @@ import { getGroupForOwner, getGroupMembers, listGroupEvents, listGroupRegistries
 import { listFollowedAccounts, mutualFollowIds } from "@/lib/follows";
 import { displayName } from "@/lib/profile-link";
 import { showEmailTo } from "@/lib/guest-emails";
+import { guestFollowsFor } from "@/lib/guest-follows";
 import { MESSAGE_AUDIENCES, messageRecipients, type MessageAudience } from "@/lib/event-updates";
 import { storedQuestions } from "@/lib/rsvp-questions";
 import { claimsByGuest, describeClaim, hidesAddressUntilSignup, signupRowsForHost } from "@/lib/signups";
@@ -153,10 +154,15 @@ export async function loadEventPage(eventId: string): Promise<EventPageData | nu
     ]);
   // A guest invited from a follow shows their email only to a host they
   // follow both ways (src/lib/guest-emails.ts).
-  const mutualIds = await mutualFollowIds(
-    viewer.id,
-    allGuests.map((g) => g.profile_id),
-  );
+  const [mutualIds, follows] = await Promise.all([
+    mutualFollowIds(
+      viewer.id,
+      allGuests.map((g) => g.profile_id),
+    ),
+    // The Follow button beside each guest who has an account this host may
+    // be shown (src/lib/guest-follow-rules.ts).
+    guestFollowsFor(viewer.id, allGuests, "host"),
+  ]);
   const guestAccounts = new Set(allGuests.map((g) => g.profile_id).filter(Boolean));
   // Worked out before the guests are trimmed for the host, since it needs the pairs.
   const status = exchange ? exchangeStatus(allGuests, exchange) : null;
@@ -176,7 +182,10 @@ export async function loadEventPage(eventId: string): Promise<EventPageData | nu
     replyToEmail: viewer.email ?? null,
     // The host never sees who drew whom, or the wishlists and addresses guests
     // were told only their Secret Santa sees.
-    guests: allGuests.map((g) => showEmailTo(guestForHost(g), viewer.id, mutualIds)),
+    guests: allGuests.map((g) => ({
+      ...showEmailTo(guestForHost(g), viewer.id, mutualIds),
+      follow: follows.get(g.id) ?? null,
+    })),
     registries: registries.map((r) => ({ id: r.id, slug: r.slug, title: r.title, honoree: r.honoree })),
     exchange,
     exchangeStatus: status,

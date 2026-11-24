@@ -36,6 +36,7 @@ on:
       - src/lib/gifts.ts
       - src/lib/groups.ts
       - src/lib/guest-emails.ts
+      - src/lib/guest-follow-rules.ts
       - src/lib/guest-input.ts
       - src/lib/item-categories.ts
       - src/lib/item-details.ts

@@ -1,6 +1,7 @@
 import { ExternalLink, Gift, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { InvitationRegistry } from "@/components/event-invitation";
+import { GuestFollowButton, type FollowActions } from "@/components/follow-button";
 import { initialsFor } from "@/lib/initials";
 import { storeName, type GuestWishList } from "@/lib/events";
 import { cx } from "@/lib/utils/cx";
@@ -34,6 +35,8 @@ export interface GuestWishListsProps {
   basePath?: string;
   /** The host's color for the invitation, which fills the section. None leaves it without a fill. */
   themeColor?: string | null;
+  /** Stand-ins for the follow server actions, for stories and the demo. */
+  followActions?: FollowActions;
 }
 
 /** One list in the section, a guest's or one the host linked. */
@@ -46,6 +49,7 @@ function ListRow({
   href,
   external = false,
   button,
+  follow,
 }: {
   leading: React.ReactNode;
   name: string;
@@ -60,6 +64,8 @@ function ListRow({
   /** A list on another store's site, which opens in a new tab. */
   external?: boolean;
   button: React.ReactNode;
+  /** The Follow button, for a guest with an account the viewer may follow. */
+  follow?: React.ReactNode;
 }) {
   const linkProps = external ? { target: "_blank", rel: "noopener noreferrer nofollow" } : {};
   return (
@@ -88,15 +94,21 @@ function ListRow({
           )}
         </div>
       </div>
-      {href && (
-        <Button variant="outline" size="sm" className="card-action shrink-0 max-sm:min-h-11" asChild>
-          <a href={href} {...linkProps}>
-            <span className="inline-flex items-center gap-1.5">
-              {button}
-              {external && <ExternalLink aria-hidden="true" className="size-3.5" />}
-            </span>
-          </a>
-        </Button>
+      {(href || follow) && (
+        // Follow keeps doing its own thing: it sits above the row's link.
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {follow && <span className="card-action inline-flex">{follow}</span>}
+          {href && (
+            <Button variant="outline" size="sm" className="card-action shrink-0 max-sm:min-h-11" asChild>
+              <a href={href} {...linkProps}>
+                <span className="inline-flex items-center gap-1.5">
+                  {button}
+                  {external && <ExternalLink aria-hidden="true" className="size-3.5" />}
+                </span>
+              </a>
+            </Button>
+          )}
+        </div>
       )}
     </li>
   );
@@ -137,7 +149,9 @@ function seeListLabel(name: string): string {
  * keeps hidden whatever the list hides from its owner (reservationsHiddenFrom
  * in src/lib/gifts.ts). A Regibee list their account doesn't own, or any
  * while they're signed out, has no button. One on another store's site
- * opens there.
+ * opens there. A signed-in guest or host gets a Follow button beside each
+ * other guest who has a Regibee account they may be shown
+ * (src/lib/guest-follow-rules.ts).
  */
 export function GuestWishLists({
   lists,
@@ -149,6 +163,7 @@ export function GuestWishLists({
   waitingCount = 0,
   basePath,
   themeColor = null,
+  followActions,
 }: GuestWishListsProps) {
   const color = normalizeThemeColor(themeColor);
   const colors = color ? themeColors(color) : null;
@@ -272,6 +287,18 @@ export function GuestWishLists({
                 href={href}
                 external={!entry.registry}
                 button={entry.isYou ? "See your list" : seeListLabel(entry.name)}
+                follow={
+                  entry.follow &&
+                  !entry.isYou && (
+                    <GuestFollowButton
+                      publicId={entry.follow.publicId}
+                      name={entry.name}
+                      state={entry.follow.state}
+                      followsYou={entry.follow.followsYou}
+                      {...followActions}
+                    />
+                  )
+                }
               />
             );
           })}

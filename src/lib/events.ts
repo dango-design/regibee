@@ -6,6 +6,7 @@
 import { themeForTint, type OccasionTheme } from "./occasion-theme";
 import { OCCASIONS, OCCASION_IDS, occasionFor, type OccasionId } from "./occasions";
 import type { QuestionKind, RsvpAnswers, RsvpQuestion } from "./rsvp-questions";
+import type { GuestFollow } from "./guest-follow-rules";
 
 /** Every event type: the occasions in src/lib/occasions.ts, in order. */
 export const EVENT_TYPES = OCCASION_IDS;
@@ -98,6 +99,11 @@ export interface EventGuest {
   email_hidden?: boolean;
   /** On the host's page: the email came from the guest's account, so the host can't change it. */
   from_account?: boolean;
+  /**
+   * On the host's page: the guest has a Regibee account this host may follow,
+   * and how they follow it now (src/lib/guest-follow-rules.ts).
+   */
+  follow?: GuestFollow | null;
   created_at: string;
 }
 
@@ -228,6 +234,12 @@ export interface GuestWishList {
    * the list hides from its owner. Missing on everyone else's.
    */
   ownListId?: string | null;
+  /**
+   * The guest has a Regibee account the viewer may follow, and how they
+   * follow it now (src/lib/guest-follow-rules.ts). Never on the viewer's own
+   * entry, or for someone who isn't signed in.
+   */
+  follow?: GuestFollow | null;
 }
 
 /** "store.com" from a wishlist's link, for a list that isn't on Regibee. */

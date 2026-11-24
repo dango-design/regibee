@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Check, Plus } from "lucide-react";
 import { SwitchHorizontal01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { cancelFollow, requestFollow } from "@/lib/actions/follows";
@@ -267,5 +268,71 @@ export function FollowButton({
       </p>
       {error && <p className="text-xs text-error-primary">{error}</p>}
     </div>
+  );
+}
+
+/**
+ * Follow, on one row of a guest list: the host's list on an event's manage
+ * page, and everyone's wishlists on the event's own page. It's small, with
+ * no hint under it, since a row has little room. Like every follow, it's a
+ * request the other person approves.
+ *
+ * Once the viewer follows the guest it says so as a plain fact, or shows the
+ * Mutual badge: unfollowing is rare, and the guest's profile still offers it.
+ */
+export function GuestFollowButton({
+  publicId,
+  name,
+  state: initialState,
+  followsYou = false,
+  requestAction,
+  cancelAction,
+  className,
+}: {
+  /** The id from the guest's profile link. */
+  publicId: string;
+  name: string;
+  state: FollowToggleState;
+  /** The guest follows the viewer, with the viewer's approval. */
+  followsYou?: boolean;
+  requestAction?: typeof requestFollow;
+  cancelAction?: typeof cancelFollow;
+  className?: string;
+}) {
+  const { state, busy, error, toggle } = useFollow({ publicId, name, state: initialState, requestAction, cancelAction });
+
+  return (
+    <span className={`inline-flex shrink-0 flex-col items-start gap-1 ${className ?? ""}`}>
+      {state === "approved" ? (
+        followsYou ? (
+          <MutualBadge />
+        ) : (
+          <span className="inline-flex items-center gap-1 text-sm text-tertiary">
+            <Check aria-hidden="true" className="size-3.5" />
+            Following
+          </span>
+        )
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="max-sm:min-h-11"
+          onClick={toggle}
+          disabled={busy}
+          title={state === "pending" ? `Waiting for ${name} to approve` : undefined}
+        >
+          {state === "pending" ? (
+            "Requested"
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
+              <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
+              {followsYou ? "Follow back" : "Follow"}
+            </span>
+          )}
+          <span className="sr-only"> {name}</span>
+        </Button>
+      )}
+      {error && <span className="max-w-48 text-xs text-error-primary">{error}</span>}
+    </span>
   );
 }
