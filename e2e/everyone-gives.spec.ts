@@ -287,6 +287,63 @@ test("a guest logs in after they RSVP and links a list they already have", async
   expect(guest?.wishlist_registry_id).toBe(oliveList.id);
 });
 
+test("a guest adds their child's list beside their own, and the other guests shop it", async ({ page, browser }) => {
+  test.setTimeout(90_000);
+  const hal = await createAccount("Hal Host");
+  const dana = await createAccount("Dana Parent");
+  const { registry: danaList } = await createWishlist(dana.id);
+  // The list she keeps for her child. It keeps showing her what's reserved.
+  const { registry: kidList, item: kidItem } = await createWishlist(dana.id, { settings: { for_child: true } });
+  await db.from("registries").update({ title: "Mia's Christmas List", honoree_names: "Mia" }).eq("id", kidList.id);
+  const { event, guests } = await createEveryoneEvent(hal.id, [
+    { name: "Dana", email: dana.email },
+    { name: "Gus", email: uniqueEmail("gus") },
+  ]);
+  const [danaGuest, gusGuest] = guests;
+
+  await rsvpWithOwnList(page, danaGuest.rsvpPath, dana, danaList);
+  await page.getByRole("button", { name: "Add another list" }).click();
+  // Her wishlist isn't offered a second time.
+  await expect(page.getByRole("button", { name: `Add ${danaList.title}` })).toHaveCount(0);
+  await page.getByRole("button", { name: "Add Mia's Christmas List" }).click();
+  await expect(page.getByText("Also on the invitation")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Mia's Christmas List" })).toHaveAttribute(
+    "href",
+    `/dashboard/registry/${kidList.id}`,
+  );
+  const { data: more } = await db.from("event_guest_lists").select("registry_id").eq("guest_id", danaGuest.id);
+  expect(more).toEqual([{ registry_id: kidList.id }]);
+  const { data: kept } = await db.from("registries").select("settings").eq("id", kidList.id).single();
+  expect(kept?.settings).not.toHaveProperty("hide_reservations");
+
+  // Another guest sees it under hers and reserves from it through the event.
+  const gusContext = await browser.newContext();
+  const gusPage = await gusContext.newPage();
+  await rsvpGoing(gusPage, gusGuest.rsvpPath);
+  const lists = gusPage.getByRole("region", { name: "Everyone's wishlists" });
+  await expect(lists.getByText("Mia's Christmas List · Added by Dana")).toBeVisible();
+  await lists.getByRole("link", { name: "See Mia's list" }).click();
+  await gusPage.waitForURL(`**/r/${kidList.slug}`);
+  await expect(gusPage.getByText(`You're shopping as a guest of ${event.title}`)).toBeVisible();
+  await reserveGift(gusPage, { slug: kidList.slug, name: "Gus Uncle", email: uniqueEmail("gus") });
+  const { data: gift } = await db
+    .from("purchases")
+    .select("event_guest_id")
+    .eq("registry_item_id", kidItem.id)
+    .single();
+  expect(gift?.event_guest_id).toBe(gusGuest.id);
+  await gusContext.close();
+
+  // She takes it off again.
+  await page.reload();
+  const off = page.getByRole("button", { name: "Take off Mia's Christmas List" });
+  await waitForReact(off);
+  await off.click();
+  await expect(page.getByText("Also on the invitation")).toHaveCount(0);
+  const { data: after } = await db.from("event_guest_lists").select("registry_id").eq("guest_id", danaGuest.id);
+  expect(after).toEqual([]);
+});
+
 test("a guest logs in from the invitation's top bar and comes back to their own link", async ({ page }) => {
   const hal = await createAccount("Hal Host");
   const pia = await createAccount("Pia Cousin");

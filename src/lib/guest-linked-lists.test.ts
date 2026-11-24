@@ -59,3 +59,13 @@ test("one owner's two linked lists: only the first goes on their row", () => {
   const result = giveGuestsTheirLinkedLists([guest("host")], [hostsList, second], new Map([["host", "host@example.com"]]));
   assert.equal(result[0].registry?.slug, "hosts-list-1a2b");
 });
+
+test("a list that's already one of a guest's other lists isn't given to a second guest", () => {
+  const parent = { ...guest("parent", { title: "Parent's List", slug: "parents-list-5e6f" }), more: [{ slug: "hosts-list-1a2b" }] };
+  const emails = new Map([
+    ["parent", "parent@example.com"],
+    ["host", "host@example.com"],
+  ]);
+  const result = giveGuestsTheirLinkedLists([parent, guest("host")], [hostsList], emails);
+  assert.equal(result[1].registry, null);
+});

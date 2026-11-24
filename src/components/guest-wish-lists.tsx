@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { ExternalLink, Gift, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { InvitationRegistry } from "@/components/event-invitation";
@@ -142,7 +143,8 @@ function seeListLabel(name: string): string {
 /**
  * Everyone's wishlists, on an everyone-gives-everyone invitation: the
  * budget and the host's note, the lists the host linked, and each guest's
- * list. A list the host linked that belongs to a guest comes on that guest's
+ * list, with any other lists they added under it, like one they keep for
+ * their child. A list the host linked that belongs to a guest comes on that guest's
  * row instead (withGuestsLinkedLists in src/lib/events-server.ts). Anyone
  * with the link sees the host's lists; only the event's guests and hosts see
  * the guests' lists. A guest's own list is first among them. Nobody shops
@@ -179,7 +181,12 @@ export function GuestWishLists({
   const ownHref = (id: string) => `${basePath ?? ""}/dashboard/registry/${id}`;
   // A list the host linked that's also a guest's wishlist shows once, on
   // the guest's row, which knows whether it's yours.
-  const guestSlugs = new Set((lists ?? []).flatMap((entry) => (entry.registry ? [entry.registry.slug] : [])));
+  const guestSlugs = new Set(
+    (lists ?? []).flatMap((entry) => [
+      ...(entry.registry ? [entry.registry.slug] : []),
+      ...(entry.more ?? []).map((list) => list.slug),
+    ]),
+  );
   const linked = registries.filter((registry) => !guestSlugs.has(registry.slug));
   const withList = lists?.filter((l) => l.url).length ?? 0;
 
@@ -270,37 +277,64 @@ export function GuestWishLists({
                 ? hrefFor(entry.registry.slug)
                 : entry.url;
             return (
-              <ListRow
-                key={entry.guestId}
-                leading={<Initials name={entry.name} isYou={entry.isYou} />}
-                name={entry.name}
-                isYou={entry.isYou}
-                detail={
-                  entry.registry
-                    ? entry.registry.title
-                    : entry.url
-                      ? `A list on ${storeName(entry.url)}`
-                      : entry.isYou
-                        ? "Add your wishlist above"
-                        : "No wishlist yet"
-                }
-                giftIdeas={entry.giftIdeas}
-                href={href}
-                external={!entry.registry}
-                button={entry.isYou ? "See your list" : seeListLabel(entry.name)}
-                follow={
-                  entry.follow &&
-                  !entry.isYou && (
-                    <GuestFollowButton
-                      publicId={entry.follow.publicId}
-                      name={entry.name}
-                      state={entry.follow.state}
-                      followsYou={entry.follow.followsYou}
-                      {...followActions}
+              <Fragment key={entry.guestId}>
+                <ListRow
+                  leading={<Initials name={entry.name} isYou={entry.isYou} />}
+                  name={entry.name}
+                  isYou={entry.isYou}
+                  detail={
+                    entry.registry
+                      ? entry.registry.title
+                      : entry.url
+                        ? `A list on ${storeName(entry.url)}`
+                        : entry.isYou
+                          ? "Add your wishlist above"
+                          : "No wishlist yet"
+                  }
+                  giftIdeas={entry.giftIdeas}
+                  href={href}
+                  external={!entry.registry}
+                  button={entry.isYou ? "See your list" : seeListLabel(entry.name)}
+                  follow={
+                    entry.follow &&
+                    !entry.isYou && (
+                      <GuestFollowButton
+                        publicId={entry.follow.publicId}
+                        name={entry.name}
+                        state={entry.follow.state}
+                        followsYou={entry.follow.followsYou}
+                        {...followActions}
+                      />
+                    )
+                  }
+                />
+                {/* Their other lists, each on its own row under theirs. One
+                    that says whose it is, like a child's, leads with that name. */}
+                {(entry.more ?? []).map((list) => {
+                  const firstName = entry.name.split(/\s+/)[0];
+                  const from = entry.isYou ? "Added by you" : `Added by ${firstName}`;
+                  return (
+                    <ListRow
+                      key={`${entry.guestId}:${list.slug}`}
+                      leading={<Initials name={list.honoree ?? entry.name} isYou={entry.isYou} />}
+                      name={list.honoree ?? entry.name}
+                      isYou={entry.isYou && !list.honoree}
+                      detail={list.honoree ? `${list.title} · ${from}` : list.title}
+                      // Your own opens your own page for it, like your wishlist.
+                      href={entry.isYou ? (list.ownListId ? ownHref(list.ownListId) : null) : hrefFor(list.slug)}
+                      button={
+                        list.honoree ? (
+                          seeListLabel(list.honoree)
+                        ) : (
+                          <>
+                            See list<span className="sr-only">: {list.title}</span>
+                          </>
+                        )
+                      }
                     />
-                  )
-                }
-              />
+                  );
+                })}
+              </Fragment>
             );
           })}
         </ul>

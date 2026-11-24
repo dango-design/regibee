@@ -576,7 +576,7 @@ export async function getPendingListRequests(eventId: string): Promise<{ name: s
 export async function eventIncludesRegistry(eventId: string, registryIds: string | string[]): Promise<boolean> {
   const ids = Array.isArray(registryIds) ? registryIds : [registryIds];
   if (ids.length === 0) return false;
-  const [{ data: links }, exchange, { data: wishlists }] = await Promise.all([
+  const [{ data: links }, exchange, { data: wishlists }, { data: more }] = await Promise.all([
     supabaseAdmin.from("event_registries").select("registry_id").eq("event_id", eventId).in("registry_id", ids).limit(1),
     getGiftExchange(eventId),
     supabaseAdmin
@@ -586,15 +586,34 @@ export async function eventIncludesRegistry(eventId: string, registryIds: string
       .in("wishlist_registry_id", ids)
       .eq("in_exchange", true)
       .limit(1),
+    // A guest's other lists (event_guest_lists).
+    supabaseAdmin
+      .from("event_guest_lists")
+      .select("registry_id, event_guests!inner(event_id, in_exchange)")
+      .in("registry_id", ids)
+      .eq("event_guests.event_id", eventId)
+      .eq("event_guests.in_exchange", true)
+      .limit(1),
   ]);
   if ((links?.length ?? 0) > 0) return true;
-  return exchangeKind(exchange) === "everyone" && (wishlists?.length ?? 0) > 0;
+  return exchangeKind(exchange) === "everyone" && (wishlists?.length ?? 0) + (more?.length ?? 0) > 0;
+}
+
+/** The ids of a guest's other lists on their event, besides their wishlist, oldest first. */
+export async function getGuestMoreListIds(guestId: string): Promise<string[]> {
+  const { data } = await supabaseAdmin
+    .from("event_guest_lists")
+    .select("registry_id")
+    .eq("guest_id", guestId)
+    .order("created_at");
+  return (data || []).map((row) => row.registry_id as string);
 }
 
 /**
  * Everyone's wishlists for an everyone-gives-everyone event: each guest
- * taking part, with their list or null when they haven't added one. The
- * viewer's own entry comes first. Only the event's guests and hosts get this.
+ * taking part, with their list or null when they haven't added one, and any
+ * other lists of theirs they added (event_guest_lists). The viewer's own
+ * entry comes first. Only the event's guests and hosts get this.
  */
 export async function getGuestWishLists(eventId: string, viewerGuestId: string | null): Promise<GuestWishList[]> {
   const { data } = await supabaseAdmin
@@ -604,21 +623,69 @@ export async function getGuestWishLists(eventId: string, viewerGuestId: string |
     .eq("in_exchange", true)
     .order("name");
   const guests = (data || []) as Pick<EventGuest, "id" | "name" | "wishlist_url" | "wishlist_registry_id" | "gift_ideas">[];
-  const registryIds = [...new Set(guests.map((g) => g.wishlist_registry_id).filter((id): id is string => Boolean(id)))];
+  const { data: moreRows } = guests.length
+    ? await supabaseAdmin
+        .from("event_guest_lists")
+        .select("guest_id, registry_id")
+        .in(
+          "guest_id",
+          guests.map((g) => g.id),
+        )
+        .order("created_at")
+    : { data: [] as { guest_id: string; registry_id: string }[] };
+  const registryIds = [
+    ...new Set([
+      ...guests.map((g) => g.wishlist_registry_id).filter((id): id is string => Boolean(id)),
+      ...(moreRows || []).map((row) => row.registry_id as string),
+    ]),
+  ];
+  // Private lists are left out: nobody else can open them. The database
+  // takes them off anyway (unshare_private_registry).
   const { data: registries } = registryIds.length
-    ? await supabaseAdmin.from("registries").select("id, title, slug").in("id", registryIds)
-    : { data: [] as { id: string; title: string; slug: string }[] };
-  const byId = new Map((registries || []).map((r) => [r.id as string, { title: r.title as string, slug: r.slug as string }]));
+    ? await supabaseAdmin
+        .from("registries")
+        .select("id, title, slug, honoree_names, parent_names, is_private")
+        .in("id", registryIds)
+    : { data: [] };
+  const byId = new Map(
+    (registries || []).map((r) => [
+      r.id as string,
+      {
+        title: r.title as string,
+        slug: r.slug as string,
+        honoree: (r.honoree_names as string | null)?.trim() || (r.parent_names as string | null)?.trim() || null,
+        isPrivate: Boolean(r.is_private),
+      },
+    ]),
+  );
+  const listFor = (id: string | null | undefined) => {
+    const list = id ? byId.get(id) : undefined;
+    return list ? { title: list.title, slug: list.slug } : null;
+  };
 
   return guests
-    .map((g) => ({
-      guestId: g.id,
-      name: g.name,
-      isYou: g.id === viewerGuestId,
-      url: g.wishlist_url,
-      registry: g.wishlist_registry_id ? (byId.get(g.wishlist_registry_id) ?? null) : null,
-      giftIdeas: g.gift_ideas,
-    }))
+    .map((g) => {
+      const more = (moreRows || [])
+        .filter((row) => row.guest_id === g.id && row.registry_id !== g.wishlist_registry_id)
+        .map((row) => ({ id: row.registry_id as string, list: byId.get(row.registry_id as string) }))
+        .filter((row): row is { id: string; list: NonNullable<typeof row.list> } => Boolean(row.list) && !row.list!.isPrivate)
+        // Only the viewer's own entry carries the ids, to take a list off.
+        .map(({ id, list: { title, slug, honoree } }) => ({
+          title,
+          slug,
+          honoree,
+          ...(g.id === viewerGuestId ? { id } : {}),
+        }));
+      return {
+        guestId: g.id,
+        name: g.name,
+        isYou: g.id === viewerGuestId,
+        url: g.wishlist_url,
+        registry: listFor(g.wishlist_registry_id),
+        giftIdeas: g.gift_ideas,
+        ...(more.length > 0 ? { more } : {}),
+      };
+    })
     .sort((a, b) => Number(b.isYou) - Number(a.isYou));
 }
 
@@ -667,17 +734,23 @@ export async function withGuestsLinkedLists(
 
 /**
  * The events a registry is linked to, by the event's own links or as a
- * guest's wishlist. A list that hides reservations from its owner reveals
+ * guest's wishlist or one of their other lists. A list that hides reservations from its owner reveals
  * them the day after each one (src/lib/reveal.ts).
  */
 export async function getEventsForReveal(
   registryId: string,
 ): Promise<Pick<EventDetails, "id" | "slug" | "title" | "event_date">[]> {
-  const [{ data: links }, { data: wishlists }] = await Promise.all([
+  const [{ data: links }, { data: wishlists }, { data: more }] = await Promise.all([
     supabaseAdmin.from("event_registries").select("event_id").eq("registry_id", registryId),
     supabaseAdmin.from("event_guests").select("event_id").eq("wishlist_registry_id", registryId),
+    supabaseAdmin.from("event_guest_lists").select("event_guests!inner(event_id)").eq("registry_id", registryId),
   ]);
-  const ids = [...new Set([...(links || []), ...(wishlists || [])].map((row) => row.event_id as string))];
+  const ids = [
+    ...new Set([
+      ...[...(links || []), ...(wishlists || [])].map((row) => row.event_id as string),
+      ...(more || []).map((row) => (row.event_guests as unknown as { event_id: string }).event_id),
+    ]),
+  ];
   if (ids.length === 0) return [];
   const { data } = await supabaseAdmin.from("events").select("id, slug, title, event_date").in("id", ids);
   return (data || []) as Pick<EventDetails, "id" | "slug" | "title" | "event_date">[];

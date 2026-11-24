@@ -17,6 +17,7 @@ import {
   getEventRegistries,
   getExchangeExclusions,
   getGiftExchange,
+  getGuestMoreListIds,
   getSignupSheet,
   registrySlugFromLink,
   resolveRegistryLink,
@@ -43,6 +44,7 @@ import {
   isTimeZone,
   MAX_GIFT_NOTE_LENGTH,
   MAX_GUESTS_PER_EVENT,
+  MAX_MORE_LISTS,
   MAX_PARTY_SIZE_LIMIT,
   MIN_EXCHANGE_PARTICIPANTS,
   summarizeRsvps,
@@ -55,6 +57,7 @@ import {
 } from "@/lib/events";
 import { drawNames, orderedPair, type Pair } from "@/lib/gift-exchange";
 import { settingsAfterJoiningExchange } from "@/lib/gifts";
+import { isUuid } from "@/lib/extension";
 import { newPeople, personKey, type Person } from "@/lib/groups";
 import { createGroupFor, getGroupForOwner, getGroupMembers, listGroupEvents } from "@/lib/groups-server";
 import { listFollowedAccounts } from "@/lib/follows";
@@ -1360,6 +1363,13 @@ export interface EventWishlistInput {
   url?: string;
   /** Only "", to clear gift ideas saved before. New ones are refused, like a link. */
   giftIdeas?: string;
+  /**
+   * Another of the signed-in account's own lists to add beside the
+   * wishlist, like a list they keep for their child.
+   */
+  addRegistryId?: string;
+  /** One of the guest's other lists to take off the event. */
+  removeRegistryId?: string;
 }
 
 /**
@@ -1369,6 +1379,10 @@ export interface EventWishlistInput {
  * refused; only clearing ones saved before still works. The guest is found
  * by their token, like submitRsvp. Nobody is emailed. Returns the Regibee
  * list now linked, if any.
+ *
+ * A guest with a wishlist can add more of their own lists beside it
+ * (addRegistryId), such as one they keep for their child, and take them off
+ * again (removeRegistryId). Those are saved in event_guest_lists.
  */
 export async function saveEventWishlist(input: EventWishlistInput): Promise<Result<{ registryId: string | null }>> {
   const { data: eventRow } = await supabaseAdmin.from("events").select("*").eq("slug", input.slug).maybeSingle();
@@ -1383,7 +1397,7 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
   const { data: guest } = input.token
     ? await supabaseAdmin
         .from("event_guests")
-        .select("id, name, email, in_exchange")
+        .select("id, name, email, in_exchange, wishlist_registry_id")
         .eq("event_id", event.id)
         .eq("token", input.token)
         .maybeSingle()
@@ -1392,6 +1406,58 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
   if (!guest.in_exchange) return { error: "RSVP that you're coming first, then add your wishlist." };
   // A wishlist here is a Regibee list, so it takes an account.
   if (input.url?.trim() || input.giftIdeas?.trim()) return { error: ACCOUNT_FOR_WISH_LIST };
+
+  // Their other lists. The token is enough to take one off, as it is to
+  // clear a wishlist. Adding one takes the account that owns it.
+  if (input.removeRegistryId) {
+    if (!isUuid(input.removeRegistryId)) return { error: "That list wasn't found. Refresh the page and try again." };
+    const { error } = await supabaseAdmin
+      .from("event_guest_lists")
+      .delete()
+      .eq("guest_id", guest.id)
+      .eq("registry_id", input.removeRegistryId);
+    if (error) {
+      console.error("[events] Failed to take off a guest's list:", error);
+      return { error: "That list wasn't taken off. Try again." };
+    }
+    revalidateEvent(event);
+    return { error: null, registryId: null };
+  }
+  if (input.addRegistryId) {
+    const { user } = await requireAccount();
+    if (!user) return { error: "Log in to use a Regibee list." };
+    if (!guest.wishlist_registry_id) return { error: "Add your own wishlist first, then add another list." };
+    const { data: list } = isUuid(input.addRegistryId)
+      ? await supabaseAdmin
+          .from("registries")
+          .select("id, slug, owner_id, is_private")
+          .eq("id", input.addRegistryId)
+          .maybeSingle()
+      : { data: null };
+    if (!list || list.owner_id !== user.id) return { error: "That list wasn't found. Refresh the page and pick again." };
+    if (list.is_private) {
+      return { error: "That list is private, so nobody else can open it. Make it link-only in its settings first." };
+    }
+    if (list.id === guest.wishlist_registry_id) return { error: null, registryId: list.id };
+    const existing = await getGuestMoreListIds(guest.id as string);
+    if (!existing.includes(list.id) && existing.length >= MAX_MORE_LISTS) {
+      return { error: `You can add up to ${MAX_MORE_LISTS} more lists. Take one off first.` };
+    }
+    const { error } = await supabaseAdmin
+      .from("event_guest_lists")
+      .upsert({ guest_id: guest.id, registry_id: list.id }, { onConflict: "guest_id,registry_id", ignoreDuplicates: true });
+    if (error) {
+      console.error("[events] Failed to add a guest's list:", error);
+      return { error: "That list wasn't added. Try again." };
+    }
+    // Like their wishlist, a personal list of their own starts hiding what's
+    // been reserved from them. A list kept for a child doesn't.
+    await hideReservationsOnOwnWishlist(`${siteUrl()}/r/${list.slug}`, guest.email as string | null).catch((err) =>
+      console.error("[events] Failed to hide reservations on a guest's list:", err),
+    );
+    revalidateEvent(event);
+    return { error: null, registryId: list.id };
+  }
 
   const changes: Record<string, unknown> = {};
   let registryId: string | null = null;
@@ -1446,6 +1512,10 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
   if (error) {
     console.error("[events] Failed to save a guest's wishlist:", error);
     return { error: "Your wishlist wasn't saved. Try again." };
+  }
+  // A list that's now the wishlist isn't also one of their other lists.
+  if (registryId) {
+    await supabaseAdmin.from("event_guest_lists").delete().eq("guest_id", guest.id).eq("registry_id", registryId);
   }
   // Their own list starts hiding what's been reserved from them.
   if (typeof changes.wishlist_url === "string") {
