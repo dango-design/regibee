@@ -53,6 +53,7 @@ This builds `extension/dist` and runs it in Playwright's Chromium, headless, on 
 - **Registry pages.** The reader finds every item the page links with a registry link, and each item's link, name, price, picture and quantity match what was recorded from that page. The toolbar button counts the items that aren't on Regibee yet.
 - **Product pages.** The product reader reads the name, price and pictures, and keeps the address exactly, so a page opened from a store registry keeps its registry link. The popup's "Add to Regibee" form shows what it read.
 - **Gift ideas.** `gift-idea.spec.ts` saves a product as a gift idea from the popup, with and without a registry. It uses a small made-up product page, not a saved one, so it runs on any computer.
+- **Reading a link for the website.** `read-link.spec.ts` asks the extension to read a store link the way a Regibee page does. It checks that two Regibee tabs asking at once are both read, one after the other, and that a read whose tab closed while it waited opens nothing. It uses made-up pages too.
 
 The tests never reach a store or Regibee. Each saved page is served at the address it was saved from, so the content scripts run on it as they do on the real site. No host name resolves, and every other request is refused. Calls to Regibee's API get made-up answers, so nothing touches the database.
 
