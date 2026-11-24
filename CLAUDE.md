@@ -7,7 +7,7 @@ These notes are for anyone changing or running the live app, people and Claude a
 | Service | What it does | What to know |
 | --- | --- | --- |
 | GitHub `dango-design/regibee` | Code, pull requests, CI | CI reads the `CHROMATIC_PROJECT_TOKEN`, `EXPO_TOKEN`, `CWS_SERVICE_ACCOUNT_KEY`, `CWS_PUBLISHER_ID` and `CWS_ITEM_ID` repo secrets. |
-| Vercel | Builds and hosts the site | `main` deploys to regibee.com and www.regibee.com. Every other branch gets a preview URL. Every deployment URL except regibee.com needs a Vercel login. |
+| Vercel | Builds and hosts the site | `main` deploys to regibee.com and www.regibee.com. Every other branch gets a preview URL. Every deployment URL except regibee.com needs a Vercel login. `vercel.json` runs the server code in `pdx1` (Portland), the Vercel region next to the database. A page makes several database queries in a row, so a server far from the database makes every page slow. If the Supabase project ever moves, change the region to match. |
 | Supabase `regibee` (ref `ibfvmgpfwhhyrhnxaxig`) | Database and sign-in | This is the only database. Preview deploys and `vercel env pull` use it too, so anything you do on a preview or locally with those keys changes real data. Database changes are run by hand. See below. |
 | Resend | Sends every email, from `notifications@regibee.com` | The site sends through Resend's API with `RESEND_API_KEY`. Supabase sends its account emails through Resend's SMTP server, with a second key kept in Supabase's settings. Both need the DNS records for regibee.com. |
 | Porkbun | Registrar and DNS for regibee.com | The DNS records point the site at Vercel and verify the domain for Resend. |
@@ -126,6 +126,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 - A card that opens one thing, like a registry, an event or an item to edit, opens it from a click anywhere on the card, not only from its title or button. Its other buttons keep doing their own thing.
 - Use the `clickable-card`, `card-link` and `card-action` classes in `src/app/globals.css`, which explain how. `DashboardRegistryCard` is an example. Don't wrap a card that holds buttons in a link: HTML doesn't allow it.
+
+## Loading screens
+
+- A page that reads data on the server needs a `loading.tsx` next to it, with a skeleton from `src/components/page-skeletons.tsx`. Without one, a click on a link to it shows nothing until the server has finished the whole page. With one, the skeleton shows at once.
+- The public pages (`/r`, `/e`, `/u`) have none on purpose. With a loading screen, a list that doesn't exist would answer 200 instead of 404.
+- `NavigationProgress` (`src/components/navigation-progress.tsx`), in the root layout, shows a bar across the top of the window from a click on any link until the next page or its skeleton shows. It covers the pages with no loading screen.
 
 ## Dropdowns
 

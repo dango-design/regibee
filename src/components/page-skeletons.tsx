@@ -356,3 +356,216 @@ export function AccountSkeleton() {
     </div>
   );
 }
+
+/** A page's back link, as on the event and group pages. */
+function BackLinkSkeleton() {
+  return (
+    <div className="flex items-center max-sm:min-h-11">
+      <Skeleton className="h-5 w-24" />
+    </div>
+  );
+}
+
+/** Matches an item's row on a list's manage page (src/components/item-card.tsx). */
+function ItemRowSkeleton() {
+  return (
+    <Card>
+      <CardContent className="flex gap-4 p-4">
+        <Skeleton className="size-20 shrink-0 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Matches src/app/(protected)/dashboard/registry/[registryId]/page.tsx. */
+export function ListPageSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8" aria-busy="true">
+      <LoadingMessage>Loading your list</LoadingMessage>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-64 max-w-full" />
+          <Skeleton className="h-5 w-40" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-10 w-28 rounded-full" />
+          <Skeleton className="h-10 w-28 rounded-full" />
+          <Skeleton className="h-10 w-28 rounded-full" />
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {["Total items", "Gifted", "Completion", "Total value"].map((label) => (
+          <Card key={label}>
+            <CardContent className="p-4">
+              <p className="text-sm text-tertiary">{label}</p>
+              <Skeleton className="mt-1 h-7 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="my-8 h-px bg-border-secondary" />
+
+      <div className="mb-6 flex gap-2">
+        <Skeleton className="h-9 w-24 rounded-full" />
+        <Skeleton className="h-9 w-24 rounded-full" />
+        <Skeleton className="h-9 w-28 rounded-full" />
+      </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-10 w-28 rounded-full" />
+      </div>
+      <div className="space-y-4">
+        <ItemRowSkeleton />
+        <ItemRowSkeleton />
+        <ItemRowSkeleton />
+        <ItemRowSkeleton />
+      </div>
+    </div>
+  );
+}
+
+/** Matches src/app/(protected)/dashboard/events/[eventId]/page.tsx. */
+export function EventPageSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8" aria-busy="true">
+      <LoadingMessage>Loading your event</LoadingMessage>
+      <BackLinkSkeleton />
+      <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-72 max-w-full" />
+          <Skeleton className="h-5 w-56 max-w-full" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-10 w-28 rounded-full" />
+          <Skeleton className="h-10 w-28 rounded-full" />
+          <Skeleton className="h-10 w-24 rounded-full" />
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          {[0, 1].map((index) => (
+            <Card key={index}>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-12 w-full rounded-lg" />
+                <Skeleton className="h-12 w-full rounded-lg" />
+                <Skeleton className="h-12 w-full rounded-lg" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="flex flex-col gap-6">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Card>
+            <CardContent className="space-y-3 p-5">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A page that is one form: a back link, a title, a line under it and fields.
+ * `wide` matches the edit event page, which has section links on the left.
+ */
+export function FormPageSkeleton({
+  title,
+  message,
+  wide = false,
+  backLink = true,
+}: {
+  /** The page's real heading, so it doesn't change when the page arrives. */
+  title: string;
+  /** What a screen reader hears while the page loads. */
+  message: string;
+  wide?: boolean;
+  backLink?: boolean;
+}) {
+  return (
+    <div
+      className={wide ? "container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl" : "container mx-auto max-w-xl px-4 py-8"}
+      aria-busy="true"
+    >
+      <LoadingMessage>{message}</LoadingMessage>
+      {backLink && <BackLinkSkeleton />}
+      <h1 className={backLink ? "mt-4 text-3xl font-bold" : "text-3xl font-bold"}>{title}</h1>
+      <Skeleton className="mt-2 h-5 w-72 max-w-full" />
+      <div className="mt-6 space-y-6">
+        <FieldSkeleton />
+        <FieldSkeleton />
+        <FieldSkeleton />
+        <Skeleton className="h-10 w-32 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
+/** Matches src/app/(protected)/dashboard/new/page.tsx. */
+export function PlanPickerSkeleton() {
+  return (
+    <div className="container mx-auto max-w-3xl px-4 py-8" aria-busy="true">
+      <LoadingMessage>Loading</LoadingMessage>
+      <h1 className="text-3xl font-bold">Start something new</h1>
+      <p className="mt-1 text-tertiary">
+        A gift list on its own, or an event with invitations. You can add the other one later.
+      </p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {[0, 1, 2, 3].map((index) => (
+          <Skeleton key={index} className="h-28 w-full rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Matches src/app/(protected)/dashboard/groups/[groupId]/page.tsx. */
+export function GroupSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8" aria-busy="true">
+      <LoadingMessage>Loading your group</LoadingMessage>
+      <BackLinkSkeleton />
+      <div className="mt-4 space-y-6">
+        <Skeleton className="h-9 w-64 max-w-full" />
+        <Card>
+          <CardContent className="space-y-3 p-5">
+            <Skeleton className="h-12 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/** For pages with no skeleton of their own: a title and a few lines. */
+export function PageSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8" aria-busy="true">
+      <LoadingMessage>Loading</LoadingMessage>
+      <Skeleton className="h-9 w-64 max-w-full" />
+      <div className="mt-6 space-y-3">
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-5 w-2/3" />
+        <Skeleton className="h-5 w-1/2" />
+      </div>
+    </div>
+  );
+}
