@@ -71,6 +71,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - A list's link can change: its managers can get a new one on its Settings page (`replaceRegistryLink`). Store a list's id, not its link, and build `/r/<slug>` when you show it. Only the server can change a slug; the database refuses a change from a signed-in session.
 - Old links are kept in `registry_old_links`, only so guests' gift emails still work (`src/lib/list-links.ts`). Don't use them to send anyone else to the new link.
 
+## Lists on a profile
+
+- Who can open a list and who sees it on its owner's profile are separate choices. The profile choice is nobody, friends, followers or everyone (`profileAudience` in `src/lib/list-access.ts`). It only decides who finds the list on the profile, on the Following page and in birthday reminders. Anyone with a link-only or public list's link can still open it, so say "on your profile" wherever the choice is shown.
+- Friends are two accounts that follow each other, with both follows approved. Nothing stores it: work it out from `follows` (`profileViewer`, `mutualFollowIds`). Friends are followers too, so they see what followers see.
+- The database keeps the choice as `listed_on_profile` and `profile_audience` (`20261124085210_profile_audience.sql`). A null `profile_audience` means what a listed list showed to before the choice existed: everyone for a public list, followers for a link-only one. Older phone app builds only send `listedOnProfile`, so keep reading it.
+- Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
+- Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
+
 ## Items on several lists
 
 - An item's home list is `registry_items.registry_id`. `registry_item_placements` puts it on more of the same owner's lists, each with its own category. Gifts belong to the item, so they show on every list it's on.

@@ -7,11 +7,12 @@ import { useEffect, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Share, View } from "react-native";
 
 import { MAX_PUBLIC_NOTE_LENGTH } from "@shared/gift-profile";
-import { LIST_ACCESS, listVisibility } from "@shared/list-access";
+import { LIST_ACCESS, listVisibility, profileAudience, type ProfileAudience } from "@shared/list-access";
 import type { AccountRegistry } from "@shared/people-page-types";
 import { profilePath } from "@shared/profile-link";
 import { occasionLabel } from "@shared/registry-copy";
 
+import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import { Button, Card, ErrorState, Field, haptic, LoadingState, SwitchRow, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { profileForm, useAccountPage, useRunPeopleAction } from "@/lib/people-data";
@@ -40,8 +41,8 @@ export default function ProfileScreen() {
             Registries on your profile
           </Text>
           <Text variant="footnote" tone="secondary">
-            Only the ones you check appear. Anyone with your link sees the public ones; private ones only show to followers
-            you approve. Registries you help manage for someone else aren&apos;t included.
+            Choose who sees each one on your profile: nobody, your friends, your followers or everyone. Friends are people
+            you follow who follow you back. Registries you help manage for someone else aren&apos;t included.
           </Text>
           {data.registries.length === 0 ? (
             <Text variant="footnote" tone="tertiary">
@@ -164,7 +165,8 @@ function ProfileCard({
 
 function ListingRow({ registry }: { registry: AccountRegistry }) {
   const { run } = useRunPeopleAction();
-  const [listed, setListed] = useState(registry.listed_on_profile);
+  const [audience, setAudience] = useState<ProfileAudience>(profileAudience(registry));
+  const [saving, setSaving] = useState(false);
   const visibility = listVisibility(registry);
 
   if (visibility === "private") {
@@ -178,26 +180,35 @@ function ListingRow({ registry }: { registry: AccountRegistry }) {
     );
   }
 
-  let hint =
-    visibility === "public"
-      ? `${occasionLabel(registry.registry_type, registry.event_type)} · ${LIST_ACCESS.public.short}: anyone who opens your profile sees it`
-      : `${LIST_ACCESS.link.short}: only followers you approve see it`;
-  if (listed && registry.has_shipping_address) hint += ". Anyone who reserves a gift can see your shipping address.";
-
   return (
-    <SwitchRow
-      label={registry.title}
-      description={hint}
-      value={listed}
-      onValueChange={async (next) => {
-        setListed(next);
-        try {
-          await run("profile.setRegistryListed", registry.id, next);
-        } catch (e) {
-          setListed(!next);
-          Alert.alert("That didn't save", errorMessage(e));
-        }
-      }}
-    />
+    <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm }}>
+      <View style={{ gap: 2 }}>
+        <Text variant="callout">{registry.title}</Text>
+        <Text variant="footnote" tone="tertiary">
+          {occasionLabel(registry.registry_type, registry.event_type)} · {LIST_ACCESS[visibility].short}
+        </Text>
+      </View>
+      <ProfileAudienceChips
+        label={null}
+        visibility={visibility}
+        value={audience}
+        disabled={saving}
+        hasShippingAddress={registry.has_shipping_address}
+        onValueChange={async (next) => {
+          if (next === audience) return;
+          const before = audience;
+          setAudience(next);
+          setSaving(true);
+          try {
+            await run("profile.setRegistryProfileAudience", registry.id, next);
+          } catch (e) {
+            setAudience(before);
+            Alert.alert("That didn't save", errorMessage(e));
+          } finally {
+            setSaving(false);
+          }
+        }}
+      />
+    </View>
   );
 }

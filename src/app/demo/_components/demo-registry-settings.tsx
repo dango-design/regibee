@@ -15,7 +15,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { PhotoUploadButton } from "@/components/photo-upload-button";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { ListAccessField } from "@/components/list-access-field";
-import { listVisibility, type ListVisibility } from "@/lib/list-access";
+import { listVisibility, profileAudience, type ListVisibility, type ProfileAudience } from "@/lib/list-access";
 import { ShareLinkField } from "@/components/share-link-field";
 import { RegistryAvatar, monogramFor } from "@/components/registry-avatar";
 import { StoreRegistriesCard } from "@/components/store-registries-card";
@@ -76,7 +76,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<ListVisibility>(listVisibility(registry));
-  const [listed, setListed] = useState(registry.listed_on_profile);
+  const [audience, setAudience] = useState<ProfileAudience>(profileAudience(registry));
   const [categories, setCategories] = useState(registry.categories);
 
   const [managers, setManagers] = useState<DemoManager[]>(registry.managers);
@@ -209,8 +209,8 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
 
                     <ProfileListingField
                       visibility={visibility}
-                      isSelected={listed}
-                      onChange={setListed}
+                      audience={audience}
+                      onChange={setAudience}
                       hasShippingAddress={Boolean(registry.settings.shipping_address)}
                     />
 

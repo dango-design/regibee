@@ -2,7 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 // A relative path with .ts, not @/lib, so registry-create.test.ts can load this
 // file in Node's test runner (npm test).
-import { DEFAULT_LIST_VISIBILITY, visibilityColumns, type ListVisibility } from "./list-access.ts";
+import {
+  DEFAULT_LIST_VISIBILITY,
+  profileAudienceColumns,
+  visibilityColumns,
+  type ListVisibility,
+  type ProfileAudience,
+} from "./list-access.ts";
 
 // Making a registry row, shared by the registry form (createRegistry in
 // src/lib/actions/registry.ts), the "What are you planning?" picker and an
@@ -59,6 +65,12 @@ export interface NewRegistry {
   visibility?: ListVisibility;
   /** Ignored for private lists, which can't be on a profile. */
   listedOnProfile?: boolean;
+  /**
+   * Who sees it on the owner's profile. When set, it decides listedOnProfile
+   * too. Without it, a listed list shows to whoever a list like it showed to
+   * before owners could choose (defaultProfileAudience).
+   */
+  profileAudience?: ProfileAudience | null;
   settings?: Record<string, unknown> | null;
 }
 
@@ -71,6 +83,9 @@ export async function insertRegistry(
   registry: NewRegistry,
 ): Promise<{ id: string; slug: string; title: string } | { error: string }> {
   const visibility = registry.visibility ?? DEFAULT_LIST_VISIBILITY;
+  const listing = registry.profileAudience
+    ? profileAudienceColumns(registry.profileAudience, visibility)
+    : { listed_on_profile: visibility !== "private" && (registry.listedOnProfile ?? false) };
   const { data, error } = await client
     .from("registries")
     .insert({
@@ -81,7 +96,7 @@ export async function insertRegistry(
       description: registry.description || null,
       honoree_names: registry.honoreeNames || null,
       ...visibilityColumns(visibility),
-      listed_on_profile: visibility !== "private" && (registry.listedOnProfile ?? false),
+      ...listing,
       registry_type: registry.registryType,
       event_type: registry.registryType === "personal" ? registry.eventType : null,
       settings: registry.settings && Object.keys(registry.settings).length > 0 ? registry.settings : null,

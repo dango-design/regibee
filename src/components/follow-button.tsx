@@ -89,10 +89,10 @@ export function FollowToggle({
 }
 
 /**
- * Shows that the viewer and this person follow each other, with both follows
- * approved. It says "Mutual", not "Friends": a one-way follow is often family
- * too, like a grandparent following the parents, and calling only the two-way
- * ones friends would suggest the others aren't.
+ * Shows that the viewer and this person are friends: they follow each other,
+ * with both follows approved. Friends is also a choice for who sees a list on
+ * a profile (PROFILE_AUDIENCE in src/lib/list-access.ts), so the badge uses
+ * the same word. It said "Mutual" before that choice existed.
  */
 export function MutualBadge() {
   return (
@@ -101,14 +101,14 @@ export function MutualBadge() {
       className="inline-flex shrink-0 items-center gap-1 self-center rounded-full bg-brand-primary px-2 py-0.5 text-xs font-medium text-brand-secondary"
     >
       <SwitchHorizontal01 aria-hidden="true" className="size-3" />
-      Mutual
+      Friends
     </span>
   );
 }
 
 /**
  * One tap to follow back someone who follows you. Once both follows are
- * approved, this shows the Mutual badge instead. Following back is a request
+ * approved, this shows the Friends badge instead. Following back is a request
  * like any other: the other person approves it.
  */
 export function FollowBackButton({
@@ -278,7 +278,7 @@ export function FollowButton({
  * request the other person approves.
  *
  * Once the viewer follows the guest it says so as a plain fact, or shows the
- * Mutual badge: unfollowing is rare, and the guest's profile still offers it.
+ * Friends badge: unfollowing is rare, and the guest's profile still offers it.
  */
 export function GuestFollowButton({
   publicId,

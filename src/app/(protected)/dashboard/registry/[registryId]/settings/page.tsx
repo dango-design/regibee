@@ -31,7 +31,16 @@ import {
 import { CategoryManager } from "@/components/category-manager";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { ListAccessField } from "@/components/list-access-field";
-import { DEFAULT_LIST_VISIBILITY, listVisibility, parseListVisibility, visibilityColumns, type ListVisibility } from "@/lib/list-access";
+import {
+  DEFAULT_LIST_VISIBILITY,
+  listVisibility,
+  parseListVisibility,
+  profileAudience,
+  profileAudienceColumns,
+  visibilityColumns,
+  type ListVisibility,
+  type ProfileAudience,
+} from "@/lib/list-access";
 import { ShareLinkField } from "@/components/share-link-field";
 import { StoreRegistriesCard } from "@/components/store-registries-card";
 import { parseRetailerRegistries } from "@/lib/retailers";
@@ -89,6 +98,7 @@ export default function RegistrySettingsPage() {
     is_public: boolean;
     is_private: boolean;
     listed_on_profile: boolean;
+    profile_audience: string | null;
     slug: string;
     owner_id: string;
     registry_type: RegistryType;
@@ -121,7 +131,7 @@ export default function RegistrySettingsPage() {
   // Guests (anonymous sessions) have no profile page to list a registry on.
   const [hasProfile, setHasProfile] = useState(false);
   const [visibilityChoice, setVisibilityChoice] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
-  const [listedChoice, setListedChoice] = useState(false);
+  const [audienceChoice, setAudienceChoice] = useState<ProfileAudience>("hidden");
 
   // Manager state
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -153,7 +163,7 @@ export default function RegistrySettingsPage() {
       const [{ data }, { data: cats }, { data: { user } }] = await Promise.all([
         supabase
           .from("registries")
-          .select("title, parent_names, honoree_names, event_date, description, photo_url, is_public, is_private, listed_on_profile, slug, owner_id, registry_type, event_type, settings")
+          .select("title, parent_names, honoree_names, event_date, description, photo_url, is_public, is_private, listed_on_profile, profile_audience, slug, owner_id, registry_type, event_type, settings")
           .eq("id", registryId)
           .single(),
         supabase
@@ -165,7 +175,7 @@ export default function RegistrySettingsPage() {
       ]);
       setRegistry(data);
       setVisibilityChoice(data ? listVisibility(data) : DEFAULT_LIST_VISIBILITY);
-      setListedChoice(data?.listed_on_profile ?? false);
+      setAudienceChoice(data ? profileAudience(data) : "hidden");
       setCategories(cats || []);
       setCurrentUserId(user?.id || null);
       setHasProfile(Boolean(user && !user.is_anonymous));
@@ -198,9 +208,13 @@ export default function RegistrySettingsPage() {
         event_date: (formData.get("eventDate") as string) || null,
         description: (formData.get("description") as string) || null,
         ...visibilityColumns(savedVisibility),
-        // Making a list private takes it off its owner's profile.
-        listed_on_profile:
-          savedVisibility === "private" ? false : isOwner ? listedChoice : registry.listed_on_profile,
+        // Making a list private takes it off its owner's profile. Only the
+        // owner chooses who sees it there.
+        ...(savedVisibility === "private"
+          ? { listed_on_profile: false }
+          : isOwner
+            ? profileAudienceColumns(audienceChoice, savedVisibility)
+            : {}),
       });
     }
     setSaving(false);
@@ -514,8 +528,8 @@ export default function RegistrySettingsPage() {
                   {isOwner && hasProfile && (
                     <ProfileListingField
                       visibility={visibilityChoice}
-                      isSelected={listedChoice}
-                      onChange={setListedChoice}
+                      audience={audienceChoice}
+                      onChange={setAudienceChoice}
                       hasShippingAddress={Boolean(registry.settings?.shipping_address)}
                     />
                   )}

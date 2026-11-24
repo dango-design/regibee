@@ -21,13 +21,22 @@ import { FollowLists } from "@/components/follow-lists";
 import { GiftProfileForm, type SaveGiftProfile } from "@/components/gift-profile-form";
 import { BirthdayEmailsSetting } from "@/components/birthday-emails-setting";
 import { PhotoUploadButton } from "@/components/photo-upload-button";
+import { profileAudienceHint } from "@/components/profile-listing-field";
+import { SelectField } from "@/components/base/select/select-field";
 import { ProfileAvatar } from "@/components/profile-avatar";
-import { saveProfile, setProfilePhoto, setRegistryListed } from "@/lib/actions/profile";
+import { saveProfile, setProfilePhoto, setRegistryProfileAudience } from "@/lib/actions/profile";
 import { saveGiftProfile } from "@/lib/actions/gift-profile";
 import { MAX_PUBLIC_NOTE_LENGTH, type GiftProfile } from "@/lib/gift-profile";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { occasionLabel } from "@/lib/registry-copy";
-import { LIST_ACCESS, listVisibility } from "@/lib/list-access";
+import {
+  LIST_ACCESS,
+  PROFILE_AUDIENCE,
+  listVisibility,
+  profileAudience,
+  profileAudienceChoices,
+  type ProfileAudience,
+} from "@/lib/list-access";
 import { displayName, profilePath } from "@/lib/profile-link";
 import { uploadProfilePhoto } from "@/lib/upload-profile-photo";
 import type { PhotoUploadResult } from "@/lib/upload-registry-photo";
@@ -41,6 +50,8 @@ export interface AccountRegistry {
   is_public: boolean;
   is_private?: boolean;
   listed_on_profile: boolean;
+  /** The owner's choice of who sees it on their profile. Read it with profileAudience. */
+  profile_audience?: string | null;
   has_shipping_address: boolean;
   registry_type: RegistryType;
   event_type: PersonalEventType | null;
@@ -51,19 +62,20 @@ function RegistryListingRow({
   action,
 }: {
   registry: AccountRegistry;
-  action: typeof setRegistryListed;
+  action: typeof setRegistryProfileAudience;
 }) {
-  const [listed, setListed] = useState(registry.listed_on_profile);
+  const [audience, setAudience] = useState<ProfileAudience>(profileAudience(registry));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const handleChange = async (next: boolean) => {
-    setListed(next);
+  const handleChange = async (next: ProfileAudience) => {
+    const before = audience;
+    setAudience(next);
     setSaving(true);
     setError("");
     const result = await action(registry.id, next);
     if (result?.error) {
-      setListed(!next);
+      setAudience(before);
       setError(result.error);
     }
     setSaving(false);
@@ -79,23 +91,28 @@ function RegistryListingRow({
     );
   }
 
-  let hint =
-    visibility === "public"
-      ? `${occasionLabel(registry.registry_type, registry.event_type)} · ${LIST_ACCESS.public.short}: anyone who opens your profile sees it`
-      : `${LIST_ACCESS.link.short}: only followers you approve see it`;
-  if (listed && registry.has_shipping_address) {
-    hint += ". Anyone who reserves a gift can see your shipping address.";
-  }
-
   return (
     <div>
-      <Checkbox
-        isSelected={listed}
-        isReadOnly={saving}
-        onChange={handleChange}
-        label={registry.title}
-        hint={hint}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 text-sm">
+          <p className="font-medium text-secondary">{registry.title}</p>
+          <p className="text-tertiary">
+            {occasionLabel(registry.registry_type, registry.event_type)} · {LIST_ACCESS[visibility].short}
+          </p>
+        </div>
+        <SelectField
+          aria-label={`Who sees ${registry.title} on your profile`}
+          className="w-40 shrink-0"
+          value={audience}
+          disabled={saving}
+          onChange={(value) => handleChange(value as ProfileAudience)}
+          options={profileAudienceChoices(visibility).map((value) => ({
+            value,
+            label: PROFILE_AUDIENCE[value].label,
+          }))}
+        />
+      </div>
+      <p className="mt-1 text-sm text-tertiary">{profileAudienceHint(audience, registry.has_shipping_address)}</p>
       {error && <p className="mt-1 text-sm text-error-primary">{error}</p>}
     </div>
   );
@@ -108,7 +125,7 @@ export function AccountSettings({
   profile,
   registries,
   saveAction = saveProfile,
-  listAction = setRegistryListed,
+  listAction = setRegistryProfileAudience,
   uploadPhoto,
   photoAction = setProfilePhoto,
   follows,
@@ -139,7 +156,7 @@ export function AccountSettings({
     blocked?: PersonSummary[];
   };
   saveAction?: typeof saveProfile;
-  listAction?: typeof setRegistryListed;
+  listAction?: typeof setRegistryProfileAudience;
   /** Uploads a profile photo. The site uploads to the account's folder; the demo makes a local URL. */
   uploadPhoto?: (file: File) => Promise<PhotoUploadResult>;
   /** Saves or removes the profile photo. */
@@ -413,9 +430,9 @@ export function AccountSettings({
             <CardHeader>
               <SectionTitle sectionId="profile-registries">Registries on your profile</SectionTitle>
               <CardDescription>
-                Only the ones you check appear. Anyone with your link sees the public ones;
-                private ones only show to followers you approve. Registries you help manage for
-                someone else aren&apos;t included.
+Choose who sees each one on your profile: nobody, your friends, your followers or everyone.
+                Friends are people you follow who follow you back. Registries you help manage for someone else
+                aren&apos;t included.
               </CardDescription>
             </CardHeader>
             <CardContent>

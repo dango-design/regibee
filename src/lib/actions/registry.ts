@@ -17,7 +17,13 @@ import { requireAccount } from "@/lib/require-account";
 import { noEmailsMessage, reserveEmails, settleEmails, visitorEmailAllowance } from "@/lib/email-budget";
 import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
 import { canKeepOldLinks } from "@/lib/list-links";
-import { DEFAULT_LIST_VISIBILITY, parseListVisibility, visibilityColumns } from "@/lib/list-access";
+import {
+  DEFAULT_LIST_VISIBILITY,
+  parseListVisibility,
+  parseProfileAudience,
+  profileAudienceColumns,
+  visibilityColumns,
+} from "@/lib/list-access";
 import { registryPhotoUrlPrefix } from "@/lib/registry-photos";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
 import {
@@ -199,8 +205,11 @@ export async function createRegistry(formData: FormData) {
   const eventDate = formData.get("eventDate") as string;
   const description = formData.get("description") as string;
   const visibility = parseListVisibility(formData.get("visibility")) ?? DEFAULT_LIST_VISIBILITY;
-  // Private lists can't be on a profile.
+  // Private lists can't be on a profile. Older versions of the phone app
+  // only send listedOnProfile, which shows the list to whoever a list like it
+  // showed to before the owner could choose.
   const listedOnProfile = visibility !== "private" && formData.get("listedOnProfile") === "true";
+  const profileAudience = parseProfileAudience(formData.get("profileAudience"));
   const zipCode = formData.get("zipCode") as string;
   const taxEnabled = formData.get("taxEnabled") === "true";
   const venmo = formData.get("venmo") as string;
@@ -242,6 +251,7 @@ export async function createRegistry(formData: FormData) {
     description,
     visibility,
     listedOnProfile,
+    profileAudience,
     settings,
   });
   if ("error" in registry) {
@@ -270,12 +280,20 @@ export async function updateRegistry(registryId: string, formData: FormData) {
   if (!visibility) return { error: "Choose who can open this list." };
 
   // A listed registry appears under its owner's name, so only the owner can
-  // list it. Link-only ones stay listed, but only approved followers see them.
-  // Private ones come off the profile, whoever makes them private.
+  // list it, and choose who sees it there (profileAudience). Private ones
+  // come off the profile, whoever makes them private. A list that stops being
+  // public keeps its choice: profileAudience reads "everyone" as followers
+  // then, so nobody needs to save it again.
+  //
+  // Older versions of the phone app only send listedOnProfile. That turns the
+  // listing on or off and leaves the saved choice alone.
   const listedField = formData.get("listedOnProfile");
-  const listing: { listed_on_profile?: boolean } = {};
+  const audienceField = parseProfileAudience(formData.get("profileAudience"));
+  let listing: { listed_on_profile?: boolean; profile_audience?: string | null } = {};
   if (visibility === "private") {
     listing.listed_on_profile = false;
+  } else if (role === "owner" && audienceField) {
+    listing = profileAudienceColumns(audienceField, visibility);
   } else if (role === "owner" && listedField !== null) {
     listing.listed_on_profile = listedField === "true";
   }

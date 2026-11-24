@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import type { DashboardData } from "@shared/dashboard-page-types";
 import type { ListPageData, ListPagePurchase } from "@shared/list-page-types";
-import type { ListVisibility } from "@shared/list-access";
+import { profileAudienceFields, type ListVisibility, type ProfileAudience } from "@shared/list-access";
 
 import { act, ApiError, form, loadPage, runAction } from "@/lib/api";
 import { useSession } from "@/lib/auth";
@@ -388,7 +388,8 @@ export interface NewRegistryInput {
   eventType: EventType | null;
   eventDate: string | null;
   visibility: ListVisibility;
-  listedOnProfile: boolean;
+  /** Who sees it on the owner's profile. */
+  profileAudience: ProfileAudience;
   description: string;
   venmo: string;
   paypal: string;
@@ -428,7 +429,7 @@ export function useCreateRegistry() {
         eventDate: input.eventDate ?? "",
         description: input.description.trim(),
         visibility: input.visibility,
-        listedOnProfile: String(input.listedOnProfile),
+        ...profileAudienceFields(input.profileAudience, input.visibility),
         venmo: input.venmo.trim(),
         paypal: input.paypal.trim(),
         zelle: input.zelle.trim(),

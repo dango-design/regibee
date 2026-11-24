@@ -191,9 +191,15 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 You choose who can open each registry. New registries start as &ldquo;Anyone with the link&rdquo;:
                 the link ends in a random code, so people find it only if someone shares it with them. These are
-                hidden from search engines, and show on your profile only to people you&apos;ve let follow you, or to
-                people in a group you&apos;ve shared them with. Public registries open for anyone with the link, can
-                show up in search engines, and show on your profile to anyone who opens it.
+                hidden from search engines. Public registries open for anyone with the link and can show up in search
+                engines.
+              </li>
+              <li>
+                You also choose who sees each registry on your profile: nobody, your friends (people you follow who
+                follow you back), followers you&apos;ve approved, or, for a public registry, anyone who opens your
+                profile. A registry also shows there to people in a group you&apos;ve shared it with. This choice is
+                only about your profile: anyone who has a registry&apos;s link can still open it, unless it&apos;s
+                private.
               </li>
               <li>
                 Private registries open only for you and your co-managers. Their link doesn&apos;t work for anyone

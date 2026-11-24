@@ -270,7 +270,7 @@ export const FixingAGuestRow: Story = {
 /**
  * A guest with a Regibee account the host may be shown gets a Follow button
  * on their row: Follow, Follow back for someone who follows the host,
- * Requested while they haven't approved, then Following or Mutual. Guests
+ * Requested while they haven't approved, then Following or Friends. Guests
  * with no account, like the last ones here, get none.
  */
 export const FollowingGuests: Story = {

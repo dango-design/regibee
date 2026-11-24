@@ -22,6 +22,8 @@ export interface Registry {
   is_private?: boolean;
   /** Shown on the owner's profile. */
   listed_on_profile?: boolean;
+  /** Who sees it there. Read it with profileAudience (@shared/list-access). */
+  profile_audience?: string | null;
   description: string | null;
   photo_url: string | null;
   registry_type: RegistryType | null;
