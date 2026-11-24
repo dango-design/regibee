@@ -346,8 +346,8 @@ function DemoAddItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Open to used"
-            hint="Guests may give one secondhand."
+            label="Open to hand-me-downs"
+            hint="Guests may give a hand-me-down."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -588,8 +588,8 @@ function DemoEditItemDialog({
             value="true"
             isSelected={openToUsed}
             onChange={setOpenToUsed}
-            label="Open to used"
-            hint="Guests may give one secondhand."
+            label="Open to hand-me-downs"
+            hint="Guests may give a hand-me-down."
           />
           {openToUsed && (
             <div className="pl-6">

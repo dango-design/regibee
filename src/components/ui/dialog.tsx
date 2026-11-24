@@ -140,9 +140,12 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  size = "default",
   ...props
 }: Omit<React.ComponentProps<"div">, "role"> & {
   showCloseButton?: boolean
+  /** "wide" is for a dialog with two columns, like the edit item dialog. */
+  size?: "default" | "wide"
 }) {
   const { open, onOpenChange } = React.useContext(DialogContext)
 
@@ -162,7 +165,8 @@ function DialogContent({
       <AriaModal
         className={(state) =>
           cn(
-            "max-h-full w-full outline-hidden sm:max-w-lg",
+            "max-h-full w-full outline-hidden",
+            size === "wide" ? "sm:max-w-4xl" : "sm:max-w-lg",
             state.isEntering &&
               "duration-300 ease-out animate-in max-sm:slide-in-from-bottom sm:zoom-in-95",
             state.isExiting &&

@@ -157,7 +157,7 @@ export interface CategoryResponse {
   category: { id: string; name: string };
 }
 
-/** The lowest used condition an owner will accept, as the add-item dialog offers them. */
+/** The lowest condition an owner will take a hand-me-down in, as the add-item dialog offers them. */
 export const USED_CONDITIONS = [
   { id: "like-new", label: "Like new" },
   { id: "very-good", label: "Very good" },
