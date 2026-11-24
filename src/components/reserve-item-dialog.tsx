@@ -147,6 +147,10 @@ const textButton =
   "inline-flex items-center justify-center text-sm font-medium text-brand-600 underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 const dangerTextButton =
   "inline-flex items-center justify-center text-sm font-medium text-error-primary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
+// Quieter than the other buttons: it's there for a guest who reserved by
+// mistake, and shouldn't compete with buying.
+const cancelButton =
+  "inline-flex items-center text-sm underline underline-offset-2 opacity-80 hover:opacity-100 max-sm:-my-2 max-sm:min-h-11";
 const noteText = "text-center text-xs text-tertiary";
 
 export function ReserveItemDialog({
@@ -514,11 +518,19 @@ export function ReserveItemDialog({
     content = (
       <div className="space-y-4">
         {until && (
+          // The reservation is saved by now, which a guest may not have
+          // expected, so the way to cancel it sits next to the notice.
           // mint-800, not 700: 700 on mint-50 is under 4.5:1 contrast.
-          <p className="mr-8 flex items-center gap-2 rounded-lg border border-mint-200 bg-mint-50 px-3 py-2 text-sm font-medium text-mint-800">
-            <Check className="h-4 w-4 shrink-0" />
-            <span>Reserved for you until {until}</span>
-          </p>
+          <div className="mr-8 flex items-start gap-2 rounded-lg border border-mint-200 bg-mint-50 px-3 py-2 text-sm text-mint-800">
+            <Check className="mt-0.5 h-4 w-4 shrink-0" />
+            {/* On a phone the button wraps to its own line, under the text. */}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3">
+              <p className="font-medium">Reserved for you until {until}</p>
+              <button type="button" className={cancelButton} onClick={goToRelease}>
+                Cancel reservation
+              </button>
+            </div>
+          </div>
         )}
         <DialogHeader className={until ? undefined : "pr-8"}>
           <DialogTitle>
@@ -564,18 +576,25 @@ export function ReserveItemDialog({
             I bought it
           </Button>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {item.external_url ? (
-            <button type="button" className={textButton} onClick={() => setStep("confirm")}>
+        {/* Ghost buttons: no border or fill, so the store button stays the one
+            that stands out. */}
+        <div className="flex flex-wrap items-center justify-center gap-x-2">
+          {item.external_url && (
+            <Button variant="ghost" onClick={() => setStep("confirm")}>
               I already bought it
-            </button>
-          ) : (
-            <span />
+            </Button>
           )}
-          <button type="button" className={textButton} onClick={close}>
+          <Button variant="ghost" onClick={close}>
             Finish later
-          </button>
+          </Button>
         </div>
+        {!until && (
+          <div className="flex justify-center text-secondary">
+            <button type="button" className={cancelButton} onClick={goToRelease}>
+              Cancel reservation
+            </button>
+          </div>
+        )}
       </div>
     );
   } else if (step === "confirm") {

@@ -137,7 +137,8 @@ export const AlreadyBought: Story = {
 };
 
 // After reserving, or from the card's Finish gift: the address, and one
-// button that copies it and opens the store.
+// button that copies it and opens the store. The reserved notice has a quiet
+// Cancel reservation button, for a guest who didn't mean to reserve.
 export const Buy: Story = {
   args: { item: soundMachine, gift: reserved, shippingAddress: ADDRESS },
   play: openWith(/finish gift/i),
@@ -148,6 +149,17 @@ export const BuyOnStoreRegistry: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   args: { item: wrap, registryStoreName: "Amazon", gift: reserved, shippingAddress: ADDRESS },
   play: openWith(/finish gift/i),
+};
+
+// Cancel reservation asks first, and Keep it goes back to the buy step.
+export const CancelFromBuy: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { item: soundMachine, gift: reserved, shippingAddress: ADDRESS },
+  play: async (context) => {
+    await openWith(/finish gift/i)!(context);
+    await context.userEvent.click(screen.getByRole("button", { name: /cancel reservation/i }));
+    await screen.findByRole("heading", { name: /release the hatch/i });
+  },
 };
 
 // Coming back from the store tab, or from "I bought it" in the email.
