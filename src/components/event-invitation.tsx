@@ -413,7 +413,7 @@ export function EventInvitation({
                 >
                   <RegistryPictures items={linked.items ?? []} />
                   <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 font-medium text-primary group-hover:underline">{linked.title}</span>
+                    <span className="line-clamp-2 font-medium text-primary">{linked.title}</span>
                     {details && <span className="block text-sm text-tertiary">{details}</span>}
                   </span>
                   <ChevronRight

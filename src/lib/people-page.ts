@@ -6,7 +6,7 @@
 import { listFollowingFeed, listFollows } from "@/lib/follows";
 import { listUpcomingBirthdays } from "@/lib/birthdays-server";
 import { listRegistriesSharedWithViewer } from "@/lib/groups-server";
-import { parseGiftProfile } from "@/lib/gift-profile";
+import { cleanPublicNote, parseGiftProfile } from "@/lib/gift-profile";
 import { profilePhotoUrl } from "@/lib/profile-photos";
 import { getViewer } from "@/lib/viewer";
 import { createClient } from "@/utils/supabase/server";
@@ -36,7 +36,7 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
   const [supabase, user] = await Promise.all([createClient(), getViewer()]);
   if (!user) return null;
 
-  const [{ data: profile }, { data: registries }, follows, giftRow] = await Promise.all([
+  const [{ data: profile }, { data: registries }, follows, giftRow, noteRow] = await Promise.all([
     supabase
       .from("profiles")
       .select("public_id, full_name, avatar_url, discoverable, findable_by_email, email_follow_requests")
@@ -52,6 +52,9 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
     // 20261112062844_gift_profiles_and_birthday_reminders.sql has run. Until
     // then this errors, which counts as an empty profile with emails on.
     supabase.from("profiles").select("gift_profile, email_birthday_reminders").eq("id", user.id).maybeSingle(),
+    // Separate too. It errors until 20261124084611_profile_public_note.sql
+    // has run, which counts as no note.
+    supabase.from("profiles").select("public_note").eq("id", user.id).maybeSingle(),
   ]);
   const gift = giftRow.error ? null : giftRow.data;
 
@@ -68,6 +71,7 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
       discoverable: profile?.discoverable ?? false,
       findable_by_email: profile?.findable_by_email ?? false,
       email_follow_requests: profile?.email_follow_requests ?? true,
+      public_note: cleanPublicNote(noteRow.error ? null : noteRow.data?.public_note),
     },
     registries: accountRegistries,
     follows,

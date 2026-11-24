@@ -4,15 +4,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  MAX_PUBLIC_NOTE_LENGTH,
   MAX_TAGS,
   addDays,
   birthdayCountdown,
+  cleanPublicNote,
   daysBetween,
   formatBirthdayDate,
   hasGiftDetails,
   nextAnnualDate,
   pickBirthdayList,
   parseGiftProfile,
+  visibleGiftProfile,
   withoutBirthday,
 } from "./gift-profile.ts";
 
@@ -116,4 +119,34 @@ test("pickBirthdayList links one current wishlist, or the one birthday list", ()
   );
   assert.equal(pickBirthdayList([list("a"), list("b")], today), null);
   assert.equal(pickBirthdayList([], today), null);
+});
+
+test("visibleGiftProfile gives each viewer only their part", () => {
+  const profile = parseGiftProfile({
+    birthday: { month: 6, day: 1 },
+    sizes: { tops: "M" },
+    colors: "Green",
+    likes: ["Tea"],
+    skip: ["Candles"],
+    notes: "No wool",
+  });
+  // The person, and people they follow who follow them back.
+  assert.deepEqual(visibleGiftProfile(profile, { details: true, birthday: true }), profile);
+  // A follower they approved but don't follow back.
+  assert.deepEqual(visibleGiftProfile(profile, { details: false, birthday: true }), {
+    birthday: { month: 6, day: 1 },
+  });
+  // Anyone else with the link.
+  assert.deepEqual(visibleGiftProfile(profile, { details: false, birthday: false }), {});
+  // A child's list: everything but the birthday.
+  const onChildList = visibleGiftProfile(profile, { details: true, birthday: false });
+  assert.equal(onChildList.birthday, undefined);
+  assert.deepEqual(onChildList.sizes, { tops: "M" });
+});
+
+test("cleanPublicNote trims, keeps line breaks and cuts at the limit", () => {
+  assert.equal(cleanPublicNote("  Hello   there \r\n\n\n\nSecond line  "), "Hello there\n\nSecond line");
+  assert.equal(cleanPublicNote("   \n  "), null);
+  assert.equal(cleanPublicNote(42), null);
+  assert.equal(cleanPublicNote("a".repeat(MAX_PUBLIC_NOTE_LENGTH + 20))?.length, MAX_PUBLIC_NOTE_LENGTH);
 });

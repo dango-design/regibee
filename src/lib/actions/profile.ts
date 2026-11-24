@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
+import { cleanPublicNote } from "@/lib/gift-profile";
 import { listVisibility, parseProfileAudience, profileAudienceColumns, type ProfileAudience } from "@/lib/list-access";
 import { PROFILE_PHOTOS_BUCKET, profilePhotoFileName } from "@/lib/profile-photos";
 
@@ -27,7 +28,7 @@ export async function saveProfile(formData: FormData) {
     return { error: `Names can be up to ${MAX_NAME_LENGTH} characters.` };
   }
 
-  const update: Record<string, string | boolean> = { full_name: fullName };
+  const update: Record<string, string | boolean | null> = { full_name: fullName };
   if (formData.has("discoverable")) {
     update.discoverable = formData.get("discoverable") === "true";
   }
@@ -36,6 +37,12 @@ export async function saveProfile(formData: FormData) {
   }
   if (formData.has("emailFollowRequests")) {
     update.email_follow_requests = formData.get("emailFollowRequests") === "true";
+  }
+
+  // The public note, which anyone who opens the profile sees. Older builds of
+  // the phone app don't send it, and then it stays as it is.
+  if (formData.has("publicNote")) {
+    update.public_note = cleanPublicNote(formData.get("publicNote"));
   }
 
   // Signed-in sessions can't write these columns directly (see

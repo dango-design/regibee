@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { EditItemDialog } from "./edit-item-dialog";
 
 const CATEGORIES = [
@@ -7,6 +7,10 @@ const CATEGORIES = [
   { id: "cat-2", name: "Feeding" },
 ];
 
+// The dialog fades in over 300ms, and nothing in it counts as visible at the
+// start of the fade. So the stories wait for an element to be visible instead
+// of checking once: a single check right after a click sometimes ran before
+// the fade had begun to show, and failed the Chromatic build.
 const meta: Meta<typeof EditItemDialog> = {
   title: "Components/EditItemDialog",
   component: EditItemDialog,
@@ -58,7 +62,7 @@ export const ChangingTheLink: Story = {
     const body = within(document.body);
     await userEvent.click(await body.findByRole("button", { name: "Change link" }));
     await expect(body.getByLabelText("Product link")).toHaveFocus();
-    await expect(body.getByRole("button", { name: "Keep the current link" })).toBeVisible();
+    await waitFor(() => expect(body.getByRole("button", { name: "Keep the current link" })).toBeVisible());
   },
 };
 
@@ -79,7 +83,7 @@ export const GuestOptions: Story = {
   play: async () => {
     const body = within(document.body);
     await userEvent.click(await body.findByRole("button", { name: "What these mean" }));
-    await expect(body.getByText(/lets guests give one that's been used/)).toBeVisible();
+    await waitFor(() => expect(body.getByText(/lets guests give one that's been used/)).toBeVisible());
   },
 };
 

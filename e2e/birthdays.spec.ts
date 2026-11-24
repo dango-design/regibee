@@ -31,12 +31,15 @@ async function follow(followerId: string, followeeId: string, status: "pending" 
   if (error) throw error;
 }
 
-/** Someone with a birthday, sizes and likes, and one wishlist on their profile. */
+/** Someone with a birthday, sizes, likes and a public note, and one wishlist on their profile. */
 async function personWithBirthday(name: string, birthday: { month: number; day: number }) {
   const person = await createAccount(name);
   const { error } = await db
     .from("profiles")
-    .update({ gift_profile: { birthday, sizes: { tops: "M" }, likes: ["Bubble tea"], skip: ["Candles"] } })
+    .update({
+      gift_profile: { birthday, sizes: { tops: "M" }, likes: ["Bubble tea"], skip: ["Candles"] },
+      public_note: "Ask me about my garden.",
+    })
     .eq("id", person.id);
   if (error) throw error;
   const { registry } = await createWishlist(person.id);
@@ -91,11 +94,12 @@ test("approved followers get one email 10 days before a birthday", async ({ page
   expect(await birthdayEmails(elphaba.email)).toHaveLength(0);
 });
 
-test("only approved followers see a birthday; anyone with a link sees sizes and likes", async ({ browser }) => {
+test("followers see a birthday, friends see sizes and likes, and anyone sees the public note", async ({ browser }) => {
   const birthday = birthdayIn(5);
   const glinda = await personWithBirthday("Glinda Bubbles", birthday);
   const max = await createAccount("Max Follower");
   await follow(max.id, glinda.id, "approved");
+  const paths = [glinda.path, `/r/${glinda.registry.slug}`];
 
   const maxContext = await browser.newContext();
   const page = await maxContext.newPage();
@@ -107,23 +111,46 @@ test("only approved followers see a birthday; anyone with a link sees sizes and 
   await expect(coming.getByText("Glinda Bubbles")).toBeVisible();
   await expect(coming.getByText("In 5 days")).toBeVisible();
 
-  // Her profile shows it, with her sizes and likes.
+  // Glinda doesn't follow Max back, so he sees her birthday and her public
+  // note, but not her sizes and likes, on her profile or her wishlist.
+  await page.goto(glinda.path);
+  await expect(page.getByText("Ask me about my garden.")).toBeVisible();
+  for (const path of paths) {
+    await page.goto(path);
+    await expect(page.getByText(formatBirthday(birthday), { exact: true })).toBeVisible();
+    await expect(page.getByText("Bubble tea")).toHaveCount(0);
+    await expect(page.getByText("Tops: M")).toHaveCount(0);
+    await expect(page.getByText("Candles")).toHaveCount(0);
+  }
+
+  // Once she follows him back, he sees them in both places.
+  await follow(glinda.id, max.id, "approved");
+  for (const path of paths) {
+    await page.goto(path);
+    await expect(page.getByText(formatBirthday(birthday), { exact: true })).toBeVisible();
+    await expect(page.getByText("Bubble tea")).toBeVisible();
+    await expect(page.getByText("Tops: M")).toBeVisible();
+  }
   await page.goto(glinda.path);
   await expect(page.getByRole("heading", { name: "About Glinda Bubbles" })).toBeVisible();
-  await expect(page.getByText(formatBirthday(birthday), { exact: true })).toBeVisible();
-  await expect(page.getByText("Bubble tea")).toBeVisible();
   await maxContext.close();
 
-  // Someone with only the links sees the sizes and likes, but no birthday.
+  // Someone with only the links sees the public note on her profile, and no
+  // sizes, likes or birthday anywhere.
   const visitor = await browser.newContext();
   const visitorPage = await visitor.newPage();
-  for (const path of [glinda.path, `/r/${glinda.registry.slug}`]) {
+  for (const path of paths) {
     await visitorPage.goto(path);
-    await expect(visitorPage.getByText("Bubble tea")).toBeVisible();
-    await expect(visitorPage.getByText("Tops: M")).toBeVisible();
+    await expect(visitorPage.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(visitorPage.getByText("Bubble tea")).toHaveCount(0);
+    await expect(visitorPage.getByText("Tops: M")).toHaveCount(0);
+    await expect(visitorPage.getByText("Candles")).toHaveCount(0);
     await expect(visitorPage.getByText(formatBirthday(birthday), { exact: true })).toHaveCount(0);
     await expect(visitorPage.getByText("Birthday", { exact: true })).toHaveCount(0);
+    await expect(visitorPage.getByRole("heading", { name: "About Glinda Bubbles" })).toHaveCount(0);
   }
+  await visitorPage.goto(glinda.path);
+  await expect(visitorPage.getByText("Ask me about my garden.")).toBeVisible();
   await visitor.close();
 });
 
@@ -204,6 +231,27 @@ test("someone fills in their gift profile on the Account page", async ({ page })
       return data?.email_birthday_reminders;
     })
     .toBe(false);
+});
+
+test("someone writes a public note on the Account page, and anyone sees it on their profile", async ({ page, browser }) => {
+  const maya = await createAccount("Maya Note");
+  await signInAs(page, maya);
+  await page.goto("/dashboard/account");
+
+  const card = page.locator("#profile");
+  await waitForReact(card.locator("form"));
+  await card.getByRole("textbox", { name: "Public note" }).fill("Saving up for a kiln.\nNo candles, please!");
+  await card.getByRole("button", { name: "Save" }).click();
+  await expect(card.getByText("Saved")).toBeVisible();
+
+  const { data: profile } = await db.from("profiles").select("public_id, full_name, public_note").eq("id", maya.id).single();
+  expect(profile?.public_note).toBe("Saving up for a kiln.\nNo candles, please!");
+
+  const visitor = await browser.newContext();
+  const visitorPage = await visitor.newPage();
+  await visitorPage.goto(profilePath(profile!));
+  await expect(visitorPage.getByText("Saving up for a kiln.")).toBeVisible();
+  await visitor.close();
 });
 
 test("a list kept for a child has its own gift profile, and followers see the child's birthday", async ({ browser }) => {

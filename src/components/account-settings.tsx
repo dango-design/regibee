@@ -26,7 +26,8 @@ import { SelectField } from "@/components/base/select/select-field";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { saveProfile, setProfilePhoto, setRegistryProfileAudience } from "@/lib/actions/profile";
 import { saveGiftProfile } from "@/lib/actions/gift-profile";
-import type { GiftProfile } from "@/lib/gift-profile";
+import { MAX_PUBLIC_NOTE_LENGTH, type GiftProfile } from "@/lib/gift-profile";
+import { TextArea } from "@/components/base/textarea/textarea";
 import { occasionLabel } from "@/lib/registry-copy";
 import {
   LIST_ACCESS,
@@ -144,6 +145,8 @@ export function AccountSettings({
     discoverable?: boolean;
     findable_by_email?: boolean;
     email_follow_requests?: boolean;
+    /** What they wrote for everyone who opens their profile. */
+    public_note?: string | null;
   };
   registries: AccountRegistry[];
   follows?: {
@@ -263,8 +266,8 @@ export function AccountSettings({
             <CardHeader>
               <SectionTitle sectionId="profile">Your profile</SectionTitle>
               <CardDescription>
-                One link to all the registries you choose below. Anyone with the link can see your name
-                and those registries.
+                One link to all the registries you choose below. Anyone with the link can see your name,
+                your public note and those registries.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -326,6 +329,15 @@ export function AccountSettings({
                   hint="Shown on your profile, and to people you ask to follow"
                   isRequired
                 />
+                <TextArea
+                  label="Public note"
+                  name="publicNote"
+                  defaultValue={profile.public_note ?? ""}
+                  hint="Optional. Anyone who opens your profile sees this, under your name."
+                  placeholder="Anything you'd like everyone to know"
+                  maxLength={MAX_PUBLIC_NOTE_LENGTH}
+                  rows={3}
+                />
                 <input type="hidden" name="discoverable" value={discoverable ? "true" : "false"} />
                 <Checkbox
                   isSelected={discoverable}
@@ -376,7 +388,8 @@ export function AccountSettings({
                 <SectionTitle sectionId="gift-profile">Gift profile</SectionTitle>
                 <CardDescription>
                   Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wishlists
-                  and your profile, so anyone with those links sees them.
+                  and your profile, only to the people you follow who follow you back. To tell everyone
+                  something, use the public note in Your profile.
                 </CardDescription>
               </CardHeader>
               <CardContent>

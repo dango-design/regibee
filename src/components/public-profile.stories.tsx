@@ -97,9 +97,11 @@ export const OwnProfileNothingListed: Story = {
 
 
 // A friend's profile: they follow each other, so the button says so, and the
-// gift profile shows the birthday. Anyone else sees it without the birthday.
+// gift profile shows. Anyone else sees only the name, photo, public note and
+// registries. A follower who isn't followed back sees the birthday too.
 export const FriendWithGiftProfile: Story = {
   args: {
+    publicNote: "Mostly here for birthdays.\nNo gifts needed for the housewarming!",
     giftProfile: {
       birthday: { month: 3, day: 3 },
       sizes: { tops: "M", shoes: "8.5" },

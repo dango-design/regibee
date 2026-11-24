@@ -165,13 +165,17 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               If you fill it in on your Account page, we keep your birthday (the month and day, no year), your
               sizes, favorite colors, likes, things to skip and notes. Everything but the birthday shows on your
-              personal wishlists and your profile, so anyone with those links sees it. Your birthday shows only to
-              you and the followers you&apos;ve approved: on your profile, on their Following page, and in an email
-              we send them 10 days before.
+              personal wishlists and your profile, only to you and the people you follow who follow you back. Your
+              birthday shows only to you and the followers you&apos;ve approved: on your profile, on their
+              Following page, and in an email we send them 10 days before.
+            </P>
+            <P>
+              You can also write a public note on your Account page. We keep it, and anyone who opens your profile
+              sees it under your name.
             </P>
             <P>
               A list you keep for a child can have its own gift profile, which you and anyone helping you manage
-              the list fill in on its settings page. It shows on that list. The child&apos;s birthday shows only to
+              the list fill in on its settings page. It shows on that list, to anyone who opens it. The child&apos;s birthday shows only to
               the people who manage the list and to followers you&apos;ve approved, while the list is on your
               profile.
             </P>
