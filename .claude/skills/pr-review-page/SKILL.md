@@ -45,6 +45,32 @@ Compare against the base build, not against Chromatic's accepted baselines. The
 base build is exactly what `main` looked like when the branch started, even if
 some of `main`'s changes were never accepted.
 
+### When Chromatic is paused
+
+The free plan's snapshots can run out before the month ends. Chromatic then
+takes no snapshots until the billing month resets. A build made while paused
+has `isLimited: true`. It still reads `PASSED` with 0 changes, and the
+`chromatic` job still passes, but nothing was tested. `UI Tests` and
+`UI Review` stay pending with "Update your plan to resume testing".
+
+When the head build's `isLimited` is true:
+
+- Skip steps 3 to 5. There are no pictures to compare and nothing to accept.
+- Never write "no visual changes" or "0 snapshots changed". Write that Chromatic
+  was paused and the PR's look was not checked.
+- In **Visual changes**, list the story files the PR's diff touches or affects,
+  and link each in the build's published Storybook (`storybookUrl`), which
+  still updates. The user can open those to look for themselves.
+- The verdict rests on the other checks. Make it **Check first** only for the
+  usual reasons, but say in the stamp's plain sentence that visual tests didn't
+  run.
+- The button is labeled `Merge`, and its question doesn't mention accepting.
+  Step 8 skips its Chromatic steps (2 and 4).
+
+When only the base build is limited (Chromatic came back after the branch
+started), compare the head build with Chromatic's accepted baselines instead:
+each head test's `baseline` capture. Say so in the footer.
+
 ## 3. Find what the PR changed
 
 Query both builds for every story's snapshot URL with `captureImage(signed:
