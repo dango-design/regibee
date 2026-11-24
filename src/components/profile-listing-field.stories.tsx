@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import type { ProfileAudience } from "@/lib/list-access";
 import { ProfileListingField } from "./profile-listing-field";
 
@@ -41,7 +41,8 @@ export const Choices: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole("button", { name: /Who sees it on your profile/ }));
     const list = within(document.body);
-    await expect(await list.findByRole("option", { name: "Friends" })).toBeVisible();
+    // The list fades in, so an option is in the page a moment before it's visible.
+    await waitFor(() => expect(list.getByRole("option", { name: "Friends" })).toBeVisible());
     await expect(list.getByRole("option", { name: "Everyone" })).toBeVisible();
   },
 };
@@ -56,7 +57,8 @@ export const LinkOnly: Story = {
     await expect(field).toHaveTextContent("Followers");
     await userEvent.click(field);
     const list = within(document.body);
-    await expect(await list.findByRole("option", { name: "Friends" })).toBeVisible();
+    // The list fades in, so an option is in the page a moment before it's visible.
+    await waitFor(() => expect(list.getByRole("option", { name: "Friends" })).toBeVisible());
     await expect(list.queryByRole("option", { name: "Everyone" })).toBeNull();
   },
 };
