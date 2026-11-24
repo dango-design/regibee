@@ -5,11 +5,13 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
+import { deletePhrase } from "@shared/delete-confirmation";
 import { formatShortEventDate, isEmail, parseGuestList } from "@shared/events";
 import { emailLabel } from "@shared/guest-emails";
 
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, ErrorState, Field, haptic, IconButton, LoadingState, Section, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -29,6 +31,8 @@ export default function GroupScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
   const pastePreview = useMemo(() => parseGuestList(pasted), [pasted]);
   const data = page.data;
@@ -55,6 +59,21 @@ export default function GroupScreen() {
     } catch (e) {
       setNotice({ text: errorMessage(e), error: true });
       return null;
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteGroup() {
+    setBusy("delete");
+    setDeleteError(null);
+    try {
+      await run("groups.deleteGroup", group.id);
+      haptic("success");
+      setConfirmingDelete(false);
+      router.back();
+    } catch (e) {
+      setDeleteError(errorMessage(e));
     } finally {
       setBusy(null);
     }
@@ -289,18 +308,25 @@ export default function GroupScreen() {
           icon="trash"
           variant="danger"
           loading={busy === "delete"}
-          onPress={() =>
-            Alert.alert(`Delete “${group.name}”?`, "Events keep their guests. Shared lists stop being shared with these people.", [
-              { text: "Keep it", style: "cancel" },
-              {
-                text: "Delete group",
-                style: "destructive",
-                onPress: () => attempt("delete", () => run("groups.deleteGroup", group.id), () => void router.back()),
-              },
-            ])
-          }
+          onPress={() => {
+            setDeleteError(null);
+            setConfirmingDelete(true);
+          }}
         />
       </ScrollView>
+      <ConfirmDelete
+        visible={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        title={`Delete “${group.name}”?`}
+        message="Events keep their guests. Shared lists stop being shared with these people. This can't be undone."
+        // A group with people in it asks the owner to type a sentence first.
+        phrase={members.length > 0 ? deletePhrase("group") : null}
+        confirmLabel="Delete group"
+        cancelLabel="Keep it"
+        working={busy === "delete"}
+        error={deleteError}
+        onConfirm={deleteGroup}
+      />
     </>
   );
 }

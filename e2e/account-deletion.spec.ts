@@ -40,10 +40,10 @@ test("deleting an account removes its own lists and guests' gifts, and hands a s
   await expect(
     dialog.getByText(`“${shared.title}” stays for the people who help manage it. Casey Comanager becomes its owner.`),
   ).toBeVisible();
-  // The button waits for the word.
+  // The account has registries, so the button waits for the sentence.
   const deleteButton = dialog.getByRole("button", { name: "Delete account" });
   await expect(deleteButton).toBeDisabled();
-  await dialog.getByLabel("Type “delete” to confirm").fill("delete");
+  await dialog.getByLabel("Type “I want to delete my account” to confirm").fill("i want to delete my account");
   await deleteButton.click();
   await page.waitForURL((url) => url.pathname === "/");
 

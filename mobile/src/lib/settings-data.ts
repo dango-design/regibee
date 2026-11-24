@@ -5,6 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { RegistryDeletionSummary } from "@shared/delete-confirmation";
 import type { GiftProfile } from "@shared/gift-profile";
 import type { ListVisibility, ProfileAudience } from "@shared/list-access";
 import type { RetailerRegistry } from "@shared/retailers";
@@ -163,6 +164,13 @@ export function useDeleteList(registryId: string) {
       return queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
+}
+
+/** What deleting the list would do, counted by the website's server. */
+export async function loadRegistryDeletionSummary(registryId: string): Promise<RegistryDeletionSummary> {
+  if (isDemo()) return demo.registryDeletionSummary(registryId);
+  const { result } = await runAction<{ summary: RegistryDeletionSummary }>("registry.getRegistryDeletionSummary", registryId);
+  return result.summary;
 }
 
 // ---------------------------------------------------------------------------

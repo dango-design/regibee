@@ -37,6 +37,8 @@ import {
 import { isUuid } from "@/lib/extension";
 import { gtinChange, normalizeGtin } from "@/lib/gtin";
 import { listsForItems } from "@/lib/list-items";
+import type { RegistryDeletionSummary } from "@/lib/delete-confirmation";
+import { summarizeRegistryDeletion } from "@/lib/registry-deletion-server";
 import { addListCategory } from "@/lib/list-categories";
 import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
 import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
@@ -389,6 +391,36 @@ export async function deleteRegistry(registryId: string) {
   }
 
   redirect("/dashboard");
+}
+
+/**
+ * What deleting the registry would do, for the confirmation before it. Only
+ * the owner can delete a registry, so only the owner can ask.
+ */
+export async function getRegistryDeletionSummary(
+  registryId: string,
+): Promise<{ summary: RegistryDeletionSummary } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  if (!isUuid(registryId)) return { error: "Registry not found" };
+
+  const { data: registry } = await supabaseAdmin
+    .from("registries")
+    .select("id")
+    .eq("id", registryId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (!registry) return { error: "Registry not found" };
+
+  try {
+    return { summary: await summarizeRegistryDeletion(registryId) };
+  } catch (error) {
+    console.error(error);
+    return { error: "We couldn't check this registry. Try again." };
+  }
 }
 
 export async function addRegistryItem(registryId: string, formData: FormData) {

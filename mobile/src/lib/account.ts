@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Alert, Platform } from "react-native";
 
 import { accountDeletionLines, type AccountDeletionSummary } from "@shared/account-deletion-summary";
+import { accountHasData, deletePhrase } from "@shared/delete-confirmation";
 
 import { haptic } from "@/components/ui";
 import { signOut, useSession } from "@/lib/auth";
@@ -39,26 +40,21 @@ function tell(title: string, text: string) {
   else Alert.alert(title, text);
 }
 
-function confirmDeletion(text: string, onConfirm: () => void) {
-  if (Platform.OS === "web") {
-    if (globalThis.confirm?.(`Delete your account?\n\n${text}`)) onConfirm();
-    return;
-  }
-  Alert.alert("Delete your account?", text, [
-    { text: "Cancel", style: "cancel" },
-    { text: "Delete account", style: "destructive", onPress: onConfirm },
-  ]);
-}
-
 /**
  * The Account tab's "Delete account" row. It asks the server what deleting
- * the account would do, shows that in a confirmation, then deletes the
- * account, clears the cache and signs out.
+ * the account would do and shows that in a dialog. An account with a registry
+ * or an event also has to type a sentence there. Then it deletes the account,
+ * clears the cache and signs out.
+ *
+ * The screen shows the dialog: `<ConfirmDelete {...deletion.dialog} />`.
  */
 export function useDeleteAccount() {
   const { demo } = useSession();
   // What the row is waiting for, if anything.
   const [status, setStatus] = useState<"checking" | "deleting" | null>(null);
+  // Set while the dialog is open.
+  const [summary, setSummary] = useState<AccountDeletionSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function start() {
     if (status) return;
@@ -71,35 +67,49 @@ export function useDeleteAccount() {
     }
 
     setStatus("checking");
-    let summary: AccountDeletionSummary;
     try {
-      summary = await callAccountApi("GET");
-    } catch (error) {
+      const loaded: AccountDeletionSummary = await callAccountApi("GET");
+      haptic("warning");
+      setError(null);
+      setSummary(loaded);
+    } catch (e) {
+      tell("We couldn't check your account", message(e));
+    } finally {
       setStatus(null);
-      tell("We couldn't check your account", message(error));
-      return;
     }
-    setStatus(null);
-
-    haptic("warning");
-    const text = [...accountDeletionLines(summary), "This can't be undone."].join("\n\n");
-    confirmDeletion(text, async () => {
-      setStatus("deleting");
-      try {
-        await callAccountApi("DELETE");
-      } catch (error) {
-        setStatus(null);
-        tell("Your account wasn't deleted", message(error));
-        return;
-      }
-      // The account and its sessions are gone on the server. These clear the
-      // phone's copies. Signing out shows the sign-in screen.
-      await clearCache();
-      await signOut();
-      haptic("success");
-      tell("Your account is deleted", "Thanks for using Regibee.");
-    });
   }
 
-  return { status, start };
+  async function confirm() {
+    setStatus("deleting");
+    setError(null);
+    try {
+      await callAccountApi("DELETE");
+    } catch (e) {
+      setStatus(null);
+      setError(message(e));
+      return;
+    }
+    // The account and its sessions are gone on the server. These clear the
+    // phone's copies. Signing out shows the sign-in screen.
+    setSummary(null);
+    await clearCache();
+    await signOut();
+    haptic("success");
+    tell("Your account is deleted", "Thanks for using Regibee.");
+  }
+
+  const dialog = {
+    visible: summary !== null,
+    onClose: () => setSummary(null),
+    title: "Delete your account?",
+    message: "This can't be undone. Deleting your account does this:",
+    lines: summary ? accountDeletionLines(summary) : undefined,
+    phrase: summary && accountHasData(summary) ? deletePhrase("account") : null,
+    confirmLabel: "Delete account",
+    working: status === "deleting",
+    error,
+    onConfirm: confirm,
+  };
+
+  return { status, start, dialog };
 }

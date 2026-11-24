@@ -5,21 +5,11 @@ import { useRouter } from "next/navigation";
 import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/base/input/input";
+import { ConfirmDeleteDialog, DeletionLines } from "@/components/confirm-delete-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { accountDeletionLines, type AccountDeletionSummary } from "@/lib/account-deletion-summary";
+import { accountHasData, deletePhrase } from "@/lib/delete-confirmation";
 import { cx } from "@/lib/utils/cx";
-
-// What the person types to confirm.
-const CONFIRM_WORD = "delete";
 
 type Result = { error?: string };
 
@@ -42,8 +32,9 @@ async function deleteWithApi(): Promise<Result> {
 
 /**
  * The Account page's last card. Its dialog says what deleting the account
- * does, asks the person to type "delete", then deletes it with
- * DELETE /api/account, signs out and goes to the home page.
+ * does. An account with a registry or an event also asks the person to type
+ * a sentence first. Then it deletes the account with DELETE /api/account,
+ * signs out and goes to the home page.
  */
 export function DeleteAccountCard({
   loadSummary = loadFromApi,
@@ -57,7 +48,6 @@ export function DeleteAccountCard({
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<AccountDeletionSummary | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [typed, setTyped] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
@@ -72,13 +62,10 @@ export function DeleteAccountCard({
   };
 
   const openDialog = () => {
-    setTyped("");
     setError("");
     setOpen(true);
     load();
   };
-
-  const confirmed = typed.trim().toLowerCase() === CONFIRM_WORD;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -113,61 +100,35 @@ export function DeleteAccountCard({
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={(next) => !deleting && setOpen(next)}>
-        <DialogContent className="sm:max-w-lg" showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Delete your account?</DialogTitle>
-            <DialogDescription>This can&apos;t be undone. Deleting your account does this:</DialogDescription>
-          </DialogHeader>
-
-          {loadError ? (
-            <div className="space-y-3">
-              <p className="text-sm text-error-primary">{loadError}</p>
-              <Button variant="outline" size="sm" onClick={load}>
-                Try again
-              </Button>
-            </div>
-          ) : summary ? (
-            <ul className="list-disc space-y-2 pl-5 text-sm text-secondary">
-              {accountDeletionLines(summary).map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ) : (
-            <div className="space-y-2" aria-label="Checking your account" role="status">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-          )}
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (confirmed && summary && !deleting) handleDelete();
-            }}
-            className="space-y-4"
-          >
-            <Input
-              label={`Type “${CONFIRM_WORD}” to confirm`}
-              value={typed}
-              onChange={setTyped}
-              autoComplete="off"
-              spellCheck="false"
-              isDisabled={deleting}
-            />
-            {error && <p className="text-sm text-error-primary">{error}</p>}
-            <DialogFooter sticky>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={deleting}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="destructive" disabled={!confirmed || !summary || deleting}>
-                {deleting ? "Deleting..." : "Delete account"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Delete your account?"
+        description="This can't be undone. Deleting your account does this:"
+        phrase={summary && accountHasData(summary) ? deletePhrase("account") : null}
+        confirmLabel="Delete account"
+        working={deleting}
+        ready={summary !== null}
+        error={error}
+        onConfirm={handleDelete}
+      >
+        {loadError ? (
+          <div className="space-y-3">
+            <p className="text-sm text-error-primary">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={load}>
+              Try again
+            </Button>
+          </div>
+        ) : summary ? (
+          <DeletionLines lines={accountDeletionLines(summary)} />
+        ) : (
+          <div className="space-y-2" aria-label="Checking your account" role="status">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        )}
+      </ConfirmDeleteDialog>
     </>
   );
 }

@@ -13,6 +13,7 @@ import {
   demoPurchases,
   demoSuggestions,
 } from "@shared/demo-data";
+import type { RegistryDeletionSummary } from "@shared/delete-confirmation";
 import { GIFT_HOLD_DAYS, giftActivityAction, giverNameForOwner } from "@shared/gifts";
 import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 import { copyForRegistry } from "@shared/registry-copy";
@@ -376,6 +377,16 @@ export const demo = {
       ...list,
       registry: { ...list.registry, settings: { ...(list.registry.settings ?? {}), ...patch } },
     }));
+  },
+  registryDeletionSummary(registryId: string): RegistryDeletionSummary {
+    const list = listFor(registryId);
+    return {
+      deletedItems: list.items.length,
+      movedItems: 0,
+      placedItems: 0,
+      funds: list.funds.length,
+      gifts: giftsFor(registryId).filter((g) => g.status !== "cancelled").length,
+    };
   },
   deleteRegistry(registryId: string) {
     current().lists.delete(registryId);

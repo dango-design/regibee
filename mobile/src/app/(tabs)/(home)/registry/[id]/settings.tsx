@@ -8,6 +8,12 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 
+import {
+  deletePhrase,
+  registryDeletionLines,
+  registryHasData,
+  type RegistryDeletionSummary,
+} from "@shared/delete-confirmation";
 import { parseGiftProfile } from "@shared/gift-profile";
 import { readReservationPrivacy } from "@shared/gifts";
 import {
@@ -21,6 +27,7 @@ import {
 import { copyFor } from "@shared/registry-copy";
 import { isLinkForStore, isStoreId, MAX_RETAILER_REGISTRIES, parseRetailerRegistries, STORES, type StoreId } from "@shared/retailers";
 
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { DateField } from "@/components/date-field";
 import { GiftProfileForm } from "@/components/gift-profile-form";
 import { Icon } from "@/components/icon";
@@ -43,6 +50,7 @@ import { errorMessage, useCreateCategory, useRegistry } from "@/lib/data";
 import { initials } from "@/lib/format";
 import { pickPhoto, uploadListPhoto } from "@/lib/photos";
 import {
+  loadRegistryDeletionSummary,
   useDeleteCategory,
   useDeleteList,
   useGenerateInviteLink,
@@ -913,30 +921,51 @@ function ManagersPanel({ detail }: { detail: RegistryDetail }) {
 
 function DangerPanel({ registryId }: { registryId: string }) {
   const remove = useDeleteList(registryId);
+  const [open, setOpen] = useState(false);
+  // What deleting does. "unknown" when the server couldn't say: then the
+  // dialog asks for the sentence, as it does for a registry with items.
+  const [summary, setSummary] = useState<RegistryDeletionSummary | "unknown" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function ask() {
+    setError(null);
+    setSummary(null);
+    setOpen(true);
+    setSummary(await loadRegistryDeletionSummary(registryId).catch(() => "unknown" as const));
+  }
+
+  const lines =
+    summary === null
+      ? undefined
+      : summary === "unknown"
+        ? ["Its items and gift funds are deleted, with the gifts guests reserved or gave.", "The registry's link stops working."]
+        : registryDeletionLines(summary);
+
   return (
     <Panel title="Danger Zone" description="Permanently delete this registry and all its items">
-      <Button
-        title="Delete registry"
-        variant="danger"
-        icon="trash"
-        loading={remove.isPending}
-        onPress={() =>
-          Alert.alert("Delete this registry?", "Are you sure you want to delete this registry? This action cannot be undone.", [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Delete registry",
-              style: "destructive",
-              onPress: () =>
-                remove.mutate(undefined, {
-                  onSuccess: () => {
-                    haptic("success");
-                    router.dismissTo("/");
-                  },
-                  onError: (e) => Alert.alert("Couldn't delete it", errorMessage(e)),
-                }),
+      <Button title="Delete registry" variant="danger" icon="trash" onPress={ask} />
+      <ConfirmDelete
+        visible={open}
+        onClose={() => setOpen(false)}
+        title="Delete this registry?"
+        message="This can't be undone. Deleting this registry does this:"
+        lines={lines}
+        loading={summary === null}
+        phrase={summary !== null && (summary === "unknown" || registryHasData(summary)) ? deletePhrase("registry") : null}
+        confirmLabel="Delete registry"
+        working={remove.isPending}
+        error={error}
+        onConfirm={() => {
+          setError(null);
+          remove.mutate(undefined, {
+            onSuccess: () => {
+              haptic("success");
+              setOpen(false);
+              router.dismissTo("/");
             },
-          ])
-        }
+            onError: (e) => setError(errorMessage(e)),
+          });
+        }}
       />
     </Panel>
   );

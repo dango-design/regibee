@@ -79,6 +79,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
 - Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
 
+## Deleting things
+
+- Deleting a registry, an event, a group or an account that holds something asks the person to type a sentence first, such as "I want to delete this registry". A brand-new one, with nothing in it, only asks with two buttons. The sentences and what counts as holding something are in `src/lib/delete-confirmation.ts`: a registry with an item or a gift fund, an event with a guest, a group with a member, an account with a registry or an event.
+- Use `ConfirmDeleteDialog` (`src/components/confirm-delete-dialog.tsx`) on the website and `ConfirmDelete` (`mobile/src/components/confirm-delete.tsx`) in the app. Don't use the browser's `confirm()` or a system alert for these.
+- The typing only slows the person down. The server actions don't check it.
+
 ## Items on several lists
 
 - An item's home list is `registry_items.registry_id`. `registry_item_placements` puts it on more of the same owner's lists, each with its own category. Gifts belong to the item, so they show on every list it's on.

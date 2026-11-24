@@ -8,6 +8,7 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from "react-
 import { Icon, type IconName } from "@/components/icon";
 import { BIRTHDAY_REMINDER_DAYS } from "@shared/gift-profile";
 
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { NavRow } from "@/components/nav-row";
 import { Divider, Section, SwitchRow, Text } from "@/components/ui";
 import { VersionSection } from "@/components/version-section";
@@ -112,6 +113,7 @@ export default function AccountScreen() {
       )}
 
       <VersionSection />
+      <ConfirmDelete {...deletion.dialog} />
 
       <Text variant="caption" tone="tertiary" style={{ textAlign: "center" }}>
         Regibee {Application.nativeApplicationVersion ?? ""}
