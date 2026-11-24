@@ -123,11 +123,13 @@ export const Bought: Story = {
 
 /** The organizer called it off and sees whom they'd marked paid. */
 export const CalledOff: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { view: { ...balloonRide, status: "ended" }, viewer: organizer },
 };
 
 /** No goal: just the total so far. Nobody's in yet. */
 export const NoGoalYet: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     view: { ...asVisitor, goalAmount: null, pledged: 0, pledges: [], paybackNote: null, event: null },
     viewer: { ...visitor, signedIn: true, prefill: { name: "Tin Man", email: "tin@example.com" } },

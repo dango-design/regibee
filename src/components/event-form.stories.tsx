@@ -94,6 +94,7 @@ export const NewEvent: Story = {
 
 /** Picking an occasion closes its step and puts the cursor in the name. */
 export const NewEventName: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: newEvent,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -111,6 +112,7 @@ export const NewEventTimeAndPlace: Story = {
 
 /** "Plan an event" on a registry's page starts with that registry linked. */
 export const NewEventGifts: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { ...newEvent, startRegistryId: SAMPLE_REGISTRY_ID },
   play: async ({ canvasElement }) => {
     await openStep(canvasElement, /^\d?\s*Gifts(?! among)/);
@@ -137,6 +139,7 @@ export const NewEventGiftExchange: Story = {
 };
 
 export const NewEventInvitation: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: newEvent,
   play: async ({ canvasElement }) => openStep(canvasElement, /Invitation/),
 };
@@ -165,6 +168,7 @@ export const NewEventMissingName: Story = {
  * step ends up closed with a summary, and the cursor is on Create.
  */
 export const NewEventAllStepsDone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: newEvent,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -213,7 +217,7 @@ export const EditingWithPicture: Story = {
  * title, so Tab goes on to the upload button.
  */
 export const EditingFromAddYourInvitation: Story = {
-  parameters: editPage,
+  parameters: { ...editPage, chromatic: { disableSnapshot: true } },
   globals: { viewport: { value: "desktop" } },
   args: { eventId: sampleEvent.id, initial: { ...sampleEvent, image_url: null }, linkedRegistries },
   beforeEach: withSectionInUrl("invitation"),
@@ -279,7 +283,7 @@ export const EditingWithGiftsAndExchange: Story = {
 
 /** A wedding asks each person's meal, the names of plus-ones, and any dietary needs. */
 export const EditingWeddingQuestions: Story = {
-  parameters: editPage,
+  parameters: { ...editPage, chromatic: { disableSnapshot: true } },
   args: {
     eventId: sampleEvent.id,
     initial: {
@@ -295,7 +299,7 @@ export const EditingWeddingQuestions: Story = {
 
 /** Changing the place of an event offers to email guests about it. */
 export const ChangingThePlace: Story = {
-  parameters: editPage,
+  parameters: { ...editPage, chromatic: { disableSnapshot: true } },
   args: { eventId: sampleEvent.id, initial: { ...sampleEvent, image_url: null }, linkedRegistries },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

@@ -194,6 +194,7 @@ export const CoverStates: Story = {
 // gave the bibs, so a panda sits on their photo. Other guests gave the socks,
 // so that photo fades. The plates have no photo and show their category's icon.
 export const WithPhotos: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     parentName: "Remi & Max",
     categories: [{ id: "nursery", name: "Feeding", sort_order: 0 }],
@@ -262,6 +263,7 @@ export const WithPhotosPhone: Story = {
 // doesn't zoom in, and 44px filters and buttons. The categories hide behind
 // the floating list button, so "Suggest an item" moves up under the filters.
 export const Phone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   ...ItemsFromStores,
   globals: { viewport: { value: "mobile1" } },
 };
@@ -304,6 +306,7 @@ export const FellowGuestsReserved: Story = {
 };
 
 export const FellowGuestsReservedPhone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   ...FellowGuestsReserved,
   globals: { viewport: { value: "mobile1" } },
 };

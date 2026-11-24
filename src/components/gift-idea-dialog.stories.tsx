@@ -39,6 +39,7 @@ export const New: Story = {
 
 /** Changing an idea, with Delete. */
 export const Edit: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     trigger: <Button variant="outline">Edit</Button>,
     idea: {

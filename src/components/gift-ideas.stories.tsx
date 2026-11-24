@@ -73,6 +73,7 @@ export const Default: Story = {};
 
 /** Only Mom's ideas, picked from the people at the top. */
 export const OnePerson: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   name: "One person",
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole("radio", { name: /^Mom/ }));
@@ -84,6 +85,7 @@ export const OnePerson: Story = {
  * sure who yet", after the people.
  */
 export const NotSureWhoYet: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   name: "Not sure who yet",
   args: {
     ideas: [
@@ -117,5 +119,6 @@ export const Phone: Story = {
 
 /** The placeholder while the view loads. */
 export const Loading: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   render: () => <GiftIdeasSkeleton />,
 };

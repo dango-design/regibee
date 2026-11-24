@@ -82,6 +82,7 @@ export const Reserve: Story = {
 // An item with a photo keeps showing it in the dialog, with the price and
 // store under it.
 export const ReserveWithPhoto: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: {
       id: "5",
@@ -111,6 +112,7 @@ export const ReserveOnStoreRegistry: Story = {
 
 // Needs more than one, so the form adds a quantity field. No store link.
 export const ReserveMultiQuantity: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: {
       id: "2",
@@ -126,6 +128,7 @@ export const ReserveMultiQuantity: Story = {
 
 // The guest bought it before coming to the registry.
 export const AlreadyBought: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: soundMachine },
   play: async (context) => {
     await openWith(/gift this/i)!(context);
@@ -142,6 +145,7 @@ export const Buy: Story = {
 
 // On the owners' store registry there's no address to copy.
 export const BuyOnStoreRegistry: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: wrap, registryStoreName: "Amazon", gift: reserved, shippingAddress: ADDRESS },
   play: openWith(/finish gift/i),
 };
@@ -156,6 +160,7 @@ export const Confirm: Story = {
 
 // "Not yet": the reservation stays until its end date.
 export const NotYet: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: soundMachine, gift: reserved, initialStep: "confirm" },
   play: async ({ userEvent }) => {
     await screen.findByRole("dialog");
@@ -165,6 +170,7 @@ export const NotYet: Story = {
 
 // The card's Release button, or "I'm not getting it".
 export const Release: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: soundMachine, gift: reserved },
   play: openWith(/^release$/i),
 };

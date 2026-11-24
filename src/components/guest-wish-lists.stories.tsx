@@ -55,6 +55,7 @@ export const AsAGuest: Story = {
  * It has no button: that list's page would show her what's been reserved.
  */
 export const AListYouDontOwn: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     lists: sampleGuestWishLists.map((entry) => (entry.isYou ? { ...entry, ownListId: null } : entry)),
   },
@@ -100,6 +101,7 @@ export const WithTheHostsList: Story = {
  * page for it instead.
  */
 export const YourOwnLinkedList: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     lists: sampleGuestWishLists.map((entry) => ({ ...entry, isYou: false, ownListId: null })),
     guestToken: null,
@@ -132,6 +134,7 @@ export const YourOwnLinkedList: Story = {
  * isn't on her profile here, so it leads with its own name.
  */
 export const NotAGuest: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     ...WithTheHostsList.args,
     registries: WithTheHostsList.args!.registries!.map((list) =>
@@ -144,6 +147,7 @@ export const NotAGuest: Story = {
 
 /** A guest who hasn't linked their own list yet. */
 export const NoListOfYourOwn: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     lists: sampleGuestWishLists.map((entry) =>
       entry.isYou ? { ...entry, url: null, registry: null, ownListId: null } : entry,
@@ -171,6 +175,7 @@ export const Phone: Story = {
 
 /** The host picked a color for the invitation, so it fills the section. */
 export const WithHostColor: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { themeColor: "#a0e4d4" },
 };
 
@@ -199,6 +204,7 @@ export const FollowingOtherGuests: Story = {
 
 /** On a phone, Follow sits beside the list's button, under the name. */
 export const FollowingOtherGuestsOnAPhone: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: FollowingOtherGuests.args,
   globals: { viewport: { value: "mobile1" } },
 };

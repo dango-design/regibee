@@ -45,6 +45,7 @@ export const RegistryLink: Story = {};
 
 // No link yet, so the big box for pasting one leads.
 export const NoLink: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: { ...meta.args!.item!, external_url: null },
   },

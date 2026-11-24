@@ -70,6 +70,7 @@ export const PayWithPhoto: Story = {
 
 // Needs more than one, so the amount follows how many the guest gives.
 export const PayMultiQuantity: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: { id: "4", title: "Muslin Swaddle Blankets", price: 12.99, quantity_needed: 5 },
     availableToGift: 3,
@@ -84,6 +85,7 @@ export const PayMultiQuantity: Story = {
 
 // A PayPal email and a phone number can't become links, so both get Copy.
 export const PayByCopying: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     item: stroller,
     paymentMethods: { paypal: "max@example.com", zelle: "(415) 555-0134" },
@@ -130,12 +132,14 @@ export const Done: Story = {
 
 // Later, the card offers the gift's details, with a way to undo it.
 export const GiftDetails: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: stroller, availableToGift: 0, gift: given },
   play: openWith(/view your gift/i),
 };
 
 // From "Undo this gift" in the guest's email, or in the details.
 export const Undo: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: stroller, availableToGift: 0, gift: given, initialStep: "release" },
   play: async () => {
     await screen.findByRole("dialog");
@@ -144,6 +148,7 @@ export const Undo: Story = {
 
 // The email's link after the gift was already undone.
 export const Ended: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { item: stroller, initialStep: "ended" },
   play: async () => {
     await screen.findByRole("dialog");

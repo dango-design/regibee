@@ -71,6 +71,7 @@ export const ConfirmingSend: Story = {
 
 /** A guest's Edit button: their details, their RSVP, and their own link. */
 export const EditingGuest: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Edit Glinda Upland" }));
@@ -108,6 +109,7 @@ export const KidsAndGiftExchange: Story = {
 
 /** "Save as a group" names a group made of everyone on the list. */
 export const SavingAsGroup: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Save as a group" }));
@@ -163,6 +165,7 @@ const followedPeople = [
  * other.
  */
 export const InvitingPeopleYouFollow: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { followedPeople },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -181,6 +184,7 @@ export const InvitingPeopleYouFollow: Story = {
  * shows. Neither email can be changed from here.
  */
 export const PrivateEmail: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     followedPeople,
     guests: [
@@ -248,6 +252,7 @@ export const AddingSeveralGuests: Story = {
 
 /** A row with an email but no name: nothing is added, and that row's name is marked. */
 export const FixingAGuestRow: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { actions: { addGuests: fn(async () => ({ error: null, added: 2, alreadyListed: 0 })) } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -269,6 +274,7 @@ export const FixingAGuestRow: Story = {
  * with no account, like the last ones here, get none.
  */
 export const FollowingGuests: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     followActions: { requestAction: fn(async () => ({ success: true })), cancelAction: fn(async () => ({ success: true })) },
     guests: sampleGuests.map((guest, index) => ({

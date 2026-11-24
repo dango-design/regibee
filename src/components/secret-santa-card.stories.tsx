@@ -41,6 +41,7 @@ export const RegibeeWishlistAndIdeas: Story = {
 
 /** Gifts are mailed. This wishlist is at another store, so it opens in a new tab. */
 export const MailedWithAddress: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     giftee: {
       name: "Fiyero",

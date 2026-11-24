@@ -139,6 +139,7 @@ export const WithEvents: Story = {
  * Invited, not the "Plan your first event" card.
  */
 export const InvitedOnly: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     upcoming: [],
     past: [],

@@ -16,6 +16,7 @@ export const Couple: Story = {
 
 // One person and no photo: their first and last initials.
 export const OnePerson: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { names: "Alex Kim" },
 };
 

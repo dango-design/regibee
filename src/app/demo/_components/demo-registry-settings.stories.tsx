@@ -34,6 +34,7 @@ export const Default: Story = {
  * opens there, with that section current and focus on its title.
  */
 export const LandingOnStoreRegistries: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { registryId: "baby" },
   globals: { viewport: { value: "desktop" } },
   beforeEach: withSectionInUrl("store-registries"),

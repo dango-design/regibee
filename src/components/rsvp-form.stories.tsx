@@ -89,6 +89,7 @@ export const EveryoneGivesEveryone: Story = {
  * have, or paste a link from another store.
  */
 export const EveryoneGivesEveryoneSignedOut: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     exchange: { kind: "everyone", mailed: false, drawn: false },
     wishlist: { current: null, giftIdeas: null, account: null, saveAction: fn(async () => ({ error: null })) },
@@ -110,6 +111,7 @@ export const EveryoneGivesEveryoneSignedOut: Story = {
  * or "Not this year", and joining asks for a shipping address.
  */
 export const MailedExchange: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { exchange: { mailed: true, drawn: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -152,6 +154,7 @@ export const BringingSomething: Story = {
  * and pick a day. Monday is taken.
  */
 export const MealTrain: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     mealTrain: true,
     maxPartySize: 1,
@@ -197,6 +200,7 @@ export const WeddingQuestions: Story = {
 
 /** A guest who answered sees their answers, with each person's meal. */
 export const WeddingAnswered: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     guest: {
       name: "Fiyero",

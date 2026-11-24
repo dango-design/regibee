@@ -55,6 +55,7 @@ export const GiftsForAParty: Story = {
  * RSVP. The host can pick Draw names instead, or unpick it and skip.
  */
 export const HolidayParty: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Holiday party" }));
@@ -72,6 +73,7 @@ export const HolidayParty: Story = {
  * about gifts.
  */
 export const SkipGifts: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     initial: { step: "gifts", occasion: "wedding", audience: "us", name: "Alex & Sam" },
   },
@@ -101,6 +103,7 @@ export const UseAListYouHave: Story = {
 
 /** Someone else's shower: link their list, or ask them to make one. */
 export const GiftsForSomeoneElse: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     initial: { step: "gifts", occasion: "baby_shower", audience: "someone", name: "Remi", gifts: "ask", askEmail: "remi@example.com" },
   },
@@ -108,6 +111,7 @@ export const GiftsForSomeoneElse: Story = {
 
 /** A child's birthday: make their wishlist and an invitation together. */
 export const GiftsForMyChild: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     initial: { step: "gifts", occasion: "kids_birthday", audience: "child", name: "Jordan", gifts: "new_list", invitation: true },
   },

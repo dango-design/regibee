@@ -4,6 +4,13 @@ name: Chromatic
 # pull_request run tests GitHub's temporary merge commit, which has no baseline.
 on: push
 
+# A newer push to a branch stops that branch's older run. If the older run had
+# not sent its Storybook to Chromatic yet, its snapshots are never taken. Runs
+# on main are never stopped: each merge keeps its own build.
+concurrency:
+  group: chromatic-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   chromatic:
     runs-on: ubuntu-latest
@@ -19,5 +26,6 @@ jobs:
       - uses: chromaui/action@v18.13.6
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          onlyChanged: true # only snapshot stories affected by the commit
+          # chromatic.config.json turns on onlyChanged (only snapshot stories the
+          # commit affects) and lists the files left out of that check.
           autoAcceptChanges: main # builds on main accept their changes, so merged work becomes the baseline

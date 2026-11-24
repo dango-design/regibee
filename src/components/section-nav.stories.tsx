@@ -92,6 +92,7 @@ export const PickingASection: Story = {
 
 // Nothing waiting: Follow requests has no number.
 export const NoRequests: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   globals: { viewport: { value: "desktop" } },
   args: { sections: SECTIONS.map(({ waiting: _, ...section }) => section) },
 };

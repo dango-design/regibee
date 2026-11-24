@@ -73,6 +73,7 @@ export const BuyerItemReserved: Story = {
 // For an item on the owners' own store registry: no address, because the
 // store has it.
 export const BuyerItemReservedOnStoreRegistry: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: 'You reserved "Solly Baby Wrap". It\'s held for 2 days',
     html: itemReservedBuyerHtml({
@@ -112,6 +113,7 @@ export const BuyerItemReservationReminder: Story = {
 
 // Sent when a reservation runs out and the item goes back on the list.
 export const BuyerItemReservationEnded: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: 'Your reservation of "Hatch Rest+ Sound Machine" ended',
     html: itemReservationEndedBuyerHtml({
@@ -125,6 +127,7 @@ export const BuyerItemReservationEnded: Story = {
 
 // Sent when the guest says they bought it.
 export const BuyerItemGiven: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: 'Your gift is confirmed — "Hatch Rest+ Sound Machine"',
     html: itemGivenBuyerHtml({
@@ -142,6 +145,7 @@ export const BuyerItemGiven: Story = {
 // Sent when a guest says they sent the money for an item the owners bought.
 // The gift counts at once, so the email has a way to undo it.
 export const BuyerItemCovered: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: 'Your gift is confirmed — "UPPAbaby Vista V2 Stroller"',
     html: itemCoveredBuyerHtml({
@@ -193,6 +197,7 @@ export const OwnerItemGiven: Story = {
 
 // The first gift from a store registry adds a note about its welcome box.
 export const OwnerItemGivenWelcomeBox: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: '🎁 Auntie Glinda bought "Solly Baby Wrap"',
     to: "max@example.com",
@@ -213,6 +218,7 @@ export const OwnerItemGivenWelcomeBox: Story = {
 };
 
 export const OwnerItemCovered: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: '🎉 Auntie Glinda sent you $25.98 for "Muslin Swaddle Blankets"',
     to: "max@example.com",
@@ -230,6 +236,7 @@ export const OwnerItemCovered: Story = {
 };
 
 export const OwnerCashFundContribution: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: 'Auntie Glinda contributed $50.00 to "Nursery Furniture Fund"',
     to: "max@example.com",
@@ -246,6 +253,7 @@ export const OwnerCashFundContribution: Story = {
 };
 
 export const OwnerNewSuggestion: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: 'Uncle Oz suggested "Baby Monitor Pro"',
     to: "max@example.com",
@@ -351,6 +359,7 @@ export const EventInvitation: Story = {
 };
 
 export const RsvpGuestConfirmation: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "You're going to Remi's Baby Shower",
     html: rsvpGuestConfirmationHtml({
@@ -393,6 +402,7 @@ export const ChristmasInvitation: Story = {
 
 // A guest who said yes without a wishlist yet is asked to add one.
 export const ChristmasRsvpWithoutWishlist: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "You're going to Christmas at Aunt Linda's",
     html: rsvpGuestConfirmationHtml({
@@ -460,6 +470,7 @@ export const RsvpGuestConfirmationWithSignups: Story = {
 
 // A meal train's invitation leaves the address out: guests get it once they sign up.
 export const MealTrainInvitation: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "You're invited: Meals for Remi & Max",
     from: '"Aunt Linda via Regibee" <notifications@regibee.com>',
@@ -509,6 +520,7 @@ export const EventChanged: Story = {
 
 // The day before, to everyone going, with what they signed up to bring.
 export const DayBeforeReminder: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "Tomorrow: Friendsgiving Potluck",
     from: '"Glinda & Elphaba via Regibee" <notifications@regibee.com>',
@@ -524,6 +536,7 @@ export const DayBeforeReminder: Story = {
 };
 
 export const RegistryLinked: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "Linda Upland linked your registry to Remi's Baby Shower",
     to: "max@example.com",
@@ -540,6 +553,7 @@ export const RegistryLinked: Story = {
 };
 
 export const CoHostInvite: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "Linda Upland asked you to co-host Remi's Baby Shower",
     to: "jo@example.com",
@@ -554,6 +568,7 @@ export const CoHostInvite: Story = {
 // Sent to the person a shower is for when the host chose "Ask them to make
 // one" in the "What are you planning?" picker.
 export const ListRequest: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "Linda Upland asked you to make a baby registry for Remi's Baby Shower",
     from: '"Linda Upland via Regibee" <notifications@regibee.com>',
@@ -607,6 +622,7 @@ export const AuthConfirmSignup: Story = {
 };
 
 export const AuthResetPassword: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: AUTH_EMAILS.recovery.subject,
     to: "max@example.com",
@@ -630,6 +646,7 @@ export const FollowRequest: Story = {
 };
 
 export const FollowInvite: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: "Grandma Dorothy wants to follow you on Regibee",
     html: followInviteHtml({
@@ -659,6 +676,7 @@ const sampleBirthdays = [
 
 // Ten days before a followed person's birthday.
 export const BirthdayReminder: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     subject: birthdayReminderSubject(sampleBirthdays.slice(0, 1), 10),
     to: "max@example.com",

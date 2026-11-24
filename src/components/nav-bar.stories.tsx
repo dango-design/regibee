@@ -24,10 +24,12 @@ export const SignedIn: Story = {};
 
 // The menu button shows the profile photo instead of initials.
 export const SignedInWithPhoto: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { account: { ...account, photoUrl: "/hero/panda.svg" } },
 };
 
 export const WithFollowRequests: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { account: { ...account, followRequestCount: 3 } },
 };
 

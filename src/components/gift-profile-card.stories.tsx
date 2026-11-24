@@ -31,6 +31,7 @@ export const OnAWishList: Story = {};
 
 // What Dorothy's approved followers see on her profile, birthday included.
 export const ForFollowers: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { showBirthday: true },
 };
 

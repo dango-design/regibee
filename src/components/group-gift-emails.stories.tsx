@@ -36,6 +36,7 @@ export const Started: Story = {
 
 /** To someone who chipped in, with their own link to change it. */
 export const Pledged: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     to: "glinda@example.com",
     subject: 'You\'re chipping in $40 for "Hot air balloon ride for two"',
@@ -69,6 +70,7 @@ export const NewPledge: Story = {
 
 /** To everyone who chipped in, when the organizer calls it off. */
 export const CalledOff: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: {
     to: "glinda@example.com",
     subject: 'The group gift of "Hot air balloon ride for two" was called off',

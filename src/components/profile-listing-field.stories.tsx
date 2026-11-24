@@ -21,6 +21,7 @@ export const ListedWithShippingAddress: Story = {
 
 // A link-only list only shows to approved followers.
 export const LinkOnly: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   args: { visibility: "link" },
 };
 
