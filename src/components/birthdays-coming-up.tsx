@@ -45,7 +45,7 @@ export function BirthdaysComingUp({
                       {birthday.parentName}&apos;s list
                     </span>
                   )}
-                  <span className="block break-words font-medium text-primary group-hover:underline">
+                  <span className="block break-words font-medium text-primary">
                     {birthday.name}
                   </span>
                   <span className="mt-0.5 block text-sm text-tertiary">

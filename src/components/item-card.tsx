@@ -124,7 +124,7 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
                     type="button"
                     aria-haspopup="dialog"
                     onClick={() => setEditOpen(true)}
-                    className="card-link block w-full cursor-pointer text-left hover:underline"
+                    className="card-link block w-full cursor-pointer text-left"
                   >
                     {item.title}
                   </button>

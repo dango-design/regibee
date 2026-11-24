@@ -113,7 +113,7 @@ export function DashboardRegistryCard({
           <div className="flex items-start justify-between gap-2">
             {/* tracking-normal: the base h2 style tightens letter spacing, but card titles keep the h3 look. */}
             <Heading className="font-display text-lg font-bold leading-snug tracking-normal">
-              <Link href={manageHref} className="card-link hover:underline">
+              <Link href={manageHref} className="card-link">
                 {title}
               </Link>
             </Heading>
