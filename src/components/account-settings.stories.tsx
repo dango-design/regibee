@@ -63,6 +63,8 @@ const meta: Meta<typeof AccountSettings> = {
     registries,
     saveAction: mockSave as never,
     listAction: mockList as never,
+    uploadPhoto: async () => ({ url: "/hero/panda.svg" }),
+    photoAction: mockList,
     giftProfileAction: mockSave,
     birthdayEmailsAction: mockList,
     deleteAccountActions: {
@@ -81,6 +83,22 @@ export const NewAccount: Story = {
     profile: {
       public_id: "k7m2p9qx4t",
       full_name: "Remi & Max",
+      discoverable: true,
+      findable_by_email: true,
+    },
+    follows: { requests: [], followers: [], following: [] },
+    giftProfile: {},
+    birthdayEmails: true,
+  },
+};
+
+// With a profile photo: Change photo and Remove.
+export const WithPhoto: Story = {
+  args: {
+    profile: {
+      public_id: "k7m2p9qx4t",
+      full_name: "Remi & Max",
+      avatar_url: "/hero/panda.svg",
       discoverable: true,
       findable_by_email: true,
     },

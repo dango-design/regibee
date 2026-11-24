@@ -44,6 +44,8 @@ export interface AccountPageData {
   profile: {
     public_id: string;
     full_name: string | null;
+    /** The profile photo's URL, or null. Checked with profilePhotoUrl (src/lib/profile-photos.ts). */
+    avatar_url: string | null;
     discoverable: boolean;
     findable_by_email: boolean;
     email_follow_requests: boolean;

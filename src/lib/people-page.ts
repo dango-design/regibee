@@ -7,6 +7,7 @@ import { listFollowingFeed, listFollows } from "@/lib/follows";
 import { listUpcomingBirthdays } from "@/lib/birthdays-server";
 import { listRegistriesSharedWithViewer } from "@/lib/groups-server";
 import { parseGiftProfile } from "@/lib/gift-profile";
+import { profilePhotoUrl } from "@/lib/profile-photos";
 import { getViewer } from "@/lib/viewer";
 import { createClient } from "@/utils/supabase/server";
 import type { AccountPageData, AccountRegistry, FollowingTabData } from "@/lib/people-page-types";
@@ -38,7 +39,7 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
   const [{ data: profile }, { data: registries }, follows, giftRow] = await Promise.all([
     supabase
       .from("profiles")
-      .select("public_id, full_name, discoverable, findable_by_email, email_follow_requests")
+      .select("public_id, full_name, avatar_url, discoverable, findable_by_email, email_follow_requests")
       .eq("id", user.id)
       .single(),
     supabase
@@ -63,6 +64,7 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
     profile: {
       public_id: profile?.public_id ?? "",
       full_name: profile?.full_name ?? null,
+      avatar_url: profile ? profilePhotoUrl(profile) : null,
       discoverable: profile?.discoverable ?? false,
       findable_by_email: profile?.findable_by_email ?? false,
       email_follow_requests: profile?.email_follow_requests ?? true,

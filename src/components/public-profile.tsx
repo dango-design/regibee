@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ProfileRegistryCard } from "@/components/profile-registry-card";
 import { PandaMark } from "@/components/panda-mark";
 import { GiftProfileCard } from "@/components/gift-profile-card";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { hasGiftDetails, type GiftProfile } from "@/lib/gift-profile";
-import { initialsFor } from "@/lib/initials";
 import { displayName as nameToShow } from "@/lib/profile-link";
 import {
   isPastEvent,
@@ -15,6 +14,7 @@ import {
 
 export function PublicProfile({
   fullName,
+  photoUrl,
   registries,
   today,
   isOwnProfile = false,
@@ -24,6 +24,8 @@ export function PublicProfile({
   basePath = "",
 }: {
   fullName: string | null;
+  /** The profile photo. Without one, the circle shows the name's initials. */
+  photoUrl?: string | null;
   registries: ListedRegistry[];
   today: string;
   isOwnProfile?: boolean;
@@ -40,11 +42,7 @@ export function PublicProfile({
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <Avatar className="size-20">
-          <AvatarFallback className="text-2xl font-medium">
-            {initialsFor(displayName)}
-          </AvatarFallback>
-        </Avatar>
+        <ProfileAvatar name={displayName} photoUrl={photoUrl} className="size-20" fallbackClassName="text-2xl" />
         <div className="min-w-0 max-w-full">
           <h1 className="break-words text-2xl font-bold">{displayName}</h1>
         </div>

@@ -14,8 +14,9 @@ import {
   type ListedRegistry,
 } from "@/lib/registry-listing";
 import { displayName, profilePath, publicIdFromPath } from "@/lib/profile-link";
+import { profilePhotoUrl } from "@/lib/profile-photos";
 
-type Profile = { id: string; public_id: string; full_name: string | null };
+type Profile = { id: string; public_id: string; full_name: string | null; avatar_url: string | null };
 
 // Old links used usernames, which had this format (see 011_public_profiles.sql).
 const OLD_USERNAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
@@ -27,7 +28,7 @@ const OLD_USERNAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 // page redirects them to the current link.
 const getProfile = cache(async (segment: string): Promise<Profile | null> => {
   const value = segment.toLowerCase();
-  const columns = "id, public_id, full_name";
+  const columns = "id, public_id, full_name, avatar_url";
 
   let profile: Profile | null = null;
   const publicId = publicIdFromPath(value);
@@ -127,6 +128,7 @@ export default async function ProfilePage({
       <main id="main-content" className="flex-1">
         <PublicProfile
           fullName={profile.full_name}
+          photoUrl={profilePhotoUrl(profile)}
           registries={registries}
           today={new Date().toISOString().slice(0, 10)}
           isOwnProfile={isOwnProfile}

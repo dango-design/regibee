@@ -13,6 +13,8 @@ export interface NavAccount {
   name: string;
   /** Link to the account's profile page. */
   profilePath: string;
+  /** The profile photo. Without one, the menu button shows the name's initials. */
+  photoUrl?: string | null;
   email: string | null;
   followRequestCount: number;
   /** On the support team: the menu links to /support (src/lib/support.ts). */
