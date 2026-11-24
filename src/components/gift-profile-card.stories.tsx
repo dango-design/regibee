@@ -26,13 +26,23 @@ const meta: Meta<typeof GiftProfileCard> = {
 export default meta;
 type Story = StoryObj<typeof GiftProfileCard>;
 
-// What anyone with the link sees on a wishlist: no birthday.
+// A child's gift profile, as anyone who opens the child's list sees it: no
+// birthday.
 export const OnAWishList: Story = {};
 
-// What Dorothy's approved followers see on her profile, birthday included.
+// What the people Dorothy follows, who follow her back, see on her profile.
 export const ForFollowers: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   args: { showBirthday: true },
+};
+
+// Dorothy's own profile, with the line saying who sees the card.
+export const OwnProfile: Story = {
+  args: {
+    showBirthday: true,
+    caption:
+      "Only you and the people you follow who follow you back see this. Followers you approved see your birthday.",
+  },
 };
 
 // Only a couple of fields filled in.

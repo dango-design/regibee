@@ -21,7 +21,7 @@ import { OwnerChip } from "@/components/owner-chip";
 import { copyForRegistry, honoreeDisplayName } from "@/lib/registry-copy";
 import { FollowButton } from "@/components/follow-button";
 import { displayName, profilePath } from "@/lib/profile-link";
-import { getViewer, getViewerRelation } from "@/lib/viewer";
+import { getViewer, getViewerRelation, seesGiftDetails } from "@/lib/viewer";
 import type { RegistryType } from "@/lib/types";
 import { Nav } from "@/components/nav";
 import { parseRetailerRegistries, type StoreId } from "@/lib/retailers";
@@ -41,7 +41,7 @@ import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notic
 import { FellowGuestsNotice } from "@/components/fellow-guests-notice";
 import type { OpenGift } from "@/components/reserve-item-dialog";
 import { GuestPrefillProvider, type GuestPrefill } from "@/components/guest-prefill-context";
-import { parseGiftProfile, withoutBirthday, type GiftProfile } from "@/lib/gift-profile";
+import { parseGiftProfile, visibleGiftProfile, type GiftProfile } from "@/lib/gift-profile";
 import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
 import { canManageRegistry } from "@/lib/events-server";
 import { myGroupGiftsOnItems } from "@/lib/group-gifts-server";
@@ -125,18 +125,19 @@ async function loadOwner(listedOnProfile: boolean, ownerId: string) {
 
 // The gift profile shown above a personal wishlist's items. A list kept for
 // a child has its own, in its settings. Other wishlists show their owner's.
-// Baby registries show none.
+// Baby registries show none. `ownersOwn` says which it is, since the owner's
+// own sizes and likes show only to the people they follow who follow back.
 async function loadGiftProfile(registry: {
   registry_type: string | null;
   owner_id: string;
   settings: unknown;
-}): Promise<GiftProfile | null> {
+}): Promise<{ profile: GiftProfile; ownersOwn: boolean } | null> {
   if (registry.registry_type !== "personal") return null;
   const settings = (registry.settings && typeof registry.settings === "object" ? registry.settings : {}) as Record<
     string,
     unknown
   >;
-  if (settings.for_child === true) return parseGiftProfile(settings.gift_profile);
+  if (settings.for_child === true) return { profile: parseGiftProfile(settings.gift_profile), ownersOwn: false };
   // Errors until 20261112062844_gift_profiles_and_birthday_reminders.sql has
   // run, which counts as no profile.
   const { data, error } = await supabaseAdmin
@@ -144,7 +145,7 @@ async function loadGiftProfile(registry: {
     .select("gift_profile")
     .eq("id", registry.owner_id)
     .maybeSingle();
-  return error ? null : parseGiftProfile(data?.gift_profile);
+  return error ? null : { profile: parseGiftProfile(data?.gift_profile), ownersOwn: true };
 }
 
 // A guest who came from a gift link on their event invitation (the event
@@ -376,8 +377,15 @@ export default async function PublicRegistryPage({
   const showBirthday =
     (viewer !== null && viewer.id === registry.owner_id) ||
     (Boolean(owner) && ownerRelation?.state === "approved");
+  // The owner's own sizes, likes and the rest show only to the owner and to
+  // the people they follow who follow them back, listed on their profile or
+  // not. A child's list shows the child's to everyone who opens it.
+  const showGiftDetails =
+    fullGiftProfile !== null &&
+    (!fullGiftProfile.ownersOwn || seesGiftDetails(await getViewerRelation(registry.owner_id)));
   const giftProfile =
-    fullGiftProfile && (showBirthday ? fullGiftProfile : withoutBirthday(fullGiftProfile));
+    fullGiftProfile &&
+    visibleGiftProfile(fullGiftProfile.profile, { details: showGiftDetails, birthday: showBirthday });
 
   // The owner can hide what's been reserved from themselves (src/lib/gifts.ts).
   // When they open their own list's page, it shows nothing reserved, the same

@@ -36,7 +36,7 @@ export function ProfileRegistryCard({
         {ownerName && (
           <span className="block break-words text-xs font-medium text-tertiary">{ownerName}</span>
         )}
-        <span className="block break-words font-medium text-primary group-hover:underline">
+        <span className="block break-words font-medium text-primary">
           {registry.title}
         </span>
         <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-tertiary">

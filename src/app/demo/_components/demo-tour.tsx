@@ -179,7 +179,7 @@ function StopLink({ stop, onTint = false }: { stop: Stop; onTint?: boolean }) {
           <Icon aria-hidden="true" className="size-4.5 text-brand-600" />
         </span>
         <span className="min-w-0">
-          <span className="block font-medium text-primary group-hover:underline">{stop.title}</span>
+          <span className="block font-medium text-primary">{stop.title}</span>
           <span className="block text-sm text-tertiary">{stop.body}</span>
         </span>
       </Link>

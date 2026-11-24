@@ -49,6 +49,8 @@ export interface AccountPageData {
     discoverable: boolean;
     findable_by_email: boolean;
     email_follow_requests: boolean;
+    /** What they wrote for everyone who opens their profile, or null. */
+    public_note: string | null;
   };
   registries: AccountRegistry[];
   follows: {

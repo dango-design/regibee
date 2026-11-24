@@ -28,7 +28,7 @@ function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today
         <Icon aria-hidden="true" className="h-5 w-5 text-brand-600 motion-safe:group-hover:animate-wiggle" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block break-words font-medium text-primary group-hover:underline">{event.title}</span>
+        <span className="block break-words font-medium text-primary">{event.title}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-tertiary">
           <span>{eventTypeLabel(event.eventType)}</span>
           {event.eventDate && (
@@ -53,6 +53,10 @@ function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today
   );
 }
 
+/** Who sees the About card. Shown to the owner on their own profile. */
+const GIFT_PROFILE_AUDIENCE =
+  "Only you and the people you follow who follow you back see this. Followers you approved see your birthday.";
+
 export function PublicProfile({
   fullName,
   photoUrl,
@@ -61,6 +65,7 @@ export function PublicProfile({
   today,
   isOwnProfile = false,
   followAction,
+  publicNote = null,
   giftProfile = {},
   showBirthday = false,
   basePath = "",
@@ -78,7 +83,13 @@ export function PublicProfile({
   today: string;
   isOwnProfile?: boolean;
   followAction?: React.ReactNode;
-  /** Sizes, likes and the rest, for anyone who opens the profile. */
+  /** What the person wrote for everyone who opens their profile. */
+  publicNote?: string | null;
+  /**
+   * Sizes, likes and the rest. Only the person and the people they follow who
+   * follow them back get these, so for anyone else the page passes a profile
+   * without them.
+   */
   giftProfile?: GiftProfile;
   /** Shows the birthday too. Only for the person and the followers they approved. */
   showBirthday?: boolean;
@@ -93,6 +104,11 @@ export function PublicProfile({
         <ProfileAvatar name={displayName} photoUrl={photoUrl} className="size-20" fallbackClassName="text-2xl" />
         <div className="min-w-0 max-w-full">
           <h1 className="break-words text-2xl font-bold">{displayName}</h1>
+          {publicNote && (
+            <p className="mx-auto mt-2 max-w-md whitespace-pre-line break-words text-sm text-secondary">
+              {publicNote}
+            </p>
+          )}
         </div>
         {isOwnProfile ? (
           <Button variant="outline" size="sm" asChild>
@@ -109,6 +125,7 @@ export function PublicProfile({
           profile={giftProfile}
           name={displayName}
           showBirthday={showBirthday}
+          caption={isOwnProfile && GIFT_PROFILE_AUDIENCE}
           action={
             isOwnProfile && (
               <Link
@@ -123,7 +140,8 @@ export function PublicProfile({
       ) : (
         isOwnProfile && (
           <p className="mt-8 rounded-2xl border border-dashed border-secondary px-4 py-3 text-center text-sm text-tertiary">
-            Add your sizes, likes and birthday so people know what to get you.{" "}
+            Add your sizes, likes and birthday so the people you follow who follow you back know what to get
+            you.{" "}
             <Link
               href={`${basePath}/dashboard/account#gift-profile`}
               className="font-medium text-brand-600 hover:underline"

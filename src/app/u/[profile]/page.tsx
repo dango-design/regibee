@@ -6,8 +6,8 @@ import { FollowButton } from "@/components/follow-button";
 import { PublicProfile } from "@/components/public-profile";
 import { PoweredByFooter } from "@/components/site-footer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getViewer, getViewerRelation, seesBirthday } from "@/lib/viewer";
-import { parseGiftProfile, withoutBirthday } from "@/lib/gift-profile";
+import { getViewer, getViewerRelation, seesBirthday, seesGiftDetails } from "@/lib/viewer";
+import { cleanPublicNote, parseGiftProfile, visibleGiftProfile } from "@/lib/gift-profile";
 import { sharedRegistrySlugsFrom } from "@/lib/groups-server";
 import { listSharedEvents } from "@/lib/shared-events-server";
 import {
@@ -108,7 +108,7 @@ export default async function ProfilePage({
   // who blocked this person.
   const eventsViewer = isOwnProfile || followState === "blocked" ? null : await getViewer();
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: listed }, sharedSlugs, giftRow, sharedEvents] = await Promise.all([
+  const [{ data: listed }, sharedSlugs, giftRow, noteRow, sharedEvents] = await Promise.all([
     supabaseAdmin
       .from("registries")
       .select(LISTED_REGISTRY_COLUMNS)
@@ -120,6 +120,9 @@ export default async function ProfilePage({
     // Separate from getProfile, so the page still works before
     // 20261112062844_gift_profiles_and_birthday_reminders.sql has run.
     supabaseAdmin.from("profiles").select("gift_profile").eq("id", profile.id).maybeSingle(),
+    // Separate too. It errors until 20261124084611_profile_public_note.sql
+    // has run, which counts as no note.
+    supabaseAdmin.from("profiles").select("public_note").eq("id", profile.id).maybeSingle(),
     eventsViewer
       ? listSharedEvents(
           { id: eventsViewer.id, email: eventsViewer.email_confirmed_at ? (eventsViewer.email ?? null) : null },
@@ -128,10 +131,16 @@ export default async function ProfilePage({
         )
       : Promise.resolve([]),
   ]);
-  // The birthday never leaves the server for anyone else.
+  // Sizes, likes and the rest are for the person and the people they follow
+  // who follow them back. The birthday is for every follower they approved.
+  // Neither leaves the server for anyone else.
   const showBirthday = seesBirthday(relation);
-  const fullGiftProfile = parseGiftProfile(giftRow.error ? null : giftRow.data?.gift_profile);
-  const giftProfile = showBirthday ? fullGiftProfile : withoutBirthday(fullGiftProfile);
+  const giftProfile = visibleGiftProfile(parseGiftProfile(giftRow.error ? null : giftRow.data?.gift_profile), {
+    details: seesGiftDetails(relation),
+    birthday: showBirthday,
+  });
+  // The public note is for everyone who opens the profile.
+  const publicNote = cleanPublicNote(noteRow.error ? null : noteRow.data?.public_note);
   const registries = ((listed || []) as ListedRegistry[]).filter(
     (registry) => seesAllPrivate || registry.is_public || sharedSlugs.has(registry.slug),
   );
@@ -147,6 +156,7 @@ export default async function ProfilePage({
           sharedEvents={sharedEvents}
           today={today}
           isOwnProfile={isOwnProfile}
+          publicNote={publicNote}
           giftProfile={giftProfile}
           showBirthday={showBirthday}
           followAction={
