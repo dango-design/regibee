@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import { fonts, useTheme } from "@/lib/theme";
+import { fonts, largeTitleOptions, useTheme } from "@/lib/theme";
 
 export default function AccountLayout() {
   const theme = useTheme();
@@ -16,7 +16,7 @@ export default function AccountLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Account", headerLargeTitle: true }} />
+      <Stack.Screen name="index" options={{ title: "Account", ...largeTitleOptions }} />
       <Stack.Screen name="profile" options={{ title: "Your profile", headerBackButtonDisplayMode: "minimal" }} />
       <Stack.Screen name="gift-profile" options={{ title: "Gift profile", headerBackButtonDisplayMode: "minimal" }} />
       <Stack.Screen name="follows" options={{ title: "Follows", headerBackButtonDisplayMode: "minimal" }} />

@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import { fonts, useTheme } from "@/lib/theme";
+import { fonts, largeTitleOptions, useTheme } from "@/lib/theme";
 
 export default function HomeLayout() {
   const theme = useTheme();
@@ -16,7 +16,7 @@ export default function HomeLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "My registries", headerLargeTitle: true }} />
+      <Stack.Screen name="index" options={{ title: "My registries", ...largeTitleOptions }} />
       <Stack.Screen name="registry/[id]/index" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
       <Stack.Screen name="registry/[id]/settings" options={{ title: "Settings", headerBackButtonDisplayMode: "minimal" }} />
       <Stack.Screen name="registry/[id]/checklist" options={{ title: "Registry Checklist", headerBackButtonDisplayMode: "minimal" }} />

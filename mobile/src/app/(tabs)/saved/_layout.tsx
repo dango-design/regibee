@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import { fonts, useTheme } from "@/lib/theme";
+import { fonts, largeTitleOptions, useTheme } from "@/lib/theme";
 
 export default function SavedLayout() {
   const theme = useTheme();
@@ -16,7 +16,7 @@ export default function SavedLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Saved", headerLargeTitle: true }} />
+      <Stack.Screen name="index" options={{ title: "Saved", ...largeTitleOptions }} />
     </Stack>
   );
 }
