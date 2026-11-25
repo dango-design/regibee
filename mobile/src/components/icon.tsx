@@ -28,6 +28,7 @@ const ICONS = {
   calendar: { ios: "calendar", android: "calendar_today" },
   error: { ios: "exclamationmark.triangle", android: "error" },
   refresh: { ios: "arrow.clockwise", android: "refresh" },
+  update: { ios: "arrow.down.circle", android: "system_update" },
   search: { ios: "magnifyingglass", android: "search" },
   minus: { ios: "minus", android: "remove" },
   settings: { ios: "gearshape", android: "settings" },
