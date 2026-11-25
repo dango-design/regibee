@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { authenticateApp } from "@/lib/app-request";
-import { IN_APP_COOKIE, safeAppPath } from "@/lib/in-app";
+import { IN_APP_COOKIE, IN_APP_HEADER, safeAppPath } from "@/lib/in-app";
 import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -23,13 +23,23 @@ export const dynamic = "force-dynamic";
 //
 // Without a token, it signs the web view out instead, so a page opened while
 // the app is signed out never shows the last account.
+//
+// It acts only on a request that carries the app's header (IN_APP_HEADER) or
+// a token. A link to this route from any other page arrives as a plain browser
+// visit with neither, since a link can't add headers. That visit only goes on
+// to the page: otherwise any site could sign a person out of Regibee, or hide
+// the website's top bar for them.
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const next = safeAppPath(url.searchParams.get("next"));
+  const hasToken = Boolean(request.headers.get("authorization"));
+  if (!hasToken && request.headers.get(IN_APP_HEADER) !== "1") {
+    return NextResponse.redirect(new URL(next, url.origin));
+  }
   const supabase = await createClient();
   const cookieStore = await cookies();
 
-  if (request.headers.get("authorization")) {
+  if (hasToken) {
     const auth = await authenticateApp(request);
     if (auth.response) return auth.response;
     const { error } = await supabase.auth.setSession({

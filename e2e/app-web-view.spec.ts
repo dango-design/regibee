@@ -5,7 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, createWishlist, db } from "./fixtures";
+import { createAccount, createWishlist, db, signIn } from "./fixtures";
 import { localSupabase } from "./local-supabase";
 
 /** An access token for the account, as the app has after signing in. */
@@ -21,7 +21,7 @@ async function appAccessToken(account: { email: string; password: string }): Pro
 async function openFromApp(page: Page, path: string, token: string | null) {
   await page.route("**/api/app/open?**", (route) =>
     route.continue({
-      headers: { ...route.request().headers(), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      headers: { ...route.request().headers(), "x-regibee-app": "1", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     }),
   );
   return page.goto(`/api/app/open?next=${encodeURIComponent(path)}`);
@@ -61,4 +61,24 @@ test("the app's web view is only sent to pages on this site", async ({ browser }
   const other = await (await browser.newContext()).newPage();
   const refused = await openFromApp(other, "/dashboard", "not-a-token");
   expect(refused?.status()).toBe(401);
+});
+
+test("a link to the route from another site changes nothing", async ({ browser }) => {
+  const owner = await createAccount("Lina Linked");
+  const { registry } = await createWishlist(owner.id);
+  const { error } = await db.from("registries").update({ is_private: true, is_public: false }).eq("id", registry.id);
+  if (error) throw error;
+
+  // Signed in to the website as usual, in a browser.
+  const page = await (await browser.newContext()).newPage();
+  await signIn(page, owner);
+  expect((await page.goto(`/r/${registry.slug}`))?.status()).toBe(200);
+
+  // Following a plain link to the route, with no app header and no token,
+  // only goes on to the page: still signed in, and the top bar still shows.
+  const response = await page.goto(`/api/app/open?next=${encodeURIComponent(`/r/${registry.slug}`)}`);
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: registry.title })).toBeVisible();
+  await expect(page.locator("header.sticky")).toHaveCount(1);
+  expect((await page.context().cookies()).some((c) => c.name === "regibee_in_app")).toBe(false);
 });

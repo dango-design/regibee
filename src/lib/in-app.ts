@@ -5,6 +5,12 @@
 export const IN_APP_COOKIE = "regibee_in_app";
 
 /**
+ * Sent by the app's web view to /api/app/open, with or without a token. A
+ * link from another site can't add it, so the route ignores visits without it.
+ */
+export const IN_APP_HEADER = "x-regibee-app";
+
+/**
  * The pages the app shows in its web view: the ones guests and followers use.
  * Everything an account manages has its own screen in the app.
  */

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Platform, Share, View } from "react-native";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 
-import { appScreenForPath } from "@shared/in-app";
+import { appScreenForPath, IN_APP_HEADER } from "@shared/in-app";
 
 import { ErrorState, IconButton, LoadingState } from "@/components/ui";
 import { SITE_URL } from "@/lib/supabase";
@@ -119,7 +119,7 @@ export default function WebScreen() {
         <WebView
           key={attempt}
           ref={web}
-          source={token ? { uri: signedInAddress(path), headers: { Authorization: `Bearer ${token}` } } : { uri: signedInAddress(path) }}
+          source={{ uri: signedInAddress(path), headers: token ? { [IN_APP_HEADER]: "1", Authorization: `Bearer ${token}` } : { [IN_APP_HEADER]: "1" } }}
           style={{ flex: 1, backgroundColor: theme.background }}
           startInLoadingState
           renderLoading={() => (
