@@ -92,7 +92,7 @@ The workflow runs when a merge changes `mobile/` or one of the website files the
 
 **Account › This version** says which code the app is running: the newest pull request in it, the commit, and whether it's running an update or the version it was built with. **Check for updates** checks straight away, downloads a newer update, and offers **Restart now**. The section shows in builds on the `preview` channel (preview builds and the Play testing builds below) and while developing, not in the public store version. `scripts/build-info.js` reads the commit and pull request from git when a build or update is made.
 
-An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest" means there's no newer update for that build. `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
+An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest" means there's no newer update for that build. For Android testers, the Android testing build workflow makes that new build (see "Android testers"). `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
 
 ```bash
 npx expo-updates fingerprint:generate --platform android
@@ -119,13 +119,21 @@ Testers install Regibee from the Play Store, through Google Play's internal test
 2. In Play Console, create the app: Regibee, App, Free. A free app can't become paid later.
 3. Make a Google service account key, so EAS can upload to Play: https://expo.fyi/creating-google-service-account. Give it to EAS with `npx eas-cli@latest credentials --platform android`, or when `eas submit` asks for it. EAS keeps it on Expo's servers. Never commit the key file.
 
-**Each new build** (the first one, and after a change to native code):
+**New builds start by themselves.** When a merge to main changes native code, the **Android testing build** workflow (`.github/workflows/mobile-build.yml`) starts a new testing build. It builds a signed `.aab` in Expo's cloud and uploads it to the internal testing track (`submit.testing` in `eas.json`), and Play then updates testers' phones. It runs `scripts/testing-build.mjs`, which compares the Android fingerprint with the testing builds on EAS and builds only when none has it, so most merges start nothing. A build that failed doesn't count, so the next merge that touches `mobile/` tries again. Changes that aren't native need no new build: they arrive over the air.
+
+To check or start one by hand, from this folder:
 
 ```bash
-npx eas-cli@latest build --platform android --profile testing --auto-submit
+node scripts/testing-build.mjs --dry-run
 ```
 
-This builds a signed `.aab` in Expo's cloud and uploads it to the internal testing track (`submit.testing` in `eas.json`). Changes that aren't native need no new build: they arrive over the air.
+```bash
+node scripts/testing-build.mjs
+```
+
+The first says whether a build is needed. The second starts one if it is. To build regardless, use `npx eas-cli@latest build --platform android --profile testing --auto-submit`. Each build counts toward EAS's monthly build limit.
+
+If testers' phones say "You have the latest" but don't have a recent change, no build has their native code's fingerprint: check that workflow's runs.
 
 - The first build offers to make an Android keystore. Say yes. EAS keeps it, and Google signs the copy people install with its own key (Play App Signing).
 - The version code goes up by itself (`autoIncrement`, stored on EAS). Change `version` in `app.config.ts` when testers should see a new version number.
