@@ -233,30 +233,38 @@ export async function listLinkedEventsForUser(userId: string): Promise<LinkedEve
 export type RegistryEventEntry = Pick<EventDetails, "id" | "slug" | "title" | "event_date" | "event_type"> & {
   /** Whether the viewer hosts it. Hosts open the event's dashboard; others see the guest page. */
   canManage: boolean;
+  /**
+   * True when a guest added the list to the event as their wishlist, and no
+   * host linked it. It comes off on that guest's RSVP, not with Unlink.
+   */
+  guestList: boolean;
 };
 
-/** Events linked to one registry, for the registry's dashboard page. */
+/**
+ * The events a registry is on, for the registry's dashboard page: the ones
+ * whose hosts linked it, and the ones where a guest added it as their
+ * wishlist. Soonest first, then events with no date.
+ */
 export async function listEventsForRegistry(registryId: string, viewerId: string): Promise<RegistryEventEntry[]> {
-  const { data } = await supabaseAdmin
-    .from("event_registries")
-    .select("events(id, slug, title, event_date, event_type, owner_id)")
-    .eq("registry_id", registryId);
-  const events = ((data || []) as unknown as {
-    events: (Pick<EventDetails, "id" | "slug" | "title" | "event_date" | "event_type"> & { owner_id: string }) | null;
-  }[])
-    .map((row) => row.events)
-    .filter((e): e is NonNullable<typeof e> => Boolean(e));
-  if (events.length === 0) return [];
+  const { linked, guestLists } = await eventIdsForRegistry(registryId);
+  const ids = [...linked, ...guestLists];
+  if (ids.length === 0) return [];
 
-  const { data: hosted } = await supabaseAdmin
-    .from("event_hosts")
-    .select("event_id")
-    .eq("user_id", viewerId)
-    .in("event_id", events.map((e) => e.id));
+  const [{ data }, { data: hosted }] = await Promise.all([
+    supabaseAdmin.from("events").select("id, slug, title, event_date, event_type, owner_id").in("id", ids),
+    supabaseAdmin.from("event_hosts").select("event_id").eq("user_id", viewerId).in("event_id", ids),
+  ]);
+  const events = (data || []) as (Pick<EventDetails, "id" | "slug" | "title" | "event_date" | "event_type"> & {
+    owner_id: string;
+  })[];
   const hostedIds = new Set((hosted || []).map((h) => h.event_id as string));
 
   return events
-    .map(({ owner_id, ...event }) => ({ ...event, canManage: owner_id === viewerId || hostedIds.has(event.id) }))
+    .map(({ owner_id, ...event }) => ({
+      ...event,
+      canManage: owner_id === viewerId || hostedIds.has(event.id),
+      guestList: guestLists.has(event.id),
+    }))
     .sort((a, b) => (a.event_date ?? "9999").localeCompare(b.event_date ?? "9999"));
 }
 
@@ -733,6 +741,27 @@ export async function withGuestsLinkedLists(
 // ── Reveals ──────────────────────────────────────────────────
 
 /**
+ * The ids of the events a registry is on. `linked` holds the events whose
+ * hosts linked it. `guestLists` holds the events where a guest added it as
+ * their wishlist or one of their other lists, and that no host linked.
+ */
+export async function eventIdsForRegistry(registryId: string): Promise<{ linked: Set<string>; guestLists: Set<string> }> {
+  const [{ data: links }, { data: wishlists }, { data: more }] = await Promise.all([
+    supabaseAdmin.from("event_registries").select("event_id").eq("registry_id", registryId),
+    supabaseAdmin.from("event_guests").select("event_id").eq("wishlist_registry_id", registryId),
+    supabaseAdmin.from("event_guest_lists").select("event_guests!inner(event_id)").eq("registry_id", registryId),
+  ]);
+  const linked = new Set((links || []).map((row) => row.event_id as string));
+  const guestLists = new Set(
+    [
+      ...(wishlists || []).map((row) => row.event_id as string),
+      ...(more || []).map((row) => (row.event_guests as unknown as { event_id: string }).event_id),
+    ].filter((id) => !linked.has(id)),
+  );
+  return { linked, guestLists };
+}
+
+/**
  * The events a registry is linked to, by the event's own links or as a
  * guest's wishlist or one of their other lists. A list that hides reservations from its owner reveals
  * them the day after each one (src/lib/reveal.ts).
@@ -740,17 +769,8 @@ export async function withGuestsLinkedLists(
 export async function getEventsForReveal(
   registryId: string,
 ): Promise<Pick<EventDetails, "id" | "slug" | "title" | "event_date">[]> {
-  const [{ data: links }, { data: wishlists }, { data: more }] = await Promise.all([
-    supabaseAdmin.from("event_registries").select("event_id").eq("registry_id", registryId),
-    supabaseAdmin.from("event_guests").select("event_id").eq("wishlist_registry_id", registryId),
-    supabaseAdmin.from("event_guest_lists").select("event_guests!inner(event_id)").eq("registry_id", registryId),
-  ]);
-  const ids = [
-    ...new Set([
-      ...[...(links || []), ...(wishlists || [])].map((row) => row.event_id as string),
-      ...(more || []).map((row) => (row.event_guests as unknown as { event_id: string }).event_id),
-    ]),
-  ];
+  const { linked, guestLists } = await eventIdsForRegistry(registryId);
+  const ids = [...linked, ...guestLists];
   if (ids.length === 0) return [];
   const { data } = await supabaseAdmin.from("events").select("id, slug, title, event_date").in("id", ids);
   return (data || []) as Pick<EventDetails, "id" | "slug" | "title" | "event_date">[];

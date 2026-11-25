@@ -1,14 +1,17 @@
 // "This version" on the Account tab, in preview builds and while developing:
 // the newest pull request and commit in the code the app is running, which
-// update it's on, and a button to check for a newer one right away. The app
-// also checks each time it opens.
+// build and update it's on, and a button to check for a newer one right away.
+// The app also checks each time it opens. On Android it also says whether
+// Google Play has a newer build (src/lib/play-update.ts).
 
+import * as Application from "expo-application";
 import * as Updates from "expo-updates";
 import { useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { Button, Divider, haptic, Section, Text } from "@/components/ui";
 import { pullRequestLabel, runningBuild, showsBuildInfo, stamp, updateBuildInfo } from "@/lib/build-info";
+import { checkPlay, checksPlay, installPlayUpdate, usePlayUpdate } from "@/lib/play-update";
 import { spacing } from "@/lib/theme";
 
 const canCheck = !__DEV__ && Updates.isEnabled && Platform.OS !== "web";
@@ -28,7 +31,7 @@ export function VersionSection() {
       title="This version"
       footer={
         canCheck
-          ? "Each pull request merged into main that changes the app arrives as an update. A change to native code needs a new build instead."
+          ? "Each pull request merged into main that changes the app arrives as an update. A change to native code comes as a new build instead, which an update can't replace."
           : "Reload the app to get the latest changes from your computer."
       }
     >
@@ -44,6 +47,21 @@ export function VersionSection() {
       />
       <Divider inset={spacing.lg} />
       <Info label="Running" lines={[running]} />
+      {Application.nativeBuildVersion ? (
+        <>
+          <Divider inset={spacing.lg} />
+          <Info
+            label="Build"
+            lines={[`Version ${Application.nativeApplicationVersion ?? "?"}, build ${Application.nativeBuildVersion}`]}
+          />
+        </>
+      ) : null}
+      {checksPlay ? (
+        <>
+          <Divider inset={spacing.lg} />
+          <PlayCheck />
+        </>
+      ) : null}
       {canCheck ? (
         <>
           <Divider inset={spacing.lg} />
@@ -122,7 +140,7 @@ function UpdateCheck() {
   else if (problem) status = `Couldn't check for updates. ${problem}`;
   else if (isUpdateAvailable) status = `A newer version is available${incoming}.`;
   else if (lastCheckForUpdateTimeSinceRestart) {
-    status = `You have the latest. Checked ${lastCheckForUpdateTimeSinceRestart.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`;
+    status = `You have the latest update for this build. Checked ${clock(lastCheckForUpdateTimeSinceRestart)}.`;
   }
 
   return (
@@ -146,6 +164,55 @@ function UpdateCheck() {
       )}
     </View>
   );
+}
+
+/** Whether Google Play has a newer build, and a button to install it or ask again. */
+function PlayCheck() {
+  const play = usePlayUpdate();
+  let status: string | null = null;
+  if (play.available) {
+    const build = play.available.versionCode ? ` (build ${play.available.versionCode})` : "";
+    status = `Google Play has a newer build${build}. Updates made after it only reach that build, so install it to get them.`;
+    if (play.error) status += ` Couldn't open Google Play's update screen. ${play.error}`;
+  } else if (play.error) {
+    // Play only answers for a copy installed from Play.
+    status = `Couldn't ask Google Play for a newer build. A copy that wasn't installed from Play can't check. ${play.error}`;
+  } else if (play.checkedAt) {
+    status = `Google Play has no newer build. Checked ${clock(play.checkedAt)}.`;
+  }
+
+  return (
+    <View style={styles.check}>
+      {status ? (
+        <Text variant="subhead" tone={play.error && !play.available ? "danger" : "secondary"} selectable>
+          {status}
+        </Text>
+      ) : null}
+      {play.available ? (
+        <Button
+          title="Update from Google Play"
+          icon="update"
+          size="medium"
+          loading={play.installing}
+          onPress={() => void installPlayUpdate()}
+        />
+      ) : (
+        <Button
+          title="Check Google Play"
+          variant="secondary"
+          icon="refresh"
+          size="medium"
+          loading={play.checking}
+          onPress={() => void checkPlay()}
+        />
+      )}
+    </View>
+  );
+}
+
+/** "10:42 AM" */
+function clock(date: Date) {
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 const styles = StyleSheet.create({

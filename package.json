@@ -15,6 +15,8 @@
     "test:extension": "npm run extension:build && playwright test --config extension/test/playwright.config.ts",
     "e2e:db": "bash e2e/db.sh",
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
+    "test:screenshots": "playwright test --config story-screenshots/playwright.config.ts",
+    "screenshots:accept": "node story-screenshots/accept.mjs",
     "check:migrations": "node supabase/check-migrations.mjs",
     "auth-emails": "node supabase/auth-emails.mts",
     "test": "node --test src/lib/*.test.ts supabase/*.test.mts"
