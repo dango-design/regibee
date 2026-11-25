@@ -34,7 +34,10 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Badge hidden={followRequests === 0}>{String(followRequests)}</NativeTabs.Trigger.Badge>
+        {/* No text when there are none: expo-router shows any text it's given, even with hidden set. */}
+        <NativeTabs.Trigger.Badge hidden={followRequests === 0}>
+          {followRequests > 0 ? String(followRequests) : undefined}
+        </NativeTabs.Trigger.Badge>
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="person" />
       </NativeTabs.Trigger>
     </NativeTabs>
