@@ -14,6 +14,7 @@ import { ProfileAvatar } from "@/components/profile-avatar";
 import { Divider, Section, SwitchRow, Text } from "@/components/ui";
 import { VersionSection } from "@/components/version-section";
 import { useDeleteAccount } from "@/lib/account";
+import { PUSH_SUPPORTED, useNotificationsSwitch } from "@/lib/notifications";
 import { errorMessage } from "@/lib/data";
 import { useAccountPage, useRunPeopleAction } from "@/lib/people-data";
 import { signOut, useSession } from "@/lib/auth";
@@ -130,6 +131,7 @@ function AccountSections() {
   const { run } = useRunPeopleAction();
   const data = page.data;
   const requests = data?.follows.requests.length ?? 0;
+  const notifications = useNotificationsSwitch();
   const [birthdayEmails, setBirthdayEmails] = useState<boolean | null>(null);
   const emailsOn = birthdayEmails ?? data?.birthdayEmails ?? true;
   return (
@@ -147,6 +149,20 @@ function AccountSections() {
           onPress={() => router.push("/account/follows")}
         />
       </Section>
+      {PUSH_SUPPORTED ? (
+        <Section
+          title="Notifications"
+          footer="When someone asks to follow you, replies to your event's invitation, or gives a gift on your list. Gifts you hid from yourself stay hidden."
+        >
+          <SwitchRow
+            icon="bell"
+            label="Notifications on this phone"
+            value={notifications.on ?? false}
+            disabled={notifications.on === null || notifications.busy}
+            onValueChange={notifications.change}
+          />
+        </Section>
+      ) : null}
       <Section
         title="Birthday emails"
         footer={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they approved you and added their birthday.`}

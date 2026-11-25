@@ -12,6 +12,7 @@ import { emailLabel } from "@shared/guest-emails";
 import { memberCountLabel } from "@shared/groups";
 
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { CAN_PICK_CONTACTS, useContactPicker } from "@/components/contact-picker";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, ErrorState, Field, haptic, IconButton, LoadingState, Section, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -34,6 +35,16 @@ export default function GroupScreen() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
   const pastePreview = useMemo(() => parseGuestList(pasted), [pasted]);
+  // A contact goes into the form, to check and add.
+  const contacts = useContactPicker(
+    (pickedName, pickedEmail) => {
+      setPasting(false);
+      setNotice(null);
+      setName(pickedName);
+      setEmail(pickedEmail);
+    },
+    (text) => setNotice({ text, error: true })
+  );
   const data = page.data;
 
   if (!data) {
@@ -194,6 +205,17 @@ export default function GroupScreen() {
                 onSubmitEditing={addOne}
               />
               <Button title="Add" icon="add" size="medium" loading={busy === "add"} onPress={addOne} />
+              {CAN_PICK_CONTACTS ? (
+                <Button
+                  title="Add from contacts"
+                  icon="contacts"
+                  size="small"
+                  variant="secondary"
+                  disabled={busy === "add"}
+                  onPress={contacts.open}
+                  style={{ alignSelf: "flex-start" }}
+                />
+              ) : null}
             </>
           )}
           {members.length === 0 ? (
@@ -348,6 +370,7 @@ export default function GroupScreen() {
         error={deleteError}
         onConfirm={deleteGroup}
       />
+      {contacts.sheet}
     </>
   );
 }

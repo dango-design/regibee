@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { DEMO_USER_ID, setDemoActive } from "@/lib/demo";
+import { forgetThisPhone, registerAfterSignIn } from "@/lib/notifications";
 import { queryClient } from "@/lib/query";
 import { supabase, SITE_URL } from "@/lib/supabase";
 
@@ -52,6 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data.subscription.unsubscribe();
     };
   }, []);
+
+  // Saves this phone's push token for the account after sign-in, and each
+  // time the app starts signed in, so a changed token is picked up.
+  const signedInUserId = session?.user.id;
+  useEffect(() => {
+    if (signedInUserId) registerAfterSignIn();
+  }, [signedInUserId]);
 
   // Data hooks read the demo flag outside React. Keep it in step with this state.
   setDemoActive(demo && !session);
@@ -122,6 +130,8 @@ export async function sendPasswordReset(email: string) {
 }
 
 export async function signOut() {
+  // Stop pushes to this phone for this account, while the session can still delete its row.
+  await forgetThisPhone();
   // "local" ends only this phone's session. The website stays signed in.
   await supabase.auth.signOut({ scope: "local" });
 }

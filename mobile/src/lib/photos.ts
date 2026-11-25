@@ -1,11 +1,13 @@
-// Picking a photo on the phone and uploading it, for an item's picture or a
-// list's photo. It works the same way as the website's upload
+// Taking or picking a photo on the phone and uploading it, for an item's
+// picture, a list's photo, an invitation or a profile. It works the same way as the website's upload
 // (src/lib/upload-registry-photo.ts): shrunk to 1200px on the longer side,
 // saved as a JPEG, and uploaded as the signed-in user to the list's folder in
 // the registry-photos bucket, which only the list's managers can write to.
 
+import * as Device from "expo-device";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
+import { Alert, Linking, Platform } from "react-native";
 
 import { EVENT_IMAGES_BUCKET } from "@shared/event-images";
 import { PROFILE_PHOTOS_BUCKET } from "@shared/profile-photos";
@@ -17,8 +19,60 @@ import { supabase } from "@/lib/supabase";
 
 const MAX_SIDE = 1200;
 
-/** Opens the photo library. Null when the person cancels. */
+type Source = "camera" | "library";
+
+/** Asks whether to take a photo or choose one. Null when the person cancels. */
+function askSource(): Promise<Source | null> {
+  // Three buttons at most: Android's alert drops the rest.
+  return new Promise((resolve) => {
+    Alert.alert(
+      "Add a photo",
+      undefined,
+      [
+        { text: "Take photo", onPress: () => resolve("camera") },
+        { text: "Choose from library", onPress: () => resolve("library") },
+        { text: "Cancel", style: "cancel", onPress: () => resolve(null) },
+      ],
+      // Android closes the alert on a tap outside it.
+      { cancelable: true, onDismiss: () => resolve(null) }
+    );
+  });
+}
+
+async function takePhoto(): Promise<ImagePicker.ImagePickerAsset | null> {
+  // The iPhone simulator has no camera, and opening it there crashes the app.
+  // The Android emulator has a pretend one, so it can open.
+  if (Platform.OS === "ios" && !Device.isDevice) {
+    Alert.alert("No camera", "This device has no camera. Choose a photo from the library instead.");
+    return null;
+  }
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) {
+    // Once someone says no, the system won't ask again. Only Settings can change it.
+    Alert.alert(
+      "Regibee can't use the camera",
+      "To take a photo, allow Regibee to use the camera in Settings.",
+      permission.canAskAgain
+        ? [{ text: "OK" }]
+        : [
+            { text: "Not now", style: "cancel" },
+            { text: "Open Settings", onPress: () => void Linking.openSettings() },
+          ]
+    );
+    return null;
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 1 });
+  return result.canceled ? null : (result.assets?.[0] ?? null);
+}
+
+/**
+ * Asks whether to take a photo or choose one from the library, then opens the
+ * camera or the photo picker. Null when the person cancels.
+ */
 export async function pickPhoto(): Promise<ImagePicker.ImagePickerAsset | null> {
+  const source = await askSource();
+  if (source === "camera") return takePhoto();
+  if (source !== "library") return null;
   // The system photo picker needs no permission to choose a photo.
   const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
   return result.canceled ? null : (result.assets?.[0] ?? null);

@@ -396,19 +396,37 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">Kept on your phone.</strong> Your sign-in session, a
                 copy of what you last saw, such as your registries and events, so the app opens quickly, and the
-                registry you last added to. Signing out
-                removes the session and the copy. Deleting the app removes everything it kept.
+                registry you last added to. With notifications on, it also keeps the phone&apos;s notification token
+                and whether you turned notifications off. Signing out removes the session, the copy and the token. Deleting the app removes everything it kept.
               </li>
               <li>
                 <strong className="font-semibold text-primary">The demo.</strong> &ldquo;Look around first&rdquo;
                 shows a sample registry held in the app&apos;s memory. Nothing you do in it is saved or sent to us.
               </li>
               <li>
-                <strong className="font-semibold text-primary">Photos.</strong> When you tap Upload photo, your
-                phone&apos;s photo picker opens, and the app only gets the photo you choose. It shrinks it and uploads
-                it as the picture for an item, a registry or an invitation, the same as the website does.
+                <strong className="font-semibold text-primary">Photos and the camera.</strong> When you add a photo,
+                you choose between taking one and picking one. Picking opens your phone&apos;s photo picker, and the
+                app only gets the photo you choose. Taking one asks for the camera the first time, and the app only
+                gets the photo you take. Either way it shrinks the photo and uploads it as the picture for an item, a
+                registry, an invitation or your profile, the same as the website does.
               </li>
-              <li>The app doesn&apos;t ask for your location, contacts, camera or microphone.</li>
+              <li>
+                <strong className="font-semibold text-primary">Contacts.</strong> When you tap Add from contacts on
+                an event&apos;s guest list or a group, your phone&apos;s contact picker opens. The app reads the name
+                and email addresses of the one person you pick and puts them in the form. Nothing is sent until you
+                tap Add, and then only that name and the email you chose. On iPhone this needs no permission. On
+                Android the app has to ask to read your contacts first, and it still only reads the person you pick.
+              </li>
+              <li>
+                <strong className="font-semibold text-primary">Notifications.</strong> After you sign in, the app
+                asks whether to send you notifications. If you allow them, it saves a token for your phone with your
+                account, so we can tell you when someone asks to follow you, replies to your event&apos;s
+                invitation, or gives a gift on your registry. A gift you hid from yourself stays hidden. We send them
+                through Expo, which passes them to Apple or Google to deliver. A notification shows on your lock
+                screen unless you change that in your phone&apos;s settings. Turn them off on the Account tab or in
+                your phone&apos;s settings. Signing out or turning them off deletes the token.
+              </li>
+              <li>The app doesn&apos;t ask for your location or microphone.</li>
             </List>
           </Section>
 
@@ -549,7 +567,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 opened and clicked.
               </li>
               <li>
-                <strong className="font-semibold text-primary">Expo</strong> builds the app and delivers its updates.
+                <strong className="font-semibold text-primary">Expo</strong> builds the app, delivers its updates,
+                and sends its notifications through Apple and Google. Each notification goes with your phone&apos;s
+                token, and holds the words you see.
               </li>
             </List>
             <P>
@@ -593,7 +613,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                   Account page
                 </Link>
                 , or on the Account tab in the app. That deletes your sign-in and profile, your follows, follow
-                requests and blocks, your groups, your gift ideas, and the events you made with their guest lists and RSVPs. It signs you out of
+                requests and blocks, your groups, your gift ideas, your phones&apos; notification tokens, and the events you made with their guest lists and RSVPs. It signs you out of
                 the website, the app and the extension.
               </li>
               <li>

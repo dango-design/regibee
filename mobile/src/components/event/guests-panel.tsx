@@ -16,6 +16,7 @@ import { memberCountLabel } from "@shared/groups";
 import { answerLabel, answerLines, mealCounts, storedAnswers } from "@shared/rsvp-questions";
 
 import { ChoiceSheet } from "@/components/choice-sheet";
+import { CAN_PICK_CONTACTS, useContactPicker } from "@/components/contact-picker";
 import { InviteFollowed } from "@/components/event/invite-followed";
 import { Button, Card, Chip, Divider, Field, haptic, IconButton, Pill, Stepper, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -176,6 +177,20 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
     setRows((current) => current.filter((row) => row.id !== id));
     if (invalid?.id === id) setInvalid(null);
   }
+
+  /** Puts a contact in the first empty row, or a new row, for the host to check and add. */
+  function fillRow(name: string, email: string) {
+    setPasting(false);
+    setInvalid(null);
+    setMessage(null);
+    setRows((current) => {
+      const empty = current.find((row) => !row.name.trim() && !row.email.trim());
+      if (empty) return current.map((row) => (row.id === empty.id ? { ...row, name, email } : row));
+      return [...current, { id: nextRowId.current++, name, email }];
+    });
+  }
+
+  const contacts = useContactPicker(fillRow, (text) => setMessage({ text, error: true }));
 
   function addRows() {
     const result = readGuestRows(rows);
@@ -425,15 +440,19 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
                 </View>
               );
             })}
-            <Button
-              title="Add another guest"
-              icon="add"
-              size="small"
-              variant="secondary"
-              disabled={busy === "add"}
-              onPress={addRow}
-              style={{ alignSelf: "flex-start" }}
-            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              <Button title="Add another guest" icon="add" size="small" variant="secondary" disabled={busy === "add"} onPress={addRow} />
+              {CAN_PICK_CONTACTS ? (
+                <Button
+                  title="Add from contacts"
+                  icon="contacts"
+                  size="small"
+                  variant="secondary"
+                  disabled={busy === "add"}
+                  onPress={contacts.open}
+                />
+              ) : null}
+            </View>
             <Button
               title={filledGuestRows(rows) > 1 ? `Add ${filledGuestRows(rows)} guests` : "Add"}
               icon="personAdd"
@@ -564,6 +583,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
         title="Copy guests from another event"
         choices={copyChoices}
       />
+      {contacts.sheet}
     </View>
   );
 }

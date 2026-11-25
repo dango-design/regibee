@@ -44,6 +44,8 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: true,
+    // expo-contacts adds both. The app only reads the one contact someone picks.
+    blockedPermissions: ["android.permission.WRITE_CONTACTS"],
   },
   web: {
     output: "single",
@@ -64,10 +66,26 @@ const config: ExpoConfig = {
     [
       "expo-image-picker",
       {
-        // Choosing a photo for an item or a list. The app never takes photos.
+        // Choosing or taking a photo for an item, a list, an invitation or a profile.
         photosPermission: "Regibee uses the photo you choose as a picture for an item or a list.",
-        cameraPermission: false,
+        cameraPermission: "Regibee uses the camera when you take a photo for an item, a list or an invitation.",
         microphonePermission: false,
+      },
+    ],
+    [
+      "expo-contacts",
+      {
+        // On iPhone, the contact picker needs no permission. This text is only
+        // there because Apple requires it of any app with the contacts code in it.
+        contactsPermission: "Regibee reads the contact you pick to add them as a guest or to a group.",
+      },
+    ],
+    [
+      "expo-notifications",
+      {
+        // Android's small icon must be white on transparent.
+        icon: "./assets/images/android-icon-monochrome.png",
+        color: "#FAC515",
       },
     ],
     "@react-native-community/datetimepicker",
