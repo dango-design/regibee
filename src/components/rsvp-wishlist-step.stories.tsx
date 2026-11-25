@@ -83,6 +83,47 @@ export const Linked: Story = {
 };
 
 /**
+ * A parent with their own wishlist linked adds the list they keep for their
+ * child. Everyone sees it under theirs.
+ */
+export const AddAnotherList: Story = {
+  args: {
+    current: { url: "https://regibee.com/r/fiyeros-list-5j2c", title: "Fiyero's Christmas List", ownListId: "list-1" },
+    account: {
+      lists: [
+        { id: "list-1", title: "Fiyero's Christmas List" },
+        { id: "list-3", title: "Nessa's Christmas List" },
+      ],
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Add another list" }));
+    // The wishlist itself isn't offered again.
+    await expect(canvas.queryByRole("button", { name: "Add Fiyero's Christmas List" })).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Add Nessa's Christmas List" }));
+    await expect(args.saveAction).toHaveBeenCalledWith(expect.objectContaining({ addRegistryId: "list-3" }));
+  },
+};
+
+/** With their child's list added too. Either can be opened, and the child's taken off. */
+export const WithAnotherList: Story = {
+  args: {
+    ...AddAnotherList.args,
+    more: [{ id: "list-3", title: "Nessa's Christmas List", ownListId: "list-3" }],
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("link", { name: "Open Nessa's Christmas List" })).toHaveAttribute(
+      "href",
+      "/dashboard/registry/list-3",
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Take off Nessa's Christmas List" }));
+    await expect(args.saveAction).toHaveBeenCalledWith(expect.objectContaining({ removeRegistryId: "list-3" }));
+  },
+};
+
+/**
  * A list from another store, saved before a wishlist here had to be a
  * Regibee list. It still shows. Change opens the choices again, with a way back.
  */

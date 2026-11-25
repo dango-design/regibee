@@ -18,6 +18,11 @@ export interface RsvpWishlist {
    */
   current: { url: string; title: string | null; ownListId: string | null } | null;
   giftIdeas: string | null;
+  /**
+   * More of the guest's own lists on the event, besides their wishlist, like
+   * one they keep for their child. Each has its id when their account owns it.
+   */
+  more?: { id: string; title: string; ownListId: string | null }[];
   /** The signed-in account's own lists that others can open. Null when signed out. */
   account: { lists: { id: string; title: string }[] } | null;
   /** Where signing up or logging in comes back to. Defaults to the guest's own link. */
@@ -38,12 +43,16 @@ export interface RsvpWishlistStepProps extends RsvpWishlist {
  * it takes an account. Someone signed in picks one of their lists or makes a
  * new one. Someone signed out makes an account or logs in, and comes back
  * here to do that. A link or gift ideas saved before this rule still show.
+ *
+ * With a wishlist linked, someone signed in can add more of their own lists
+ * beside it, such as a list they keep for their child, and take them off.
  */
 export function RsvpWishlistStep({
   slug,
   token,
   current,
   giftIdeas,
+  more = [],
   account,
   returnTo,
   themeColor = null,
@@ -72,7 +81,9 @@ export function RsvpWishlistStep({
   const [refreshing, startTransition] = useTransition();
   const hasSomething = Boolean(current || giftIdeas);
   const [choosing, setChoosing] = useState(!hasSomething);
-  // Which button is saving: a list's id or "new".
+  // Picking another list to add beside the wishlist.
+  const [adding, setAdding] = useState(false);
+  // Which button is saving: a list's id, "new", or "remove:" and a list's id.
   const [busy, setBusy] = useState<string | null>(null);
   const [justMade, setJustMade] = useState(false);
   const [error, setError] = useState("");
@@ -80,6 +91,9 @@ export function RsvpWishlistStep({
   const lists = account?.lists ?? [];
   const back = returnTo ?? `/e/${slug}?g=${encodeURIComponent(token)}#wishlist`;
   const working = busy !== null || refreshing;
+  // Another list goes beside a Regibee wishlist, and takes an account.
+  const canAddMore = Boolean(account && current?.title);
+  const otherLists = lists.filter((list) => list.id !== current?.ownListId && !more.some((m) => m.id === list.id));
 
   const save = async (choice: Omit<EventWishlistInput, "slug" | "token">, key: string) => {
     setBusy(key);
@@ -94,6 +108,7 @@ export function RsvpWishlistStep({
     startTransition(() => {
       setBusy(null);
       setChoosing(false);
+      setAdding(false);
       setJustMade(Boolean(choice.makeNew));
       router.refresh();
     });
@@ -154,6 +169,113 @@ export function RsvpWishlistStep({
             {current ? "Change" : "Add a wishlist"}
           </Button>
         </div>
+
+        {(more.length > 0 || canAddMore) && (
+          <div className="flex flex-col gap-2">
+            {more.length > 0 && (
+              <>
+                <p className="text-sm font-medium text-secondary">Also on the invitation</p>
+                <ul className="flex flex-col gap-2">
+                  {more.map((list) => (
+                    <li
+                      key={list.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3"
+                    >
+                      <span className="min-w-0 font-medium break-words text-primary">{list.title}</span>
+                      <span className="flex flex-wrap gap-2">
+                        {list.ownListId && (
+                          <Button size="sm" variant="outline" className="max-sm:min-h-11" asChild>
+                            <Link href={`/dashboard/registry/${list.ownListId}`} aria-label={`Open ${list.title}`}>
+                              Open
+                            </Link>
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="max-sm:min-h-11"
+                          disabled={working}
+                          aria-label={`Take off ${list.title}`}
+                          onClick={() => save({ removeRegistryId: list.id }, `remove:${list.id}`)}
+                        >
+                          {spinner(`remove:${list.id}`, "Take off", "Taking off…")}
+                        </Button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {canAddMore && !adding && (
+              <div className="flex flex-col items-start gap-1">
+                <Button size="sm" variant="ghost" disabled={working} onClick={() => setAdding(true)}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Plus aria-hidden="true" className="size-4" />
+                    Add another list
+                  </span>
+                </Button>
+                {more.length === 0 && (
+                  <p className="text-sm text-tertiary">Like a list you keep for your child. Everyone sees it under yours.</p>
+                )}
+              </div>
+            )}
+
+            {canAddMore && adding && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium text-secondary">Add another of your lists</p>
+                {otherLists.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {otherLists.map((list) => (
+                      <li
+                        key={list.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3"
+                      >
+                        <span className="min-w-0 font-medium break-words text-primary">{list.title}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="max-sm:min-h-11"
+                          disabled={working}
+                          aria-label={`Add ${list.title}`}
+                          onClick={() => save({ addRegistryId: list.id }, list.id)}
+                        >
+                          {spinner(list.id, "Add this list", "Adding…")}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-tertiary">
+                    You have no other lists to add.{" "}
+                    <Link href="/dashboard/new" className="font-medium text-brand-600 underline">
+                      Make a new list
+                    </Link>
+                    , then come back here to add it.
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="self-start"
+                  disabled={working}
+                  onClick={() => {
+                    setAdding(false);
+                    setError("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+
+            {error && (
+              <p role="alert" className="text-sm text-error-primary">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
       </section>
     );
   }

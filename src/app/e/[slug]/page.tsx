@@ -216,9 +216,15 @@ export default async function PublicEventPage({
   // Their row in everyone's wishlists opens their own page for that list.
   // Only a list their account owns: the owner's page hides what the list
   // hides from its owner, and a co-manager's shows everything.
+  // The same goes for their other lists, like one they keep for their child.
+  const ownMore = (ownEntry?.more ?? []).map((list) => ({
+    ...list,
+    ownListId: myLists.find((mine) => mine.slug === list.slug)?.id ?? null,
+  }));
   const wishLists = guestLists.map((entry) => ({
     ...entry,
     ...(ownList && entry === ownEntry ? { ownListId: ownList.id } : {}),
+    ...(entry === ownEntry && ownMore.length > 0 ? { more: ownMore } : {}),
     ...(guestFollows?.has(entry.guestId) ? { follow: guestFollows.get(entry.guestId) } : {}),
   }));
   const wishlist: RsvpWishlist | null = everyone
@@ -227,6 +233,7 @@ export default async function PublicEventPage({
           ? { url: ownUrl, title: ownEntry?.registry?.title ?? null, ownListId: ownList?.id ?? null }
           : null,
         giftIdeas: guest?.gift_ideas ?? null,
+        more: ownMore.flatMap(({ id, title, ownListId }) => (id ? [{ id, title, ownListId }] : [])),
         account: viewer ? { lists: myLists.map(({ id, title }) => ({ id, title })) } : null,
         themeColor: event.theme_color ?? null,
       }

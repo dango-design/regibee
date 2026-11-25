@@ -24,18 +24,24 @@ interface RevealedList {
 
 /** The lists linked to an event that hide reservations from their owners. */
 async function hiddenListsFor(eventId: string): Promise<RevealedList[]> {
-  const [{ data: links }, { data: wishlists }] = await Promise.all([
+  const [{ data: links }, { data: wishlists }, { data: more }] = await Promise.all([
     supabaseAdmin.from("event_registries").select("registry_id").eq("event_id", eventId),
     supabaseAdmin
       .from("event_guests")
       .select("wishlist_registry_id")
       .eq("event_id", eventId)
       .not("wishlist_registry_id", "is", null),
+    // Guests' other lists (event_guest_lists).
+    supabaseAdmin
+      .from("event_guest_lists")
+      .select("registry_id, event_guests!inner(event_id)")
+      .eq("event_guests.event_id", eventId),
   ]);
   const ids = [
     ...new Set([
       ...(links || []).map((l) => l.registry_id as string),
       ...(wishlists || []).map((w) => w.wishlist_registry_id as string),
+      ...(more || []).map((m) => m.registry_id as string),
     ]),
   ];
   if (ids.length === 0) return [];

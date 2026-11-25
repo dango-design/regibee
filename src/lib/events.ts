@@ -217,6 +217,27 @@ export function exchangeKind(exchange: Pick<GiftExchange, "kind"> | null | undef
   return exchange?.kind === "everyone" ? "everyone" : "draw";
 }
 
+/** How many more lists a guest can add to an event, besides their wishlist. */
+export const MAX_MORE_LISTS = 5;
+
+/**
+ * Another of a guest's own Regibee lists on an everyone-gives-everyone
+ * event, besides their wishlist: a list they keep for their child, say.
+ */
+export interface GuestMoreList {
+  title: string;
+  slug: string;
+  /** Whose list it is, as its owner wrote it: "Mia". Null when the list doesn't say. */
+  honoree: string | null;
+  /**
+   * On the viewer's own entry, when their account owns the list: its id, so
+   * the row opens their own page for it. Missing on everyone else's.
+   */
+  ownListId?: string | null;
+  /** On the viewer's own entry: the list's id, so they can take it off. */
+  id?: string;
+}
+
 /** A guest's wishlist, as the other guests of an everyone-gives-everyone event see it. */
 export interface GuestWishList {
   guestId: string;
@@ -228,6 +249,8 @@ export interface GuestWishList {
   /** When it's a Regibee list: its title and slug. */
   registry: { title: string; slug: string } | null;
   giftIdeas: string | null;
+  /** More of the guest's own lists, in the order they added them. */
+  more?: GuestMoreList[];
   /**
    * On the viewer's own entry, when their account owns its Regibee list: the
    * list's id. Their row opens their own page for the list, which hides what

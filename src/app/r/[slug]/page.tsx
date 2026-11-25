@@ -239,6 +239,14 @@ async function loadFellowGuestClaims(
     // Off the guest list now, or not an everyone-gives-everyone event.
     if (!me || !event || exchangeKind(exchange) !== "everyone") return null;
     if (me.wishlist_registry_id === registry.id) return null;
+    // Or another list they added to the event themselves, like their child's.
+    const { data: ownMore } = await supabaseAdmin
+      .from("event_guest_lists")
+      .select("registry_id")
+      .eq("guest_id", me.id)
+      .eq("registry_id", registry.id)
+      .limit(1);
+    if ((ownMore?.length ?? 0) > 0) return null;
     if (me.email) {
       const { data: owner } = await supabaseAdmin.auth.admin.getUserById(registry.owner_id);
       if (owner.user?.email?.toLowerCase() === me.email.toLowerCase()) return null;

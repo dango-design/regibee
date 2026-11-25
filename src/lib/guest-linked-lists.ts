@@ -11,6 +11,8 @@ interface WishListEntry {
   guestId: string;
   url: string | null;
   registry: { title: string; slug: string } | null;
+  /** More of the guest's lists on the event. */
+  more?: { slug: string }[];
 }
 
 /** A list the host linked, with its owner's email. */
@@ -25,7 +27,8 @@ const normal = (email: string | null | undefined) => email?.trim().toLowerCase()
 /**
  * Puts each linked list on the row of the guest whose email is its owner's,
  * when that guest hasn't added a wishlist. Each list goes to one guest at
- * most, and never to a second row when it's already someone's wishlist.
+ * most, and never to a second row when it's already someone's wishlist or
+ * one of their other lists.
  * guestEmails maps a guest's id to their email.
  */
 export function giveGuestsTheirLinkedLists<T extends WishListEntry>(
@@ -33,7 +36,9 @@ export function giveGuestsTheirLinkedLists<T extends WishListEntry>(
   linked: LinkedListWithOwner[],
   guestEmails: Map<string, string | null>,
 ): T[] {
-  const used = new Set(lists.flatMap((entry) => (entry.registry ? [entry.registry.slug] : [])));
+  const used = new Set(
+    lists.flatMap((entry) => [...(entry.registry ? [entry.registry.slug] : []), ...(entry.more ?? []).map((l) => l.slug)]),
+  );
   return lists.map((entry) => {
     if (entry.url || entry.registry) return entry;
     const email = normal(guestEmails.get(entry.guestId));

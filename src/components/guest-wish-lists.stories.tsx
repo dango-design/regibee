@@ -51,6 +51,29 @@ export const AsAGuest: Story = {
 };
 
 /**
+ * Elphaba also added the list she keeps for her daughter. It has its own row
+ * under hers, led by the name on the list, and opens through the event like
+ * any guest's.
+ */
+export const AGuestWithTwoLists: Story = {
+  args: {
+    lists: sampleGuestWishLists.map((entry) =>
+      entry.guestId === "g2"
+        ? { ...entry, more: [{ title: "Nessa's Christmas List", slug: "nessas-list-8w3p", honoree: "Nessa" }] }
+        : entry,
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const rows = within(canvasElement).getAllByRole("listitem");
+    await expect(rows[2]).toHaveTextContent("Nessa's Christmas List · Added by Elphaba");
+    await expect(within(rows[2]).getByRole("link", { name: "See Nessa's list" })).toHaveAttribute(
+      "href",
+      `/e/${sampleExchangeEvent.slug}/gifts?g=token-g1&to=nessas-list-8w3p`,
+    );
+  },
+};
+
+/**
  * Glinda's wishlist is a list her account doesn't own, or she's signed out.
  * It has no button: that list's page would show her what's been reserved.
  */
