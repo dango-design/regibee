@@ -18,6 +18,16 @@ const readProductInSafari = `
     } catch (error) {}
 `;
 
+// Links to these website pages open the Android app instead of the browser
+// (Android App Links), in its in-app page (src/app/web.tsx). They are the
+// guest and follower pages in WEB_VIEW_PATHS (src/lib/in-app.ts on the
+// website), without the privacy policy. Android checks that the app may claim
+// them against https://www.regibee.com/.well-known/assetlinks.json
+// (public/.well-known/assetlinks.json on the website), which lists the keys
+// the app is signed with. Only www.regibee.com: regibee.com redirects there,
+// and Android doesn't follow redirects when it checks.
+const APP_LINK_PATHS = ["/r/", "/e/", "/u/", "/group-gift/", "/invite/", "/host-invite/", "/follow-invite/", "/list-request/"];
+
 const config: ExpoConfig = {
   name: "Regibee",
   slug: "regibee",
@@ -44,6 +54,14 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: true,
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: APP_LINK_PATHS.map((pathPrefix) => ({ scheme: "https", host: "www.regibee.com", pathPrefix })),
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
     // expo-contacts adds both. The app only reads the one contact someone picks.
     blockedPermissions: ["android.permission.WRITE_CONTACTS"],
   },
