@@ -34,6 +34,12 @@ Other people's registries, profiles, invitations, group gifts and invite links a
 - The product reader is built from the extension's source into `src/generated/product-reader.json` by `npm run product-reader`. Run it after changing `extension/src/product-reader.ts`. `npm run check` fails when it's out of date.
 - Sharing uses [`expo-share-intent`](https://github.com/achorein/expo-share-intent). On iPhone its share extension opens the app (the extension has no screen of its own), and `src/app/+native-intent.ts` sends that link to the share screen. On Android, shared text goes to a small activity with no screen, `ShareReceiverActivity` (`plugins/with-android-share-receiver.js`). It passes the share to the app in Regibee's own task. Some apps, Amazon among them, open the app they share to inside their own task, and if that were the app itself, a second copy of it would take over Expo Router's router and break navigation until a restart. The app comes to the front on whatever screen it was on. `ShareRouter` in `src/app/_layout.tsx` then opens the share screen, once for each share. A share without text, such as a file, can't be added. The library reports most of those as an error, which `ShareRouter` shows instead of doing nothing. `plugins/with-share-extension-label.js` keeps the iPhone share sheet label "Regibee".
 
+## Analytics
+
+- The app sends screen views and app opens to PostHog with `posthog-react-native` (`src/lib/analytics.ts`). What people create and give is counted on the website's server instead. See "Analytics" in the root CLAUDE.md for what may and may not be sent.
+- It reads `EXPO_PUBLIC_POSTHOG_KEY` from the build's EAS environment. Set it with `npx eas-cli@latest env:create`: the production PostHog project's token in `production`, the second project's token in `preview` (preview and testing builds), and nothing in `development`. Without it, the app sends nothing.
+- `posthog-react-native` brought native modules (`expo-localization`, `expo-file-system`), so it reaches phones in a new build, not an over-the-air update.
+
 ## Push notifications
 
 - The app saves each phone's Expo push token in `push_tokens` (`supabase/migrations/20261125083353_push_tokens.sql`) through `register_push_token`, after sign-in and each time it starts signed in (`src/lib/notifications.ts`). Signing out deletes the row, and so does turning the switch off, which also remembers the choice on the phone.
