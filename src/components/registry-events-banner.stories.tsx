@@ -31,9 +31,11 @@ export const AllStates: Story = {
           { id: "e3", title: "Sip and See", event_date: null, event_type: "other" },
         ]}
       />
-      {/* One event the owner hosts, and one a coworker hosts that links this
-          registry. The owner can't manage the second, so its link opens the
-          guest page and it has an Unlink button. */}
+      {/* One event the owner hosts, one a coworker hosts that links this
+          registry, and one where the owner added it as their wishlist as a
+          guest. The owner can't manage the last two, so their links open the
+          guest page. Only the coworker's has an Unlink button: the wishlist
+          comes off on the guest's RSVP. */}
       <RegistryEventsBanner
         {...args}
         events={[
@@ -45,6 +47,15 @@ export const AllStates: Story = {
             event_date: "2026-11-20",
             event_type: "baby_shower",
             canManage: false,
+          },
+          {
+            id: "e6",
+            slug: "family-gift-swap-k3m9",
+            title: "Family Gift Swap",
+            event_date: "2026-12-24",
+            event_type: "holiday_party",
+            canManage: false,
+            guestList: true,
           },
         ]}
       />

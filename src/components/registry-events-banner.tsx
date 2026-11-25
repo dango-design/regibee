@@ -17,6 +17,11 @@ export type BannerEvent = Pick<EventDetails, "id" | "title" | "event_date" | "ev
    * counts as hosted.
    */
   canManage?: boolean;
+  /**
+   * A guest added this registry to the event as their wishlist, and no host
+   * linked it. It comes off on that guest's RSVP, so there's no Unlink button.
+   */
+  guestList?: boolean;
 };
 
 function planHref(registryId: string, basePath: string) {
@@ -43,7 +48,8 @@ export function PlanEventButton({ registryId, basePath = "" }: { registryId: str
 
 /**
  * The band near the top of a registry's dashboard page. It lists the events
- * that link guests to this registry. With none, it suggests planning one.
+ * this registry is on: the ones whose hosts linked it, and the ones where a
+ * guest added it as their wishlist. With none, it suggests planning one.
  *
  * A registry doesn't need an event, so the suggestion is small and can be
  * dismissed. Once dismissed, it stays gone for this registry, and the page
@@ -138,9 +144,9 @@ export function RegistryEventsBanner({
                     </Link>
                     {" · "}
                     {event.event_date ? formatShortEventDate(event.event_date) : eventTypeLabel(event.event_type)}
-                    {!hosted && " · hosted by someone else"}
+                    {!hosted && (event.guestList ? " · added by a guest" : " · hosted by someone else")}
                   </span>
-                  {!hosted && (
+                  {!hosted && !event.guestList && (
                     <UnlinkEventButton
                       eventId={event.id}
                       registryId={registryId}
