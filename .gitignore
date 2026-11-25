@@ -61,5 +61,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 
+# story screenshots (story-screenshots/README.md): pictures a run gathered
+/story-screenshots/new-baselines/
+
 # end-to-end tests (e2e/README.md)
 /.next-e2e/
