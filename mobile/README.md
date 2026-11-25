@@ -92,7 +92,7 @@ The workflow runs when a merge changes `mobile/` or one of the website files the
 
 **Account › This version** says which code the app is running: the newest pull request in it, the commit, and whether it's running an update or the version it was built with. **Check for updates** checks straight away, downloads a newer update, and offers **Restart now**. The section shows in builds on the `preview` channel (preview builds and the Play testing builds below) and while developing, not in the public store version. `scripts/build-info.js` reads the commit and pull request from git when a build or update is made.
 
-An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest" means there's no newer update for that build. For Android testers, the Android testing build workflow makes that new build (see "Android testers"). `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
+An update can't change native code. Adding a package with native code, upgrading Expo, or changing a config plugin or the product reader (it runs in the iPhone share extension) needs a new build. The runtime version is a fingerprint of the native code, so an update only reaches builds that match it, and an older build keeps what it has. "You have the latest update for this build" means there's no newer update for that build. A newer build may still be waiting on Google Play: see "Newer builds on Google Play" below. For Android testers, the Android testing build workflow makes that new build (see "Android testers"). `fingerprint.config.js` leaves out the commit and pull request, so they don't count as a native change. To see whether a change needs a new build, compare this before and after:
 
 ```bash
 npx expo-updates fingerprint:generate --platform android
@@ -133,7 +133,18 @@ node scripts/testing-build.mjs
 
 The first says whether a build is needed. The second starts one if it is. To build regardless, use `npx eas-cli@latest build --platform android --profile testing --auto-submit`. Each build counts toward EAS's monthly build limit.
 
-If testers' phones say "You have the latest" but don't have a recent change, no build has their native code's fingerprint: check that workflow's runs.
+If testers' phones say "You have the latest update for this build" but don't have a recent change, either a newer build is waiting on Play (the app says so, see below), or no build has the new native code's fingerprint: check that workflow's runs.
+
+### Newer builds on Google Play
+
+Play installs a new build by itself, but only when the phone is idle, often overnight. Until then the phone keeps the old build, and updates made after the new build don't reach it. So on Android the app asks Play whether it has a newer build, when it opens and when it comes back to the front (at most every 10 minutes). It uses Play's in-app updates API, through `expo-in-app-updates` (`src/lib/play-update.ts`).
+
+- When Play has one, the Registries tab shows "A new version of Regibee is ready" with **Update** and **Not now**. Update opens Play's own update screen, which downloads the build, installs it and restarts the app. If that screen won't open, the app opens its Play Store page instead. Not now hides the banner until Play has a build newer than that one.
+- **Account › This version** shows the build number, whether Play has a newer build, and a button to update or check again.
+- This works in every build installed from Play, the public one included. A copy installed some other way, like a preview build from an EAS link, can't ask Play: the Account tab says so, and the banner never shows.
+- Play can take a while after an upload before it offers the new build, so the banner may show some minutes after the build reaches the testing track.
+- This check is only in builds made after it was added. An older build can't show it, so testers on one still need to update from the Play Store by hand once.
+- iPhone has no such check. TestFlight and the App Store update the app there.
 
 - The first build offers to make an Android keystore. Say yes. EAS keeps it, and Google signs the copy people install with its own key (Play App Signing).
 - The version code goes up by itself (`autoIncrement`, stored on EAS). Change `version` in `app.config.ts` when testers should see a new version number.
