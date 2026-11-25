@@ -4,6 +4,7 @@
 // server actions (src/lib/actions/saved.ts and gift-ideas.ts).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 
 import { GIFT_IDEA_COLUMNS, toGiftIdea, type GiftIdea, type GiftIdeaInput, type GiftIdeaRow } from "@shared/gift-ideas";
 import type { SavedItemsData, SavedList } from "@shared/saved-items-types";
@@ -21,6 +22,47 @@ export const savedKeys = {
 /** "Wishlist", "Birthday", or "Wishlist for Max" for a list kept for a child, as the website labels them. */
 export function listKind(list: SavedList) {
   return list.forChild ? `${list.kindLabel} for ${list.forChild}` : list.kindLabel;
+}
+
+/** "1 item" or "3 items", as the website counts them. */
+export function countLabel(n: number, one = "item", many = "items") {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** The store's address without "www.", shown after the price as on the website. Null when it isn't a web link. */
+export function storeDomain(url: string | null | undefined): string | null {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
+// What the last change did, such as "Added 3 items to Birthday.". The website
+// shows this line above the list. Here the change happens on another screen
+// (the list picker or the gift idea form), so that screen leaves the line here
+// and the Saved tab shows it. One line for each view.
+type SavedView = "items" | "ideas";
+const notices: Record<SavedView, string> = { items: "", ideas: "" };
+const noticeListeners = new Set<() => void>();
+
+/** Sets the line the Saved tab shows for a view. An empty string clears it. */
+export function setSavedNotice(view: SavedView, text: string) {
+  if (notices[view] === text) return;
+  notices[view] = text;
+  noticeListeners.forEach((listener) => listener());
+}
+
+export function useSavedNotice(view: SavedView): string {
+  return useSyncExternalStore(
+    (listener) => {
+      noticeListeners.add(listener);
+      return () => noticeListeners.delete(listener);
+    },
+    () => notices[view],
+    () => notices[view]
+  );
 }
 
 /** The demo has no Saved tab, as on the website. */

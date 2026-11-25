@@ -3,7 +3,6 @@
 // with the same actions and confirmations.
 
 import { router, Stack } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 
@@ -14,8 +13,8 @@ import { Button, Card, Divider, ErrorState, haptic, LoadingState, Pill, Text } f
 import { errorMessage } from "@/lib/data";
 import { useAccountPage, useRunPeopleAction } from "@/lib/people-data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
-import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
+import { openSite } from "@/lib/web";
 
 export default function FollowsScreen() {
   const theme = useTheme();
@@ -34,7 +33,8 @@ export default function FollowsScreen() {
   }
 
   const { requests, followers, following, blocked } = data.follows;
-  const followingIds = new Set(following.map((p) => p.public_id));
+  // How the account follows this person: undefined when it doesn't.
+  const followingStatus = (person: PersonSummary) => following.find((p) => p.public_id === person.public_id)?.status;
   const isMutual = (person: PersonSummary) =>
     following.some((p) => p.public_id === person.public_id && p.status === "approved") &&
     followers.some((p) => p.public_id === person.public_id);
@@ -63,11 +63,18 @@ export default function FollowsScreen() {
     confirm(
       `Block ${displayName(person)}? They'll be removed from your followers and the people you follow, and won't be able to ask to follow you.`,
       "Block",
-      () => act(`block-${person.public_id}`, "follows.blockUser", person.public_id)
+      () =>
+        act(`block-${person.public_id}`, "follows.blockUser", person.public_id, () =>
+          setJustApproved((list) => list.filter((p) => p.public_id !== person.public_id))
+        )
     );
 
+  // Following back is a request like any other. While it waits it says
+  // "Requested", as on the website.
   const followBack = (person: PersonSummary) =>
-    followingIds.has(person.public_id) ? null : (
+    followingStatus(person) === "pending" ? (
+      <RowNote>Requested</RowNote>
+    ) : followingStatus(person) ? null : (
       <Button
         title="Follow back"
         size="small"
@@ -76,6 +83,10 @@ export default function FollowsScreen() {
         onPress={() => act(`follow-${person.public_id}`, "follows.requestFollow", person.public_id)}
       />
     );
+
+  const blockButton = (person: PersonSummary) => (
+    <Button title="Block" size="small" variant="ghost" disabled={busy !== null} onPress={() => block(person)} />
+  );
 
   return (
     <>
@@ -97,44 +108,50 @@ export default function FollowsScreen() {
           </Text>
         ) : null}
 
-        {requests.length + justApproved.length > 0 ? (
-          <Card>
-            <Text variant="title" style={{ fontSize: 20 }}>
-              Follow requests
+        {/* Always here, even with nothing waiting, as on the website. */}
+        <Card>
+          <Text variant="title" style={{ fontSize: 20 }}>
+            Follow requests
+          </Text>
+          <Text variant="footnote" tone="secondary">
+            People you approve can see the registries you show to followers on your profile, and your birthday.
+          </Text>
+          {requests.length + justApproved.length === 0 ? (
+            <Text variant="footnote" tone="tertiary">
+              No follow requests right now. When someone asks to follow you, you can approve or decline them here.
             </Text>
-            <Text variant="footnote" tone="secondary">
-              People you approve can see the registries you show to followers on your profile, and your birthday.
-            </Text>
-            {justApproved.map((person) => (
-              <PersonRow key={person.public_id} person={person} mutual={isMutual(person)}>
-                {isMutual(person) ? null : followBack(person)}
+          ) : null}
+          {justApproved.map((person) => (
+            <PersonRow key={person.public_id} person={person} mutual={isMutual(person)}>
+              <RowNote>Approved</RowNote>
+              {isMutual(person) ? null : followBack(person)}
+            </PersonRow>
+          ))}
+          {requests
+            .filter((p) => !justApproved.some((a) => a.public_id === p.public_id))
+            .map((person) => (
+              <PersonRow key={person.public_id} person={person}>
+                <Button
+                  title="Approve"
+                  size="small"
+                  disabled={busy !== null}
+                  onPress={() =>
+                    act(`approve-${person.public_id}`, "follows.approveFollower", person.public_id, () =>
+                      setJustApproved((list) => [...list, { ...person, status: "approved" }])
+                    )
+                  }
+                />
+                <Button
+                  title="Decline"
+                  size="small"
+                  variant="ghost"
+                  disabled={busy !== null}
+                  onPress={() => act(`decline-${person.public_id}`, "follows.removeFollower", person.public_id)}
+                />
+                {blockButton(person)}
               </PersonRow>
             ))}
-            {requests
-              .filter((p) => !justApproved.some((a) => a.public_id === p.public_id))
-              .map((person) => (
-                <PersonRow key={person.public_id} person={person}>
-                  <Button
-                    title="Approve"
-                    size="small"
-                    disabled={busy !== null}
-                    onPress={() =>
-                      act(`approve-${person.public_id}`, "follows.approveFollower", person.public_id, () =>
-                        setJustApproved((list) => [...list, { ...person, status: "approved" }])
-                      )
-                    }
-                  />
-                  <Button
-                    title="Decline"
-                    size="small"
-                    variant="ghost"
-                    disabled={busy !== null}
-                    onPress={() => act(`decline-${person.public_id}`, "follows.removeFollower", person.public_id)}
-                  />
-                </PersonRow>
-              ))}
-          </Card>
-        ) : null}
+        </Card>
 
         <Card>
           <Text variant="title" style={{ fontSize: 20 }}>
@@ -165,7 +182,7 @@ export default function FollowsScreen() {
                     )
                   }
                 />
-                <Button title="Block" size="small" variant="ghost" disabled={busy !== null} onPress={() => block(person)} />
+                {blockButton(person)}
               </PersonRow>
             ))
           )}
@@ -193,7 +210,7 @@ export default function FollowsScreen() {
                 key={person.public_id}
                 person={person}
                 mutual={isMutual(person)}
-                detail={person.status === "pending" ? "Waiting for approval" : undefined}
+                detail={person.status === "pending" ? "Requested" : undefined}
               >
                 <Button
                   title={person.status === "pending" ? "Withdraw" : "Unfollow"}
@@ -242,6 +259,15 @@ export default function FollowsScreen() {
   );
 }
 
+/** A short word beside a row's buttons, such as "Approved" or "Requested". */
+function RowNote({ children }: { children: string }) {
+  return (
+    <Text variant="footnote" tone="tertiary" style={{ alignSelf: "center" }}>
+      {children}
+    </Text>
+  );
+}
+
 function PersonRow({
   person,
   mutual,
@@ -261,7 +287,7 @@ function PersonRow({
           variant="subhead"
           style={{ fontWeight: "600", flexShrink: 1 }}
           accessibilityRole="link"
-          onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}${profilePath(person)}`)}
+          onPress={() => openSite(profilePath(person))}
         >
           {displayName(person)}
         </Text>

@@ -10,13 +10,13 @@ import { BIRTHDAY_REMINDER_DAYS } from "@shared/gift-profile";
 
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { NavRow } from "@/components/nav-row";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { Divider, Section, SwitchRow, Text } from "@/components/ui";
 import { VersionSection } from "@/components/version-section";
 import { useDeleteAccount } from "@/lib/account";
 import { errorMessage } from "@/lib/data";
 import { useAccountPage, useRunPeopleAction } from "@/lib/people-data";
 import { signOut, useSession } from "@/lib/auth";
-import { initials } from "@/lib/format";
 import { clearCache } from "@/lib/query";
 import { SITE_URL, supabase } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
@@ -34,6 +34,8 @@ export default function AccountScreen() {
     },
   });
   const name = demo ? "Remi & Max" : (profile.data?.fullName ?? session?.user.email ?? "You");
+  // The profile photo, from what the website's Account page loads. Not loaded in the demo.
+  const account = useAccountPage();
   const open = (path: string) => WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
   const deletion = useDeleteAccount();
   const deleteRow = (
@@ -73,11 +75,7 @@ export default function AccountScreen() {
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: 120 }}
     >
       <View style={styles.profile}>
-        <View style={[styles.avatar, { backgroundColor: theme.accentSoft }]}>
-          <Text variant="title" style={{ color: theme.onAccentSoft }}>
-            {initials(name)}
-          </Text>
-        </View>
+        <ProfileAvatar name={name} photoUrl={demo ? null : account.data?.profile.avatar_url} size={60} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="headline" numberOfLines={1}>
             {name}
@@ -105,7 +103,7 @@ export default function AccountScreen() {
           {deleteRow}
         </Section>
       ) : (
-        <Section>
+        <Section footer="Delete account deletes your account, your registries and events, and your profile. Registries other people help manage stay with them. This can't be undone.">
           <Row icon="signOut" label="Sign out" destructive onPress={confirmSignOut} />
           <Divider inset={52} />
           {deleteRow}
@@ -192,6 +190,5 @@ function Row({ icon, label, onPress, destructive }: { icon: IconName; label: str
 
 const styles = StyleSheet.create({
   profile: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  avatar: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.lg, minHeight: 52 },
 });

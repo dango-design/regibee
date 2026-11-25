@@ -3,11 +3,10 @@
 
 import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
-import { eventTypeLabel, formatShortEventDate, MY_RSVP_LABELS, type RsvpStatus } from "@shared/events";
+import { eventTypeLabel, formatShortEventDate, MY_RSVP_LABELS, rsvpStatsText, type RsvpStatus } from "@shared/events";
 import type { EventsTabCard, EventsTabInvite } from "@shared/events-page-types";
 import { memberCountLabel } from "@shared/groups";
 import { countdownLabel } from "@shared/occasions";
@@ -19,8 +18,8 @@ import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { useEventsTab, useRunEventAction } from "@/lib/events-data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
-import { SITE_URL } from "@/lib/supabase";
 import { radius, spacing, useTheme } from "@/lib/theme";
+import { openSite } from "@/lib/web";
 
 export default function EventsScreen() {
   const theme = useTheme();
@@ -89,7 +88,7 @@ export default function EventsScreen() {
                         label={event.title}
                         detail={`${event.dateText ? `${event.dateText} · ` : ""}links ${event.registryTitles.join(", ")}`}
                         external
-                        onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/e/${event.slug}`)}
+                        onPress={() => openSite(`/e/${event.slug}`)}
                       />
                     </View>
                   ))}
@@ -102,7 +101,7 @@ export default function EventsScreen() {
                 icon="party"
                 title="Plan your first event"
                 message="A baby shower, a birthday, a holiday party: upload your invitation, email it to guests, and see who's coming. Link your registry so guests know what to bring."
-                action={<Button title="Plan an event" icon="add" onPress={() => router.push("/new")} />}
+                action={<Button title="New" icon="add" onPress={() => router.push("/new")} />}
               />
             ) : null}
 
@@ -154,15 +153,9 @@ export default function EventsScreen() {
 /** An event's card, as the website's EventCard (src/components/event-card.tsx) shows it. */
 function EventCard({ event, today }: { event: EventsTabCard; today: string }) {
   const theme = useTheme();
-  const { summary } = event;
-  const stats =
-    summary.guests === 0
-      ? "No guests yet"
-      : [`${summary.attending} going`, summary.maybe > 0 ? `${summary.maybe} maybe` : null, `${summary.pending} no reply`]
-          .filter(Boolean)
-          .join(" · ");
+  const open = () => router.push({ pathname: "/events/[eventId]", params: { eventId: event.id } });
   return (
-    <Card onPress={() => router.push({ pathname: "/events/[eventId]", params: { eventId: event.id } })} accessibilityRole="button">
+    <Card onPress={open} accessibilityRole="button">
       <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
         {event.imageUrl ? (
           <Image source={{ uri: event.imageUrl }} style={styles.thumb} contentFit="cover" />
@@ -179,9 +172,8 @@ function EventCard({ event, today }: { event: EventsTabCard; today: string }) {
             {event.title}
           </Text>
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-            {event.eventDate && event.eventDate >= today ? (
-              <Pill label={countdownLabel(event.eventDate, today, "personal")} tone="tint" icon="calendar" />
-            ) : null}
+            {/* The days left, or the date once it's past, as on the website. */}
+            {event.eventDate ? <Pill label={countdownLabel(event.eventDate, today, "personal")} tone="tint" icon="calendar" /> : null}
             {event.coHost ? <Pill label="Co-host" icon="people" /> : null}
           </View>
         </View>
@@ -191,8 +183,20 @@ function EventCard({ event, today }: { event: EventsTabCard; today: string }) {
         {event.eventDate ? `${formatShortEventDate(event.eventDate)}${event.time ? ` · ${event.time}` : ""}` : "No date yet"}
       </Text>
       <Text variant="footnote" tone="tertiary">
-        {stats}
+        {rsvpStatsText(event.summary)}
       </Text>
+      {/* A tap anywhere on the card opens the event's page. View opens the invitation, as guests see it. */}
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <Button title="Guests & RSVPs" size="small" onPress={open} style={{ flex: 1 }} />
+        <Button
+          title="View"
+          icon="external"
+          size="small"
+          variant="secondary"
+          accessibilityLabel={`View ${event.title} invitation`}
+          onPress={() => openSite(`/e/${event.slug}`)}
+        />
+      </View>
     </Card>
   );
 }
@@ -225,12 +229,11 @@ const REPLY_PILLS: Record<RsvpStatus, { tone: "neutral" | "tint" | "success"; ic
 function InviteCard({ event, today, showInvited = false }: { event: EventsTabInvite; today: string; showInvited?: boolean }) {
   const theme = useTheme();
   const reply = REPLY_PILLS[event.rsvp];
-  const upcoming = !event.eventDate || event.eventDate >= today;
+  // Asking for a reply makes sense only before the event.
+  const needsReply = event.rsvp === "pending" && (!event.eventDate || event.eventDate >= today);
+  const open = () => openSite(`/e/${event.slug}?g=${encodeURIComponent(event.guestToken)}`);
   return (
-    <Card
-      onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/e/${event.slug}?g=${encodeURIComponent(event.guestToken)}`)}
-      accessibilityRole="link"
-    >
+    <Card onPress={open} accessibilityRole="link">
       <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
         {event.imageUrl ? (
           <Image source={{ uri: event.imageUrl }} style={styles.thumb} contentFit="cover" />
@@ -247,9 +250,7 @@ function InviteCard({ event, today, showInvited = false }: { event: EventsTabInv
             {event.title}
           </Text>
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-            {event.eventDate && upcoming ? (
-              <Pill label={countdownLabel(event.eventDate, today, "personal")} tone="tint" icon="calendar" />
-            ) : null}
+            {event.eventDate ? <Pill label={countdownLabel(event.eventDate, today, "personal")} tone="tint" icon="calendar" /> : null}
             {showInvited ? <Pill label="Invited" icon="mail" /> : null}
           </View>
         </View>
@@ -262,6 +263,12 @@ function InviteCard({ event, today, showInvited = false }: { event: EventsTabInv
       <View style={{ flexDirection: "row" }}>
         <Pill label={MY_RSVP_LABELS[event.rsvp]} tone={reply.tone} icon={reply.icon} />
       </View>
+      <Button
+        title={needsReply ? "RSVP" : "See invitation"}
+        size="small"
+        variant={needsReply ? "primary" : "secondary"}
+        onPress={open}
+      />
     </Card>
   );
 }
@@ -322,6 +329,10 @@ function GroupsSection({ groups }: { groups: { id: string; name: string; memberC
             </View>
           ))}
         </Section>
+      ) : !adding ? (
+        <Text variant="footnote" tone="tertiary">
+          No groups yet. Make one here, or save an event's guest list as a group from the event's page.
+        </Text>
       ) : null}
     </View>
   );

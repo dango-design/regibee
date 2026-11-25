@@ -8,6 +8,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import type { DashboardData } from "@shared/dashboard-page-types";
+import type { DetailField, ShownSide } from "@shared/item-details";
 import type { ListPageData, ListPagePurchase } from "@shared/list-page-types";
 import { profileAudienceFields, type ListVisibility, type ProfileAudience } from "@shared/list-access";
 
@@ -138,6 +139,9 @@ export function fromListPage(data: ListPageData): RegistryDetail {
     canPlanEvents: data.canPlanEvents,
     eventPromptDismissed: data.eventPromptDismissed,
     showPlanEventButton: data.showPlanEventButton,
+    ownerLists: data.ownerLists ?? [],
+    missingDetails: data.missingDetails ?? [],
+    detailReview: data.detailReview ?? [],
   };
 }
 
@@ -340,6 +344,40 @@ export function useDeleteItem() {
       await act("registry.deleteRegistryItem", item.id, item.registry_id);
     },
     (detail, item) => ({ ...detail, items: detail.items.filter((i) => i.id !== item.id) })
+  );
+}
+
+/**
+ * "Add to another list" on the edit item form: the item goes on another of
+ * the owner's lists as well, and stays on this one.
+ */
+export function useAddItemToList() {
+  return useListChange<{ item: Item; listId: string; listTitle: string }>(
+    ({ item }) => item.registry_id,
+    async ({ item, listId }) => {
+      if (isDemo()) return demo.addItemToList(item.id, listId);
+      await act("saved.addItemsToList", [item.id], listId);
+    },
+    (detail, { item, listId, listTitle }) => ({
+      ...detail,
+      items: detail.items.map((i) =>
+        i.id === item.id
+          ? { ...i, otherLists: [...(i.otherLists ?? []), listTitle], otherListIds: [...(i.otherListIds ?? []), listId] }
+          : i
+      ),
+    })
+  );
+}
+
+/** "Move to another list": the item leaves this list and goes on the other one, with its gifts. */
+export function useMoveItemToList() {
+  return useListChange<{ item: Item; listId: string }>(
+    ({ item }) => item.registry_id,
+    async ({ item, listId }) => {
+      if (isDemo()) return demo.moveItemToList(item.id, item.registry_id, listId);
+      await act("saved.moveItemToList", item.id, item.registry_id, listId);
+    },
+    (detail, { item }) => ({ ...detail, items: detail.items.filter((i) => i.id !== item.id) })
   );
 }
 
@@ -618,6 +656,67 @@ export function useUpdateStorePerks(registryId: string) {
           : row
       ),
     })
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Filling in details later
+// ---------------------------------------------------------------------------
+
+/**
+ * Saves what the app read from an item's store link, as the website does
+ * with what the browser extension read (saveReadDetails in
+ * src/lib/actions/item-details.ts). It fills in what's missing and keeps the
+ * old values for the review. `readUrl` is the item's link as the list had it.
+ */
+export async function saveReadDetails(
+  registryId: string,
+  itemId: string,
+  readUrl: string,
+  product: { title: string; price: number | null; images: string[]; gtin: string | null },
+) {
+  if (isDemo()) return demo.fillInDetails(registryId, itemId, product);
+  await act("itemDetails.saveReadDetails", registryId, itemId, readUrl, {
+    title: product.title,
+    price: product.price,
+    images: product.images,
+    gtin: product.gtin,
+  });
+}
+
+/** Reloads a list, and the home screen's totals, after its items were filled in. */
+export function useRefreshList() {
+  return useRefresh();
+}
+
+/** "Use new" and "Use old" on the review of filled-in details, and taking a filled-in value out again. */
+export function useChooseDetailValue(registryId: string) {
+  return useListChange<{ itemId: string; field: DetailField; side: ShownSide }>(
+    () => registryId,
+    async ({ itemId, field, side }) => {
+      if (isDemo()) return demo.chooseDetailValue(registryId, itemId, field, side);
+      await act("itemDetails.chooseDetailValue", registryId, itemId, field, side);
+    },
+    (detail, { itemId, field, side }) => ({
+      ...detail,
+      detailReview: detail.detailReview.map((review) =>
+        review.itemId === itemId
+          ? { ...review, changes: review.changes.map((c) => (c.field === field ? { ...c, shown: side } : c)) }
+          : review
+      ),
+    })
+  );
+}
+
+/** "Done" on the review: the items keep what they show now. */
+export function useFinishDetailReview(registryId: string) {
+  return useListChange<string[]>(
+    () => registryId,
+    async (itemIds) => {
+      if (isDemo()) return demo.finishDetailReview(registryId, itemIds);
+      await act("itemDetails.finishDetailReview", registryId, itemIds);
+    },
+    (detail, itemIds) => ({ ...detail, detailReview: detail.detailReview.filter((r) => !itemIds.includes(r.itemId)) })
   );
 }
 

@@ -8,6 +8,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
 import { EVENT_IMAGES_BUCKET } from "@shared/event-images";
+import { PROFILE_PHOTOS_BUCKET } from "@shared/profile-photos";
 import { REGISTRY_PHOTOS_BUCKET } from "@shared/registry-photos";
 
 import { ApiError } from "@/lib/api";
@@ -78,4 +79,45 @@ export async function uploadListPhoto(registryId: string, asset: ImagePicker.Ima
     "You've uploaded as many photos as an account can. Paste a link to an image instead.",
     "The photo didn't upload. Try again, or paste a link to an image."
   );
+}
+
+// The website's limits for a profile photo (src/lib/upload-profile-photo.ts):
+// a 320px square, and the bucket refuses anything over 256 KB.
+const PROFILE_PHOTO_SIDE = 320;
+const PROFILE_PHOTO_MAX_BYTES = 256 * 1024;
+
+/**
+ * Uploads a profile photo to the account's folder and returns its public URL,
+ * as the website does (src/lib/upload-profile-photo.ts): cropped to the square
+ * in its middle, since it shows in a circle, shrunk to 320px and saved as a
+ * JPEG. The folder is named for the profile's public id, and an account can
+ * only upload to its own. Saving the photo on the profile is the
+ * profile.setProfilePhoto action's job.
+ */
+export async function uploadProfilePhoto(publicId: string, asset: ImagePicker.ImagePickerAsset): Promise<string> {
+  if (isDemo()) throw new ApiError("Make an account to add a profile photo.");
+  const side = Math.min(asset.width, asset.height);
+  if (!side) throw new ApiError("That photo's format isn't supported. Choose a JPEG, PNG or WebP image.");
+
+  const context = ImageManipulator.ImageManipulator.manipulate(asset.uri);
+  context.crop({
+    originX: Math.floor((asset.width - side) / 2),
+    originY: Math.floor((asset.height - side) / 2),
+    width: side,
+    height: side,
+  });
+  // Only shrink: a smaller photo stays its own size.
+  if (side > PROFILE_PHOTO_SIDE) context.resize({ width: PROFILE_PHOTO_SIDE, height: PROFILE_PHOTO_SIDE });
+  const image = await context.renderAsync();
+  const saved = await image.saveAsync({ format: ImageManipulator.SaveFormat.JPEG, compress: 0.85 });
+
+  const body = await (await fetch(saved.uri)).arrayBuffer();
+  if (body.byteLength > PROFILE_PHOTO_MAX_BYTES) throw new ApiError("That photo is too big to upload. Try a different one.");
+
+  const path = `${publicId}/${fileName()}`;
+  const { error } = await supabase.storage
+    .from(PROFILE_PHOTOS_BUCKET)
+    .upload(path, body, { contentType: "image/jpeg", cacheControl: "31536000" });
+  if (error) throw new ApiError("The photo didn't upload. Try again.");
+  return supabase.storage.from(PROFILE_PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
 }

@@ -9,7 +9,7 @@ import { Alert, Share, View } from "react-native";
 import type { EventPageData } from "@shared/events-page-types";
 import { isEmail } from "@shared/events";
 
-import { Button, Card, Field, haptic, IconButton, Pill, Text } from "@/components/ui";
+import { Button, Card, Field, haptic, IconButton, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useRunEventAction } from "@/lib/events-data";
 import { SITE_URL } from "@/lib/supabase";
@@ -79,8 +79,12 @@ export function HostsPanel({ data, onLeft }: { data: EventPageData; onLeft: () =
             <Text variant="subhead" style={{ flex: 1 }}>
               {host.name}
               {host.userId === viewerId ? " (you)" : ""}
+              {host.isOwner ? (
+                <Text variant="subhead" tone="tertiary">
+                  {" · made the event"}
+                </Text>
+              ) : null}
             </Text>
-            {host.isOwner ? <Pill label="Host" tone="accent" /> : null}
             {!host.isOwner && (isOwner || host.userId === viewerId) ? (
               <Button
                 title={host.userId === viewerId ? "Leave" : "Remove"}

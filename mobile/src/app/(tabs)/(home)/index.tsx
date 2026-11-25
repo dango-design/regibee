@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, View } from "react-native";
 
 import { Notice } from "@/components/notice";
 import { RegistryCard } from "@/components/registry-card";
+import { UpcomingEvents } from "@/components/upcoming-events";
 import { Button, EmptyState, ErrorState, IconButton, LoadingState, Text } from "@/components/ui";
 import { errorMessage, useDashboard } from "@/lib/data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
@@ -43,15 +44,20 @@ export default function RegistriesScreen() {
           />
         }
         ListHeaderComponent={
-          data && list.length > 0 ? (
+          // The notices and "Coming up" show with no lists too, as on the
+          // website: someone with no list can still have follow requests and
+          // events.
+          data ? (
             <View style={{ gap: spacing.md, marginBottom: spacing.xs }}>
-              <Text variant="subhead" tone="secondary">
-                {data.giftsThisWeek > 0
-                  ? data.giftsThisWeek === 1
-                    ? "1 gift reserved this week"
-                    : `${data.giftsThisWeek} gifts reserved this week`
-                  : "Manage your registries and track gifts"}
-              </Text>
+              {list.length > 0 ? (
+                <Text variant="subhead" tone="secondary">
+                  {data.giftsThisWeek > 0
+                    ? data.giftsThisWeek === 1
+                      ? "1 gift reserved this week"
+                      : `${data.giftsThisWeek} gifts reserved this week`
+                    : "Manage your registries and track gifts"}
+                </Text>
+              ) : null}
               {data.followRequestCount > 0 ? (
                 <Notice
                   icon="personAdd"
@@ -74,6 +80,7 @@ export default function RegistriesScreen() {
                   action={{ title: "Choose registries", onPress: () => router.push("/account/profile") }}
                 />
               ) : null}
+              <UpcomingEvents events={data.upcomingEvents ?? []} today={data.today} />
             </View>
           ) : undefined
         }
@@ -89,6 +96,7 @@ export default function RegistriesScreen() {
             ) : null}
             <RegistryCard
               registry={item}
+              today={data?.today}
               onPress={() => router.push({ pathname: "/registry/[id]", params: { id: item.id } })}
             />
           </>

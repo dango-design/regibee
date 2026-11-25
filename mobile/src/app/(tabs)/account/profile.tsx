@@ -2,22 +2,25 @@
 // (src/components/account-settings.tsx), with the same server actions.
 
 import { Stack } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Share, View } from "react-native";
 
 import { MAX_PUBLIC_NOTE_LENGTH } from "@shared/gift-profile";
 import { LIST_ACCESS, listVisibility, profileAudience, type ProfileAudience } from "@shared/list-access";
 import type { AccountRegistry } from "@shared/people-page-types";
-import { profilePath } from "@shared/profile-link";
+import { displayName, profilePath } from "@shared/profile-link";
 import { occasionLabel } from "@shared/registry-copy";
 
+import { Icon } from "@/components/icon";
 import { ProfileAudienceChips } from "@/components/profile-audience-chips";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { Button, Card, ErrorState, Field, haptic, LoadingState, SwitchRow, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { profileForm, useAccountPage, useRunPeopleAction } from "@/lib/people-data";
+import { pickPhoto, uploadProfilePhoto } from "@/lib/photos";
 import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
+import { openSite } from "@/lib/web";
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -67,6 +70,8 @@ function ProfileCard({
   profile: {
     public_id: string;
     full_name: string | null;
+    // Missing from a website that doesn't send the photo yet.
+    avatar_url?: string | null;
     discoverable: boolean;
     findable_by_email: boolean;
     email_follow_requests: boolean;
@@ -74,8 +79,15 @@ function ProfileCard({
     public_note?: string | null;
   };
 }) {
-  const { run, isPending } = useRunPeopleAction();
+  const theme = useTheme();
+  const { run } = useRunPeopleAction();
+  const [saving, setSaving] = useState(false);
   const [name, setName] = useState(profile.full_name ?? "");
+  // The photo saves as soon as it's uploaded or removed, apart from the form
+  // below, as on the website.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(profile.avatar_url ?? null);
+  const [photoBusy, setPhotoBusy] = useState<"uploading" | "removing" | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [note, setNote] = useState(profile.public_note ?? "");
   const [discoverable, setDiscoverable] = useState(profile.discoverable);
   const [findable, setFindable] = useState(profile.findable_by_email);
@@ -92,6 +104,8 @@ function ProfileCard({
 
   async function save() {
     setError(null);
+    setSaved(false);
+    setSaving(true);
     try {
       await run(
         "profile.saveProfile",
@@ -101,6 +115,46 @@ function ProfileCard({
       setSaved(true);
     } catch (e) {
       setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changePhoto() {
+    setPhotoError(null);
+    let asset;
+    try {
+      asset = await pickPhoto();
+    } catch (e) {
+      setPhotoError(errorMessage(e));
+      return;
+    }
+    if (!asset) return;
+    setPhotoBusy("uploading");
+    try {
+      const url = await uploadProfilePhoto(profile.public_id, asset);
+      // The server checks the photo is in this account's folder, saves it and
+      // deletes the photo it replaces.
+      await run("profile.setProfilePhoto", url);
+      setPhotoUrl(url);
+      haptic("success");
+    } catch (e) {
+      setPhotoError(errorMessage(e));
+    } finally {
+      setPhotoBusy(null);
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoError(null);
+    setPhotoBusy("removing");
+    try {
+      await run("profile.setProfilePhoto", null);
+      setPhotoUrl(null);
+    } catch (e) {
+      setPhotoError(errorMessage(e));
+    } finally {
+      setPhotoBusy(null);
     }
   }
 
@@ -112,6 +166,44 @@ function ProfileCard({
       <Text variant="footnote" tone="secondary">
         One link to all the registries you choose below. Anyone with the link can see your name, your public note and those registries.
       </Text>
+      <View style={{ flexDirection: "row", gap: spacing.lg, alignItems: "center" }}>
+        <ProfileAvatar name={displayName({ full_name: profile.full_name })} photoUrl={photoUrl} size={80} />
+        <View style={{ flex: 1, gap: spacing.sm }}>
+          <View style={{ gap: 2 }}>
+            <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+              Profile photo
+            </Text>
+            <Text variant="caption" tone="tertiary">
+              Shown on your profile. Without one, people see your initials.
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
+            <Button
+              title={photoUrl ? "Change photo" : "Upload photo"}
+              icon="camera"
+              size="small"
+              variant="secondary"
+              loading={photoBusy === "uploading"}
+              disabled={photoBusy !== null}
+              onPress={changePhoto}
+            />
+            {photoUrl ? (
+              <Button
+                title={photoBusy === "removing" ? "Removing..." : "Remove"}
+                size="small"
+                variant="ghost"
+                disabled={photoBusy !== null}
+                onPress={removePhoto}
+              />
+            ) : null}
+          </View>
+          {photoError ? (
+            <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+              {photoError}
+            </Text>
+          ) : null}
+        </View>
+      </View>
       <Field
         label="Name"
         value={name}
@@ -154,10 +246,20 @@ function ProfileCard({
           {error}
         </Text>
       ) : null}
-      <Button title={saved ? "Saved!" : "Save"} size="medium" loading={isPending} onPress={save} />
+      <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
+        <Button title="Save" size="medium" loading={saving} onPress={save} style={{ minWidth: 120 }} />
+        {saved ? (
+          <View accessibilityLiveRegion="polite" style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
+            <Icon name="check" size={14} color={theme.textTertiary} />
+            <Text variant="footnote" tone="tertiary">
+              Saved
+            </Text>
+          </View>
+        ) : null}
+      </View>
       <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
         <Button title="Share link" icon="share" size="small" variant="secondary" onPress={() => Share.share({ message: link })} />
-        <Button title="View profile" icon="external" size="small" variant="ghost" onPress={() => WebBrowser.openBrowserAsync(link)} />
+        <Button title="View profile" icon="external" size="small" variant="ghost" onPress={() => openSite(link)} />
       </View>
     </Card>
   );

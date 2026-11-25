@@ -5,13 +5,14 @@
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { Alert, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
 
 import { deletePhrase } from "@shared/delete-confirmation";
-import { formatEventDate } from "@shared/events";
+import type { EditEventSection } from "@shared/edit-event-sections";
+import { eventLocationText, formatEventDate, mapsUrl } from "@shared/events";
 
+import { ChoiceSheet } from "@/components/choice-sheet";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { ExchangePanel } from "@/components/event/exchange-panel";
 import { GuestsPanel } from "@/components/event/guests-panel";
@@ -26,6 +27,7 @@ import { pickPhoto, uploadEventImage } from "@/lib/photos";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
+import { openSite } from "@/lib/web";
 
 export default function EventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -34,6 +36,7 @@ export default function EventScreen() {
   const pull = usePullToRefresh(page.refetch);
   const { run } = useRunEventAction();
   const [uploading, setUploading] = useState(false);
+  const [choosingAction, setChoosingAction] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -45,59 +48,71 @@ export default function EventScreen() {
 
   const { event } = data;
   const publicUrl = `${SITE_URL}/e/${event.slug}`;
-  const edit = () => router.push({ pathname: "/event-form", params: { eventId: event.id } });
+  // The address in the phone's maps app: Apple Maps on iPhone, and whichever
+  // app handles Google Maps links on Android.
+  const address = event.location_address?.trim() ? eventLocationText(event) : null;
+  const directions = address
+    ? Platform.OS === "ios"
+      ? `https://maps.apple.com/?q=${encodeURIComponent(address)}`
+      : mapsUrl(event)
+    : null;
+  // Links to a part of the event open the edit form at that section, like the website's.
+  const edit = (section?: EditEventSection) =>
+    router.push({ pathname: "/event-form", params: section ? { eventId: event.id, section } : { eventId: event.id } });
 
   function share() {
     Share.share(Platform.OS === "ios" ? { url: publicUrl, message: event.title } : { message: `${event.title}\n${publicUrl}` });
   }
 
-  function moreActions() {
-    Alert.alert(event.title, undefined, [
-      {
-        text: "Copy link",
-        onPress: async () => {
-          await Clipboard.setStringAsync(publicUrl);
-          haptic("success");
+  function planAgain() {
+    Alert.alert(
+      "Plan this event again?",
+      "This makes a new event a year later, with the same guests, co-hosts and gift settings. Guests' replies start over, and no one is emailed. A gift exchange avoids this year's pairs.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Plan it again",
+          onPress: async () => {
+            try {
+              const { id } = await run<{ id: string }>("events.planEventAgain", event.id);
+              // Like the website, the new event opens in its edit form, to set
+              // the date. Going back from the form shows the new event's page.
+              router.push({ pathname: "/events/[eventId]", params: { eventId: id } });
+              router.push({ pathname: "/event-form", params: { eventId: id } });
+            } catch (e) {
+              Alert.alert("It wasn't copied", errorMessage(e));
+            }
+          },
         },
-      },
-      { text: "Preview", onPress: () => WebBrowser.openBrowserAsync(publicUrl) },
-      {
-        text: "Plan it again",
-        onPress: () =>
-          Alert.alert(
-            "Plan this event again?",
-            "This makes a new event a year later, with the same guests, co-hosts and gift settings. Guests' replies start over, and no one is emailed. A gift exchange avoids this year's pairs.",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Plan it again",
-                onPress: async () => {
-                  try {
-                    const { id } = await run<{ id: string }>("events.planEventAgain", event.id);
-                    router.push({ pathname: "/events/[eventId]", params: { eventId: id } });
-                  } catch (e) {
-                    Alert.alert("It wasn't copied", errorMessage(e));
-                  }
-                },
-              },
-            ]
-          ),
-      },
-      ...(data!.isOwner
-        ? [
-            {
-              text: "Delete event",
-              style: "destructive" as const,
-              onPress: () => {
-                setDeleteError(null);
-                setConfirmingDelete(true);
-              },
-            },
-          ]
-        : []),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
+      ]
+    );
   }
+
+  // The "More actions" menu. It's a sheet, not a system alert: Android's
+  // alert shows at most three buttons.
+  const moreActions = [
+    {
+      label: "Copy link",
+      onPress: async () => {
+        await Clipboard.setStringAsync(publicUrl);
+        haptic("success");
+      },
+    },
+    { label: "Preview", onPress: () => openSite(publicUrl) },
+    { label: "Plan it again", onPress: planAgain },
+    ...(data.isOwner
+      ? [
+          {
+            label: "Delete event",
+            destructive: true,
+            onPress: () => {
+              setDeleteError(null);
+              setConfirmingDelete(true);
+            },
+          },
+        ]
+      : []),
+  ];
 
   async function deleteEvent() {
     setDeleting(true);
@@ -137,8 +152,8 @@ export default function EventScreen() {
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share the event link" onPress={share} />
-              <IconButton icon="edit" accessibilityLabel="Edit" onPress={edit} />
-              <IconButton icon="more" accessibilityLabel="More actions" onPress={moreActions} />
+              <IconButton icon="edit" accessibilityLabel="Edit" onPress={() => edit()} />
+              <IconButton icon="more" accessibilityLabel="More actions" onPress={() => setChoosingAction(true)} />
             </View>
           ),
         }}
@@ -172,6 +187,23 @@ export default function EventScreen() {
               <Text variant="subhead" tone="secondary">
                 {event.location_name}
               </Text>
+            </View>
+          ) : null}
+          {/* Two things a phone can do with the date and the address. */}
+          {event.event_date || directions ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs }}>
+              {event.event_date ? (
+                <Button
+                  title="Add to my calendar"
+                  icon="calendar"
+                  size="small"
+                  variant="secondary"
+                  onPress={() => Linking.openURL(`${publicUrl}/calendar`)}
+                />
+              ) : null}
+              {directions ? (
+                <Button title="Directions" icon="location" size="small" variant="secondary" onPress={() => Linking.openURL(directions)} />
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -211,7 +243,7 @@ export default function EventScreen() {
                 loading={uploading}
                 onPress={changePicture}
               />
-              <Button title="Preview" icon="external" size="small" variant="ghost" onPress={() => WebBrowser.openBrowserAsync(publicUrl)} />
+              <Button title="Preview" icon="external" size="small" variant="ghost" onPress={() => openSite(publicUrl)} />
             </View>
           </View>
         </Card>
@@ -230,7 +262,7 @@ export default function EventScreen() {
                       variant="footnote"
                       tone="tint"
                       accessibilityRole="link"
-                      onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/r/${registry.slug}`)}
+                      onPress={() => openSite(`/r/${registry.slug}`)}
                     >
                       {registry.title}
                     </Text>
@@ -252,20 +284,21 @@ export default function EventScreen() {
                   {event.gift_note}
                 </Text>
               ) : null}
-              <Text variant="footnote" tone="tint" accessibilityRole="link" onPress={edit} style={{ fontWeight: "600" }}>
+              <Text variant="footnote" tone="tint" accessibilityRole="link" onPress={() => edit("gifts")} style={{ fontWeight: "600" }}>
                 {data.registries.length > 0 || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
               </Text>
             </View>
           </View>
         </Card>
 
-        {data.exchange && data.exchangeStatus ? <ExchangePanel data={data} onEditSettings={edit} /> : null}
+        {data.exchange && data.exchangeStatus ? <ExchangePanel data={data} onEditSettings={() => edit("exchange")} /> : null}
         {data.signupSheet ? <SignupPanel data={data} /> : <SignupStarter eventId={event.id} />}
 
         <GuestsPanel data={data} />
-        <MessagesPanel data={data} onChangeReminder={edit} />
+        <MessagesPanel data={data} onChangeReminder={() => edit("rsvps")} />
         <HostsPanel data={data} onLeft={() => router.back()} />
       </ScrollView>
+      <ChoiceSheet visible={choosingAction} onClose={() => setChoosingAction(false)} title={event.title} choices={moreActions} />
       <ConfirmDelete
         visible={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}

@@ -1,7 +1,8 @@
 // The add and edit item form. Paste or share a link and it fills in the name,
 // price and pictures; everything stays editable.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { router } from "expo-router";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +24,7 @@ import {
   type StoreId,
 } from "@shared/retailers";
 import { copyForRegistry } from "@shared/registry-copy";
+import { nameFromProductUrl } from "@shared/shared-link";
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
@@ -47,8 +49,10 @@ import {
   listNames,
   removeItemWording,
   useAddItem,
+  useAddItemToList,
   useCreateCategory,
   useDeleteItem,
+  useMoveItemToList,
   useRegistry,
   useUpdateItem,
 } from "@/lib/data";
@@ -101,7 +105,23 @@ interface Props {
   header?: ReactNode;
 }
 
-type ReadState = "idle" | "reading" | "done" | "failed";
+// "nothing": the page was read, and it had nothing the form doesn't already show.
+type ReadState = "idle" | "reading" | "done" | "nothing" | "failed";
+
+/** What reading a link replaced on an item being edited, so the owner can undo each change. */
+interface Replaced {
+  title: string | null;
+  price: string | null;
+  imageUrl: string | null;
+}
+
+const NOTHING_REPLACED: Replaced = { title: null, price: null, imageUrl: null };
+
+/** Two prices as typed, compared in cents, so "30" and "30.00" are the same. */
+function samePrice(a: string, b: string) {
+  const [x, y] = [parsePrice(a), parsePrice(b)];
+  return x != null && y != null && Math.round(x * 100) === Math.round(y * 100);
+}
 
 export function ItemEditor({
   mode,
@@ -122,6 +142,8 @@ export function ItemEditor({
   const addItem = useAddItem();
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
+  const addToList = useAddItemToList();
+  const moveToList = useMoveItemToList();
   const createCategory = useCreateCategory();
 
   const startingLink = item?.external_url ?? (initialLink ? normalizeLink(initialLink) : null) ?? "";
@@ -164,13 +186,45 @@ export function ItemEditor({
   const [taxInfo, setTaxInfo] = useState<{ original: string; rate: number } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showImageLink, setShowImageLink] = useState(false);
+  // Editing: what the last read replaced, for the "Was … · Undo" lines.
+  const [replaced, setReplaced] = useState<Replaced>(NOTHING_REPLACED);
+  // The name came from the words in the link, because the page couldn't be read.
+  const [guessedName, setGuessedName] = useState(false);
+  // Looking on the store's page for photos only, from "Look for photos on …".
+  const [photosOnly, setPhotosOnly] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<string | null>(null);
+  // Lists the item was added to since the form opened, and which list picker is open.
+  const [addedTo, setAddedTo] = useState<{ id: string; title: string }[]>([]);
+  const [placing, setPlacing] = useState<"add" | "move" | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const savedLink = item?.external_url ? normalizeLink(item.external_url) : null;
+  // The link the name, price and photo came from. When editing, reading
+  // another link replaces them, and reading this one again only refreshes the
+  // price and fills in what's empty, as the website's edit dialog does.
+  const detailsFrom = useRef<string | null>(savedLink);
+  // The link last read, so leaving the field doesn't read the same link again.
+  const lastReadUrl = useRef<string | null>(savedLink);
+  // The last link whose read changed something.
+  const filledFrom = useRef<string | null>(null);
 
   const categories = detail.data?.categories ?? [];
   // Store registries are for baby registries only, as on the website.
   const linkedRegistries = detail.data?.linkedRegistries ?? null;
   // A list with a zip code adds estimated sales tax to what the owner bought.
   const zipCode = detail.data?.zipCode ?? null;
-  const otherLists = item?.otherLists ?? [];
+  // The other lists it's on: the ones the list knows of, then any just added.
+  const otherLists = [
+    ...(item?.otherLists ?? []),
+    ...addedTo.filter((l) => !(item?.otherListIds ?? []).includes(l.id)).map((l) => l.title),
+  ];
+  // The owner's lists it isn't on yet. Co-managers get none: they can't add or move.
+  const listsToOffer =
+    mode === "edit" && item
+      ? (detail.data?.ownerLists ?? []).filter(
+          (l) => l.id !== registryId && !(item.otherListIds ?? []).includes(l.id) && !addedTo.some((a) => a.id === l.id)
+        )
+      : [];
   // A registry link on any item shows the owner has a registry at that store,
   // even before they link it in settings, as on the website's dashboard.
   const registryLinkStores = useMemo(
@@ -193,28 +247,85 @@ export function ItemEditor({
     setError(null);
     setLink(normalized);
     setConfirmedDuplicate(false);
+    setPhotosOnly(false);
+    setPhotoStatus(null);
+    setGuessedName(false);
+    lastReadUrl.current = normalized;
+    // Undo lines from another product's read no longer apply.
+    if (mode === "edit" && normalized !== detailsFrom.current) setReplaced(NOTHING_REPLACED);
     setReadingUrl(normalized);
     setReadState("reading");
+  }
+
+  /** Looks on the store's page for photos, and changes nothing else. The owner picks one of them. */
+  function findPhotos() {
+    const normalized = normalizeLink(link);
+    if (!normalized || readingUrl) return;
+    setError(null);
+    setPhotoStatus(null);
+    setPhotosOnly(true);
+    setReadingUrl(normalized);
+  }
+
+  /** Puts back the saved link, and stops a read under way. */
+  function keepCurrentLink() {
+    setReadingUrl(null);
+    setPhotosOnly(false);
+    setLink(item?.external_url ?? "");
+    lastReadUrl.current = savedLink;
+    setReadState("idle");
+    setError(null);
   }
 
   function onProduct(product: ReadProduct | null) {
     const source = readingUrl;
     setReadingUrl(null);
+    const storeName = storeLabel(source) ?? "the store";
+    if (photosOnly) {
+      setPhotosOnly(false);
+      const found = product?.images ?? [];
+      if (found.length === 0) {
+        setPhotoStatus(
+          product
+            ? `We found no photos on ${storeName}'s page.`
+            : `We couldn't read ${storeName}'s page. Upload a photo or paste an image link instead.`
+        );
+        return;
+      }
+      setImages(found);
+      if (!imageUrl) setImageUrl(found[0]);
+      else if (found.length === 1 && found[0] === imageUrl) setPhotoStatus(`${storeName} has only this photo.`);
+      return;
+    }
     if (!product) {
       // Safari already gave us something, so that still counts.
       setReadState(initialProduct ? "done" : "failed");
+      // Some stores block reading. That's no dead end: when adding, take a
+      // name from the words in the link if it has one, as the website does.
+      const guess = mode === "add" && !title.trim() && source ? nameFromProductUrl(source) : undefined;
+      if (guess) setTitle(guess);
+      setGuessedName(Boolean(guess));
       setFailedWithName(Boolean(title.trim()));
       return;
     }
-    setReadState("done");
     haptic("success");
     // A short link is swapped for the page it led to, below.
     const readFrom = source && product.url && isShortLink(source) ? product.url : source;
     if (readFrom) setReadGtin({ url: readFrom, gtin: product.gtin });
+    if (source && product.url && isShortLink(source)) {
+      setLink(product.url);
+      lastReadUrl.current = product.url;
+    }
+    if (mode === "edit") {
+      void fillInEdit(product, readFrom);
+      return;
+    }
+    let filledAny = false;
     if (product.title && (!titleTouched || !title.trim())) {
+      if (product.title !== title) filledAny = true;
       setTitle(product.title);
       // The website's add dialog guesses a category from the name.
-      if (mode === "add" && !categoryTouched) {
+      if (!categoryTouched) {
         const guess = guessCategory(product.title, categories);
         if (guess) setCategoryId(guess);
       }
@@ -223,21 +334,118 @@ export function ItemEditor({
       setPriceText(product.price.toFixed(2));
       setTaxInfo(null);
       if (bought) addTax(product.price);
+      filledAny = true;
     }
     if (product.images.length > 0) {
       setImages(product.images);
-      if (!imageUrl || mode === "add") setImageUrl(product.images[0]);
+      if (imageUrl !== product.images[0]) filledAny = true;
+      setImageUrl(product.images[0]);
     }
-    if (source && product.url && isShortLink(source)) setLink(product.url);
+    setReadState(filledAny ? "done" : "nothing");
   }
 
-  /** Adds estimated sales tax to the price, as the website's add dialog does for what the owner bought. */
+  /**
+   * Editing: a link to another product replaces the name, price and photo,
+   * keeping what they were for Undo. The same link again only refreshes the
+   * price and fills in what's empty. The website's edit dialog does the same
+   * (src/components/edit-item-dialog.tsx).
+   */
+  async function fillInEdit(product: ReadProduct, readFrom: string | null) {
+    const newProduct = readFrom !== detailsFrom.current;
+    detailsFrom.current = readFrom;
+    const was: Replaced = { ...NOTHING_REPLACED };
+    let changedAny = false;
+
+    if (product.title && product.title !== title && (newProduct || !title.trim())) {
+      if (title.trim()) was.title = title;
+      setTitle(product.title);
+      changedAny = true;
+    }
+    if (product.price != null) {
+      let nextPrice = product.price.toFixed(2);
+      let nextTax: { original: string; rate: number } | null = null;
+      // Sales tax goes on what the owner already bought, when the list has a zip code.
+      if (item?.is_parent_purchased && zipCode) {
+        const result = await estimateTax(zipCode, product.price).catch(() => null);
+        if (result) {
+          nextTax = { original: nextPrice, rate: result.taxRate };
+          nextPrice = result.priceWithTax;
+        }
+      }
+      if (!samePrice(nextPrice, priceText)) {
+        if (priceText.trim()) was.price = priceText;
+        setPriceText(nextPrice);
+        setTaxInfo(nextTax);
+        changedAny = true;
+      }
+    }
+    if (product.images.length > 0) {
+      setImages(product.images);
+      if (product.images[0] !== imageUrl && (newProduct || !imageUrl)) {
+        if (imageUrl) was.imageUrl = imageUrl;
+        setImageUrl(product.images[0]);
+        changedAny = true;
+      }
+    }
+    // Reading the same link twice keeps what the first read replaced, so Undo
+    // still goes back to the owner's own values.
+    setReplaced((before) =>
+      newProduct
+        ? was
+        : { title: before.title ?? was.title, price: before.price ?? was.price, imageUrl: before.imageUrl ?? was.imageUrl }
+    );
+    if (changedAny) filledFrom.current = readFrom;
+    setReadState(filledFrom.current === readFrom ? "done" : "nothing");
+  }
+
+  /**
+   * Adds estimated sales tax to the price of what the owner bought, as the
+   * website's add and edit dialogs do. Adding goes by the "bought" switch.
+   * Editing goes by whether the saved item is marked bought.
+   */
   async function addTax(price: number) {
-    if (!zipCode || mode !== "add") return;
+    if (!zipCode) return;
     const result = await estimateTax(zipCode, price).catch(() => null);
     if (!result) return;
     setPriceText(result.priceWithTax);
     setTaxInfo({ original: price.toFixed(2), rate: result.taxRate });
+  }
+  const taxApplies = mode === "edit" ? Boolean(item?.is_parent_purchased) : bought;
+
+  /** Puts the item on another of the owner's lists as well. The form stays open. */
+  function addToAnotherList(list: { id: string; title: string }) {
+    if (!item) return;
+    setError(null);
+    setNotice(null);
+    addToList.mutate(
+      { item, listId: list.id, listTitle: list.title },
+      {
+        onSuccess: () => {
+          haptic("success");
+          setAddedTo((lists) => [...lists, list]);
+          setNotice(`Added to ${list.title}.`);
+          setPlacing(null);
+        },
+        onError: (e) => setError(errorMessage(e)),
+      }
+    );
+  }
+
+  /** Moves the item to another list. It leaves this one, so the form closes. */
+  function moveToAnotherList(list: { id: string; title: string }) {
+    if (!item) return;
+    setError(null);
+    setNotice(null);
+    moveToList.mutate(
+      { item, listId: list.id },
+      {
+        onSuccess: () => {
+          haptic("success");
+          onDone({ type: "deleted", registryId: item.registry_id });
+        },
+        onError: (e) => setError(errorMessage(e)),
+      }
+    );
   }
 
   async function choosePhoto() {
@@ -320,7 +528,7 @@ export function ItemEditor({
   function confirmDelete() {
     if (!item) return;
     // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
-    const wording = removeItemWording(item);
+    const wording = removeItemWording({ title: item.title, otherLists });
     const run = () => {
       deleteItem.mutate(item, { onError: (e) => Alert.alert("Couldn't remove it", errorMessage(e)) });
       haptic("success");
@@ -417,7 +625,9 @@ export function ItemEditor({
             onSubmitEditing={() => link.trim() && startReading(link)}
             onEndEditing={() => {
               const normalized = normalizeLink(link);
-              if (mode === "add" && normalized && normalized !== readingUrl && readState === "idle") startReading(link);
+              if (!normalized || normalized === readingUrl) return;
+              // Adding reads a link once. Editing reads it when it changed since the last read.
+              if (mode === "add" ? readState === "idle" : normalized !== lastReadUrl.current) startReading(link);
             }}
             placeholder="Paste a link from any store"
             autoCapitalize="none"
@@ -452,9 +662,34 @@ export function ItemEditor({
               </Text>
             </View>
           ) : null}
-          <ReadStatus state={readState} store={store} failedWithName={failedWithName} />
-          {linkedRegistries ? (
-            <StoreLinkStatus link={link} linkedRegistries={linkedRegistries} registryLinkStores={registryLinkStores} />
+          {mode === "edit" && openUrl && !readingUrl ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              <Button title="Read the page again" icon="refresh" size="small" variant="ghost" onPress={() => startReading(link)} />
+              {savedLink && openUrl !== savedLink ? (
+                <Button title="Keep the current link" size="small" variant="ghost" onPress={keepCurrentLink} />
+              ) : null}
+            </View>
+          ) : null}
+          {mode === "edit" && readingUrl && !photosOnly && savedLink && readingUrl !== savedLink ? (
+            <View style={{ flexDirection: "row" }}>
+              <Button title="Keep the current link" size="small" variant="ghost" onPress={keepCurrentLink} />
+            </View>
+          ) : null}
+          <ReadStatus
+            state={readState}
+            store={store}
+            failedWithName={failedWithName}
+            guessedName={guessedName}
+            // An item that already has its details needs no promise to fill them in.
+            showHint={mode === "add" || !link.trim()}
+          />
+          {linkedRegistries && registryId ? (
+            <StoreLinkStatus
+              link={link}
+              registryId={registryId}
+              linkedRegistries={linkedRegistries}
+              registryLinkStores={registryLinkStores}
+            />
           ) : null}
           {duplicate && mode === "add" ? (
             <View style={[styles.notice, { backgroundColor: theme.accentSoft }]}>
@@ -497,6 +732,22 @@ export function ItemEditor({
                 ))}
               </ScrollView>
             ) : null}
+          {replaced.imageUrl !== null ? (
+            <WasLine
+              center
+              onUndo={() => {
+                setImageUrl(replaced.imageUrl);
+                setReplaced((r) => ({ ...r, imageUrl: null }));
+              }}
+            >
+              New photo from {store ?? "the store"}.
+            </WasLine>
+          ) : null}
+          {images.length > 1 ? (
+            <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
+              Pick one photo. Guests see the one with the outline.
+            </Text>
+          ) : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" }}>
             <Button
               title={imageUrl ? "Change photo" : "Upload photo"}
@@ -520,7 +771,23 @@ export function ItemEditor({
                 }}
               />
             ) : null}
+            {mode === "edit" && openUrl && store ? (
+              <Button
+                title={`Look for photos on ${store}`}
+                icon="image"
+                size="small"
+                variant="ghost"
+                loading={photosOnly}
+                disabled={Boolean(readingUrl)}
+                onPress={findPhotos}
+              />
+            ) : null}
           </View>
+          {photoStatus ? (
+            <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }} accessibilityLiveRegion="polite">
+              {photoStatus}
+            </Text>
+          ) : null}
           {showImageLink ? (
             <Field
               label="Image link (optional)"
@@ -549,6 +816,16 @@ export function ItemEditor({
             returnKeyType="done"
             submitBehavior="blurAndSubmit"
           />
+          {replaced.title !== null ? (
+            <WasLine
+              onUndo={() => {
+                setTitle(replaced.title ?? "");
+                setReplaced((r) => ({ ...r, title: null }));
+              }}
+            >
+              Was “{replaced.title}”
+            </WasLine>
+          ) : null}
           <View style={{ flexDirection: "row", gap: spacing.lg, alignItems: "flex-start" }}>
             <View style={{ flex: 1 }}>
               <Field
@@ -563,13 +840,24 @@ export function ItemEditor({
                   const value = parsePrice(priceText);
                   if (value == null) return;
                   setPriceText(value.toFixed(2));
-                  if (bought && !taxInfo) addTax(value);
+                  if (taxApplies && !taxInfo) addTax(value);
                 }}
                 hint={taxInfo ? `$${taxInfo.original} + ~${(taxInfo.rate * 100).toFixed(1)}% tax` : undefined}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 leading={<Text tone="tertiary">$</Text>}
               />
+              {replaced.price !== null ? (
+                <WasLine
+                  onUndo={() => {
+                    setPriceText(replaced.price ?? "");
+                    setTaxInfo(null);
+                    setReplaced((r) => ({ ...r, price: null }));
+                  }}
+                >
+                  Was ${replaced.price}
+                </WasLine>
+              ) : null}
             </View>
             <View style={{ gap: 6 }}>
               <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
@@ -643,7 +931,13 @@ export function ItemEditor({
           <Divider inset={52} />
           <SwitchRow
             icon="checkCircle"
-            label={copyForRegistry(detail.data?.registry).selfPurchaseButton}
+            // The website's add dialog says "Mark as bought by parent", and its edit dialog "Purchased by parent".
+            label={
+              mode === "edit"
+                ? copyForRegistry(detail.data?.registry).selfPurchasedLabel
+                : copyForRegistry(detail.data?.registry).selfPurchaseButton
+            }
+            description={mode === "edit" ? "Guests can pay you back for it instead of buying one." : undefined}
             value={bought}
             onValueChange={setBought}
           />
@@ -679,8 +973,63 @@ export function ItemEditor({
 
         {mode === "edit" && item ? <ItemGifts item={item} /> : null}
 
+        {/* The website's edit dialog keeps these in its More actions menu. */}
+        {listsToOffer.length > 0 ? (
+          <View style={{ gap: spacing.sm }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              <Button
+                title="Add to another list"
+                icon="add"
+                size="small"
+                variant={placing === "add" ? "primary" : "secondary"}
+                onPress={() => setPlacing(placing === "add" ? null : "add")}
+              />
+              <Button
+                title="Move to another list"
+                icon="arrowUp"
+                size="small"
+                variant={placing === "move" ? "primary" : "secondary"}
+                onPress={() => setPlacing(placing === "move" ? null : "move")}
+              />
+            </View>
+            {placing ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text variant="footnote" tone="secondary">
+                  {placing === "add"
+                    ? "Which list should it go on as well? It stays on this one."
+                    : "Which list should it move to? It leaves this one, and its gifts go with it."}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, opacity: addToList.isPending || moveToList.isPending ? 0.5 : 1 }}>
+                  {listsToOffer.map((list) => (
+                    <Chip
+                      key={list.id}
+                      label={list.title}
+                      selected={false}
+                      onPress={() => {
+                        if (addToList.isPending || moveToList.isPending) return;
+                        if (placing === "add") addToAnotherList(list);
+                        else moveToAnotherList(list);
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+        {notice ? (
+          <Text variant="footnote" tone="secondary" accessibilityLiveRegion="polite">
+            {notice}
+          </Text>
+        ) : null}
+
         {mode === "edit" && item ? (
-          <Button title={removeItemWording(item).button} variant="danger" icon="trash" onPress={confirmDelete} />
+          <Button
+            title={removeItemWording({ title: item.title, otherLists }).button}
+            variant="danger"
+            icon="trash"
+            onPress={confirmDelete}
+          />
         ) : null}
       </ScrollView>
 
@@ -746,6 +1095,30 @@ function ItemGifts({ item }: { item: Item }) {
   );
 }
 
+/** "Was $32.99 · Undo", under a field that reading a link changed. */
+function WasLine({ children, onUndo, center }: { children: ReactNode; onUndo: () => void; center?: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, justifyContent: center ? "center" : "flex-start" }}>
+      <Text variant="footnote" tone="tertiary" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {children}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={10}
+        onPress={() => {
+          haptic();
+          onUndo();
+        }}
+        style={({ pressed }) => ({ minHeight: 32, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+      >
+        <Text variant="footnote" tone="tint" style={{ fontWeight: "600" }}>
+          Undo
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 /** Opens the link as typed in the in-app browser, to check it's the right page. */
 function OpenLinkButton({ url }: { url: string }) {
   const theme = useTheme();
@@ -773,14 +1146,17 @@ function OpenLinkButton({ url }: { url: string }) {
  * Whether gifts bought through the link count toward the owner's store
  * registry, worded as the website's StoreLinkNotice
  * (src/components/store-link-notice.tsx). It shows only the two clear cases: a
- * registry link, and a plain link at a store where the owner has a registry.
+ * registry link, a plain link at a store where the owner has a registry, and
+ * a link at a store where they might have one they haven't linked.
  */
 function StoreLinkStatus({
   link,
+  registryId,
   linkedRegistries,
   registryLinkStores,
 }: {
   link: string;
+  registryId: string;
   linkedRegistries: RetailerRegistry[];
   registryLinkStores: StoreId[];
 }) {
@@ -809,7 +1185,48 @@ function StoreLinkStatus({
   // Only warn when the owner has a registry at this store. Otherwise the
   // warning would be noise.
   const linked = linkedRegistries.find((r) => r.store === store.id);
-  if (kind !== "plain" || (!linked && !registryLinkStores.includes(store.id))) return null;
+  if (!linked && !registryLinkStores.includes(store.id)) {
+    // The website opens Settings in a new tab and keeps the dialog. Here
+    // Settings is another screen, so ask before leaving the form.
+    const openSettings = () =>
+      Alert.alert("Leave this item?", "What you've typed here isn't saved yet.", [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Open Settings",
+          onPress: () => {
+            router.back();
+            router.push({ pathname: "/registry/[id]/settings", params: { id: registryId } });
+          },
+        },
+      ]);
+    return (
+      <View style={[styles.notice, { backgroundColor: theme.tintSoft }]} accessibilityLiveRegion="polite">
+        <Icon name="store" size={16} color={theme.tint} />
+        <View style={{ flex: 1, gap: spacing.sm }}>
+          <Text variant="footnote">
+            <Text variant="footnote" style={{ fontWeight: "600" }}>
+              Have a {store.name} registry?
+            </Text>{" "}
+            Link it so gifts bought at {store.name} can count toward it and earn you its perks.
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: spacing.md, rowGap: spacing.xs }}>
+            <Button title={`Link ${store.name} registry`} variant="secondary" size="small" onPress={openSettings} />
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => setDismissedFor(link)}
+              style={({ pressed }) => ({ minHeight: 36, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+            >
+              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                Not now
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
+  if (kind !== "plain") return null;
 
   const color = { color: theme.onAccentSoft };
   return (
@@ -862,42 +1279,65 @@ function StoreLinkStatus({
  * What reading the link found, worded as the website's add and edit item
  * dialogs (readLinkMessages in src/components/add-item-dialog.tsx).
  */
-function ReadStatus({ state, store, failedWithName }: { state: ReadState; store: string | null; failedWithName: boolean }) {
+function ReadStatus({
+  state,
+  store,
+  failedWithName,
+  guessedName,
+  showHint,
+}: {
+  state: ReadState;
+  store: string | null;
+  failedWithName: boolean;
+  /** The name was taken from the words in the link. */
+  guessedName: boolean;
+  /** Say what reading a link will do, before one is read. */
+  showHint: boolean;
+}) {
   const theme = useTheme();
+  if (state === "idle") {
+    if (!showHint) return null;
+    return (
+      <Text variant="footnote" tone="tertiary">
+        We&apos;ll fill in the name, price and photo from the page.
+      </Text>
+    );
+  }
   if (state === "reading") {
     return (
       <View style={styles.status} accessibilityLiveRegion="polite">
         <ActivityIndicator size="small" color={theme.tint} />
         <Text variant="footnote" tone="secondary">
-          Reading the product{store ? ` from ${store}` : ""}…
+          Reading the page…
         </Text>
       </View>
     );
   }
-  if (state === "done") {
+  if (state === "done" || state === "nothing") {
     return (
       <View style={styles.status} accessibilityLiveRegion="polite">
         <Icon name="checkCircle" size={16} color={theme.success} />
-        <Text variant="footnote" tone="secondary">
-          Filled in from {store ?? "this link"}. Check it over.
-        </Text>
-      </View>
-    );
-  }
-  if (state === "failed") {
-    return (
-      <View style={styles.status} accessibilityLiveRegion="polite">
-        <Icon name="error" size={16} color={theme.textTertiary} />
         <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
-          We couldn't read the details from {store ?? "this link"}.{" "}
-          {failedWithName
-            ? "Your link and name are kept, so fill in the rest by hand."
-            : "Your link is kept, so add the name and the rest by hand."}
+          {state === "done"
+            ? `Filled in from ${store ?? "this link"}. Check it over.`
+            : `Nothing new to fill in from ${store ?? "this link"}.`}
         </Text>
       </View>
     );
   }
-  return null;
+  return (
+    <View style={styles.status} accessibilityLiveRegion="polite">
+      <Icon name="error" size={16} color={theme.textTertiary} />
+      <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
+        We couldn&apos;t read the details from {store ?? "this link"}
+        {guessedName
+          ? ", so we took the name from the link. Check it and fill in the rest."
+          : failedWithName
+            ? ". Your link and name are kept, so fill in the rest by hand."
+            : ". Your link is kept, so add the name and the rest by hand."}
+      </Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

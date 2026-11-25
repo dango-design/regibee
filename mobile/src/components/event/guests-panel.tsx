@@ -12,8 +12,10 @@ import type { EventPageData } from "@shared/events-page-types";
 import { exchangeKind, isEmail, parseGuestList, RSVP_LABELS, summarizeRsvps, type EventGuest, type ParsedGuest, type RsvpStatus } from "@shared/events";
 import { filledGuestRows, readGuestRows } from "@shared/guest-input";
 import { canEmail, emailLabel } from "@shared/guest-emails";
-import { answerLines, mealCounts, storedAnswers } from "@shared/rsvp-questions";
+import { memberCountLabel } from "@shared/groups";
+import { answerLabel, answerLines, mealCounts, storedAnswers } from "@shared/rsvp-questions";
 
+import { ChoiceSheet } from "@/components/choice-sheet";
 import { InviteFollowed } from "@/components/event/invite-followed";
 import { Button, Card, Chip, Divider, Field, haptic, IconButton, Pill, Stepper, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -99,6 +101,8 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
   // The name for "Save as a group", while it's being typed.
   const [groupDraft, setGroupDraft] = useState<string | null>(null);
   const [pickingFollowed, setPickingFollowed] = useState(false);
+  // Which list of choices is open: the host's groups, or their other events.
+  const [choosing, setChoosing] = useState<"group" | "copy" | null>(null);
   // Builds of the website before it sent these get none.
   const followedPeople = data.followedPeople ?? [];
 
@@ -148,7 +152,10 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
       () => run<{ added: number; alreadyListed: number }>("events.addEventGuests", event.id, list),
       (r) => {
         if (from === "rows") setRows([{ id: nextRowId.current++, name: "", email: "" }]);
-        else setPasted("");
+        else {
+          setPasted("");
+          setPasting(false);
+        }
         return addedText(r.added, r.alreadyListed);
       }
     );
@@ -214,20 +221,19 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
     );
   }
 
-  function chooseGroup() {
-    Alert.alert("Invite a group", undefined, [
-      ...data.groups.map((group) => ({
-        text: `${group.name} (${group.memberCount === 1 ? "1 person" : `${group.memberCount} people`})`,
-        onPress: () =>
-          attempt(
-            "group",
-            () => run<{ added: number; alreadyListed: number }>("events.inviteGroupToEvent", event.id, group.id),
-            (r) => addedText(r.added, r.alreadyListed)
-          ),
-      })),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
-  }
+  // These are sheets, not system alerts: Android's alert shows at most three
+  // buttons, and a host can have more groups or events than that.
+  const groupChoices = data.groups.map((group) => ({
+    key: group.id,
+    label: `${group.name} (${memberCountLabel(group.memberCount)})`,
+    onPress: () => {
+      attempt(
+        "group",
+        () => run<{ added: number; alreadyListed: number }>("events.inviteGroupToEvent", event.id, group.id),
+        (r) => addedText(r.added, r.alreadyListed)
+      );
+    },
+  }));
 
   function inviteFollowed(publicIds: string[]) {
     attempt(
@@ -240,20 +246,17 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
     );
   }
 
-  function chooseCopySource() {
-    Alert.alert("Copy guests from another event", undefined, [
-      ...data.copySources.map((source) => ({
-        text: `${source.title} (${source.guestCount === 1 ? "1 guest" : `${source.guestCount} guests`})`,
-        onPress: () =>
-          attempt(
-            "copy",
-            () => run<{ added: number; alreadyListed: number }>("events.copyGuestsFromEvent", event.id, source.id),
-            (r) => addedText(r.added, r.alreadyListed)
-          ),
-      })),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
-  }
+  const copyChoices = data.copySources.map((source) => ({
+    key: source.id,
+    label: `${source.title} (${source.guestCount === 1 ? "1 guest" : `${source.guestCount} guests`})`,
+    onPress: () => {
+      attempt(
+        "copy",
+        () => run<{ added: number; alreadyListed: number }>("events.copyGuestsFromEvent", event.id, source.id),
+        (r) => addedText(r.added, r.alreadyListed)
+      );
+    },
+  }));
 
   function saveAsGroup() {
     const groupName = groupDraft?.trim() ?? "";
@@ -272,20 +275,21 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
   return (
     <View style={{ gap: spacing.lg }}>
       <View style={styles.stats}>
-        <Stat label="Going" value={summary.attending} detail={summary.yes === 1 ? "1 RSVP" : `${summary.yes} RSVPs`} />
+        <Stat
+          label="Going"
+          value={summary.attending}
+          detail={`${summary.yes === 1 ? "1 RSVP" : `${summary.yes} RSVPs`}${
+            event.ask_kids && kidsComing > 0 ? `, ${kidsComing} ${kidsComing === 1 ? "kid" : "kids"}` : ""
+          }`}
+        />
         <Stat label="Maybe" value={summary.maybeHeadcount} detail={summary.maybe === 1 ? "1 RSVP" : `${summary.maybe} RSVPs`} />
         <Stat label="Can't go" value={summary.no} />
         <Stat label="No reply" value={summary.pending} detail={`${summary.invited} of ${summary.guests} invited`} />
       </View>
-      {event.ask_kids && kidsComing > 0 ? (
-        <Text variant="footnote" tone="secondary">
-          {kidsComing === 1 ? "1 kid coming" : `${kidsComing} kids coming`}
-        </Text>
-      ) : null}
       {meals.map(({ question, counts, unanswered }) => (
         <Card key={question.id}>
           <Text variant="subhead" style={{ fontWeight: "600" }}>
-            {question.label}
+            {question.label}, for everyone going
           </Text>
           <Text variant="footnote" tone="secondary">
             {counts.map((c) => `${c.option}: ${c.count}`).join(" · ")}
@@ -354,13 +358,17 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
               autoCapitalize="words"
               accessibilityLabel="Guest list"
             />
-            {pastePreview.skipped.length > 0 ? (
+            {pasted.trim() ? (
               <Text variant="footnote" tone="tertiary">
-                Skipped: {pastePreview.skipped.join(", ")}
+                {pastePreview.guests.length === 1 ? "1 guest" : `${pastePreview.guests.length} guests`} ready to add
+                {pastePreview.skipped.length > 0
+                  ? `. ${pastePreview.skipped.length === 1 ? "1 line" : `${pastePreview.skipped.length} lines`} couldn't be read: ${pastePreview.skipped.slice(0, 3).join("; ")}`
+                  : ""}
               </Text>
             ) : null}
             <Button
-              title={pastePreview.guests.length > 0 ? `Add ${pastePreview.guests.length === 1 ? "1 guest" : `${pastePreview.guests.length} guests`}` : "Add"}
+              title="Add guests"
+              icon="personAdd"
               size="medium"
               loading={busy === "add"}
               onPress={addPasted}
@@ -447,7 +455,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
               />
             ) : null}
             {data.groups.length > 0 ? (
-              <Button title="Invite a group…" icon="people" size="small" variant="secondary" loading={busy === "group"} onPress={chooseGroup} />
+              <Button title="Invite a group…" icon="people" size="small" variant="secondary" loading={busy === "group"} onPress={() => setChoosing("group")} />
             ) : null}
             {data.copySources.length > 0 ? (
               <Button
@@ -456,7 +464,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
                 size="small"
                 variant="secondary"
                 loading={busy === "copy"}
-                onPress={chooseCopySource}
+                onPress={() => setChoosing("copy")}
               />
             ) : null}
           </View>
@@ -522,8 +530,17 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
           </View>
         ) : null}
         {guests.length === 0 ? (
+          <View style={{ gap: 2 }}>
+            <Text variant="subhead" style={{ fontWeight: "600" }}>
+              No guests yet
+            </Text>
+            <Text variant="footnote" tone="tertiary">
+              Add your guests above, then send the invitation. Or share the event link, and guests who RSVP are added here.
+            </Text>
+          </View>
+        ) : shown.length === 0 ? (
           <Text variant="footnote" tone="tertiary">
-            Add your guests above, then send the invitation. Or share the event link, and guests who RSVP are added here.
+            No guests here yet.
           </Text>
         ) : (
           <View style={[styles.list, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -540,6 +557,13 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
           </View>
         )}
       </View>
+      <ChoiceSheet visible={choosing === "group"} onClose={() => setChoosing(null)} title="Invite a group" choices={groupChoices} />
+      <ChoiceSheet
+        visible={choosing === "copy"}
+        onClose={() => setChoosing(null)}
+        title="Copy guests from another event"
+        choices={copyChoices}
+      />
     </View>
   );
 }
@@ -576,7 +600,8 @@ function GuestRow({
 }) {
   const theme = useTheme();
   const coming = guest.rsvp_status === "yes" || guest.rsvp_status === "maybe";
-  const lines = answerLines(data.questions, storedAnswers(guest.answers), guest.name);
+  // Like the website, answers show only for guests who are or might be coming.
+  const lines = coming ? answerLines(data.questions, storedAnswers(guest.answers), guest.name) : [];
   const signups = data.signupsByGuest?.[guest.id] ?? [];
   return (
     <Pressable
@@ -608,7 +633,7 @@ function GuestRow({
             <Pill
               label={
                 everyoneGives
-                  ? guest.wishlist_url || guest.gift_ideas
+                  ? guest.wishlist_url
                     ? "Wishlist added"
                     : "No wishlist yet"
                   : `Gift exchange${guest.wishlist_url || guest.gift_ideas ? " · wishlist added" : ""}`
@@ -619,20 +644,28 @@ function GuestRow({
         <Text variant="footnote" tone="tertiary" numberOfLines={1}>
           {emailLabel(guest)}
           {" · "}
-          {guest.invited_at
-            ? `Invited ${formatShortDate(guest.invited_at)}${guest.reminded_at ? `, reminded ${formatShortDate(guest.reminded_at)}` : ""}`
-            : "Not sent yet"}
+          {guest.added_by_guest
+            ? "RSVPed from the event link"
+            : guest.invited_at
+              ? `Invited ${formatShortDate(guest.invited_at)}${guest.reminded_at ? `, reminded ${formatShortDate(guest.reminded_at)}` : ""}`
+              : "Not sent yet"}
         </Text>
-        {signups.length > 0 ? (
-          <Text variant="footnote" tone="secondary">
-            Signed up for {signups.join(", ")}
-          </Text>
-        ) : null}
         {lines.map((line) => (
           <Text key={line.label} variant="footnote" tone="secondary">
-            {line.label} {line.value}
+            <Text variant="footnote" style={{ fontWeight: "600" }}>
+              {answerLabel(line.label)}
+            </Text>{" "}
+            {line.value}
           </Text>
         ))}
+        {signups.length > 0 ? (
+          <Text variant="footnote" tone="secondary">
+            <Text variant="footnote" style={{ fontWeight: "600" }}>
+              Signed up for:
+            </Text>{" "}
+            {signups.join(" · ")}
+          </Text>
+        ) : null}
         {guest.rsvp_note ? (
           <Text variant="footnote" tone="secondary" style={{ fontStyle: "italic" }}>
             “{guest.rsvp_note}”
@@ -707,6 +740,9 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
   const [party, setParty] = useState(Math.max(1, guest.party_size || 1));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sentNotice, setSentNotice] = useState<string | null>(null);
+  // The website offers up to the event's limit, or what the guest already has when that's more.
+  const maxParty = Math.max(data.event.max_party_size || 1, guest.party_size || 1);
   const link = `${SITE_URL}/e/${data.event.slug}?g=${encodeURIComponent(guest.token)}`;
 
   async function attempt(key: string, work: () => Promise<unknown>, after?: () => void) {
@@ -736,10 +772,11 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
     attempt(
       "save",
       async () => {
-        if (name.trim() !== guest.name || (!guest.from_account && (email.trim() || null) !== guest.email)) {
+        if (name.trim() !== guest.name || (!guest.from_account && (email.trim().toLowerCase() || null) !== guest.email)) {
           await run("events.updateEventGuest", data.event.id, guest.id, { name: name.trim(), email: email.trim() || null });
         }
-        if (rsvp !== guest.rsvp_status || party !== guest.party_size) {
+        // The number of people only counts for a guest who is or might be coming.
+        if (rsvp !== guest.rsvp_status || ((rsvp === "yes" || rsvp === "maybe") && party !== guest.party_size)) {
           await run("events.setGuestRsvp", data.event.id, guest.id, rsvp, party);
         }
       },
@@ -785,17 +822,25 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
           ))}
         </View>
       </View>
-      {rsvp === "yes" || rsvp === "maybe" ? (
+      {(rsvp === "yes" || rsvp === "maybe") && data.event.max_party_size > 1 ? (
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
             People
           </Text>
-          <Stepper value={party} onChange={setParty} min={1} max={Math.max(1, data.event.max_party_size || 1)} />
+          <Stepper value={party} onChange={setParty} min={1} max={maxParty} />
         </View>
+      ) : null}
+      {guest.rsvp_note ? (
+        <Text variant="footnote" tone="secondary">
+          Their note: “{guest.rsvp_note}”
+        </Text>
       ) : null}
       <View style={{ gap: spacing.sm }}>
         <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
           Their RSVP link
+        </Text>
+        <Text variant="caption" tone="tertiary" selectable>
+          {link}
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
           <Button
@@ -817,7 +862,14 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
               size="small"
               variant="secondary"
               loading={busy === "invite"}
-              onPress={() => attempt("invite", () => run("events.sendEventInvites", data.event.id, [guest.id]))}
+              onPress={() => {
+                setSentNotice(null);
+                attempt(
+                  "invite",
+                  () => run("events.sendEventInvites", data.event.id, [guest.id]),
+                  () => setSentNotice(`Sent the invitation to ${guest.name}`)
+                );
+              }}
             />
           ) : null}
         </View>
@@ -826,16 +878,20 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
         <Text variant="footnote" tone="danger">
           {error}
         </Text>
+      ) : sentNotice ? (
+        <Text variant="footnote" tone="success" accessibilityLiveRegion="polite">
+          {sentNotice}
+        </Text>
       ) : null}
       <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", flexWrap: "wrap" }}>
         <Button
-          title="Remove"
+          title="Remove guest"
           size="small"
           variant="danger"
           loading={busy === "remove"}
           onPress={() =>
             Alert.alert(`Remove ${guest.name}?`, undefined, [
-              { text: "Keep them", style: "cancel" },
+              { text: "Keep", style: "cancel" },
               {
                 text: "Remove",
                 style: "destructive",

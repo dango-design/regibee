@@ -6,9 +6,9 @@
 import { router, Stack } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
-import { groupByRecipient, groupName, ideaCount, type GiftIdea } from "@shared/gift-ideas";
+import { groupByRecipient, groupHeading, groupName, ideaCount, type GiftIdea } from "@shared/gift-ideas";
 import type { SavedItem, SavedList } from "@shared/saved-items-types";
 
 import { Icon } from "@/components/icon";
@@ -18,7 +18,15 @@ import { errorMessage } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 import { useSession } from "@/lib/auth";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
-import { useGiftIdeas, useSavedItems, useSetIdeaBought, useStartWishlist } from "@/lib/saved-data";
+import {
+  setSavedNotice,
+  storeDomain,
+  useGiftIdeas,
+  useSavedItems,
+  useSavedNotice,
+  useSetIdeaBought,
+  useStartWishlist,
+} from "@/lib/saved-data";
 import { radius, spacing, useTheme } from "@/lib/theme";
 
 type View_ = "items" | "ideas";
@@ -26,6 +34,11 @@ type View_ = "items" | "ideas";
 export default function SavedScreen() {
   const { demo } = useSession();
   const [view, setView] = useState<View_>("items");
+  // The key of the person whose gift ideas are shown, or null for everyone's.
+  // Ideas saved without a person have the key "". It's kept here so the +
+  // button can start a new idea for that person, as the website does.
+  const [person, setPerson] = useState<string | null>(null);
+  const [personName, setPersonName] = useState<string | null>(null);
 
   if (demo) {
     return (
@@ -45,12 +58,28 @@ export default function SavedScreen() {
             <IconButton
               icon="add"
               accessibilityLabel={view === "items" ? "Save an item" : "Save a gift idea"}
-              onPress={() => (view === "items" ? router.push("/add") : router.push("/idea"))}
+              onPress={() =>
+                view === "items"
+                  ? router.push("/add")
+                  : router.push(personName ? { pathname: "/idea", params: { recipient: personName } } : "/idea")
+              }
             />
           ),
         }}
       />
-      {view === "items" ? <SavedItems view={view} onView={setView} /> : <GiftIdeas view={view} onView={setView} />}
+      {view === "items" ? (
+        <SavedItems view={view} onView={setView} />
+      ) : (
+        <GiftIdeas
+          view={view}
+          onView={setView}
+          person={person}
+          onPerson={(key, name) => {
+            setPerson(key);
+            setPersonName(name);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -82,44 +111,66 @@ function ViewSwitch({ view, onView }: { view: View_; onView: (view: View_) => vo
   );
 }
 
+/** What the last change did, read out by screen readers when it changes. */
+function NoticeLine({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <Text variant="footnote" tone="secondary" accessibilityLiveRegion="polite">
+      {text}
+    </Text>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // For me
 // ---------------------------------------------------------------------------
 
 type Status = "wanted" | "gifted" | "all";
 
+/** "Gifted" also holds the items you marked as having, as on the website. */
+function matchesStatus(item: SavedItem, status: Status) {
+  if (status === "all") return true;
+  if (status === "wanted") return item.status === "wanted";
+  return item.status !== "wanted";
+}
+
 function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => void }) {
   const theme = useTheme();
   const saved = useSavedItems();
   const pull = usePullToRefresh(saved.refetch);
   const start = useStartWishlist();
+  const notice = useSavedNotice("items");
   const [status, setStatus] = useState<Status>("wanted");
   const [search, setSearch] = useState("");
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [startError, setStartError] = useState("");
 
   const data = saved.data;
   const listsById = useMemo(() => new Map((data?.lists ?? []).map((l) => [l.id, l])), [data?.lists]);
-  const counts = {
-    wanted: (data?.items ?? []).filter((i) => i.status === "wanted").length,
-    gifted: (data?.items ?? []).filter((i) => i.status === "gifted").length,
-    all: data?.items.length ?? 0,
-  };
   const query = search.trim().toLowerCase();
-  const shown = (data?.items ?? []).filter(
-    (i) => (status === "all" || i.status === status) && (!query || i.title.toLowerCase().includes(query))
-  );
+  // The counts follow the search, as on the website.
+  const matching = (data?.items ?? []).filter((i) => !query || i.title.toLowerCase().includes(query));
+  const counts = {
+    wanted: matching.filter((i) => matchesStatus(i, "wanted")).length,
+    gifted: matching.filter((i) => matchesStatus(i, "gifted")).length,
+    all: matching.length,
+  };
+  const shown = matching.filter((i) => matchesStatus(i, status));
   const hasOwnWishlist = (data?.lists ?? []).some((l) => l.isOwnWishlist);
+  const hidesSome = (data?.lists ?? []).some((l) => l.hidesReservations);
 
+  // The new wishlist shows here once the lists reload, as on the website.
   function startWishlist() {
+    setStartError("");
     start.mutate(undefined, {
-      onSuccess: ({ registryId }) => router.push({ pathname: "/registry/[id]", params: { id: registryId } }),
-      onError: () => Alert.alert("Your wishlist wasn't made", "Try again in a moment."),
+      onError: (e) => setStartError(errorMessage(e) || "Your wishlist wasn't made. Try again in a moment."),
     });
   }
 
   function bulk(mode: "add" | "remove") {
     if (selected.size === 0) return;
+    setSavedNotice("items", "");
     router.push({ pathname: "/place-items", params: { mode, items: [...selected].join(",") } });
     setSelecting(false);
     setSelected(new Set());
@@ -135,10 +186,16 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
         <View style={[styles.callout, { backgroundColor: theme.tintSoft }]}>
           <Text variant="headline">Start your wishlist</Text>
           <Text variant="footnote" tone="secondary">
+            One list for birthdays, Christmas and any other day.{" "}
             {data.lists.length > 0
               ? "Save things to it as you find them, and put them on your other lists too."
               : "Save things to it as you find them, and family and friends always know what you'd love."}
           </Text>
+          {startError ? (
+            <Text variant="footnote" tone="danger" accessibilityLiveRegion="polite">
+              {startError}
+            </Text>
+          ) : null}
           <Button title="Start my wishlist" size="medium" loading={start.isPending} onPress={startWishlist} />
         </View>
       ) : null}
@@ -170,6 +227,14 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
               }}
             />
           </View>
+          {hidesSome ? (
+            <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}>
+              <Icon name="eyeSlash" size={15} color={theme.textTertiary} />
+              <Text variant="footnote" tone="tertiary" style={{ flex: 1 }}>
+                On lists where you hide what&apos;s been reserved, items show as still wanted.
+              </Text>
+            </View>
+          ) : null}
           {selecting ? (
             <Button
               title={shown.every((i) => selected.has(i.id)) && shown.length > 0 ? "Select none" : "Select all shown"}
@@ -180,10 +245,18 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
               }
             />
           ) : null}
+          <NoticeLine text={notice} />
         </>
-      ) : null}
+      ) : (
+        <NoticeLine text={notice} />
+      )}
     </View>
   );
+
+  let noMatches = "";
+  if (query) noMatches = `Nothing matches “${search.trim()}”.`;
+  else if (status === "wanted") noMatches = "Nothing still wanted. Everything is gifted or you have it.";
+  else if (status === "gifted") noMatches = "No gifts yet.";
 
   return (
     <View style={{ flex: 1 }}>
@@ -214,6 +287,7 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
                 else next.add(item.id);
                 setSelected(next);
               } else {
+                setSavedNotice("items", "");
                 router.push({ pathname: "/saved-item", params: { id: item.id } });
               }
             }}
@@ -237,12 +311,17 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
           ) : (
             <EmptyState
               icon="search"
-              title={
-                query
-                  ? "No matches"
-                  : status === "wanted"
-                    ? "Nothing still wanted. Everything is gifted or you have it."
-                    : "No gifts yet."
+              title={noMatches}
+              action={
+                <Button
+                  title="Show everything"
+                  variant="secondary"
+                  size="medium"
+                  onPress={() => {
+                    setStatus("all");
+                    setSearch("");
+                  }}
+                />
               }
             />
           )
@@ -277,10 +356,12 @@ function SavedItemRow({
   onPress: () => void;
 }) {
   const theme = useTheme();
+  const meta = [item.price != null ? formatPrice(item.price) : null, storeDomain(item.externalUrl)].filter(Boolean).join(" · ");
   return (
     <Pressable
       accessibilityRole={selecting ? "checkbox" : "button"}
       accessibilityState={selecting ? { checked: selected } : undefined}
+      accessibilityHint={selecting ? undefined : "Opens the lists it's on"}
       onPress={() => {
         haptic();
         onPress();
@@ -296,18 +377,45 @@ function SavedItemRow({
         <Text variant="subhead" numberOfLines={2} style={{ fontWeight: "500" }}>
           {item.title}
         </Text>
-        <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {item.price ? (
-            <Text variant="footnote" style={{ fontWeight: "600" }}>
-              {formatPrice(item.price)}
-            </Text>
-          ) : null}
-          {item.status === "gifted" ? <Pill label="Gifted" tone="success" /> : null}
-          {item.status === "have" ? <Pill label="You have it" tone="neutral" /> : null}
+        {meta ? (
+          <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
+        {item.status !== "wanted" ? (
+          <View style={{ flexDirection: "row" }}>
+            {item.status === "gifted" ? <Pill label="Gifted" tone="success" /> : <Pill label="You have it" tone="neutral" />}
+          </View>
+        ) : null}
+        {/* Each list's name opens that list, as on the website. While
+            choosing items a tap anywhere picks the item instead. */}
+        <View accessibilityLabel="On these lists" style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
+          {lists.map((list) =>
+            selecting ? (
+              <View key={list.id} style={[styles.listChip, { backgroundColor: theme.surfaceAlt }]}>
+                <Text variant="caption" tone="secondary" numberOfLines={1}>
+                  {list.title}
+                </Text>
+              </View>
+            ) : (
+              <Pressable
+                key={list.id}
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${list.title}`}
+                hitSlop={4}
+                onPress={() => {
+                  haptic();
+                  router.push({ pathname: "/registry/[id]", params: { id: list.id } });
+                }}
+                style={({ pressed }) => [styles.listChip, { backgroundColor: theme.surfaceAlt, opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text variant="caption" tone="secondary" numberOfLines={1}>
+                  {list.title}
+                </Text>
+              </Pressable>
+            )
+          )}
         </View>
-        <Text variant="footnote" tone="tertiary" numberOfLines={1}>
-          {lists.map((l) => l.title).join(" · ")}
-        </Text>
       </View>
       {!selecting ? <Icon name="chevronRight" size={14} color={theme.textTertiary} /> : null}
     </Pressable>
@@ -318,15 +426,26 @@ function SavedItemRow({
 // Gift ideas
 // ---------------------------------------------------------------------------
 
-function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => void }) {
+function GiftIdeas({
+  view,
+  onView,
+  person,
+  onPerson,
+}: {
+  view: View_;
+  onView: (view: View_) => void;
+  /** The key of the person whose ideas are shown, or null for everyone's. */
+  person: string | null;
+  /** Hears the person's key and their name as typed. Both null for everyone. */
+  onPerson: (key: string | null, name: string | null) => void;
+}) {
   const theme = useTheme();
   const ideas = useGiftIdeas();
   const pull = usePullToRefresh(ideas.refetch);
   const bought = useSetIdeaBought();
-  // The key of the person whose ideas are shown, or null for everyone's. Ideas
-  // saved without a person have the key "".
-  const [person, setPerson] = useState<string | null>(null);
+  const notice = useSavedNotice("ideas");
   const groups = useMemo(() => groupByRecipient(ideas.data ?? []), [ideas.data]);
+  // A person whose last idea was deleted drops back to everyone.
   const chosen = person === null ? null : (groups.find((g) => g.key === person) ?? null);
   const shownGroups = chosen ? [chosen] : groups;
 
@@ -346,51 +465,75 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
       ListHeaderComponent={
         <View style={{ gap: spacing.md }}>
           <ViewSwitch view={view} onView={onView} />
-          <Text variant="subhead" tone="secondary">
-            Gifts you might give other people. Only you can see these.
-          </Text>
+          <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}>
+            <Icon name="lock" size={15} color={theme.textSecondary} />
+            <Text variant="subhead" tone="secondary" style={{ flex: 1 }}>
+              Gifts you might give other people. Only you can see these.
+            </Text>
+          </View>
           {groups.length > 1 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
               <Chip
                 label={`Everyone ${(ideas.data ?? []).filter((i) => !i.boughtAt).length}`}
                 selected={!chosen}
-                onPress={() => setPerson(null)}
+                onPress={() => onPerson(null, null)}
               />
               {groups.map((g) => (
-                <Chip key={g.key} label={`${groupName(g)} ${g.openCount}`} selected={chosen?.key === g.key} onPress={() => setPerson(g.key)} />
+                <Chip
+                  key={g.key}
+                  label={`${groupName(g)} ${g.openCount}`}
+                  selected={chosen?.key === g.key}
+                  onPress={() => onPerson(g.key, g.name || null)}
+                />
               ))}
             </ScrollView>
           ) : null}
+          <NoticeLine text={notice} />
         </View>
       }
-      renderItem={({ item: group }) => (
-        <View style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View>
-              <Text variant="headline">{groupName(group)}</Text>
-              <Text variant="footnote" tone="tertiary">
-                {ideaCount(group.ideas.length)}
-              </Text>
+      renderItem={({ item: group }) => {
+        const boughtCount = group.ideas.length - group.openCount;
+        return (
+          <View style={{ gap: spacing.sm }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <Text variant="headline" numberOfLines={1}>
+                  {groupHeading(group)}
+                </Text>
+                <Text variant="footnote" tone="tertiary">
+                  {ideaCount(group.openCount)}
+                  {boughtCount > 0 ? ` · ${boughtCount} bought` : ""}
+                </Text>
+              </View>
+              <Button
+                title="Add an idea"
+                icon="add"
+                size="small"
+                variant="ghost"
+                accessibilityLabel={group.key ? `Add an idea for ${group.name}` : "Add an idea"}
+                onPress={() => {
+                  setSavedNotice("ideas", "");
+                  router.push({ pathname: "/idea", params: { recipient: group.name } });
+                }}
+              />
             </View>
-            <Button
-              title="Add"
-              icon="add"
-              size="small"
-              variant="ghost"
-              onPress={() => router.push({ pathname: "/idea", params: { recipient: group.name } })}
-            />
+            {group.ideas.map((idea) => (
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                saving={bought.isPending && bought.variables?.id === idea.id}
+                onBought={(on) => {
+                  setSavedNotice("ideas", "");
+                  bought.mutate(
+                    { id: idea.id, bought: on },
+                    { onError: (e) => setSavedNotice("ideas", errorMessage(e) || "That didn't save. Try again in a moment.") }
+                  );
+                }}
+              />
+            ))}
           </View>
-          {group.ideas.map((idea) => (
-            <IdeaCard
-              key={idea.id}
-              idea={idea}
-              onBought={(on) =>
-                bought.mutate({ id: idea.id, bought: on }, { onError: (e) => Alert.alert("That didn't save", errorMessage(e)) })
-              }
-            />
-          ))}
-        </View>
-      )}
+        );
+      }}
       ListEmptyComponent={
         ideas.isPending ? (
           <LoadingState />
@@ -400,7 +543,7 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
           <EmptyState
             icon="sparkles"
             title="No gift ideas yet"
-            message="Save gifts you might give other people, like your mom or a friend. Only you can see them."
+            message="See something that would make a good gift for someone? Save it here to think about before their next birthday or holiday. Only you can see it."
             action={<Button title="Save a gift idea" icon="add" onPress={() => router.push("/idea")} />}
           />
         )
@@ -409,14 +552,18 @@ function GiftIdeas({ view, onView }: { view: View_; onView: (view: View_) => voi
   );
 }
 
-function IdeaCard({ idea, onBought }: { idea: GiftIdea; onBought: (bought: boolean) => void }) {
+function IdeaCard({ idea, saving, onBought }: { idea: GiftIdea; saving: boolean; onBought: (bought: boolean) => void }) {
   const theme = useTheme();
   const bought = Boolean(idea.boughtAt);
+  const meta = [idea.price != null ? formatPrice(idea.price) : null, storeDomain(idea.externalUrl)].filter(Boolean).join(" · ");
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityHint="Opens the idea to edit it"
-      onPress={() => router.push({ pathname: "/idea", params: { id: idea.id } })}
+      onPress={() => {
+        setSavedNotice("ideas", "");
+        router.push({ pathname: "/idea", params: { id: idea.id } });
+      }}
       style={({ pressed }) => [
         styles.row,
         { backgroundColor: pressed ? theme.surfaceAlt : theme.surface, borderColor: theme.border, opacity: bought ? 0.6 : 1 },
@@ -432,25 +579,28 @@ function IdeaCard({ idea, onBought }: { idea: GiftIdea; onBought: (bought: boole
         >
           {idea.title}
         </Text>
-        <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-          {idea.price ? (
-            <Text variant="footnote" style={{ fontWeight: "600" }}>
-              {formatPrice(idea.price)}
-            </Text>
-          ) : null}
-          {bought ? <Pill label="Bought" tone="success" /> : null}
-        </View>
+        {meta ? (
+          <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
         {idea.notes ? (
-          <Text variant="footnote" tone="tertiary" numberOfLines={2}>
+          <Text variant="footnote" tone="secondary" numberOfLines={3}>
             {idea.notes}
           </Text>
+        ) : null}
+        {bought ? (
+          <View style={{ flexDirection: "row" }}>
+            <Pill label="Bought" tone="success" />
+          </View>
         ) : null}
       </View>
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityLabel="Bought"
-        accessibilityState={{ checked: bought }}
+        accessibilityLabel={`Bought it: ${idea.title}`}
+        accessibilityState={{ checked: bought, busy: saving }}
         hitSlop={10}
+        disabled={saving}
         onPress={() => {
           haptic("success");
           onBought(!bought);
@@ -459,7 +609,7 @@ function IdeaCard({ idea, onBought }: { idea: GiftIdea; onBought: (bought: boole
       >
         <Icon name={bought ? "checkbox" : "checkboxEmpty"} size={24} color={bought ? theme.success : theme.textTertiary} />
         <Text variant="caption" tone="tertiary">
-          Bought
+          {saving ? "Saving…" : "Bought it"}
         </Text>
       </Pressable>
     </Pressable>
@@ -478,6 +628,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  listChip: { maxWidth: 160, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   toolbar: {
     position: "absolute",
     left: 0,

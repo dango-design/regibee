@@ -8,7 +8,7 @@ import { Alert, Platform, ScrollView } from "react-native";
 import { NavRow } from "@/components/nav-row";
 import { Divider, haptic, IconButton, Section, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
-import { listKind, usePlaceItems, useSavedItems } from "@/lib/saved-data";
+import { countLabel, listKind, setSavedNotice, usePlaceItems, useSavedItems } from "@/lib/saved-data";
 import { spacing, useTheme } from "@/lib/theme";
 
 export default function PlaceItemsScreen() {
@@ -19,6 +19,8 @@ export default function PlaceItemsScreen() {
   const itemIds = (items ?? "").split(",").filter(Boolean);
   const chosen = (saved.data?.items ?? []).filter((i) => itemIds.includes(i.id));
   const adding = mode === "add";
+  // Taking items off only offers the lists at least one of them is on, as on the website.
+  const lists = (saved.data?.lists ?? []).filter((list) => adding || chosen.some((i) => i.listIds.includes(list.id)));
 
   function choose(listId: string, title: string) {
     const ids = chosen.filter((i) => (adding ? !i.listIds.includes(listId) : i.listIds.includes(listId))).map((i) => i.id);
@@ -27,12 +29,22 @@ export default function PlaceItemsScreen() {
       return;
     }
     const deleting = adding ? [] : chosen.filter((i) => ids.includes(i.id) && i.listIds.length === 1);
+    // What the Saved tab says afterwards, in the website's words.
+    const done = adding
+      ? `Added ${countLabel(ids.length)} to ${title}.`
+      : `Took ${countLabel(ids.length)} off ${title}.` +
+        (deleting.length === 0
+          ? ""
+          : deleting.length === 1
+            ? " One was on no other list, so it's deleted."
+            : ` ${deleting.length} were on no other list, so they're deleted.`);
     const run = () =>
       place.mutate(
         { itemIds: ids, listId, on: adding },
         {
           onSuccess: () => {
             haptic("success");
+            setSavedNotice("items", done);
             router.back();
           },
           onError: (e) => Alert.alert("That didn't work", errorMessage(e)),
@@ -41,11 +53,11 @@ export default function PlaceItemsScreen() {
     if (deleting.length > 0) {
       Alert.alert(
         deleting.length === 1 ? "Delete an item?" : `Delete ${deleting.length} items?`,
-        `${deleting.length === 1 ? `“${deleting[0].title}” is` : "Some of them are"} only on ${title}, so taking ${
-          deleting.length === 1 ? "it" : "them"
-        } off deletes ${deleting.length === 1 ? "it" : "them"}, with any gifts on ${deleting.length === 1 ? "it" : "them"}.`,
+        deleting.length === 1
+          ? `“${deleting[0].title}” is only on ${title}, so taking it off deletes it.`
+          : `${deleting.length} of these are only on ${title}, so taking them off deletes them.`,
         [
-          { text: "Keep them", style: "cancel" },
+          { text: "Cancel", style: "cancel" },
           { text: "Remove and delete", style: "destructive", onPress: run },
         ]
       );
@@ -66,21 +78,23 @@ export default function PlaceItemsScreen() {
         }}
       />
       <Text variant="subhead" tone="secondary">
-        {chosen.length === 1 ? "1 item" : `${chosen.length} items`}
-        {adding ? ". Which list should they go on?" : ". Which list should they come off?"}
+        {adding ? `Add ${countLabel(chosen.length)} to` : `Remove ${countLabel(chosen.length)} from`}
       </Text>
       <Section>
-        {(saved.data?.lists ?? []).map((list, index) => {
+        {lists.map((list, index) => {
           const already = chosen.filter((i) => i.listIds.includes(list.id)).length;
+          const n = chosen.length;
           const detail = adding
-            ? already === chosen.length
-              ? chosen.length === 1
+            ? already === n
+              ? n === 1
                 ? "It's on this list"
                 : "They're all on this list"
               : listKind(list)
-            : already === 0
-              ? "None are on it"
-              : listKind(list);
+            : already === n
+              ? n === 1
+                ? "It's on this list"
+                : "All of them are on it"
+              : `${already} of them ${already === 1 ? "is" : "are"} on it`;
           return (
             <React.Fragment key={list.id}>
               {index > 0 ? <Divider inset={52} /> : null}

@@ -3,13 +3,13 @@
 // (src/components/group-manager.tsx), from the same loader.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import { deletePhrase } from "@shared/delete-confirmation";
 import { formatShortEventDate, isEmail, parseGuestList } from "@shared/events";
 import { emailLabel } from "@shared/guest-emails";
+import { memberCountLabel } from "@shared/groups";
 
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { NavRow } from "@/components/nav-row";
@@ -17,7 +17,6 @@ import { Button, Card, Divider, ErrorState, Field, haptic, IconButton, LoadingSt
 import { errorMessage } from "@/lib/data";
 import { useGroupPage, useRunEventAction } from "@/lib/events-data";
 import { initials } from "@/lib/format";
-import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
 
 export default function GroupScreen() {
@@ -112,6 +111,7 @@ export default function GroupScreen() {
       () => run<{ added: number; alreadyListed: number }>("groups.addGroupMembers", group.id, pastePreview.guests),
       (r) => {
         setPasted("");
+        setPasting(false);
         return addedText(r);
       }
     );
@@ -148,12 +148,19 @@ export default function GroupScreen() {
             <IconButton icon="edit" accessibilityLabel="Rename the group" onPress={() => setRenaming(group.name)} />
           </View>
         )}
+        <Text variant="subhead" tone="tertiary" style={{ marginTop: -spacing.md }}>
+          {memberCountLabel(members.length)}. Invite the whole group from an event's guest list, run a gift exchange with it, or share a
+          wishlist with it.
+        </Text>
 
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text variant="headline">People</Text>
             <Button title={pasting ? "Add one at a time" : "Paste a list"} size="small" variant="ghost" onPress={() => setPasting(!pasting)} />
           </View>
+          <Text variant="footnote" tone="tertiary">
+            Anyone here with a Regibee account under this email sees the lists you share with the group.
+          </Text>
           {pasting ? (
             <>
               <Field
@@ -164,6 +171,14 @@ export default function GroupScreen() {
                 placeholder={"Glinda Upland, glinda@example.com\nElphaba Thropp <elphie@example.com>\nNessa Thropp"}
                 hint="One person per line: a name and an email address."
               />
+              {pasted.trim() ? (
+                <Text variant="footnote" tone="tertiary">
+                  {pastePreview.guests.length === 1 ? "1 person" : `${pastePreview.guests.length} people`} ready to add
+                  {pastePreview.skipped.length > 0
+                    ? `. ${pastePreview.skipped.length === 1 ? "1 line" : `${pastePreview.skipped.length} lines`} couldn't be read`
+                    : ""}
+                </Text>
+              ) : null}
               <Button title="Add people" size="medium" loading={busy === "add"} onPress={addPasted} />
             </>
           ) : (
@@ -181,6 +196,11 @@ export default function GroupScreen() {
               <Button title="Add" icon="add" size="medium" loading={busy === "add"} onPress={addOne} />
             </>
           )}
+          {members.length === 0 ? (
+            <Text variant="footnote" tone="tertiary">
+              Nobody in this group yet.
+            </Text>
+          ) : null}
           {members.map((member, index) => (
             <View key={member.id}>
               {index === 0 ? <Divider /> : null}
@@ -290,7 +310,8 @@ export default function GroupScreen() {
             {sharedLists.map((list, index) => (
               <View key={list.id}>
                 {index > 0 ? <Divider inset={52} /> : null}
-                <NavRow icon="gift" label={list.title} external onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/r/${list.slug}`)} />
+                {/* The owner's own list: it opens its page in the app, as the website opens its manage page. */}
+                <NavRow icon="gift" label={list.title} onPress={() => router.push({ pathname: "/registry/[id]", params: { id: list.id } })} />
               </View>
             ))}
           </Section>

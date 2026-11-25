@@ -3,7 +3,12 @@
 // with the website's own types (@shared/*-types).
 
 import type { DashboardCard } from "@shared/dashboard-page-types";
-import type { ListPageEvent, ListPageSuggestion } from "@shared/list-page-types";
+import type {
+  ListPageDetailReview,
+  ListPageEvent,
+  ListPageMissingDetails,
+  ListPageSuggestion,
+} from "@shared/list-page-types";
 import type { ListOccasion } from "@shared/occasions";
 import type { RetailerRegistry, StoreId } from "@shared/retailers";
 import type { StorePerksRow } from "@shared/store-perks";
@@ -74,6 +79,8 @@ export interface Item {
   purchases: ItemGift[];
   /** The titles of the owner's other lists this item is on (src/lib/list-items.ts). */
   otherLists?: string[];
+  /** The ids of those lists. */
+  otherListIds?: string[];
   /** It's on this list through a placement from another of the owner's lists. */
   placed?: boolean;
 }
@@ -181,6 +188,15 @@ export interface RegistryDetail {
   canPlanEvents: boolean;
   eventPromptDismissed: boolean;
   showPlanEventButton: boolean;
+  /**
+   * The owner's lists, to add an item to or move it to. Empty for
+   * co-managers, who can't do either.
+   */
+  ownerLists: { id: string; title: string }[];
+  /** Items with a store link and no photo or price, which the app can read again. */
+  missingDetails: ListPageMissingDetails[];
+  /** Items whose filled-in details nobody has reviewed yet. */
+  detailReview: ListPageDetailReview[];
 }
 
 /** The fields of the add and edit item forms. */

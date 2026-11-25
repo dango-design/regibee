@@ -31,6 +31,7 @@ import { getStore } from "@shared/retailers";
 
 import { Icon, type IconName } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
+import { DetailReview, MissingDetailsNotice } from "@/components/list-details";
 import { NavRow } from "@/components/nav-row";
 import { Notice } from "@/components/notice";
 import {
@@ -61,8 +62,10 @@ import {
 import { formatDollars, formatEventDate, formatPrice, initials, plural } from "@/lib/format";
 import { occasionLabel } from "@/lib/occasion";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
-import { registryShareUrl, SITE_URL } from "@/lib/supabase";
+import { registryShareUrl } from "@/lib/supabase";
 import { fonts, radius, spacing, useTheme } from "@/lib/theme";
+import { openSite } from "@/lib/web";
+import { ChoiceSheet } from "@/components/choice-sheet";
 import type { CashFund, Gift, Item, RegistryDetail } from "@/lib/types";
 
 type Tab = "items" | "gifts";
@@ -73,6 +76,7 @@ export default function RegistryScreen() {
   const registry = useRegistry(id);
   const pull = usePullToRefresh(registry.refetch);
   const [tab, setTab] = useState<Tab>("items");
+  const [moreOpen, setMoreOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
 
   const { mutate: toggleItem } = useToggleItem();
@@ -146,17 +150,15 @@ export default function RegistryScreen() {
     );
   }
 
-  function moreActions() {
-    Alert.alert(r.title, undefined, [
-      { text: "Preview", onPress: () => WebBrowser.openBrowserAsync(`${SITE_URL}/r/${r.slug}`) },
-      { text: "Add a gift fund", onPress: addFund },
-      ...(data!.showPlanEventButton
-        ? [{ text: "Plan an event", onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }) }]
-        : []),
-      { text: "Settings", onPress: openSettings },
-      { text: "Cancel", style: "cancel" as const },
-    ]);
-  }
+  // A sheet, since Android's alert shows at most three buttons.
+  const moreChoices = [
+    { label: "Preview", onPress: () => openSite(`/r/${r.slug}`) },
+    { label: "Add a gift fund", onPress: addFund },
+    ...(data!.showPlanEventButton
+      ? [{ label: "Plan an event", onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }) }]
+      : []),
+    { label: "Settings", onPress: openSettings },
+  ];
 
   const header = (
     <RegistryHeader
@@ -188,7 +190,7 @@ export default function RegistryScreen() {
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
-              <IconButton icon="more" accessibilityLabel="More" onPress={moreActions} />
+              <IconButton icon="more" accessibilityLabel="More" onPress={() => setMoreOpen(true)} />
               <IconButton icon="add" accessibilityLabel="Add an item" onPress={addItem} />
             </View>
           ),
@@ -301,6 +303,7 @@ export default function RegistryScreen() {
           }
         />
       )}
+      <ChoiceSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title={r.title} choices={moreChoices} />
     </>
   );
 }
@@ -365,6 +368,9 @@ function RegistryHeader({
       <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
         {detail.reservationsHidden ? <HiddenNotice detail={detail} onSettings={onSettings} /> : null}
         <EventsBanner detail={detail} />
+        {/* Above the items, in the website's order: the review, what's missing, then plain links. */}
+        {tab === "items" ? <DetailReview registryId={r.id} reviews={detail.detailReview} /> : null}
+        {tab === "items" ? <MissingDetailsNotice registryId={r.id} items={detail.missingDetails} /> : null}
         {tab === "items" ? <PlainLinksNotices detail={detail} /> : null}
       </View>
 
@@ -507,7 +513,7 @@ function EventsBanner({ detail }: { detail: RegistryDetail }) {
       <Notice
         icon="party"
         title="Planning a party?"
-        message="Send invitations and track RSVPs, with this registry on the invitation."
+        message="Send invitations and track RSVPs, with guests linked to this registry."
         action={{ title: "Plan an event", onPress: plan }}
         secondary={{
           title: "Dismiss",
@@ -536,7 +542,7 @@ function EventsBanner({ detail }: { detail: RegistryDetail }) {
                 onPress={() =>
                   hosted
                     ? router.push({ pathname: "/events/[eventId]", params: { eventId: event.id } })
-                    : WebBrowser.openBrowserAsync(`${SITE_URL}/e/${event.slug}`)
+                    : openSite(`/e/${event.slug}`)
                 }
               >
                 <Text variant="footnote" tone="secondary">
@@ -653,7 +659,6 @@ function HiddenNotice({ detail, onSettings }: { detail: RegistryDetail; onSettin
 /** A gift fund, as the website's fund card shows it (src/components/cash-fund-card.tsx). Tap to edit. */
 function FundCard({ fund, gifts }: { fund: CashFund; gifts: Gift[] }) {
   const theme = useTheme();
-  const active = gifts.filter((g) => g.status !== "cancelled");
   return (
     <Pressable
       accessibilityRole="button"
@@ -686,10 +691,11 @@ function FundCard({ fund, gifts }: { fund: CashFund; gifts: Gift[] }) {
       ) : fund.current_amount > 0 ? (
         <Text variant="footnote">{formatDollars(fund.current_amount)} raised</Text>
       ) : null}
-      {active.length > 0 ? (
+      {/* Counted as the website's fund card counts them. */}
+      {gifts.length > 0 ? (
         <Pill
           tone="success"
-          label={`${active[0].buyer_name}${active.length > 1 ? ` + ${active.length - 1} other${active.length > 2 ? "s" : ""}` : ""} contributed`}
+          label={`${gifts[0].buyer_name}${gifts.length > 1 ? ` + ${gifts.length - 1} other${gifts.length > 2 ? "s" : ""}` : ""} contributed`}
         />
       ) : null}
     </Pressable>

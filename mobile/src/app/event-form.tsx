@@ -12,14 +12,31 @@
 // rows of choices, and the invitation picture comes from the photo library.
 // On an existing event the picture uploads and saves as soon as it's picked,
 // instead of when the form is saved.
+//
+// Editing takes a `section` param, one of the website's edit page sections
+// (@shared/edit-event-sections). The form opens scrolled to it, like the
+// website's links to /dashboard/events/<id>/edit#gifts.
 
 import { Image } from "expo-image";
 import type { ImagePickerAsset } from "expo-image-picker";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { useRef, useState, type ReactNode } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  View,
+  type LayoutChangeEvent,
+  type ScrollViewInstance,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import type { EditEventSection } from "@shared/edit-event-sections";
 import { changedParts, changeSummary } from "@shared/event-updates";
 import {
   COMMON_TIME_ZONES,
@@ -57,6 +74,7 @@ import {
 } from "@shared/event-steps";
 
 import { DateField } from "@/components/date-field";
+import { ThemeColorField } from "@/components/event/theme-color-field";
 import { Icon } from "@/components/icon";
 import { StepCard, StepFooter, useSteps } from "@/components/steps";
 import {
@@ -93,7 +111,7 @@ interface FormRegistry {
 }
 
 export default function EventFormScreen() {
-  const { eventId, registryId } = useLocalSearchParams<{ eventId?: string; registryId?: string }>();
+  const { eventId, registryId, section } = useLocalSearchParams<{ eventId?: string; registryId?: string; section?: string }>();
   const theme = useTheme();
   const { demo } = useSession();
   const query = useEventForm(eventId ?? null);
@@ -103,7 +121,7 @@ export default function EventFormScreen() {
   if (demo) {
     body = <EmptyState icon="party" title="Events need an account" message="Make an account to plan events." />;
   } else if (query.data) {
-    body = <EventForm eventId={eventId} startRegistryId={registryId ?? null} data={query.data} />;
+    body = <EventForm eventId={eventId} startRegistryId={registryId ?? null} startSection={section ?? null} data={query.data} />;
   } else if (query.error) {
     body = <ErrorState message={errorMessage(query.error)} onRetry={() => query.refetch()} />;
   } else {
@@ -127,9 +145,19 @@ export default function EventFormScreen() {
 }
 
 /** A section of the form: a heading, maybe a line under it, then its fields. */
-function Group({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Group({
+  title,
+  description,
+  onLayout,
+  children,
+}: {
+  title: string;
+  description?: string;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  children: ReactNode;
+}) {
   return (
-    <View style={{ gap: spacing.md }}>
+    <View style={{ gap: spacing.md }} onLayout={onLayout}>
       <View style={{ gap: 2 }}>
         <Text variant="headline">{title}</Text>
         {description ? (
@@ -219,7 +247,18 @@ function deviceTimeZone(): string {
 }
 
 /** Creates or edits an event. A new event's picture uploads once the event is saved. */
-function EventForm({ eventId, startRegistryId, data }: { eventId?: string; startRegistryId: string | null; data: EventFormData }) {
+function EventForm({
+  eventId,
+  startRegistryId,
+  startSection,
+  data,
+}: {
+  eventId?: string;
+  startRegistryId: string | null;
+  /** The section the edit form opens at. The event's page passes it. */
+  startSection: string | null;
+  data: EventFormData;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { run } = useRunEventAction();
@@ -243,6 +282,8 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
   const [emailHost, setEmailHost] = useState(data.event?.email_host_on_rsvp ?? true);
   const [askKids, setAskKids] = useState(data.event?.ask_kids ?? false);
   const [giftNote, setGiftNote] = useState(data.event?.gift_note ?? "");
+  // The invitation's color: "" for none.
+  const [themeColor, setThemeColor] = useState(data.event?.theme_color ?? "");
   // A new event starts with its occasion's questions; an existing one keeps its own.
   const [questions, setQuestions] = useState<RsvpQuestion[]>(() =>
     data.event
@@ -287,6 +328,16 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [titleError, setTitleError] = useState(false);
+
+  // The edit form scrolls to `startSection` once, when that section is laid out.
+  const editScroll = useRef<ScrollViewInstance>(null);
+  const scrolledToSection = useRef(false);
+  const sectionLayout = (id: EditEventSection, event: LayoutChangeEvent) => {
+    if (id !== startSection || scrolledToSection.current) return;
+    scrolledToSection.current = true;
+    const y = Math.max(0, event.nativeEvent.layout.y - spacing.md);
+    requestAnimationFrame(() => editScroll.current?.scrollTo({ y, animated: false }));
+  };
 
   const zoneOptions = [...COMMON_TIME_ZONES];
   if (timeZone && !zoneOptions.some((z) => z.value === timeZone)) {
@@ -481,6 +532,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
     remindDayBefore: String(remindDayBefore),
     notifyGuests: String(notifyGuests && changes.length > 0),
     giftNote,
+    themeColor,
     registryLinks: JSON.stringify(linked.map((r) => (r.link ? { link: r.link } : { id: r.id }))),
     exchangeEnabled: String(exchangeOn),
     exchangeKind: kind,
@@ -941,6 +993,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
 
           <StepCard {...stepCard("invitation")}>
             {pictureField}
+            <ThemeColorField value={themeColor} onChange={setThemeColor} />
             <Field
               label="Hosted by (optional)"
               value={hostedBy}
@@ -1007,12 +1060,12 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xxl }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={editScroll} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xxl }} keyboardShouldPersistTaps="handled">
         <Text variant="callout" tone="secondary">
           {editing ? "Guests see your changes on the event page right away." : "Add the details now. You'll add guests and send the invitation next."}
         </Text>
 
-        <Group title="What are you celebrating?">
+        <Group title="What are you celebrating?" onLayout={(event) => sectionLayout("details", event)}>
           <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {EVENT_TYPE_OPTIONS.map((option) => (
               <Chip key={option.value} label={option.label} selected={eventType === option.value} onPress={() => chooseType(option.value)} />
@@ -1039,12 +1092,14 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
 
         <Group
           title="Invitation"
+          onLayout={(event) => sectionLayout("invitation", event)}
           description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
         >
           {pictureField}
+          <ThemeColorField value={themeColor} onChange={setThemeColor} />
         </Group>
 
-        <Group title="When">
+        <Group title="When" onLayout={(event) => sectionLayout("when", event)}>
           <DateField label="Date" value={eventDate || null} onChange={(value) => setEventDate(value ?? "")} />
           <View style={{ gap: spacing.sm }}>
             <Label>Time zone</Label>
@@ -1059,7 +1114,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
         </Group>
 
         {hidesAddressUntilSignup(eventType) ? (
-          <Group title="Where to drop off">
+          <Group title="Where to drop off" onLayout={(event) => sectionLayout("where", event)}>
             <Field
               label="Drop-off address"
               value={locationAddress}
@@ -1072,7 +1127,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
             />
           </Group>
         ) : (
-          <Group title="Where">
+          <Group title="Where" onLayout={(event) => sectionLayout("where", event)}>
             <Field
               label="Place"
               value={locationName}
@@ -1093,7 +1148,11 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
           </Group>
         )}
 
-        <Group title="Message to guests" description="Parking, dress code, what to bring: anything guests should know.">
+        <Group
+          title="Message to guests"
+          description="Parking, dress code, what to bring: anything guests should know."
+          onLayout={(event) => sectionLayout("message", event)}
+        >
           <Field
             accessibilityLabel="Message to guests"
             value={message}
@@ -1104,7 +1163,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
           />
         </Group>
 
-        <Group title="RSVPs">
+        <Group title="RSVPs" onLayout={(event) => sectionLayout("rsvps", event)}>
           <DateField label="Reply by (optional)" value={rsvpBy || null} onChange={(value) => setRsvpBy(value ?? "")} />
           <View style={{ gap: 6 }}>
             <Label>People per RSVP</Label>
@@ -1147,7 +1206,7 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
           <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
         </Group>
 
-        <Group title="Gifts" description="What guests see about gifts, under the details on the invitation.">
+        <Group title="Gifts" description="What guests see about gifts, under the details on the invitation." onLayout={(event) => sectionLayout("gifts", event)}>
           <View style={{ gap: spacing.md }}>
             <View style={{ gap: 2 }}>
               <Label>Registries and wishlists</Label>
@@ -1162,7 +1221,11 @@ function EventForm({ eventId, startRegistryId, data }: { eventId?: string; start
           {giftNoteField}
         </Group>
 
-        <Group title="Gifts among the guests" description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other.">
+        <Group
+          title="Gifts among the guests"
+          description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other."
+          onLayout={(event) => sectionLayout("exchange", event)}
+        >
           <Section>
             <ToggleRow
               label="Guests give gifts to each other"

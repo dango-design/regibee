@@ -7,6 +7,7 @@ import * as giftIdeas from "@/lib/actions/gift-ideas";
 import * as giftProfile from "@/lib/actions/gift-profile";
 import * as groupGifts from "@/lib/actions/group-gifts";
 import * as groups from "@/lib/actions/groups";
+import * as itemDetails from "@/lib/actions/item-details";
 import * as profile from "@/lib/actions/profile";
 import * as registry from "@/lib/actions/registry";
 import * as saved from "@/lib/actions/saved";
@@ -37,6 +38,7 @@ const MODULES: Record<string, Record<string, unknown>> = {
   giftProfile,
   groupGifts,
   groups,
+  itemDetails,
   profile,
   registry,
   saved,
