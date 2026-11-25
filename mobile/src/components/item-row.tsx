@@ -52,11 +52,10 @@ function removeLabel(item: Item) {
   return item.otherLists && item.otherLists.length > 0 ? "Remove from list" : "Remove item";
 }
 
-/** "Also on Baby Shower and 2 more lists", as the website's item card says it. */
+/** "Also on Wishlist and Birthday", or "Also on Wishlist and 2 more lists", as the website's item card says it. */
 function alsoOn(lists: string[]) {
-  if (lists.length === 1) return `Also on ${lists[0]}`;
-  const more = lists.length - 1;
-  return `Also on ${lists[0]} and ${more} more ${more === 1 ? "list" : "lists"}`;
+  if (lists.length <= 2) return `Also on ${lists.join(" and ")}`;
+  return `Also on ${lists[0]} and ${lists.length - 1} more lists`;
 }
 
 /** Long-press options on Android, where there's no native link menu. */
@@ -96,7 +95,9 @@ export const ItemRow = memo(function ItemRow({
   const registryStore =
     linkedStores && !item.is_parent_purchased ? registryStoreFor(item.external_url, linkedStores) : null;
   const bought = boughtAction(item, selfPurchaseButton);
-  const href = { pathname: "/item/[id]", params: { id: item.id } } as const;
+  // The list goes with the item, so the edit form opens it as this list shows
+  // it. An item on two lists has a category on each.
+  const href = { pathname: "/item/[id]", params: { id: item.id, registryId: item.registry_id } } as const;
 
   const ios = Platform.OS === "ios";
   const content = (

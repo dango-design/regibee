@@ -26,7 +26,9 @@ on:
       - src/lib/checklist-matching.ts
       - src/lib/dashboard-page-types.ts
       - src/lib/demo-data.ts
+      - src/lib/edit-event-sections.ts
       - src/lib/email-address.ts
+      - src/lib/event-colors.ts
       - src/lib/event-images.ts
       - src/lib/event-steps.ts
       - src/lib/event-updates.ts
@@ -39,6 +41,7 @@ on:
       - src/lib/guest-emails.ts
       - src/lib/guest-follow-rules.ts
       - src/lib/guest-input.ts
+      - src/lib/in-app.ts
       - src/lib/item-categories.ts
       - src/lib/item-details.ts
       - src/lib/list-access.ts
@@ -47,12 +50,14 @@ on:
       - src/lib/occasions.ts
       - src/lib/people-page-types.ts
       - src/lib/profile-link.ts
+      - src/lib/profile-photos.ts
       - src/lib/registry-copy.ts
       - src/lib/registry-listing.ts
       - src/lib/registry-photos.ts
       - src/lib/retailers.ts
       - src/lib/rsvp-questions.ts
       - src/lib/saved-items-types.ts
+      - src/lib/shared-link.ts
       - src/lib/signups.ts
       - src/lib/step-nav.ts
       - src/lib/store-perks.ts

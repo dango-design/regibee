@@ -15,6 +15,7 @@ import {
 } from "@shared/demo-data";
 import type { RegistryDeletionSummary } from "@shared/delete-confirmation";
 import { GIFT_HOLD_DAYS, giftActivityAction, giverNameForOwner } from "@shared/gifts";
+import { detailChanges, isMissingDetails, shownSide, type DetailChange, type DetailField, type ShownSide } from "@shared/item-details";
 import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 import { copyForRegistry } from "@shared/registry-copy";
 import {
@@ -52,6 +53,10 @@ interface DemoList {
 interface Store {
   lists: Map<string, DemoList>;
   gifts: Map<string, Gift[]>;
+  /** What filling in an item's details changed, until it's reviewed. By item id. */
+  detailReads: Map<string, DetailChange[]>;
+  /** Items whose links were read already, so they aren't offered again. */
+  readItems: Set<string>;
 }
 
 let store: Store | null = null;
@@ -142,7 +147,7 @@ function build(): Store {
     funds: DEMO_CASH_FUNDS.map((f) => ({ ...f, registry_id: "demo" })),
     suggestions: demoSuggestions(day).map((s) => ({ ...s, external_url: s.external_url ?? null, notes: s.notes ?? null })) as Suggestion[],
   };
-  return { lists: new Map([["demo", list]]), gifts: new Map([["demo", gifts]]) };
+  return { lists: new Map([["demo", list]]), gifts: new Map([["demo", gifts]]), detailReads: new Map(), readItems: new Set() };
 }
 
 function current() {
@@ -216,7 +221,7 @@ export const demo = {
         .filter((g) => g.status !== "cancelled" && Date.parse(g.created_at) >= weekAgo).length,
       followRequestCount: 0,
       showProfilePrompt: false,
-      // The app's home doesn't show "Coming up": Events has its own tab in the tab bar.
+      // The demo has no events, so "Coming up" stays empty.
       upcomingEvents: [],
       today: day,
     };
@@ -291,6 +296,18 @@ export const demo = {
       canPlanEvents: false,
       eventPromptDismissed: true,
       showPlanEventButton: false,
+      ownerLists: [...current().lists.values()].map((l) => ({ id: l.registry.id, title: l.registry.title })),
+      // Worked out as the website does (src/lib/item-details.ts): a link, and no photo or price.
+      missingDetails: items
+        .filter((i) => i.external_url && isMissingDetails(i) && !current().readItems.has(i.id))
+        .map((i) => ({ id: i.id, title: i.title, external_url: i.external_url! })),
+      detailReview: items.flatMap((item) => {
+        const changes = (current().detailReads.get(item.id) ?? []).flatMap((change) => {
+          const shown = shownSide(change, item);
+          return shown ? [{ ...change, shown }] : [];
+        });
+        return changes.length > 0 ? [{ itemId: item.id, title: item.title, imageUrl: item.image_url, changes }] : [];
+      }),
     };
   },
   addItem(registryId: string, values: Omit<Item, "id" | "registry_id" | "sort_order" | "created_at" | "purchases">) {
@@ -314,6 +331,47 @@ export const demo = {
     const gifts = current().gifts.get(registryId);
     if (gifts) current().gifts.set(registryId, gifts.filter((g) => g.registry_item_id !== itemId));
     setItems(registryId, (items) => items.filter((i) => i.id !== itemId));
+  },
+  /** Puts a copy of the item on another list. The demo has no shared items, so the two are separate from then on. */
+  addItemToList(itemId: string, listId: string) {
+    const item = listFor(itemRegistry(itemId)).items.find((i) => i.id === itemId);
+    if (!item) return;
+    setItems(listId, (items) => [{ ...item, id: newId("item"), registry_id: listId, category_id: null, purchases: [] }, ...items]);
+  },
+  /** Moves the item to another list, with its gifts. It arrives with no category. */
+  moveItemToList(itemId: string, fromId: string, toId: string) {
+    const item = listFor(fromId).items.find((i) => i.id === itemId);
+    if (!item) return;
+    setItems(fromId, (items) => items.filter((i) => i.id !== itemId));
+    setItems(toId, (items) => [{ ...item, registry_id: toId, category_id: null }, ...items]);
+    const gifts = current().gifts.get(fromId) ?? [];
+    current().gifts.set(fromId, gifts.filter((g) => g.registry_item_id !== itemId));
+    current().gifts.set(toId, [...(current().gifts.get(toId) ?? []), ...gifts.filter((g) => g.registry_item_id === itemId)]);
+  },
+  /** Fills in an item from what was read at its link, by the website's rules (src/lib/item-details.ts). */
+  fillInDetails(registryId: string, itemId: string, read: { title: string; price: number | null; images: string[] }) {
+    const item = listFor(registryId).items.find((i) => i.id === itemId);
+    if (!item) return;
+    const changes = detailChanges(item, read);
+    const patch: Partial<Item> = {};
+    for (const change of changes) {
+      if (change.field === "price") patch.price = Number(change.after);
+      else patch[change.field] = String(change.after);
+    }
+    demo.updateItem(itemId, patch);
+    current().readItems.add(itemId);
+    if (changes.length > 0) current().detailReads.set(itemId, changes);
+  },
+  chooseDetailValue(registryId: string, itemId: string, field: DetailField, side: ShownSide) {
+    const change = current().detailReads.get(itemId)?.find((c) => c.field === field);
+    if (!change) return;
+    const value = change[side];
+    if (field === "price") demo.updateItem(itemId, { price: value == null ? null : Number(value) });
+    else if (field === "title") demo.updateItem(itemId, { title: String(value ?? "") });
+    else demo.updateItem(itemId, { image_url: value == null ? null : String(value) });
+  },
+  finishDetailReview(_registryId: string, itemIds: string[]) {
+    for (const id of itemIds) current().detailReads.delete(id);
   },
   cancelGift(registryId: string, giftId: string) {
     const gifts = current().gifts.get(registryId) ?? [];

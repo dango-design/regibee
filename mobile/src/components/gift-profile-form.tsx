@@ -9,8 +9,10 @@ import { ScrollView, View } from "react-native";
 import {
   BIRTHDAY_REMINDER_DAYS,
   daysInMonth,
+  MAX_SIZE_LENGTH,
   MAX_TAG_LENGTH,
   MAX_TAGS,
+  MAX_TEXT_LENGTH,
   MONTH_OPTIONS,
   parseGiftProfile,
   SIZE_LABELS,
@@ -18,9 +20,10 @@ import {
   type GiftProfileSizes,
 } from "@shared/gift-profile";
 
+import { Icon } from "@/components/icon";
 import { Button, Chip, Field, haptic, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
-import { spacing } from "@/lib/theme";
+import { spacing, useTheme } from "@/lib/theme";
 
 const SIZE_FIELDS: { key: keyof GiftProfileSizes; placeholder: string }[] = [
   { key: "tops", placeholder: "M" },
@@ -81,6 +84,7 @@ function TagField({
         submitBehavior="submit"
         returnKeyType="done"
         placeholder={full ? undefined : placeholder}
+        maxLength={MAX_TAG_LENGTH}
         editable={!full}
         hint={full ? `That's the most you can add (${MAX_TAGS}).` : hint}
       />
@@ -117,6 +121,7 @@ export function GiftProfileForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const theme = useTheme();
 
   const childName = child?.name?.trim() || null;
   // "Toto's birthday" for a child's list, "Birthday" for your own.
@@ -151,6 +156,8 @@ export function GiftProfileForm({
     try {
       await onSave(profile);
       setSaved(true);
+      // "Saved" shows for a moment, as on the website.
+      setTimeout(() => setSaved(false), 2000);
       haptic("success");
     } catch (e) {
       setError(errorMessage(e));
@@ -206,13 +213,14 @@ export function GiftProfileForm({
                 value={sizes[key] ?? ""}
                 onChangeText={(value) => setSizes((current) => ({ ...current, [key]: value }))}
                 placeholder={placeholder}
+                maxLength={MAX_SIZE_LENGTH}
               />
             </View>
           ))}
         </View>
       </View>
 
-      <Field label="Favorite colors" value={colors} onChangeText={setColors} placeholder="Green, gold, anything sparkly" />
+      <Field label="Favorite colors" value={colors} onChangeText={setColors} placeholder="Green, gold, anything sparkly" maxLength={MAX_TEXT_LENGTH} />
       <TagField
         label="Likes"
         hint="Type one and press return, or separate them with commas."
@@ -231,14 +239,22 @@ export function GiftProfileForm({
         draft={skipDraft}
         onDraftChange={setSkipDraft}
       />
-      <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="Anything else givers should know" multiline />
+      <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="Anything else givers should know" maxLength={MAX_TEXT_LENGTH} multiline />
 
       {error ? (
         <Text variant="footnote" tone="danger">
           {error}
         </Text>
       ) : null}
-      <Button title={saved ? "Saved!" : "Save"} onPress={save} loading={saving} />
+      <Button title="Save" onPress={save} loading={saving} />
+      {saved ? (
+        <View accessibilityLiveRegion="polite" style={{ flexDirection: "row", gap: 4, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="check" size={14} color={theme.textTertiary} />
+          <Text variant="footnote" tone="tertiary">
+            Saved
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }

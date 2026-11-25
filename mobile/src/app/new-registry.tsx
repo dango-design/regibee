@@ -14,6 +14,8 @@ import {
   DEFAULT_LIST_VISIBILITY,
   LIST_ACCESS,
   LIST_VISIBILITIES,
+  clampProfileAudience,
+  defaultProfileAudience,
   type ListVisibility,
   type ProfileAudience,
 } from "@shared/list-access";
@@ -42,7 +44,8 @@ export default function NewRegistryScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [visibility, setVisibility] = useState<ListVisibility>(DEFAULT_LIST_VISIBILITY);
-  const [profileAudience, setProfileAudience] = useState<ProfileAudience>("hidden");
+  // Null until the person picks one. Until then it's the default below.
+  const [audienceChoice, setAudienceChoice] = useState<ProfileAudience | null>(null);
   const [description, setDescription] = useState("");
   const [showPayments, setShowPayments] = useState(false);
   const [venmo, setVenmo] = useState("");
@@ -50,6 +53,20 @@ export default function NewRegistryScreen() {
   const [zelle, setZelle] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Personal lists are shown on the profile by default. Baby registries
+  // aren't, because showing one could announce a pregnancy. The website's
+  // form has the same defaults.
+  const profileAudience = clampProfileAudience(
+    audienceChoice ?? (registryType === "personal" ? defaultProfileAudience(visibility) : "hidden"),
+    visibility
+  );
+
+  /** Changing the kind of list goes back to that kind's profile default. */
+  function chooseType(type: RegistryType) {
+    if (type !== registryType) setAudienceChoice(null);
+    setRegistryType(type);
+  }
 
   function submit() {
     setError(null);
@@ -94,13 +111,16 @@ export default function NewRegistryScreen() {
         }}
       />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+        <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
+          {copy.tagline}
+        </Text>
         <View style={{ gap: spacing.sm }}>
           <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
             What's it for?
           </Text>
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Chip label="A baby" selected={registryType === "baby"} onPress={() => setRegistryType("baby")} />
-            <Chip label="Something else" selected={registryType === "personal"} onPress={() => setRegistryType("personal")} />
+            <Chip label="A baby" selected={registryType === "baby"} onPress={() => chooseType("baby")} />
+            <Chip label="Something else" selected={registryType === "personal"} onPress={() => chooseType("personal")} />
           </View>
           {registryType === "personal" ? (
             <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
@@ -186,7 +206,7 @@ export default function NewRegistryScreen() {
             {LIST_ACCESS[visibility].description}
           </Text>
         </View>
-        <ProfileAudienceChips visibility={visibility} value={profileAudience} onValueChange={setProfileAudience} />
+        <ProfileAudienceChips visibility={visibility} value={profileAudience} onValueChange={setAudienceChoice} />
 
         <Field
           label="Message to guests (optional)"
@@ -245,6 +265,9 @@ export default function NewRegistryScreen() {
           </Text>
         ) : null}
         <Button title="Create registry" onPress={submit} loading={create.isPending} />
+        <Text variant="caption" tone="tertiary" style={{ textAlign: "center" }}>
+          Only the name is required. You can change all of this later in settings.
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );

@@ -8,16 +8,19 @@ import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { recentRecipients, recipientKey } from "@shared/gift-ideas";
+import { NOTES_MAX, RECIPIENT_MAX, TITLE_MAX, recentRecipients, recipientKey } from "@shared/gift-ideas";
+import { detectStore } from "@shared/retailers";
+import { nameFromProductUrl } from "@shared/shared-link";
 
+import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
 import { PasteLinkButton } from "@/components/paste-link-button";
 import { ProductReader } from "@/components/product-reader";
 import { Button, Chip, Field, haptic, IconButton, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { parsePrice } from "@/lib/format";
-import { normalizeLink, parseSharedText, storeLabel, type ReadProduct } from "@/lib/product";
-import { useDeleteIdea, useGiftIdeas, useSaveIdea } from "@/lib/saved-data";
+import { normalizeLink, parseSharedText, type ReadProduct } from "@/lib/product";
+import { setSavedNotice, useDeleteIdea, useGiftIdeas, useSaveIdea } from "@/lib/saved-data";
 import { radius, spacing, useTheme } from "@/lib/theme";
 
 export default function IdeaScreen() {
@@ -61,7 +64,19 @@ export default function IdeaScreen() {
     const source = reading;
     setReading(null);
     if (!product) {
-      setStatus(`We couldn't read the details from ${storeLabel(link) ?? "this link"}. Fill in the rest by hand.`);
+      // The website's words (src/components/gift-idea-dialog.tsx). When the
+      // page can't be read, the name comes from the words in the link.
+      const store = detectStore(link)?.name ?? "that page";
+      const hasTitle = Boolean(title.trim());
+      const guessed = hasTitle ? undefined : nameFromProductUrl(link);
+      if (guessed) setTitle(guessed);
+      setStatus(
+        guessed
+          ? `We couldn't read ${store}, so we took the name from the link. Check it.`
+          : hasTitle
+            ? `We couldn't read ${store}. Your link and name are kept.`
+            : `We couldn't read ${store}. The link is kept, so add a name yourself.`
+      );
       return;
     }
     if (source) setReadGtin({ url: source, gtin: product.gtin });
@@ -88,7 +103,7 @@ export default function IdeaScreen() {
   function submit() {
     setError(null);
     if (!title.trim()) {
-      setError("Say what it is.");
+      setError("Give the idea a name.");
       return;
     }
     save.mutate(
@@ -107,6 +122,10 @@ export default function IdeaScreen() {
       {
         onSuccess: () => {
           haptic("success");
+          // The Saved tab says what was saved, as the website does.
+          const savedTitle = title.replace(/\s+/g, " ").trim();
+          const savedFor = recipient.replace(/\s+/g, " ").trim();
+          setSavedNotice("ideas", savedFor ? `Saved “${savedTitle}” for ${savedFor}.` : `Saved “${savedTitle}”.`);
           router.back();
         },
         onError: (e) => setError(errorMessage(e)),
@@ -122,7 +141,10 @@ export default function IdeaScreen() {
         text: "Delete it",
         style: "destructive",
         onPress: () => {
-          remove.mutate(idea.id, { onError: (e) => Alert.alert("The idea wasn't deleted", errorMessage(e)) });
+          remove.mutate(idea.id, {
+            onSuccess: () => setSavedNotice("ideas", `Deleted “${idea.title}”.`),
+            onError: (e) => Alert.alert("The idea wasn't deleted", errorMessage(e)),
+          });
           router.back();
         },
       },
@@ -142,12 +164,20 @@ export default function IdeaScreen() {
       />
       {reading ? <ProductReader key={reading} url={reading} onResult={onProduct} /> : null}
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+        <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}>
+          <Icon name="lock" size={15} color={theme.textSecondary} />
+          <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
+            Only you can see your gift ideas. The person they&apos;re for never does.
+          </Text>
+        </View>
+
         <View style={{ gap: spacing.sm }}>
           <Field
             label="Who's it for? (optional)"
             value={recipient}
             onChangeText={setRecipient}
             placeholder="Mom, Sam, my brother…"
+            maxLength={RECIPIENT_MAX}
             autoCapitalize="words"
           />
           {recipients.length > 0 ? (
@@ -195,7 +225,7 @@ export default function IdeaScreen() {
           ) : null}
         </View>
 
-        <Field label="What is it?" value={title} onChangeText={setTitle} placeholder="e.g., Wool scarf in green" multiline />
+        <Field label="What is it?" value={title} onChangeText={setTitle} placeholder="e.g., Wool scarf in green" maxLength={TITLE_MAX} multiline />
 
         {images.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
@@ -235,6 +265,7 @@ export default function IdeaScreen() {
           value={notes}
           onChangeText={setNotes}
           placeholder="Her size, the color she liked, when to get it…"
+          maxLength={NOTES_MAX}
           multiline
         />
         {idea ? <Button title="Delete" variant="danger" icon="trash" onPress={confirmDelete} /> : null}

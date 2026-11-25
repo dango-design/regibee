@@ -304,7 +304,8 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
         />
       ) : null}
 
-      {listVisibility(r) !== "private" ? (
+      {/* Hidden as soon as Private is chosen, before saving, as on the website. */}
+      {visibility !== "private" ? (
         <View style={{ gap: spacing.sm }}>
           <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
             Link
@@ -371,7 +372,8 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
   const isOwner = detail.role === "owner";
   const privacy = readReservationPrivacy(r.settings);
   const save = useSaveReservationPrivacy(r.id);
-  const [hide, setHide] = useState(Boolean(privacy.hide_reservations));
+  // A list kept for a child always shows what's been reserved, so hiding is off for it.
+  const [hide, setHide] = useState(privacy.hide_reservations === true && !privacy.for_child);
   const [forChild, setForChild] = useState(Boolean(privacy.for_child));
   const [saved, markSaved] = useSaved();
   const [error, setError] = useState<string | null>(null);
@@ -381,7 +383,7 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
     return (
       <Panel title="What's been reserved" description="The owner chooses whether they see what people reserve and pledge.">
         <Text variant="footnote" tone="secondary">
-          {privacy.hide_reservations
+          {privacy.hide_reservations === true && !privacy.for_child
             ? "The owner hides what's been reserved from themselves, so their gifts stay a surprise. You still see everything and get gift emails."
             : "Everyone who manages this list sees what's been reserved."}
         </Text>
@@ -392,14 +394,17 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
   return (
     <Panel title="What's been reserved" description="Choose whether you see what people reserve and pledge on this list.">
       <View style={{ marginHorizontal: -spacing.lg }}>
-        <SwitchRow
-          label="Hide what's been reserved from me"
-          description={`Every item shows as not yet reserved for you, and you don't get gift emails. Guests still see what's taken, so nobody buys the same thing twice. Co-managers still see everything. When the list is part of an event, you see what was given, and by whom, from the day after it. Or turn this off any time to see everything.${
-            privacy.hide_reservations_source === "exchange" ? " Regibee turned this on when you added this list to a gift exchange." : ""
-          }`}
-          value={hide}
-          onValueChange={setHide}
-        />
+        {/* Off and greyed out while the list is kept for a child, as on the website. */}
+        <View style={{ opacity: forChild ? 0.45 : 1 }} pointerEvents={forChild ? "none" : "auto"} accessibilityState={{ disabled: forChild }}>
+          <SwitchRow
+            label="Hide what's been reserved from me"
+            description={`Every item shows as not yet reserved for you, and you don't get gift emails. Guests still see what's taken, so nobody buys the same thing twice. Co-managers still see everything. When the list is part of an event, you see what was given, and by whom, from the day after it. Or turn this off any time to see everything.${
+              privacy.hide_reservations_source === "exchange" ? " Regibee turned this on when you added this list to a gift exchange." : ""
+            }`}
+            value={hide && !forChild}
+            onValueChange={setHide}
+          />
+        </View>
         {isPersonal ? (
           <SwitchRow
             label="I keep this list for my child"
@@ -415,7 +420,7 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
         loading={save.isPending}
         saved={saved}
         onPress={() =>
-          save.mutate({ hide, forChild }, { onSuccess: () => markSaved(), onError: (e) => setError(errorMessage(e)) })
+          save.mutate({ hide: forChild ? false : hide, forChild }, { onSuccess: () => markSaved(), onError: (e) => setError(errorMessage(e)) })
         }
       />
     </Panel>
@@ -601,7 +606,7 @@ function PaymentsPanel({ registryId, settings }: { registryId: string; settings:
   const [error, setError] = useState<string | null>(null);
   const plain = { autoCapitalize: "none" as const, autoCorrect: false };
   return (
-    <Panel title="Payment Methods" description="Add your payment info so gift givers can send you money for cash funds and items you bought yourself.">
+    <Panel title="Payment methods" description="Add your payment info so gift givers can send you money for cash funds and items you've already purchased.">
       <Field label="Venmo" value={venmo} onChangeText={setVenmo} placeholder="@your-venmo" {...plain} />
       <Field label="PayPal" value={paypal} onChangeText={setPaypal} placeholder="you@email.com or PayPal.me link" {...plain} />
       <Field label="Zelle" value={zelle} onChangeText={setZelle} placeholder="you@email.com or phone number" {...plain} />
@@ -624,7 +629,7 @@ function ShippingPanel({ registryId, settings }: { registryId: string; settings:
   const [saved, markSaved] = useSaved();
   const [error, setError] = useState<string | null>(null);
   return (
-    <Panel title="Shipping Address" description="Share your shipping address with gift givers so they know where to send gifts.">
+    <Panel title="Shipping address" description="Share your shipping address with gift givers so they know where to send gifts.">
       <Field
         label="Address"
         value={address}
@@ -659,7 +664,14 @@ function StoreRegistriesPanel({ registryId, settings }: { registryId: string; se
       setError("Choose a store.");
       return;
     }
-    const url = link.trim();
+    const storeName = STORES.find((s) => s.id === store)?.name;
+    const typed = link.trim();
+    if (!typed) {
+      setError(`Paste the link to your ${storeName} registry.`);
+      return;
+    }
+    // A link typed without https:// gets it, as on the website.
+    const url = /^https?:\/\//i.test(typed) ? typed : `https://${typed}`;
     if (!isLinkForStore(url, store)) {
       setError(`That doesn't look like a ${STORES.find((s) => s.id === store)?.name} link.`);
       return;
@@ -942,7 +954,7 @@ function DangerPanel({ registryId }: { registryId: string }) {
         : registryDeletionLines(summary);
 
   return (
-    <Panel title="Danger Zone" description="Permanently delete this registry and all its items">
+    <Panel title="Delete registry" description="Permanently delete this registry and all its items">
       <Button title="Delete registry" variant="danger" icon="trash" onPress={ask} />
       <ConfirmDelete
         visible={open}

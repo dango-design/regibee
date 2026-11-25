@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 24, 2026",
+  effectiveDate: "November 25, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -380,6 +380,13 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>The app reads your clipboard only when you tap Paste.</li>
               <li>
+                <strong className="font-semibold text-primary">Other people&apos;s pages.</strong> Someone else&apos;s
+                registry, profile or invitation opens as its regibee.com page inside the app, signed in as you, so
+                it works the way it does for your account on the website. That page keeps the same cookies in the
+                app that regibee.com keeps in a browser. A link to a store or any other site opens in your
+                phone&apos;s browser.
+              </li>
+              <li>
                 <strong className="font-semibold text-primary">Updates.</strong> Each time the app opens, it asks
                 Expo, which delivers the app&apos;s updates, whether there&apos;s a newer version. It sends which
                 version it&apos;s running, whether your phone is an iPhone or Android, and a random ID the app made
@@ -497,6 +504,10 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 When you chip in on a group gift, a cookie remembers your pledge for up to a year, so you can change
                 it from that browser.
+              </li>
+              <li>
+                In the Regibee app, a cookie tells a regibee.com page that it&apos;s showing inside the app, so the
+                page leaves out the website&apos;s top bar.
               </li>
               <li>
                 There are no analytics, advertising or tracking cookies, and no tracking scripts. Our fonts load from

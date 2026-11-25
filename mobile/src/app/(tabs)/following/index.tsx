@@ -5,7 +5,6 @@
 // Other people's lists and profiles open on the website, as guests see them.
 
 import { router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef, useState } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 
@@ -22,12 +21,13 @@ import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { searchPeople, useFollowingTab, useRunPeopleAction, type SearchResult } from "@/lib/people-data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
-import { SITE_URL } from "@/lib/supabase";
 import { spacing, useTheme } from "@/lib/theme";
+import { openSite } from "@/lib/web";
+import { OpenLinkCard } from "@/components/open-link-card";
 
 const MIN_NAME_LENGTH = 3;
 
-const open = (path: string) => WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
+const open = (path: string) => openSite(path);
 
 export default function FollowingScreen() {
   const theme = useTheme();
@@ -74,6 +74,7 @@ export default function FollowingScreen() {
         Registries from people who&apos;ve approved your follow.
       </Text>
       <PeopleSearch />
+      <OpenLinkCard />
 
       {!data ? (
         tab.isError ? (
@@ -112,6 +113,7 @@ export default function FollowingScreen() {
                   owner={displayName(registry.owner)}
                   today={data.today}
                   extra={registry.groupNames.join(", ")}
+                  privateLabel="Your group only"
                 />
               ))}
             </View>
@@ -178,11 +180,14 @@ function RegistryCard({
   owner,
   today,
   extra,
+  privateLabel = "Followers only",
 }: {
   registry: ListedRegistry;
   owner: string;
   today: string;
   extra?: string;
+  /** The badge on a list that isn't public: who can see it. */
+  privateLabel?: string;
 }) {
   const theme = useTheme();
   const past = isPastEvent(registry, today);
@@ -208,6 +213,8 @@ function RegistryCard({
                 icon="calendar"
               />
             ) : null}
+            {!registry.is_public ? <Pill label={privateLabel} tone="neutral" icon="lock" /> : null}
+            {past ? <Pill label="Past" tone="neutral" /> : null}
           </View>
         </View>
         <Icon name="external" size={15} color={theme.textTertiary} />
@@ -218,6 +225,7 @@ function RegistryCard({
 
 /** "Find people": the website's PeopleSearch. */
 function PeopleSearch() {
+  const theme = useTheme();
   const { run } = useRunPeopleAction();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ query: string; kind?: "name" | "email"; list: SearchResult[] } | null>(null);
@@ -272,16 +280,13 @@ function PeopleSearch() {
         Alert.alert("That didn't work", errorMessage(e));
       }
     };
+    // Someone you already follow shows as "Following" with no button, as on
+    // the website. Unfollowing is on the Account tab.
     if (person.state === "none") go("follows.requestFollow", "pending");
     else if (person.state === "pending")
       Alert.alert(`Withdraw your request to follow ${name}?`, undefined, [
         { text: "Keep it", style: "cancel" },
         { text: "Withdraw", style: "destructive", onPress: () => go("follows.cancelFollow", "none") },
-      ]);
-    else if (person.state === "approved")
-      Alert.alert(`Unfollow ${name}?`, "You'll stop seeing their private registries.", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Unfollow", style: "destructive", onPress: () => go("follows.cancelFollow", "none") },
       ]);
   }
 
@@ -376,21 +381,43 @@ function PeopleSearch() {
             <View key={person.public_id}>
               {index > 0 ? <Divider inset={spacing.lg} /> : null}
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md }}>
-                <Text
-                  variant="subhead"
-                  style={{ flex: 1, fontWeight: "600" }}
-                  accessibilityRole="link"
-                  onPress={() => open(profilePath(person))}
-                >
-                  {displayName(person)}
-                </Text>
-                {person.state === "self" ? (
-                  <Text variant="footnote" tone="tertiary">
-                    That&apos;s you
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="subhead" style={{ fontWeight: "600" }} accessibilityRole="link" onPress={() => open(profilePath(person))}>
+                    {displayName(person)}
                   </Text>
+                  {/* The line under the name, in the website's words. */}
+                  <Text variant="footnote" tone="tertiary">
+                    {person.state === "self"
+                      ? "That's you"
+                      : person.state === "none"
+                        ? "Approves every follower"
+                        : person.state === "approved"
+                          ? "You can see their private registries"
+                          : "Waiting for approval · "}
+                    {person.state === "pending" ? (
+                      <Text
+                        variant="footnote"
+                        tone="tint"
+                        style={{ fontWeight: "600" }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Withdraw your request to follow ${displayName(person)}`}
+                        onPress={() => follow(person)}
+                      >
+                        Withdraw
+                      </Text>
+                    ) : null}
+                  </Text>
+                </View>
+                {person.state === "self" ? null : person.state === "approved" ? (
+                  <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
+                    <Icon name="check" size={13} color={theme.textTertiary} />
+                    <Text variant="footnote" tone="tertiary">
+                      Following
+                    </Text>
+                  </View>
                 ) : (
                   <Button
-                    title={person.state === "none" ? "Follow" : person.state === "pending" ? "Requested" : "Following"}
+                    title={person.state === "none" ? "Follow" : "Requested"}
                     size="small"
                     variant={person.state === "none" ? "primary" : "secondary"}
                     onPress={() => follow(person)}
@@ -401,6 +428,9 @@ function PeopleSearch() {
           ))}
         </Section>
       ) : null}
+      <Text variant="caption" tone="tertiary">
+        Only people who let others find them appear here. Email addresses are never shown.
+      </Text>
     </View>
   );
 }

@@ -10,7 +10,7 @@ import { ItemImage } from "@/components/item-image";
 import { Button, EmptyState, haptic, IconButton, Section, SwitchRow, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
-import { listKind, usePlaceItems, useSavedItems } from "@/lib/saved-data";
+import { listKind, setSavedNotice, storeDomain, usePlaceItems, useSavedItems } from "@/lib/saved-data";
 import { radius, spacing, useTheme } from "@/lib/theme";
 
 export default function SavedItemScreen() {
@@ -26,18 +26,31 @@ export default function SavedItemScreen() {
   }
 
   function toggle(listId: string, on: boolean) {
+    const title = item!.title;
+    const deleting = !on && item!.listIds.length === 1;
     const run = () => {
       haptic();
+      setSavedNotice("items", "");
       place.mutate(
         { itemIds: [item!.id], listId, on },
-        { onError: (e) => Alert.alert("That didn't work", errorMessage(e)) }
+        {
+          // The Saved tab says what happened to a deleted item, as the website does.
+          onSuccess: () => {
+            if (deleting) setSavedNotice("items", `Deleted “${title}”.`);
+          },
+          onError: (e) => {
+            if (deleting) setSavedNotice("items", `“${title}” wasn't deleted. ${errorMessage(e)}`);
+            else Alert.alert("That didn't work", errorMessage(e));
+          },
+        }
       );
     };
-    if (!on && item!.listIds.length === 1) {
-      Alert.alert("Delete an item?", `“${item!.title}” is only on this list, so taking it off deletes it, with any gifts on it.`, [
+    // Taking it off the only list it's on deletes it, so ask first, in the website's words.
+    if (deleting) {
+      Alert.alert("It's on no other list, so taking it off deletes it.", undefined, [
         { text: "Keep it", style: "cancel" },
         {
-          text: "Remove and delete",
+          text: "Delete it",
           style: "destructive",
           onPress: () => {
             run();
@@ -49,6 +62,8 @@ export default function SavedItemScreen() {
     }
     run();
   }
+
+  const meta = [item.price != null ? formatPrice(item.price) : null, storeDomain(item.externalUrl)].filter(Boolean).join(" · ");
 
   return (
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }}>
@@ -65,7 +80,11 @@ export default function SavedItemScreen() {
         <ItemImage uri={item.imageUrl} size={72} rounded={radius.md} />
         <View style={{ flex: 1, gap: 4 }}>
           <Text variant="headline">{item.title}</Text>
-          {item.price ? <Text variant="subhead">{formatPrice(item.price)}</Text> : null}
+          {meta ? (
+            <Text variant="subhead" tone="secondary">
+              {meta}
+            </Text>
+          ) : null}
         </View>
       </View>
       {item.externalUrl ? (

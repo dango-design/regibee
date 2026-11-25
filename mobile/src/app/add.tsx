@@ -41,7 +41,7 @@ export default function AddScreen() {
         <EmptyState
           icon="gift"
           title="You don't have a registry yet"
-          message="Save this as a gift idea for someone else, which only you can see. Or create a registry, then add this."
+          message="Save it as a gift idea for someone else: only you can see it, and the person never does. To add it to a registry of your own, first create a registry, then add it."
           action={
             <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
               <Button title="Save as a gift idea" icon="sparkles" onPress={saveAsGiftIdea} />

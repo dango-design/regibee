@@ -1,9 +1,14 @@
 import { NativeTabs } from "expo-router/native-tabs";
 
+import { useDashboard } from "@/lib/data";
 import { useTheme } from "@/lib/theme";
 
 export default function TabsLayout() {
   const theme = useTheme();
+  // Follow requests waiting for an answer. The website shows a dot on the
+  // account menu on every page; here the Account tab shows the count. The
+  // home screen loads the same data, so this asks the server nothing extra.
+  const followRequests = useDashboard().data?.followRequestCount ?? 0;
   return (
     <NativeTabs
       tintColor={theme.tint}
@@ -29,6 +34,7 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Badge hidden={followRequests === 0}>{String(followRequests)}</NativeTabs.Trigger.Badge>
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="person" />
       </NativeTabs.Trigger>
     </NativeTabs>
