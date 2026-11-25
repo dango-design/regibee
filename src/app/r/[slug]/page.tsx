@@ -46,6 +46,9 @@ import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
 import { canManageRegistry } from "@/lib/events-server";
 import { myGroupGiftsOnItems } from "@/lib/group-gifts-server";
 import { registrySettingsHref } from "@/lib/registry-settings-sections";
+import { accountForEvents, listEventsOnListForViewer } from "@/lib/shared-events-server";
+import type { ListEventForViewer } from "@/lib/shared-events";
+import { ListEventsNotice } from "@/components/list-events-notice";
 
 const PURCHASE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -99,6 +102,30 @@ async function hiddenFromViewer(registry: { id: string; is_private: boolean }) {
   if (!registry.is_private) return false;
   const viewer = await getViewer();
   return !(viewer && (await canManageRegistry(viewer.id, registry.id)));
+}
+
+// The events this list is on that the signed-in visitor and the list's owner
+// are both invited to, where neither said no. None for the owner, who sees
+// every event on their list's dashboard page.
+async function loadListEvents(
+  registry: { id: string; owner_id: string },
+  viewer: { id: string; email?: string | null; email_confirmed_at?: string | null } | null,
+): Promise<ListEventForViewer[]> {
+  if (!viewer || viewer.id === registry.owner_id) return [];
+  try {
+    const owner = await accountForEvents(registry.owner_id);
+    if (!owner) return [];
+    const today = new Date().toISOString().slice(0, 10);
+    return await listEventsOnListForViewer(
+      registry.id,
+      { id: viewer.id, email: viewer.email_confirmed_at ? (viewer.email ?? null) : null },
+      owner,
+      today,
+    );
+  } catch (err) {
+    console.error("[registry] Failed to load the list's events:", err);
+    return [];
+  }
 }
 
 // Who shared the registry and how the viewer relates to them. The owner stays
@@ -361,6 +388,7 @@ export default async function PublicRegistryPage({
     { prefill: guestPrefill, santaFor, eventTitle: guestEventTitle, guest: eventGuest },
     viewerManages,
     fullGiftProfile,
+    listEvents,
   ] = await Promise.all([
     loadOwner(Boolean(registry.listed_on_profile), registry.owner_id),
     supabaseAdmin
@@ -378,6 +406,7 @@ export default async function PublicRegistryPage({
     loadGuestPrefill(registry.id),
     viewer ? canManageRegistry(viewer.id, registry.id) : Promise.resolve(false),
     loadGiftProfile(registry),
+    loadListEvents(registry, viewer),
   ]);
 
   // The birthday shows only to the owner and the followers they approved.
@@ -706,6 +735,11 @@ export default async function PublicRegistryPage({
               </div>
             </div>
           )}
+          <ListEventsNotice
+            className="mb-6"
+            // The notice below already names the event this guest came from.
+            events={fellowGuests && eventGuest ? listEvents.filter((e) => e.id !== eventGuest.eventId) : listEvents}
+          />
           {fellowGuests && (
             <FellowGuestsNotice
               className="mb-6"

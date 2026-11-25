@@ -7,6 +7,11 @@
 // the hosts, so the profile gives away no more than seeing each other there
 // would.
 //
+// A list's page uses a looser rule for the events the list is on: both the
+// visitor and the list's owner are invited, and neither said no (`invited`).
+// The visitor already sees those events and their lists on their own
+// invitation, so the page only adds that the owner hasn't said no.
+//
 // This file imports only a type, so the server and tests can both use it.
 // The reads are in src/lib/shared-events-server.ts.
 
@@ -80,4 +85,25 @@ export function sortSharedEvents<T extends Pick<SharedEvent, "eventDate">>(event
     if (a.eventDate === null || b.eventDate === null) return 0;
     return rank(a) === 2 ? b.eventDate.localeCompare(a.eventDate) : a.eventDate.localeCompare(b.eventDate);
   });
+}
+
+/**
+ * Whether this part means the person is invited and hasn't said no: a host,
+ * or a guest whose reply is yes, maybe or not in yet. A list's page shows a
+ * signed-in visitor the events the list is on only when both the visitor and
+ * the list's owner are invited (listEventsOnListForViewer).
+ */
+export function invited(part: EventPart | undefined): boolean {
+  return part !== undefined && part !== "no";
+}
+
+/** Of `eventIds`, the ones both people are invited to and haven't said no to. */
+export function eventIdsBothInvited(eventIds: Iterable<string>, viewer: EventParts, person: EventParts): string[] {
+  return [...new Set(eventIds)].filter((id) => invited(viewer.parts.get(id)) && invited(person.parts.get(id)));
+}
+
+/** An event a list is on, as the list's page shows it to a visitor invited to it. */
+export interface ListEventForViewer extends SharedEvent {
+  /** The visitor's own part: how they're on the event. Never "no". */
+  part: Exclude<EventPart, "no">;
 }

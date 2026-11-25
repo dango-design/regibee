@@ -11,7 +11,7 @@ These notes are for anyone changing or running the live app, people and Claude a
 | Supabase `regibee` (ref `ibfvmgpfwhhyrhnxaxig`) | Database and sign-in | This is the only database. Preview deploys and `vercel env pull` use it too, so anything you do on a preview or locally with those keys changes real data. Database changes are run by hand. See below. |
 | Resend | Sends every email, from `notifications@regibee.com` | The site sends through Resend's API with `RESEND_API_KEY`. Supabase sends its account emails through Resend's SMTP server, with a second key kept in Supabase's settings. Both need the DNS records for regibee.com. |
 | Porkbun | Registrar and DNS for regibee.com | The DNS records point the site at Vercel and verify the domain for Resend. |
-| Expo (EAS) | Builds the phone app, uploads Android builds to Google Play, and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. It also holds the Android signing keystore and the Google service account key. Builds are run by hand. See "Updates" and "Android testers" in [mobile/README.md](mobile/README.md). |
+| Expo (EAS) | Builds the phone app, uploads Android builds to Google Play, and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. It also holds the Android signing keystore and the Google service account key. The **Android testing build** workflow starts a new testing build and uploads it to Play when a merge to main changes native code. iPhone builds are run by hand. See "Updates" and "Android testers" in [mobile/README.md](mobile/README.md). |
 | Google Play Console | The Android app's listing and testing tracks | Testers install from the internal testing track. `eas build --profile testing --auto-submit` uploads to it. |
 | Chrome Web Store | The browser extension's listing. Chrome installs and updates the extension from it | One listing, private to testers for now. `.github/workflows/extension-publish.yml` sends each merge to main that changes the extension for review, with the `CWS_*` secrets. Google reviews every version, which usually takes a few days. See "Publishing" in [extension/README.md](extension/README.md). |
 | PostHog (US Cloud) | Usage analytics: counts of what people do on the website, in the app and through the extension | Two projects: one for production, one for the app's preview and testing builds. Either Brian or Denise can manage it. See "Analytics" below. |
@@ -174,6 +174,17 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Changes merged while Chromatic is paused get no snapshot. When it resumes, `onlyChanged` only captures stories affected by later commits, so those stories may keep their old baselines until a later PR touches them, and that PR's build then shows the earlier changes too.
 - Storybook can't render async server components. Put a page's markup in a plain component and write the story for that. The landing page works this way.
 
+## Story screenshots
+
+- `.github/workflows/story-screenshots.yml` takes a screenshot of every story with Playwright and compares it with its baseline, a PNG in `story-screenshots/baselines`. It does what Chromatic's UI Tests do, with no snapshot limit, so it keeps testing while Chromatic is paused. [story-screenshots/README.md](story-screenshots/README.md) covers how it works.
+- The check is called **Story screenshots**. It runs on pull requests that change `src/`, `public/`, `.storybook/`, `story-screenshots/` or `package.json`. It isn't required yet, so read its result before merging.
+- It fails when a story looks different, has no baseline yet, or doesn't render. The run's summary page lists the stories, and its `story-screenshots-report` artifact shows each one before and after.
+- To accept changes, run `npm run screenshots:accept` on the branch, then commit and push `story-screenshots/baselines`. It downloads the new pictures from the check's run for the commit you are on. Accept only after looking at the pictures. A new story needs this once.
+- Baselines come only from GitHub's runner. Never commit a screenshot taken on a Mac: it draws text differently, so it would never match.
+- It snapshots the same stories as Chromatic: a story with `chromatic: { disableSnapshot: true }` is skipped here too.
+- A few stories look different from run to run. A story that differs gets two more tries on GitHub, and one that matches on a later try passes and is listed as unstable on the run's summary page. The ones that differ often are listed in `UNSTABLE` in `story-screenshots/stories.spec.ts` and aren't compared. If the check still fails on a small difference the branch didn't make, run it again before accepting.
+- A merge that skips the check, or isn't accepted first, leaves `main` with old baselines. The next pull request that runs the check then shows those changes too, and accepting there fixes it.
+
 ## End-to-end tests
 
 - `e2e/` holds Playwright tests that use the website in a browser and check the emails that follow. [e2e/README.md](e2e/README.md) covers setup.
@@ -260,8 +271,9 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Other sessions on this computer use the same local Supabase and the tests' port, 3100. If a run says the port is already used, another session's tests are running. Wait for them to finish, and don't stop that server. After adding a migration, run `npm run e2e:db` first, but only once the port is free, because it empties the database those runs use.
 - If you changed `extension/`, `src/lib/retailers.ts` or `src/lib/extension.ts`, also run `npm run extension:build` and `npm run test:extension`. The tests skip when this computer has no saved store pages. See "Tests" in [extension/README.md](extension/README.md).
 - If you changed `mobile/`, `extension/src/product-reader.ts`, a file the app imports through `@shared/*`, or a loader or server action the app calls (see "Mobile app"), also run `npm run lint` and `npm run check` in `mobile/`.
+- If you changed components, stories or styles, the **Story screenshots** check will show what changed. You can't take its pictures locally (see "Story screenshots").
 - `npm run lint` fails right now. `eslint.config.mjs` imports `eslint-plugin-storybook`, which isn't in `package.json`.
 
 ## After opening a pull request
 
-- When the PR's `chromatic`, `Vercel` and `End-to-end tests` checks finish (the last runs only on pull requests that change the site), publish a review page with the `pr-review-page` skill (`.claude/skills/pr-review-page`) and give the user the link. End that turn with an Accept and merge button. The skill says how to set it up and what to do when the user clicks it.
+- When the PR's `chromatic`, `Vercel`, `Story screenshots` and `End-to-end tests` checks finish (the last two run only on pull requests that change the site), publish a review page with the `pr-review-page` skill (`.claude/skills/pr-review-page`) and give the user the link. End that turn with an Accept and merge button. The skill says how to set it up and what to do when the user clicks it.

@@ -1,5 +1,6 @@
-// Reads for a profile's "Events together" section. The rules for which
-// events count are in src/lib/shared-events.ts.
+// Reads for a profile's "Events together" section, and for the events a
+// list's page shows a visitor. The rules for which events count are in
+// src/lib/shared-events.ts.
 //
 // Server-only. These read with the service-role client and take raw account
 // ids, so call them only with the viewer's id from auth and the id of the
@@ -9,11 +10,14 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { formatEventTime, type EventDetails } from "@/lib/events";
+import { eventIdsForRegistry } from "@/lib/events-server";
 import {
+  eventIdsBothInvited,
   eventParts,
   sharedEventIds,
   sortSharedEvents,
   type EventParts,
+  type ListEventForViewer,
   type PartGuestRow,
   type SharedEvent,
 } from "@/lib/shared-events";
@@ -55,18 +59,13 @@ async function partsFor(account: Account): Promise<EventParts> {
   );
 }
 
-/**
- * The events `viewer` and `person` both went to or are going to, as the
- * viewer sees them on the person's profile: upcoming first, then past.
- * `today` is YYYY-MM-DD.
- */
-export async function listSharedEvents(viewer: Account, person: Account, today: string): Promise<SharedEvent[]> {
-  if (viewer.id === person.id) return [];
-  const [mine, theirs] = await Promise.all([partsFor(viewer), partsFor(person)]);
-  const ids = sharedEventIds(mine, theirs);
-  if (ids.length === 0) return [];
+type EventRow = Pick<
+  EventDetails,
+  "id" | "slug" | "title" | "event_type" | "event_date" | "start_time" | "end_time" | "time_zone"
+>;
 
-  type Row = Pick<EventDetails, "id" | "slug" | "title" | "event_type" | "event_date" | "start_time" | "end_time" | "time_zone">;
+/** Reads these events, a chunk at a time. */
+async function readEvents(ids: string[]): Promise<EventRow[]> {
   const chunks = Array.from({ length: Math.ceil(ids.length / CHUNK) }, (_, i) => ids.slice(i * CHUNK, (i + 1) * CHUNK));
   const results = await Promise.all(
     chunks.map((chunk) =>
@@ -77,23 +76,77 @@ export async function listSharedEvents(viewer: Account, person: Account, today: 
     ),
   );
   const failed = results.find((result) => result.error);
-  if (failed) console.error("[shared-events] Failed to read shared events:", failed.error);
+  if (failed) console.error("[shared-events] Failed to read events:", failed.error);
+  return results.flatMap((result) => (result.data || []) as EventRow[]);
+}
 
-  const events = results.flatMap((result) => (result.data || []) as Row[]).map((event): SharedEvent => {
-    const token = mine.tokens.get(event.id);
-    return {
-      id: event.id,
-      title: event.title,
-      eventType: event.event_type,
-      eventDate: event.event_date,
-      time: formatEventTime(event),
-      // A host opens the event's own page. A guest opens the invitation on
-      // their own guest link, so it shows their RSVP.
-      href:
-        mine.parts.get(event.id) === "host" || !token
-          ? `/dashboard/events/${event.id}`
-          : `/e/${event.slug}?g=${encodeURIComponent(token)}`,
-    };
-  });
+/** An event as the viewer sees it, opening on their own part in it. */
+function eventForViewer(event: EventRow, mine: EventParts): SharedEvent {
+  const token = mine.tokens.get(event.id);
+  return {
+    id: event.id,
+    title: event.title,
+    eventType: event.event_type,
+    eventDate: event.event_date,
+    time: formatEventTime(event),
+    // A host opens the event's own page. A guest opens the invitation on
+    // their own guest link, so it shows their RSVP.
+    href:
+      mine.parts.get(event.id) === "host" || !token
+        ? `/dashboard/events/${event.id}`
+        : `/e/${event.slug}?g=${encodeURIComponent(token)}`,
+  };
+}
+
+/**
+ * The events `viewer` and `person` both went to or are going to, as the
+ * viewer sees them on the person's profile: upcoming first, then past.
+ * `today` is YYYY-MM-DD.
+ */
+export async function listSharedEvents(viewer: Account, person: Account, today: string): Promise<SharedEvent[]> {
+  if (viewer.id === person.id) return [];
+  const [mine, theirs] = await Promise.all([partsFor(viewer), partsFor(person)]);
+  const ids = sharedEventIds(mine, theirs);
+  if (ids.length === 0) return [];
+  const events = (await readEvents(ids)).map((event) => eventForViewer(event, mine));
   return sortSharedEvents(events, today);
+}
+
+/**
+ * The events a list is on, as its page shows them to a signed-in visitor who
+ * isn't its owner: only the ones both the visitor and the list's owner are
+ * invited to, where neither said no. Each opens on the visitor's own part:
+ * the event's page for a host, their own guest link for a guest. Upcoming
+ * first, then events with no date, then past ones. `today` is YYYY-MM-DD.
+ *
+ * Nothing about the owner leaves this function but which events pass. The
+ * visitor already sees each of these events and the lists on it from their
+ * own invitation.
+ */
+export async function listEventsOnListForViewer(
+  registryId: string,
+  viewer: Account,
+  owner: Account,
+  today: string,
+): Promise<ListEventForViewer[]> {
+  if (viewer.id === owner.id) return [];
+  const { linked, guestLists } = await eventIdsForRegistry(registryId);
+  if (linked.size === 0 && guestLists.size === 0) return [];
+  const [mine, theirs] = await Promise.all([partsFor(viewer), partsFor(owner)]);
+  const ids = eventIdsBothInvited([...linked, ...guestLists], mine, theirs);
+  if (ids.length === 0) return [];
+  const events = (await readEvents(ids)).map(
+    (event): ListEventForViewer => ({
+      ...eventForViewer(event, mine),
+      part: mine.parts.get(event.id) as ListEventForViewer["part"],
+    }),
+  );
+  return sortSharedEvents(events, today);
+}
+
+/** An account's id and its email address once confirmed, for matching guest rows by email. */
+export async function accountForEvents(userId: string): Promise<Account | null> {
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (error || !data.user) return null;
+  return { id: data.user.id, email: data.user.email_confirmed_at ? (data.user.email ?? null) : null };
 }

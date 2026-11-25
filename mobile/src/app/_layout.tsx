@@ -12,6 +12,7 @@ import { Alert, Platform } from "react-native";
 import { useAnalyticsAccount, useScreenViews } from "@/lib/analytics";
 import { AuthProvider, useSession } from "@/lib/auth";
 import { useOpenTappedNotification } from "@/lib/notifications";
+import { usePlayUpdateChecks } from "@/lib/play-update";
 import { QueryProvider } from "@/lib/query";
 import { fonts, useTheme } from "@/lib/theme";
 
@@ -45,6 +46,8 @@ function RootNavigator({ ready }: { ready: boolean }) {
   useAnalyticsAccount(session?.user.id ?? null);
   // Waits for the navigator below to be on screen.
   useOpenTappedNotification(Boolean(session) && ready && isReady);
+  // Asks Google Play whether a newer build is out (Android only).
+  usePlayUpdateChecks();
 
   useEffect(() => {
     if (ready && isReady) SplashScreen.hideAsync();

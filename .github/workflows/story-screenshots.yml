@@ -1,0 +1,91 @@
+name: Story screenshots
+
+# Builds Storybook, takes a screenshot of every story with Playwright and
+# compares each with its baseline in story-screenshots/baselines. It does what
+# Chromatic's UI Tests do, with no snapshot limit. See
+# story-screenshots/README.md.
+#
+# The check fails when a story looks different, has no baseline yet, or
+# doesn't render. To accept the changes, run `npm run screenshots:accept` on
+# the branch, then commit and push the baselines. The workflow never pushes
+# anything itself, so it needs no write access and no secrets.
+on:
+  pull_request:
+    paths:
+      - src/**
+      - public/**
+      - .storybook/**
+      - story-screenshots/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/story-screenshots.yml
+  workflow_dispatch:
+
+# A newer push to the same pull request cancels the run it replaces.
+concurrency:
+  group: story-screenshots-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    name: Story screenshots
+    # A named Ubuntu version, not ubuntu-latest. The baselines were drawn with
+    # this version's system fonts, which emoji and other characters outside
+    # the site's own fonts use. A new version could change every picture, so
+    # move to one on purpose and accept the baselines again in the same PR.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Take and compare the screenshots
+        id: compare
+        continue-on-error: true
+        run: npm run test:screenshots
+
+      # Lists what changed on the run's summary page, and gathers the new
+      # pictures for `npm run screenshots:accept`.
+      - name: Gather the new pictures
+        id: gather
+        continue-on-error: true
+        env:
+          SCREENSHOTS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node story-screenshots/collect.mjs
+
+      - name: Keep the new pictures
+        uses: actions/upload-artifact@v7
+        with:
+          name: story-screenshots-new-baselines
+          path: story-screenshots/new-baselines
+          retention-days: 7
+
+      # Before, after and difference pictures for each changed story. Download
+      # it and open index.html.
+      - name: Keep the report
+        if: steps.compare.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: story-screenshots-report
+          path: playwright-report/story-screenshots
+          retention-days: 7
+
+      - name: Fail when a story changed or broke
+        if: steps.compare.outcome == 'failure' || steps.gather.outcome == 'failure'
+        run: |
+          echo "Stories changed, have no baseline, or did not render. The run's summary page lists them."
+          echo "If the changes are meant, run 'npm run screenshots:accept' on the branch, then commit and push."
+          exit 1

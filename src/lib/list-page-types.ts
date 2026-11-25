@@ -9,7 +9,7 @@ import type { RetailerRegistry, StoreId } from "./retailers";
 import type { StorePerksRow } from "./store-perks";
 import type { PersonalEventType, RegistryType } from "./types";
 
-/** An event that links the list (listEventsForRegistry in src/lib/events-server.ts). */
+/** An event the list is on (listEventsForRegistry in src/lib/events-server.ts). */
 export interface ListPageEvent {
   id: string;
   slug: string;
@@ -18,6 +18,12 @@ export interface ListPageEvent {
   event_type: EventType;
   /** Whether the viewer hosts it. Hosts open the event's dashboard; others see the guest page. */
   canManage: boolean;
+  /**
+   * True when a guest added the list as their wishlist and no host linked it.
+   * It comes off on that guest's RSVP, so there's no Unlink button. Missing
+   * from older servers' answers, which only listed linked events.
+   */
+  guestList?: boolean;
 }
 
 export interface ListPageItem {
