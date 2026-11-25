@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import { Alert, Platform } from "react-native";
 
 import { AuthProvider, useSession } from "@/lib/auth";
+import { useOpenTappedNotification } from "@/lib/notifications";
 import { QueryProvider } from "@/lib/query";
 import { fonts, useTheme } from "@/lib/theme";
 
@@ -39,6 +40,8 @@ function RootNavigator({ ready }: { ready: boolean }) {
   const { session, demo, isReady } = useSession();
   const theme = useTheme();
   const signedIn = Boolean(session) || demo;
+  // Waits for the navigator below to be on screen.
+  useOpenTappedNotification(Boolean(session) && ready && isReady);
 
   useEffect(() => {
     if (ready && isReady) SplashScreen.hideAsync();

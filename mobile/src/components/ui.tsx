@@ -278,18 +278,22 @@ export function SwitchRow({
   value,
   onValueChange,
   icon,
+  disabled,
 }: {
   label: string;
   description?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
   icon?: IconName;
+  /** While it's loading or saving. */
+  disabled?: boolean;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="switch"
-      accessibilityState={{ checked: value }}
+      accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
       onPress={() => {
         haptic();
         onValueChange(!value);
@@ -307,6 +311,7 @@ export function SwitchRow({
       </View>
       <Switch
         value={value}
+        disabled={disabled}
         onValueChange={(next) => {
           haptic();
           onValueChange(next);

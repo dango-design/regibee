@@ -63,7 +63,8 @@ import { createGroupFor, getGroupForOwner, getGroupMembers, listGroupEvents } fr
 import { listFollowedAccounts } from "@/lib/follows";
 import { displayName } from "@/lib/profile-link";
 import { getSessionUser } from "@/lib/viewer";
-import { confirmRsvpToGuest, notifyHostOfRsvp, sendEventChangeEmails, sendEventInvitations } from "@/lib/email";
+import { confirmRsvpToGuest, notifyHostOfRsvp, rsvpHeadline, sendEventChangeEmails, sendEventInvitations } from "@/lib/email";
+import { sendPush } from "@/lib/push-server";
 import {
   changeNotice,
   changeRecipients,
@@ -1323,6 +1324,17 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
         }),
       );
     }
+    // A push to the event's owner on phones with notifications on. The
+    // event's "Email me when someone RSVPs" is only about the email.
+    tasks.push(
+      sendPush([event.owner_id], {
+        title: rsvpHeadline(event, guest.name, input.status),
+        // A meal train's helpers don't bring a party.
+        body:
+          input.status !== "no" && partySize > 1 && !hidesAddressUntilSignup(event.event_type) ? `${partySize} people` : undefined,
+        path: `/events/${event.id}`,
+      }),
+    );
     if (event.email_host_on_rsvp) {
       const summary = summarizeRsvps(await getEventGuests(event.id));
       tasks.push(

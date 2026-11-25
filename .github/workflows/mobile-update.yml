@@ -51,6 +51,7 @@ on:
       - src/lib/people-page-types.ts
       - src/lib/profile-link.ts
       - src/lib/profile-photos.ts
+      - src/lib/push.ts
       - src/lib/registry-copy.ts
       - src/lib/registry-listing.ts
       - src/lib/registry-photos.ts

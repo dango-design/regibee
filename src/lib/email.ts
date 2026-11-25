@@ -1,4 +1,5 @@
 import { getMailer, sendEmail } from "./mailer";
+import { sendPush } from "./push-server";
 import { supabaseAdmin } from "./supabase-admin";
 import { formatPrice } from "./money";
 import { SECRET_GIVER_NAME, hidesReservations } from "./gifts";
@@ -66,6 +67,7 @@ async function allowedCount(allow: EmailAllowance | undefined, wanted: number): 
 const TEST_RECIPIENT_OVERRIDE = process.env.RESEND_TEST_RECIPIENT;
 
 interface ManagerEmailInfo {
+  userId: string;
   email: string;
   name: string;
   registryTitle: string;
@@ -144,6 +146,7 @@ async function getRegistryManagerEmails(opts: {
     ]);
     if (userData?.user?.email) {
       results.push({
+        userId: uid,
         email: userData.user.email,
         name: profile?.full_name || parentNames,
         registryTitle: registry.title,
@@ -349,8 +352,17 @@ export async function notifyItemGiven(opts: {
         }
       : null;
 
-    await Promise.all(
-      allowed.map((m) =>
+    // The same people get a push on their phones, past the email limit too:
+    // pushes cost nothing. getRegistryManagerEmails already left out an owner
+    // who hides what's been reserved.
+    const push = sendPush(
+      managers.map((m) => m.userId),
+      { title: `🎁 ${buyerName} bought “${opts.itemTitle}”`, body: managers[0].registryTitle, path: `/registry/${managers[0].registryId}` },
+    );
+
+    await Promise.all([
+      push,
+      ...allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -366,8 +378,8 @@ export async function notifyItemGiven(opts: {
             welcomeBox,
           }),
         })
-      )
-    );
+      ),
+    ]);
   } catch (err) {
     console.error("[email] Failed to send item given notification:", err);
   }
@@ -429,8 +441,19 @@ export async function notifyCashFundContribution(opts: {
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.fundId}`;
     const formatted = formatPrice(opts.amount);
 
-    await Promise.all(
-      allowed.map((m) =>
+    // A push too, as for notifyItemGiven.
+    const push = sendPush(
+      managers.map((m) => m.userId),
+      {
+        title: `💵 ${buyerName} contributed ${formatted} to “${opts.fundTitle}”`,
+        body: managers[0].registryTitle,
+        path: `/registry/${managers[0].registryId}`,
+      },
+    );
+
+    await Promise.all([
+      push,
+      ...allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -445,8 +468,8 @@ export async function notifyCashFundContribution(opts: {
             dashboardLink,
           }),
         })
-      )
-    );
+      ),
+    ]);
   } catch (err) {
     console.error("[email] Failed to send cash fund notification:", err);
   }
@@ -475,8 +498,19 @@ export async function notifyItemCovered(opts: {
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.itemId}`;
     const sent = opts.amount != null ? formatPrice(opts.amount) : "money";
 
-    await Promise.all(
-      allowed.map((m) =>
+    // A push too, as for notifyItemGiven.
+    const push = sendPush(
+      managers.map((m) => m.userId),
+      {
+        title: `🎉 ${buyerName} sent you ${sent} for “${opts.itemTitle}”`,
+        body: managers[0].registryTitle,
+        path: `/registry/${managers[0].registryId}`,
+      },
+    );
+
+    await Promise.all([
+      push,
+      ...allowed.map((m) =>
         sendEmail({
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
@@ -492,8 +526,8 @@ export async function notifyItemCovered(opts: {
             dashboardLink,
           }),
         })
-      )
-    );
+      ),
+    ]);
   } catch (err) {
     console.error("[email] Failed to send item covered notification:", err);
   }
@@ -589,8 +623,9 @@ export async function notifyGiftsRevealed(opts: {
 
 const FOLLOW_REQUEST_EMAIL_GAP_MS = 24 * 60 * 60 * 1000;
 
-// Tells someone a person asked to follow them. Sends at most one email per
-// follower per day, so withdrawing and asking again can't flood anyone.
+// Tells someone a person asked to follow them, by email if they want follow
+// request emails and by push on phones with notifications on. At most once
+// per follower per day, so withdrawing and asking again can't flood anyone.
 export async function notifyFollowRequest(opts: { followerId: string; followeeId: string }) {
   try {
     const [{ data: followee }, { data: follower }, { data: lastEmail }] = await Promise.all([
@@ -608,17 +643,13 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
         .maybeSingle(),
     ]);
 
-    if (!followee?.email_follow_requests || !follower) return;
+    if (!followee || !follower) return;
     if (lastEmail && Date.now() - new Date(lastEmail.sent_at).getTime() < FOLLOW_REQUEST_EMAIL_GAP_MS) {
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabaseAdmin.auth.admin.getUserById(opts.followeeId);
-    if (!user?.email) return;
-
-    // Record it before sending, so two requests at once can't both send.
+    // Record it before sending, so two requests at once can't both send. The
+    // table's name is older than the push: it limits both.
     await supabaseAdmin
       .from("follow_request_emails")
       .upsert(
@@ -626,20 +657,42 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
         { onConflict: "follower_id,followee_id" },
       );
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const followerName = displayName(follower).slice(0, 60);
-
-    await sendEmail({
-      from: FROM,
-      to: TEST_RECIPIENT_OVERRIDE || user.email,
-      subject: `${followerName} wants to follow you on Regibee`,
-      html: followRequestHtml({
-        followerName,
-        profileUrl: `${siteUrl}${profilePath(follower)}`,
-        reviewUrl: `${siteUrl}/dashboard/account#follow-requests`,
-        settingsUrl: `${siteUrl}/dashboard/account#profile`,
-      }),
+    const push = sendPush([opts.followeeId], {
+      title: `${followerName} wants to follow you`,
+      body: "Approve or decline the request.",
+      path: "/account/follows",
     });
+
+    if (!followee.email_follow_requests) {
+      await push;
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabaseAdmin.auth.admin.getUserById(opts.followeeId);
+    if (!user?.email) {
+      await push;
+      return;
+    }
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+    await Promise.all([
+      push,
+      sendEmail({
+        from: FROM,
+        to: TEST_RECIPIENT_OVERRIDE || user.email,
+        subject: `${followerName} wants to follow you on Regibee`,
+        html: followRequestHtml({
+          followerName,
+          profileUrl: `${siteUrl}${profilePath(follower)}`,
+          reviewUrl: `${siteUrl}/dashboard/account#follow-requests`,
+          settingsUrl: `${siteUrl}/dashboard/account#profile`,
+        }),
+      }),
+    ]);
   } catch (err) {
     console.error("[email] Failed to send follow request email:", err);
   }
@@ -867,6 +920,24 @@ export async function confirmRsvpToGuest(opts: {
   }
 }
 
+/** "Glinda is going to Baby shower", for the host's email and push. */
+export function rsvpHeadline(
+  event: Pick<EventDetails, "event_type" | "title">,
+  guestName: string,
+  status: "yes" | "no" | "maybe",
+): string {
+  const answer = hidesAddressUntilSignup(event.event_type)
+    ? status === "no"
+      ? "can't help this time with"
+      : "signed up to help with"
+    : status === "yes"
+      ? "is going to"
+      : status === "maybe"
+        ? "might come to"
+        : "can't make it to";
+  return `${guestName} ${answer} ${event.title}`;
+}
+
 /** Tells the event's owner that a guest replied. */
 export async function notifyHostOfRsvp(opts: {
   event: EventDetails;
@@ -890,19 +961,10 @@ export async function notifyHostOfRsvp(opts: {
     const email = userData?.user?.email;
     if (!email || (await allowedCount(opts.allow, 1)) < 1) return;
 
-    const answer = hidesAddressUntilSignup(opts.event.event_type)
-      ? opts.status === "no"
-        ? "can't help this time with"
-        : "signed up to help with"
-      : opts.status === "yes"
-        ? "is going to"
-        : opts.status === "maybe"
-          ? "might come to"
-          : "can't make it to";
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || email,
-      subject: `${opts.guestName} ${answer} ${opts.event.title}`,
+      subject: rsvpHeadline(opts.event, opts.guestName, opts.status),
       html: rsvpHostNotificationHtml({
         hostName: profile?.full_name?.trim() || "there",
         guestName: opts.guestName,
