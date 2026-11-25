@@ -48,9 +48,13 @@ interface ItemCardProps {
   storesWithRegistryLinks?: StoreId[];
   /** The titles of the owner's other lists this item is on, if any. */
   otherLists?: string[];
+  /** The ids of those lists. */
+  otherListIds?: string[];
+  /** The owner's other lists, to add the item to or move it to. Unset for co-managers. */
+  ownerLists?: { id: string; title: string }[];
 }
 
-export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, highlightId, purchases, selfPurchaseButtonLabel = "Mark as bought by parent", registryType = "baby", eventType = null, linkedRegistries, storesWithRegistryLinks, otherLists }: ItemCardProps) {
+export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, highlightId, purchases, selfPurchaseButtonLabel = "Mark as bought by parent", registryType = "baby", eventType = null, linkedRegistries, storesWithRegistryLinks, otherLists, otherListIds, ownerLists }: ItemCardProps) {
   const [toggling, startToggle] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [giftDetailOpen, setGiftDetailOpen] = useState(false);
@@ -253,6 +257,8 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
         linkedRegistries={linkedRegistries}
         storesWithRegistryLinks={storesWithRegistryLinks}
         otherLists={otherLists}
+        otherListIds={otherListIds}
+        ownerLists={ownerLists}
       />
     )}
     {purchases && purchases.length > 0 && (

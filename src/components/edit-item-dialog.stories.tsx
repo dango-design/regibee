@@ -115,6 +115,49 @@ export const PickingAPhoto: Story = {
   },
 };
 
+const OWNER_LISTS = [
+  { id: "list-2", title: "Remi's Christmas List" },
+  { id: "list-3", title: "Remi's Birthday Wishlist" },
+];
+
+// The three dots at the bottom left open the actions owners rarely need:
+// adding the item to another of their lists, moving it there, and removing it.
+export const MoreActions: Story = {
+  args: { ownerLists: OWNER_LISTS },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "More actions" }));
+    await waitFor(() => expect(body.getByRole("menuitem", { name: "Add to another list" })).toBeVisible());
+    await expect(body.getByRole("menuitem", { name: "Move to another list" })).toBeVisible();
+    await expect(body.getByRole("menuitem", { name: "Remove item" })).toBeVisible();
+  },
+};
+
+// Add to another list opens the owner's lists the item isn't on yet.
+export const PickingAList: Story = {
+  args: { ownerLists: OWNER_LISTS, otherLists: ["Remi's Christmas List"], otherListIds: ["list-2"] },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "More actions" }));
+    await userEvent.click(await body.findByRole("menuitem", { name: "Add to another list" }));
+    await waitFor(() => expect(body.getByRole("menuitem", { name: "Remi's Birthday Wishlist" })).toBeVisible());
+    await expect(body.queryByRole("menuitem", { name: "Remi's Christmas List" })).toBeNull();
+    // It's on another list, so removing it here keeps it there.
+    await expect(body.getByRole("menuitem", { name: "Remove from list" })).toBeVisible();
+  },
+};
+
+// With no other list to put it on, as for a co-manager, only removing is left.
+export const OnlyRemove: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "More actions" }));
+    await waitFor(() => expect(body.getByRole("menuitem", { name: "Remove item" })).toBeVisible());
+    await expect(body.queryByRole("menuitem", { name: "Add to another list" })).toBeNull();
+  },
+};
+
 // On a phone the dialog is a sheet, and the photo sits above the fields.
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1" } },

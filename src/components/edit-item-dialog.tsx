@@ -1,9 +1,9 @@
 "use client";
 
 import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
-import { Camera, Check, ExternalLink, ImagePlus, Images, Info, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { Clipboard, Link01 } from "@untitledui/icons";
-import { Button as AriaButton } from "react-aria-components";
+import { Camera, Check, CornerUpRight, ExternalLink, ImagePlus, Images, Info, ListPlus, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Clipboard, DotsHorizontal, Link01 } from "@untitledui/icons";
+import { Button as AriaButton, SubmenuTrigger } from "react-aria-components";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
@@ -28,6 +28,7 @@ import {
   toggleParentPurchased,
   updateRegistryItem,
 } from "@/lib/actions/registry";
+import { addItemsToList, moveItemToList } from "@/lib/actions/saved";
 import { fetchProductDetails } from "@/lib/fetch-product";
 import { gtinForLink, type ReadGtin } from "@/lib/gtin";
 import { estimateTax } from "@/lib/actions/tax";
@@ -44,6 +45,11 @@ import { uploadRegistryPhoto } from "@/lib/upload-registry-photo";
 interface Category {
   id: string;
   name: string;
+}
+
+interface OwnerList {
+  id: string;
+  title: string;
 }
 
 interface EditItemDialogProps {
@@ -78,6 +84,13 @@ interface EditItemDialogProps {
    * on those lists too, and removing it here keeps it there.
    */
   otherLists?: string[];
+  /** The ids of those lists. */
+  otherListIds?: string[];
+  /**
+   * The owner's other lists. The menu offers to add the item to one it isn't
+   * on, or move it there. Leave unset for co-managers, who can't do either.
+   */
+  ownerLists?: OwnerList[];
   /**
    * Photos to offer as soon as the dialog opens. The dialog finds them itself
    * by reading the link, which stories can't do, so stories pass them.
@@ -222,6 +235,8 @@ export function EditItemDialog({
   linkedRegistries,
   storesWithRegistryLinks,
   otherLists = [],
+  otherListIds = [],
+  ownerLists = [],
   photosToOffer = [],
 }: EditItemDialogProps) {
   const isBaby = registryType === "baby";
@@ -232,6 +247,12 @@ export function EditItemDialog({
   // until the action ends, so "Saving..." would never appear.
   const [loading, setLoading] = useOptimistic(false);
   const [deleting, setDeleting] = useState(false);
+  // Adding the item to another list, or moving it there, is under way.
+  const [placing, setPlacing] = useState(false);
+  // Lists it was added to since the dialog opened. The page's own list of
+  // them arrives a moment after the action returns.
+  const [addedTo, setAddedTo] = useState<OwnerList[]>([]);
+  const [notice, setNotice] = useState("");
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
   const [scrapeIsError, setScrapeIsError] = useState(false);
@@ -649,6 +670,8 @@ export function EditItemDialog({
     setGuestInfoOpen(false);
     setCurrency("USD");
     setError("");
+    setNotice("");
+    setAddedTo([]);
     setTitle(item.title);
     setPrice(item.price != null ? item.price.toFixed(2) : "");
     setImageUrl(item.image_url || "");
@@ -666,12 +689,55 @@ export function EditItemDialog({
     setPhotoStatus("");
   };
 
-  const onOtherLists = otherLists.length > 0;
+  // The other lists it's on: the ones the page knows of, then any just added.
+  const justAdded = addedTo.filter((list) => !otherListIds.includes(list.id));
+  const alsoOn = [...otherLists, ...justAdded.map((list) => list.title)];
+  const onOtherLists = alsoOn.length > 0;
+  // The owner's lists it isn't on yet.
+  const listsToOffer = ownerLists.filter(
+    (list) => list.id !== registryId && !otherListIds.includes(list.id) && !addedTo.some((added) => added.id === list.id),
+  );
+
+  /** Puts the item on another list as well. The dialog stays open. */
+  const handleAddToList = (list: OwnerList) => {
+    setError("");
+    setNotice("");
+    setPlacing(true);
+    startTransition(async () => {
+      const result = await addItemsToList([item.id], list.id);
+      setPlacing(false);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setAddedTo((lists) => [...lists, list]);
+      setNotice(`Added to ${list.title}.`);
+    });
+  };
+
+  /** Moves the item to another list. It leaves this one, so the dialog closes. */
+  const handleMoveToList = (list: OwnerList) => {
+    setError("");
+    setNotice("");
+    setPlacing(true);
+    startTransition(async () => {
+      const result = await moveItemToList(item.id, registryId, list.id);
+      if ("error" in result) {
+        setError(result.error);
+        setPlacing(false);
+        return;
+      }
+      closeWithNewPage(() => setPlacing(false));
+    });
+  };
+
   const handleDelete = async () => {
     const question = onOtherLists
-      ? `Remove "${item.title}" from this list? It stays on ${listNames(otherLists)}.`
+      ? `Remove "${item.title}" from this list? It stays on ${listNames(alsoOn)}.`
       : `Delete "${item.title}"? This cannot be undone.`;
     if (!confirm(question)) return;
+    setError("");
+    setNotice("");
     setDeleting(true);
     startTransition(async () => {
       const result = await deleteRegistryItem(item.id, registryId);
@@ -684,6 +750,16 @@ export function EditItemDialog({
     });
   };
   const removeLabel = onOtherLists ? "Remove from list" : "Remove item";
+  const menuBusy = deleting || placing;
+  /** Runs a choice from the More actions menu or one of its two lists. */
+  const chooseMenuAction = (key: string) => {
+    if (key === "remove") return void handleDelete();
+    const [action, listId] = key.split(":");
+    const list = listsToOffer.find((l) => l.id === listId);
+    if (!list) return;
+    if (action === "add") handleAddToList(list);
+    if (action === "move") handleMoveToList(list);
+  };
   // The info button shows these under the pointer, and in a box when tapped.
   const guestHelp = [
     ["Most wanted", "tags it so guests spot it first."],
@@ -702,7 +778,7 @@ export function EditItemDialog({
           <DialogTitle>Edit item</DialogTitle>
           {onOtherLists && (
             <DialogDescription>
-              It&apos;s also on {listNames(otherLists)}, so changes show there too. Its category is only for this list.
+              It&apos;s also on {listNames(alsoOn)}, so changes show there too. Its category is only for this list.
             </DialogDescription>
           )}
         </DialogHeader>
@@ -1177,22 +1253,72 @@ export function EditItemDialog({
           </div>
 
           {error && <p className="text-sm text-error-primary">{error}</p>}
+          {notice && (
+            <p role="status" className="text-sm text-tertiary">
+              {notice}
+            </p>
+          )}
 
-          {/* Most owners never remove an item here, so it's a grey icon that
-              turns red under the pointer. Being small, it fits a phone's
-              sticky bar beside the other two. */}
+          {/* Most owners never move or remove an item here, so those actions
+              sit in a menu behind three grey dots. Being small, the button
+              fits a phone's sticky bar beside the other two. */}
           <DialogFooter sticky className="sm:items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              title={removeLabel}
-              onClick={handleDelete}
-              disabled={deleting}
-              className="mr-auto size-10 text-fg-quaternary hover:bg-error-primary hover:text-fg-error-primary pressing:bg-error-primary pressing:text-fg-error-primary max-sm:flex-none!"
-            >
-              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
+            <Dropdown.Root>
+              <AriaButton
+                aria-label="More actions"
+                isDisabled={menuBusy}
+                className={cn(
+                  "mr-auto inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-fg-tertiary outline-brand transition duration-100 hover:text-fg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default max-sm:size-11 max-sm:flex-none!",
+                  barButton,
+                )}
+              >
+                {menuBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <DotsHorizontal className="size-5 stroke-[3px]" aria-hidden="true" />
+                )}
+              </AriaButton>
+              <Dropdown.Popover placement="top start" className="w-60">
+                <Dropdown.Menu aria-label="More actions" selectionMode="none" onAction={(key) => chooseMenuAction(String(key))}>
+                  {/* Both open a list of the owner's lists the item isn't on.
+                      With none, only removing is left. */}
+                  {listsToOffer.length > 0 && (
+                    <SubmenuTrigger>
+                      <Dropdown.Item id="add" icon={ListPlus} label="Add to another list" />
+                      <Dropdown.Popover placement="end bottom" className="w-60">
+                        <Dropdown.Menu
+                          aria-label="Add to another list"
+                          selectionMode="none"
+                          onAction={(key) => chooseMenuAction(String(key))}
+                        >
+                          {listsToOffer.map((list) => (
+                            <Dropdown.Item key={list.id} id={`add:${list.id}`} label={list.title} />
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </SubmenuTrigger>
+                  )}
+                  {listsToOffer.length > 0 && (
+                    <SubmenuTrigger>
+                      <Dropdown.Item id="move" icon={CornerUpRight} label="Move to another list" />
+                      <Dropdown.Popover placement="end bottom" className="w-60">
+                        <Dropdown.Menu
+                          aria-label="Move to another list"
+                          selectionMode="none"
+                          onAction={(key) => chooseMenuAction(String(key))}
+                        >
+                          {listsToOffer.map((list) => (
+                            <Dropdown.Item key={list.id} id={`move:${list.id}`} label={list.title} />
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </SubmenuTrigger>
+                  )}
+                  {listsToOffer.length > 0 && <Dropdown.Separator />}
+                  <Dropdown.Item id="remove" icon={Trash2} destructive label={removeLabel} />
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
             <Button type="button" variant="outline" onClick={() => changeOpen(false)}>
               Cancel
             </Button>

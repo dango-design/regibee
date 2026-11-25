@@ -3,7 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
 import { isUuid } from "@/lib/extension";
-import { listsForItems } from "@/lib/list-items";
+import { isItemOnList, listsForItems } from "@/lib/list-items";
 import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
 import { startPlan } from "@/lib/actions/events";
 import { listTitleFor, occasionFor } from "@/lib/occasions";
@@ -71,6 +71,51 @@ export async function addItemsToList(itemIds: string[], registryId: string): Pro
 
   revalidateLists([registryId]);
   return { success: true, changed: placeable.length, deleted: 0 };
+}
+
+/**
+ * Moves an item from one of your lists to another. It's put on the new list
+ * first and then taken off the old one, so it's never deleted and its gifts
+ * stay with it. It arrives with no category, since categories belong to a list.
+ */
+export async function moveItemToList(itemId: string, fromRegistryId: string, toRegistryId: string): Promise<SavedActionResult> {
+  const { user, error } = await requireAccount();
+  if (error || !user) return { error: error || "You need an account to do this." };
+  if (!isUuid(itemId) || !isUuid(fromRegistryId) || !isUuid(toRegistryId) || fromRegistryId === toRegistryId) {
+    return { error: "Choose another list to move it to." };
+  }
+
+  const lists = (await listsForItems([itemId])).get(itemId) ?? [];
+  if (!lists.includes(fromRegistryId)) return { error: "That item isn't on this list anymore." };
+  const owned = await ownedListIds(user.id, [fromRegistryId, toRegistryId, lists[0]]);
+  if (!owned.has(fromRegistryId) || !owned.has(toRegistryId) || !owned.has(lists[0])) {
+    return { error: "You can only move items between your own lists." };
+  }
+
+  if (!lists.includes(toRegistryId)) {
+    const { error: insertError } = await supabaseAdmin
+      .from("registry_item_placements")
+      .upsert(
+        { item_id: itemId, registry_id: toRegistryId, added_by: user.id },
+        { onConflict: "item_id,registry_id", ignoreDuplicates: true },
+      );
+    if (insertError) {
+      console.error("[saved] Failed to move an item to a list:", insertError);
+      return { error: "That item wasn't moved. Try again in a moment." };
+    }
+  }
+
+  // Only once it's on the new list: taking it off its only list deletes it.
+  if (!(await isItemOnList(itemId, toRegistryId))) {
+    return { error: "That item wasn't moved. Try again in a moment." };
+  }
+  const result = await removeItemFromList(itemId, fromRegistryId);
+  revalidateLists([...lists, toRegistryId]);
+  if ("error" in result) {
+    console.error("[saved] Failed to take a moved item off its old list:", result.error);
+    return { error: "It was added to the other list, but it's still on this one. Try removing it here." };
+  }
+  return { success: true, changed: 1, deleted: 0 };
 }
 
 /**

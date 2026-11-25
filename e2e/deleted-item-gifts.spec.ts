@@ -109,7 +109,8 @@ test("an owner removes an item a guest reserved, and the guest's gift goes with 
     question = confirm.message();
     void confirm.accept();
   });
-  await dialog.getByRole("button", { name: "Remove item" }).click();
+  await dialog.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Remove item" }).click();
   await expect(dialog).toBeHidden();
   expect(question).toBe(`Delete "${item.title}"? This cannot be undone.`);
   await expect(page.getByRole("heading", { name: item.title })).toHaveCount(0);

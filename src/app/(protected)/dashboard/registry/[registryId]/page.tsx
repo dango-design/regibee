@@ -349,6 +349,8 @@ export default async function RegistryManagePage({
                               linkedRegistries={linkedRegistries}
                               storesWithRegistryLinks={registryLinkStores}
                               otherLists={otherListsByItem.get(item.id)}
+                              otherListIds={item.otherListIds}
+                              ownerLists={data.ownerLists}
                             />
                           ))}
                         </div>
@@ -377,6 +379,8 @@ export default async function RegistryManagePage({
                             linkedRegistries={linkedRegistries}
                             storesWithRegistryLinks={registryLinkStores}
                             otherLists={otherListsByItem.get(item.id)}
+                            otherListIds={item.otherListIds}
+                            ownerLists={data.ownerLists}
                           />
                         ))}
                       </div>
