@@ -96,6 +96,8 @@ The extension has one listing on the Chrome Web Store. It's private while people
 
 Only one version can wait for review. If a merge lands while an older version is still waiting, the workflow cancels the older one and sends the new one. The review starts over, so merges that keep landing before a review finishes keep putting the update off.
 
+Versions the workflow sends publish as soon as they pass review. A version submitted by hand in the developer dashboard can be set to wait instead. After it passes review, the dashboard shows it as "Ready to publish", and the store refuses any new upload until someone clicks **Publish**. The workflow then fails and says so. Publish that version in the dashboard, then click **Run workflow** to send the newer one.
+
 Merges that change only `extension/test/`, `extension/store-listing/` or this README don't publish anything. A change to `src/lib/extension.ts` or `src/lib/retailers.ts` does, since the extension is built from them.
 
 ### Versions

@@ -70,13 +70,30 @@ async function call(action, method, url, body) {
 
 const fetchStatus = () => call("Reading the item's status", "GET", `${API}/v2/${item}:fetchStatus`);
 
-// Only one version can wait for review at a time. If an older one still is,
-// cancel it and send this one instead, so testers get the newest code. Its
-// review starts over.
+/** "0.2.2.12 (PUBLISHED_TO_TESTERS)", or "none" when the store has no such version. */
+function describe(revision) {
+  if (!revision) return "none";
+  return `${revision.distributionChannels?.[0]?.crxVersion ?? "unknown version"} (${revision.state})`;
+}
+
 const before = await fetchStatus();
+console.log(`Live version: ${describe(before.publishedItemRevisionStatus)}. Submitted version: ${describe(before.submittedItemRevisionStatus)}.`);
 if (before.takenDown) fail("The store took the extension down for a policy problem. The developer dashboard says why.");
 if (before.warned) console.log("::warning::The store warned the extension about a policy problem. The developer dashboard says what to fix.");
 const waiting = before.submittedItemRevisionStatus;
+
+// A version that passed review but was set to publish by hand shows as
+// "Ready to publish" in the developer dashboard. The store refuses a new upload
+// until someone publishes it. This script doesn't publish it, since someone
+// chose to hold it back.
+if (waiting?.state === "STAGED") {
+  const version = waiting.distributionChannels?.[0]?.crxVersion ?? "An earlier version";
+  fail(`${version} passed review and is waiting to be published by hand. The store won't take a new upload until it is. Click Publish on the item in the developer dashboard, then start this workflow again with "Run workflow".`);
+}
+
+// Only one version can wait for review at a time. If an older one still is,
+// cancel it and send this one instead, so testers get the newest code. Its
+// review starts over.
 if (waiting?.state === "PENDING_REVIEW") {
   const version = waiting.distributionChannels?.[0]?.crxVersion ?? "An older version";
   console.log(`${version} is still waiting for review. Cancelling it so this build goes instead.`);
