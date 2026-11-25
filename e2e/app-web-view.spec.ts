@@ -82,3 +82,17 @@ test("a link to the route from another site changes nothing", async ({ browser }
   await expect(page.locator("header.sticky")).toHaveCount(1);
   expect((await page.context().cookies()).some((c) => c.name === "regibee_in_app")).toBe(false);
 });
+
+test("the website lets the Android app open its links", async ({ request }) => {
+  // Android fetches this to check that com.regibee.app may open links to
+  // www.regibee.com (Android App Links, intentFilters in mobile/app.config.ts).
+  // It must answer 200 with JSON, with no redirect.
+  const response = await request.get("/.well-known/assetlinks.json", { maxRedirects: 0 });
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("application/json");
+  const statements = await response.json();
+  const app = statements.find((s: { target: { package_name?: string } }) => s.target.package_name === "com.regibee.app");
+  expect(app.relation).toContain("delegate_permission/common.handle_all_urls");
+  expect(app.target.sha256_cert_fingerprints.length).toBeGreaterThan(0);
+  for (const fingerprint of app.target.sha256_cert_fingerprints) expect(fingerprint).toMatch(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
+});

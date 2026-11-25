@@ -91,8 +91,10 @@ function RootNavigator({ ready }: { ready: boolean }) {
           <Stack.Screen name="saved-item" options={{ presentation: "formSheet", title: "Lists", sheetAllowedDetents: [0.6, 1], sheetGrabberVisible: true }} />
           <Stack.Screen name="place-items" options={{ presentation: "modal", title: "Add to list" }} />
           <Stack.Screen name="share" options={{ presentation: "modal", title: "Add to Regibee", gestureEnabled: false }} />
-          <Stack.Screen name="web" options={{ title: "" }} />
         </Stack.Protected>
+        {/* Signed in or out: a link to a list or an invitation opens here
+            either way. Signed out, the page shows as it does to guests. */}
+        <Stack.Screen name="web" options={{ title: "" }} />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ title: "Create an account" }} />
