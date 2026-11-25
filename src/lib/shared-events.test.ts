@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { eventParts, goes, sharedEventIds, sortSharedEvents, type PartGuestRow } from "./shared-events.ts";
+import {
+  eventIdsBothInvited,
+  eventParts,
+  goes,
+  invited,
+  sharedEventIds,
+  sortSharedEvents,
+  type PartGuestRow,
+} from "./shared-events.ts";
 
 const guest = (event_id: string, rsvp_status: PartGuestRow["rsvp_status"], token = `t-${event_id}`): PartGuestRow => ({
   event_id,
@@ -55,4 +63,26 @@ test("upcoming events come soonest first, then undated, then past most recent fi
     sortSharedEvents(events, "2026-11-24").map((event) => event.eventDate),
     ["2026-11-24", "2026-12-25", null, "2026-06-01", "2026-01-05"],
   );
+});
+
+test("anyone on an event who hasn't said no is invited", () => {
+  assert.equal(invited("host"), true);
+  assert.equal(invited("yes"), true);
+  assert.equal(invited("maybe"), true);
+  assert.equal(invited("pending"), true);
+  assert.equal(invited("no"), false);
+  assert.equal(invited(undefined), false);
+});
+
+test("a list's events show only where both people are invited and neither said no", () => {
+  const viewer = eventParts(["hosted"], [guest("both", "pending"), guest("owner-declined", "yes"), guest("viewer-declined", "no")]);
+  const owner = eventParts([], [
+    guest("hosted", "maybe"),
+    guest("both", "yes"),
+    guest("owner-declined", "no"),
+    guest("viewer-declined", "yes"),
+    guest("owner-only", "yes"),
+  ]);
+  const ids = ["hosted", "both", "owner-declined", "viewer-declined", "owner-only", "both"];
+  assert.deepEqual(eventIdsBothInvited(ids, viewer, owner), ["hosted", "both"]);
 });

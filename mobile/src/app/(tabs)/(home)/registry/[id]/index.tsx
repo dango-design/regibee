@@ -550,10 +550,10 @@ function EventsBanner({ detail }: { detail: RegistryDetail }) {
                     {event.title}
                   </Text>
                   {` · ${when}`}
-                  {hosted ? "" : " · hosted by someone else"}
+                  {hosted ? "" : event.guestList ? " · added by a guest" : " · hosted by someone else"}
                 </Text>
               </Pressable>
-              {!hosted ? (
+              {!hosted && !event.guestList ? (
                 <Button
                   title="Unlink"
                   size="small"
