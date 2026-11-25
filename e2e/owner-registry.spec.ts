@@ -76,7 +76,8 @@ test("an owner makes a baby registry, sees it on the dashboard, and adds, change
 
   // The owner changes its name and price.
   await page.getByText("Convertible Crib").click();
-  const editDialog = page.getByRole("dialog");
+  // By name: the open More actions menu is a dialog too.
+  const editDialog = page.getByRole("dialog", { name: "Edit item" });
   await expect(editDialog.getByRole("heading", { name: "Edit item" })).toBeVisible();
   await editDialog.getByLabel("Item name").fill("Convertible Crib, Natural");
   await editDialog.getByLabel("Price (optional)").fill("349.50");
@@ -94,7 +95,8 @@ test("an owner makes a baby registry, sees it on the dashboard, and adds, change
     expect(confirm.message()).toBe(`Delete "Convertible Crib, Natural"? This cannot be undone.`);
     void confirm.accept();
   });
-  await editDialog.getByRole("button", { name: "Remove item" }).filter({ visible: true }).click();
+  await editDialog.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Remove item" }).click();
   await expect(editDialog).toBeHidden();
   await expect(page.getByText("Convertible Crib, Natural")).toHaveCount(0);
   const { count } = await db.from("registry_items").select("id", { count: "exact", head: true }).eq("id", added!.id);
@@ -122,13 +124,14 @@ test("taking an item off its home list moves it, and its gift, to the other list
   const onHome = page.getByText(item.title);
   await waitForReact(onHome);
   await onHome.click();
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
   page.once("dialog", (confirm) => {
     expect(confirm.message()).toContain(`Remove "${item.title}" from this list? It stays on`);
     expect(confirm.message()).toContain(other.title);
     void confirm.accept();
   });
-  await dialog.getByRole("button", { name: "Remove from list" }).filter({ visible: true }).click();
+  await dialog.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Remove from list" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText(item.title)).toHaveCount(0);
 
@@ -150,8 +153,71 @@ test("taking an item off its home list moves it, and its gift, to the other list
   await waitForReact(onOther);
   await onOther.click();
   page.once("dialog", (confirm) => void confirm.accept());
-  await dialog.getByRole("button", { name: "Remove item" }).filter({ visible: true }).click();
+  await dialog.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Remove item" }).click();
   await expect(dialog).toBeHidden();
   const { count } = await db.from("registry_items").select("id", { count: "exact", head: true }).eq("id", item.id);
   expect(count).toBe(0);
+});
+
+test("an owner adds an item to another list from its menu, then moves it there with its gift", async ({ page }) => {
+  const { owner, registry: home, item } = await createRegistryWithItem();
+  const { registry: other } = await createWishlist(owner.id);
+
+  // A guest reserves it from the home list.
+  const guestEmail = uniqueEmail("guest");
+  const guest = await page.context().browser()!.newContext();
+  await reserveGift(await guest.newPage(), { slug: home.slug, name: "Glinda Guest", email: guestEmail });
+  await guest.close();
+
+  await signIn(page, owner);
+  await page.goto(`/dashboard/registry/${home.id}`);
+  const onHome = page.getByRole("heading", { name: item.title });
+  await waitForReact(onHome);
+  await onHome.click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+
+  // Add to another list keeps the dialog open and says where it went.
+  await dialog.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Add to another list" }).click();
+  await page.getByRole("menuitem", { name: other.title }).click();
+  await expect(dialog.getByText(`Added to ${other.title}.`)).toBeVisible();
+  await expect(dialog.getByText(`It's also on ${other.title}`)).toBeVisible();
+  const placement = () =>
+    db.from("registry_item_placements").select("registry_id").eq("item_id", item.id).then(({ data }) => data);
+  expect(await placement()).toEqual([{ registry_id: other.id }]);
+
+  // It's on every other list now, so the menu only offers to take it off this one.
+  await dialog.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Remove from list" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Add to another list" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+
+  // A second item, on the home list only, moves to the other list.
+  const { data: second, error } = await db
+    .from("registry_items")
+    .insert({ registry_id: home.id, title: `Night Light ${home.id.slice(0, 8)}`, price: 20, quantity_needed: 1 })
+    .select("id, title")
+    .single();
+  if (error) throw error;
+  await page.reload();
+  const secondCard = page.getByRole("heading", { name: second.title });
+  await waitForReact(secondCard);
+  await secondCard.click();
+  await dialog.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Move to another list" }).click();
+  await page.getByRole("menuitem", { name: other.title }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("heading", { name: second.title })).toHaveCount(0);
+  const { data: moved } = await db.from("registry_items").select("registry_id").eq("id", second.id).single();
+  expect(moved?.registry_id).toBe(other.id);
+
+  // The first item is still one item, with the guest's gift on it.
+  const { data: gifts } = await db.from("purchases").select("buyer_email, status").eq("registry_item_id", item.id);
+  expect(gifts).toEqual([{ buyer_email: guestEmail, status: "reserved" }]);
+  await page.goto(`/dashboard/registry/${other.id}`);
+  await expect(page.getByRole("heading", { name: item.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: second.title })).toBeVisible();
 });

@@ -71,8 +71,8 @@ async function loadRegistryPurchases(supabase: SupabaseClient, registryId: strin
 /**
  * For the items placed on this list from the owner's other lists, and items
  * of this list placed on others: their purchases (the access rules only show
- * purchases of a list's own items), the titles of the other lists each item
- * is on, and, for the owner, the items another list hides gifts on.
+ * purchases of a list's own items), the titles and ids of the other lists
+ * each item is on, and, for the owner, the items another list hides gifts on.
  */
 async function loadPlacementDetails(
   items: ListItem<{ id: string; registry_id: string; category_id: string | null; sort_order: number; created_at: string }>[],
@@ -82,6 +82,7 @@ async function loadPlacementDetails(
   const none = {
     purchases: [] as any[],
     otherListsByItem: new Map<string, string[]>(),
+    otherListIdsByItem: new Map<string, string[]>(),
     hiddenItemIds: new Set<string>(),
   };
   if (items.length === 0) return none;
@@ -105,15 +106,16 @@ async function loadPlacementDetails(
 
   const titles = new Map((otherLists ?? []).map((r) => [r.id as string, r.title as string]));
   const otherListsByItem = new Map<string, string[]>();
+  const otherListIdsByItem = new Map<string, string[]>();
   for (const [itemId, ids] of shared) {
-    otherListsByItem.set(
-      itemId,
-      ids.filter((id) => id !== registryId).map((id) => titles.get(id)).filter((t): t is string => Boolean(t)),
-    );
+    const others = ids.filter((id) => id !== registryId);
+    otherListsByItem.set(itemId, others.map((id) => titles.get(id)).filter((t): t is string => Boolean(t)));
+    otherListIdsByItem.set(itemId, others);
   }
   return {
     purchases: (placedPurchases ?? []).map((p) => ({ ...p, cash_funds: null })),
     otherListsByItem,
+    otherListIdsByItem,
     hiddenItemIds,
   };
 }
@@ -240,23 +242,34 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
     linkedEvents,
     revealedThrough,
     revealEvents,
+    { data: ownerLists },
   ] = await Promise.all([
     supabase.from("categories").select("*").eq("registry_id", registryId).order("sort_order"),
     // Its own items and the ones the owner placed on it from their other
     // lists (src/lib/list-items.ts). The access check above has passed.
-    loadListItems<Omit<ListPageItem, "home_registry_id" | "placed" | "otherLists">>(registryId).then((data) => ({ data })),
+    loadListItems<Omit<ListPageItem, "home_registry_id" | "placed" | "otherLists" | "otherListIds">>(registryId).then((data) => ({ data })),
     loadRegistryPurchases(supabase, registryId),
     supabase.from("suggestions").select("*").eq("registry_id", registryId).order("created_at", { ascending: false }),
     supabase.from("cash_funds").select("*").eq("registry_id", registryId).order("created_at"),
     listEventsForRegistry(registryId, viewer.userId),
     hideReservations ? getGiftsRevealedThrough(registryId) : null,
     hideReservations ? getEventsForReveal(registryId) : [],
+    // The owner's other lists, which they can add an item to or move it to.
+    // Co-managers get none: only a list's owner can put its items elsewhere.
+    registry.owner_id === viewer.userId
+      ? supabaseAdmin
+          .from("registries")
+          .select("id, title")
+          .eq("owner_id", viewer.userId)
+          .neq("id", registryId)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: null }),
   ]);
 
   const turnedOnByExchange = readReservationPrivacy(registry.settings).hide_reservations_source === "exchange";
 
   const listItems = items || [];
-  const [{ purchases: placedPurchases, otherListsByItem, hiddenItemIds }, { missingDetails, detailReview }] =
+  const [{ purchases: placedPurchases, otherListsByItem, otherListIdsByItem, hiddenItemIds }, { missingDetails, detailReview }] =
     await Promise.all([
       loadPlacementDetails(listItems, registryId, viewer.hiddenItemsFor),
       // Items the extension can fill in, and what it filled in (src/lib/item-details.ts).
@@ -294,6 +307,7 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
         ? itemAsUnreserved(item)
         : item),
     otherLists: otherListsByItem.get(item.id) ?? [],
+    otherListIds: otherListIdsByItem.get(item.id) ?? [],
   }));
   const dismissedChecklistItems = (registry.settings as Record<string, unknown> | null)?.checklist_dismissed as string[] | undefined;
   const checklistProgress = getChecklistProgress(allItems.map((i) => i.title), dismissedChecklistItems);
@@ -352,6 +366,7 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
   return {
     registry,
     isOwner: viewer.isOwner,
+    ownerLists: ownerLists ? (ownerLists as { id: string; title: string }[]) : undefined,
     categories: (categories || []) as ListPageCategory[],
     items: allItems,
     funds: allFunds,

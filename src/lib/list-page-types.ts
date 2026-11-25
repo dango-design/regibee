@@ -43,6 +43,8 @@ export interface ListPageItem {
   placed: boolean;
   /** The titles of the owner's other lists it's on. */
   otherLists: string[];
+  /** The ids of those lists. Missing from older servers' answers. */
+  otherListIds?: string[];
 }
 
 /** An item whose store link the extension can read again for its photo or price (src/lib/item-details.ts). */
@@ -128,6 +130,12 @@ export interface ListPageData {
     settings: Record<string, any> | null;
   };
   isOwner: boolean;
+  /**
+   * The viewer's other lists, newest first, when the viewer owns this one.
+   * They can add an item to one of them or move it there. Undefined for
+   * co-managers.
+   */
+  ownerLists?: { id: string; title: string }[];
   categories: ListPageCategory[];
   items: ListPageItem[];
   funds: ListPageFund[];

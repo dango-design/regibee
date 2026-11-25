@@ -1,7 +1,7 @@
 "use client";
 
 import type { FC, RefAttributes } from "react";
-import { DotsVertical } from "@untitledui/icons";
+import { ChevronRight, DotsVertical } from "@untitledui/icons";
 import type {
     ButtonProps as AriaButtonProps,
     MenuItemProps as AriaMenuItemProps,
@@ -78,6 +78,9 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, destructiv
                     >
                         {label || (typeof children === "function" ? children(state) : children)}
                     </span>
+
+                    {/* An item that opens another menu, such as a list to pick from. */}
+                    {state.hasSubmenu && <ChevronRight aria-hidden="true" className="ml-2 size-4 shrink-0 text-fg-quaternary" />}
 
                     {addon && (
                         <span
