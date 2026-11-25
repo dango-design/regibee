@@ -34,11 +34,17 @@ mkdirSync(outDir, { recursive: true });
 
 const update = [];
 const broken = [];
+const flaky = [];
 let ran = 0;
 for (const { title, test } of tests) {
   if (test.status === "skipped") continue;
   ran += 1;
   if (test.status === "expected") continue;
+  // Differed on one try and matched on a later one.
+  if (test.status === "flaky") {
+    flaky.push(title);
+    continue;
+  }
   const result = test.results.at(-1);
   // Playwright attaches the new picture as "<story id>-actual.png" when the
   // baseline is missing or different.
@@ -84,6 +90,7 @@ if (update.length) console.log(`\n${update.length} new or changed:\n${update.map
 if (remove.length) console.log(`\n${remove.length} baselines with no story:\n${remove.map((f) => `  ${f}`).join("\n")}`);
 if (broken.length) console.log(`\n${broken.length} failed without a picture:\n${broken.map((t) => `  ${t}`).join("\n")}`);
 if (!update.length && !remove.length && !broken.length) console.log("Every story matches its baseline.");
+if (flaky.length) console.log(`\n${flaky.length} matched only on a second or third try (unstable):\n${flaky.map((t) => `  ${t}`).join("\n")}`);
 
 // On GitHub Actions, show the same on the run's summary page.
 if (process.env.GITHUB_STEP_SUMMARY) {
@@ -93,6 +100,7 @@ if (process.env.GITHUB_STEP_SUMMARY) {
     list("new or changed", update) +
     list("baselines with no story", remove) +
     list("failed without a picture", broken) +
+    list("matched only on a second or third try (unstable, see the README)", flaky) +
     (update.length || remove.length
       ? "\nLook at the pictures in the `story-screenshots-report` artifact. If the changes are meant, run `npm run screenshots:accept` on the branch, then commit and push.\n"
       : "") +

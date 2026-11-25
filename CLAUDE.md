@@ -181,7 +181,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - To accept changes, run `npm run screenshots:accept` on the branch, then commit and push `story-screenshots/baselines`. It downloads the new pictures from the check's run for the commit you are on. Accept only after looking at the pictures. A new story needs this once.
 - Baselines come only from GitHub's runner. Never commit a screenshot taken on a Mac: it draws text differently, so it would never match.
 - It snapshots the same stories as Chromatic: a story with `chromatic: { disableSnapshot: true }` is skipped here too.
-- A few stories look different from run to run. They are listed in `UNSTABLE` in `story-screenshots/stories.spec.ts` and aren't compared. If the check fails on a small difference the branch didn't make, run it again before accepting.
+- A few stories look different from run to run. A story that differs gets two more tries on GitHub, and one that matches on a later try passes and is listed as unstable on the run's summary page. The ones that differ often are listed in `UNSTABLE` in `story-screenshots/stories.spec.ts` and aren't compared. If the check still fails on a small difference the branch didn't make, run it again before accepting.
 - A merge that skips the check, or isn't accepted first, leaves `main` with old baselines. The next pull request that runs the check then shows those changes too, and accepting there fixes it.
 
 ## End-to-end tests

@@ -25,9 +25,11 @@ export default defineConfig({
   timeout: 60_000,
   // A test.only left in by mistake would skip every other story.
   forbidOnly: onCI,
-  // No retries. A story that looks different on a second try is unstable, and
-  // a retry would hide that.
-  retries: 0,
+  // On GitHub a story that differs gets two more tries, each in a fresh page.
+  // Some play functions end a moment before the page settles, and the picture
+  // then depends on timing. A real change differs on every try. A story that
+  // passes on a later try is reported as flaky, and collect.mjs lists it.
+  retries: onCI ? 2 : 0,
   // A missing baseline fails its test, and Playwright saves the new picture in
   // the test's results. Nothing is written to story-screenshots/baselines during a run:
   // npm run screenshots:accept does that.

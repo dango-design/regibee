@@ -60,7 +60,12 @@ The tests need no server and no port. Playwright answers the story's requests st
 
 ## Unstable stories
 
-A few stories still look different from one run to the next. They are in `UNSTABLE` in `stories.spec.ts`, each with the reason. They are opened and must render, but no picture is compared. When a story fails with a small difference nobody made, run the check again. If it keeps happening, fix the story, or add it to that list and open an issue.
+Some stories look different from one run to the next, mostly ones whose play function ends a moment before the page settles. Two things keep them from failing the check:
+
+- On GitHub, a story that differs gets two more tries. A real change differs every time. A story that matches on a later try passes, and the run's summary page lists it as unstable.
+- The stories that differ often are in `UNSTABLE` in `stories.spec.ts`, each with the reason. They are opened and must render, but no picture is compared.
+
+When a story shows up as unstable again and again, fix it, or add it to that list and note it on the issue that tracks them.
 
 ## Files
 
