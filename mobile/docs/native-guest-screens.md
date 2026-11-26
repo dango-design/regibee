@@ -35,7 +35,7 @@ The app shows other people's lists, events, profiles, group gifts and invite lin
 
 - Signed-out visitors keep the web view, for the list screen too so far. People who have the app but aren't signed in are rare, so this costs little.
 - Next, add a short allowlist of guest loaders and guest actions that may run without a token: the ones the website already lets anyone call (the invitation, the list, the group gift, `submitRsvp`, `reserveItem`, `contributeToCashFund`, `suggestItem`, `pledgeToGroupGift`). Everything else still needs a token.
-- The website remembers a guest's gifts and pledges in cookies (`regibee_my_gifts`, `regibee_group_pledges`). The app keeps gift purchase ids on the phone instead and sends them to the loader (built for the list screen), so a guest can still confirm or release their gift. The two don't share: a gift reserved in the web view isn't in the app's store, and one reserved natively isn't in the web view's cookie.
+- The website remembers a guest's gifts and pledges in cookies (`regibee_my_gifts`, `regibee_group_pledges`). The app keeps gift purchase ids on the phone instead and sends them to the loader (built for the list screen), so a guest can still confirm or release their gift. The two share gifts both ways (built): when the app opens the web view, it sends its purchase ids to `/api/app/open` in the `x-regibee-gifts` header, and the route adds the live ones to the cookie. A script in the web view reads the cookie whenever it changes, and the app keeps the gifts it didn't have. The rules are in `src/lib/my-gifts-cookie.ts`. Gift fund amounts and group gift pledges don't cross yet.
 
 ## Order
 
