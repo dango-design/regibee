@@ -70,9 +70,14 @@ test("the guest list holds only what the website's guest pages call", () => {
   assert.deepEqual([...GUEST_ACTIONS].sort(), [
     "events.submitRsvp",
     "registry.confirmGift",
+    "registry.contributeToCashFund",
+    "registry.coverParentPurchasedItem",
     "registry.releaseGift",
     "registry.reserveItem",
+    "registry.suggestItem",
   ]);
+  // The website asks for an account to start a group gift, so a guest can't.
+  assert.equal(GUEST_ACTIONS.includes("groupGifts.startGroupGift"), false);
 });
 
 test("names that only look like guest calls are refused", () => {

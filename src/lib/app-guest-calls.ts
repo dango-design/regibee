@@ -16,7 +16,8 @@
 //
 // Before adding a name here, check that the website's guest page calls it
 // for signed-out visitors, and that it reads nothing an account owns. Anything
-// left off still needs a signed-in account.
+// left off still needs a signed-in account: starting a group gift does on the
+// website too ("Sign in to start a group gift."), so it isn't here.
 
 /** Page loaders (src/lib/app-loaders.ts) anyone may call. */
 export const GUEST_LOADERS: readonly string[] = ["invitationPage", "publicList"];
@@ -27,6 +28,9 @@ export const GUEST_ACTIONS: readonly string[] = [
   "registry.reserveItem",
   "registry.confirmGift",
   "registry.releaseGift",
+  "registry.contributeToCashFund",
+  "registry.coverParentPurchasedItem",
+  "registry.suggestItem",
 ];
 
 export type AppCaller = "account" | "guest" | "nobody";
