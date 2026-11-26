@@ -11,7 +11,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GIFT_HOLD_DAYS, SECRET_GIVER_NAME, formatReservedUntil, type MyItemGift } from "@shared/gifts";
@@ -392,8 +392,22 @@ export function GiftSheet({
   }
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <Modal
+      visible
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+      // On Android the sheet is its own window, and it opened with white
+      // status bar icons, even in light mode. Setting the style again reaches
+      // that window too, so the clock and battery show on a light background.
+      onShow={() => {
+        if (Platform.OS === "android") StatusBar.setBarStyle(theme.dark ? "light-content" : "dark-content");
+      }}
+    >
+      {/* Padding on Android too: the sheet's window doesn't shrink for the
+          keyboard the way the app's screens do, so without it the keyboard
+          covers the message field and the Reserve button. */}
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior="padding">
         <View
           style={{
             flexDirection: "row",
