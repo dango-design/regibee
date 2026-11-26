@@ -76,6 +76,7 @@ export const ItemRow = memo(function ItemRow({
   actions,
   linkedStores,
   selfPurchaseButton,
+  check,
 }: {
   item: Item;
   actions: ItemActions;
@@ -87,6 +88,11 @@ export const ItemRow = memo(function ItemRow({
    * as the website's item card does (src/components/store-registry-line.tsx).
    */
   linkedStores?: StoreId[] | null;
+  /**
+   * Something to check on this item, such as "No photo or price". The list's
+   * "Items to check" screen (src/app/registry/[id]/check.tsx) explains it.
+   */
+  check?: string | null;
 }) {
   const theme = useTheme();
   // What the website's item card says (src/lib/gifts.ts).
@@ -103,7 +109,7 @@ export const ItemRow = memo(function ItemRow({
   const content = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}${s.tag ? `, ${s.tag.label}` : ""}${item.price ? `, ${formatPrice(item.price)}` : ""}, ${s.quantity}${registryStore ? `, counts toward your ${registryStore.name} registry` : ""}${item.is_essential ? ", most wanted" : ""}`}
+      accessibilityLabel={`${item.title}${s.tag ? `, ${s.tag.label}` : ""}${check ? `, ${check}` : ""}${item.price ? `, ${formatPrice(item.price)}` : ""}, ${s.quantity}${registryStore ? `, counts toward your ${registryStore.name} registry` : ""}${item.is_essential ? ", most wanted" : ""}`}
       accessibilityHint="Opens the item to edit it"
       // On iPhone the Link below opens it and adds the long-press menu.
       onPress={ios ? undefined : () => router.push(href)}
@@ -126,9 +132,10 @@ export const ItemRow = memo(function ItemRow({
             {item.title}
           </Text>
         </View>
-        {s.tag || item.is_open_to_used ? (
+        {s.tag || item.is_open_to_used || check ? (
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
             {s.tag ? <Pill label={s.tag.label} tone={TAG_TONE[s.tag.kind]} /> : null}
+            {check ? <Pill label={check} tone="tint" icon="sparkles" /> : null}
             {item.is_open_to_used ? <Pill label={usedLabel(item)} /> : null}
           </View>
         ) : null}

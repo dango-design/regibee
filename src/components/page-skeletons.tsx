@@ -382,50 +382,46 @@ function ItemRowSkeleton() {
   );
 }
 
-/** Matches src/app/(protected)/dashboard/registry/[registryId]/page.tsx. */
+/** Matches src/app/(protected)/dashboard/registry/[registryId]/page.tsx: OwnerListTop, then the tabs and items. */
 export function ListPageSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-8" aria-busy="true">
+    <div aria-busy="true">
       <LoadingMessage>Loading your list</LoadingMessage>
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-9 w-64 max-w-full" />
-          <Skeleton className="h-5 w-40" />
+      <div className="bg-brand-primary px-4 pt-8 pb-20 sm:pt-10 sm:pb-24">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-10 w-72 max-w-full" />
+          <Skeleton className="h-6 w-56 max-w-full rounded-full" />
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
+            <Skeleton className="h-10 w-28 rounded-full" />
+            <Skeleton className="h-10 w-28 rounded-full" />
+            <Skeleton className="h-10 w-28 rounded-full" />
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Skeleton className="h-10 w-28 rounded-full" />
-          <Skeleton className="h-10 w-28 rounded-full" />
-          <Skeleton className="h-10 w-28 rounded-full" />
+      </div>
+      <div className="container mx-auto px-4">
+        <div className="relative -mt-14 rounded-[20px] border border-secondary bg-primary px-5 py-4 shadow-[0_8px_24px_rgba(35,27,24,0.06)] sm:-mt-16">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-3 h-2 w-full" />
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {["Total items", "Gifted", "Completion", "Total value"].map((label) => (
-          <Card key={label}>
-            <CardContent className="p-4">
-              <p className="text-sm text-tertiary">{label}</p>
-              <Skeleton className="mt-1 h-7 w-16" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="my-8 h-px bg-border-secondary" />
-
-      <div className="mb-6 flex gap-2">
-        <Skeleton className="h-9 w-24 rounded-full" />
-        <Skeleton className="h-9 w-24 rounded-full" />
-        <Skeleton className="h-9 w-28 rounded-full" />
-      </div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <Skeleton className="h-7 w-40" />
-        <Skeleton className="h-10 w-28 rounded-full" />
-      </div>
-      <div className="space-y-4">
-        <ItemRowSkeleton />
-        <ItemRowSkeleton />
-        <ItemRowSkeleton />
-        <ItemRowSkeleton />
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex gap-2">
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-10 w-28 rounded-full" />
+        </div>
+        <div className="space-y-4">
+          <ItemRowSkeleton />
+          <ItemRowSkeleton />
+          <ItemRowSkeleton />
+          <ItemRowSkeleton />
+        </div>
       </div>
     </div>
   );

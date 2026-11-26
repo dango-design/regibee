@@ -29,8 +29,6 @@ import { ItemImageField } from "@/components/item-image-field";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tag } from "@/components/ui/tag";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup, InputPrefix } from "@/components/base/input/input-group";
@@ -60,16 +58,18 @@ import { useDemoToday } from "../demo-today";
 import { CategoryNav, type CategoryNavItem } from "@/components/category-nav";
 import { getCategorySectionId } from "@/lib/category-section-id";
 import { ScrollToTop } from "@/components/scroll-to-top";
-import { formatDollars, formatPrice } from "@/lib/money";
+import { formatPrice } from "@/lib/money";
 import { RegistryTabs } from "@/components/registry-tabs";
-import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-events-banner";
+import { PlanEventButton } from "@/components/registry-events-banner";
+import { OwnerListTop } from "@/components/owner-list-top";
+import { LIST_ACCESS, PROFILE_AUDIENCE, listVisibility, profileAudience } from "@/lib/list-access";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
 import { StorePerksCard } from "@/components/store-perks-card";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 import { getChecklistProgress } from "@/lib/checklist-matching";
-import { copyForRegistry } from "@/lib/registry-copy";
+import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
 import { giftActivityFor, giftActivityTag, ownerItemStatus } from "@/lib/gifts";
 import { parseRetailerRegistries, plainLinksByStore, type StoreId } from "@/lib/retailers";
 import { StoreRegistryLine } from "@/components/store-registry-line";
@@ -1212,8 +1212,6 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
 
   const totalItems = items.length;
   const fulfilledItems = items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
-  const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
-  const totalValue = items.reduce((sum, i) => sum + (i.price || 0), 0);
   const checklistProgress = getChecklistProgress(items.map((i) => i.title));
 
   // Group items by category
@@ -1279,23 +1277,31 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
 
   return (
     <DemoOwnerShell>
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{registry.title}</h1>
-            {registry.event_date && (
-              <p className="text-tertiary">
-                {copy.eventDateLabel}:{" "}
-                {new Date(`${registry.event_date}T00:00:00`).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2 flex-wrap">
+      {/* Matches src/app/(protected)/dashboard/registry/[registryId]/page.tsx. */}
+      <OwnerListTop
+        registryId={registry.id}
+        title={registry.title}
+        occasion={occasionLabel(registry.registry_type, registry.event_type)}
+        itemCount={totalItems}
+        dateLabel={
+          registry.event_date
+            ? `${copy.eventDateLabel}: ${new Date(`${registry.event_date}T00:00:00`).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}`
+            : null
+        }
+        access={{
+          visibility: listVisibility(registry),
+          label:
+            listVisibility(registry) === "private"
+              ? LIST_ACCESS.private.label
+              : `${LIST_ACCESS[listVisibility(registry)].short} · ${PROFILE_AUDIENCE[profileAudience(registry)].short}`,
+          href: `/demo/dashboard/registry/${registry.id}/settings`,
+        }}
+        actions={
+          <>
             <CopyLinkButton path={publicPath} />
             <Button variant="outline" asChild>
               <a href={publicPath} target="_blank" rel="noopener noreferrer">
@@ -1313,55 +1319,25 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
                 </span>
               </Link>
             </Button>
-            {eventPromptDismissed && linkedEvents.length === 0 && (
+            {(eventPromptDismissed || linkedEvents.length > 0) && (
               <PlanEventButton registryId={registry.id} basePath="/demo" />
             )}
-          </div>
-        </div>
+          </>
+        }
+        progress={{ gifted: fulfilledItems, total: totalItems }}
+        events={linkedEvents}
+        planPrompt={!eventPromptDismissed}
+        checklist={
+          copy.checklistAvailable
+            ? { ...checklistProgress, href: `/demo/dashboard/registry/${registry.id}/checklist` }
+            : null
+        }
+        basePath="/demo"
+        unlinkAction={unlinkEvent}
+        dismissAction={dismissEventPrompt}
+      />
 
-        {/* Events that link to this registry, or a small prompt to plan one. */}
-        <RegistryEventsBanner
-          className="mt-6"
-          registryId={registry.id}
-          events={linkedEvents}
-          promptDismissed={eventPromptDismissed}
-          basePath="/demo"
-          unlinkAction={unlinkEvent}
-          dismissAction={dismissEventPrompt}
-        />
-
-        {/* Stats */}
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Total items</p>
-              <p className="text-2xl font-bold">{totalItems}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Gifted</p>
-              <p className="text-2xl font-bold">{fulfilledItems}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Completion</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{Math.round(progress)}%</p>
-                <Progress value={progress} aria-label="Registry completion" className="flex-1" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-sm text-tertiary">Total value</p>
-              <p className="text-2xl font-bold">{formatDollars(totalValue)}</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Separator className="my-8" />
+      <div className="container mx-auto px-4 py-8">
 
         <RegistryTabs
           totalItems={totalItems}
