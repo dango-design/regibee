@@ -66,8 +66,7 @@ function sampleGroupGift(today: string, token: string, as: DemoGroupGiftRole): D
     note:
       as === "organizer" ? (
         <>
-          You&apos;re {organizer}, who started this group gift, so you see what everyone pledged and can tick them
-          off as they pay you back.{" "}
+          You&apos;re {organizer}, who started this group gift.{" "}
           <Link href={path} className="font-medium underline">
             See it as a guest
           </Link>
@@ -122,7 +121,7 @@ function startedByVisitor(today: string, token: string): DemoGroupGiftData | nul
       myPledge: null,
       prefill: ownList ? null : { name: DEMO_ME.full_name, email: DEMO_ME.email },
     },
-    note: "You started this group gift. Chip in your own share, or mark it bought. The demo doesn't save anything.",
+    note: "You started this group gift. The demo doesn't save anything.",
   };
 }
 
@@ -140,7 +139,7 @@ export function DemoGroupGift({ token, as = "visitor" }: { token: string; as?: D
     <DemoGuestShell>
       <DemoGuestHeader />
       <main className="container mx-auto px-4 py-8 sm:py-12">
-        <p className="mx-auto mb-6 flex max-w-2xl items-start gap-2 rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+        <p className="mx-auto mb-6 flex max-w-2xl items-start gap-2 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4 text-sm text-sunshine-900 dark:text-sunshine-200">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>{data.note}</span>
         </p>

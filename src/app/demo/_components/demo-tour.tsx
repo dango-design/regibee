@@ -40,19 +40,19 @@ const TRACKS: Track[] = [
     occasion: "baby_shower",
     icon: Baby,
     title: "A baby shower",
-    intro: "Remi & Max are expecting. Glinda is throwing them a shower and lining up meals for after the baby comes.",
+    intro: "Remi & Max are expecting. Glinda is throwing them a shower.",
     hosts: [
       {
         href: "/demo/dashboard/registry/baby",
         icon: Gift,
         title: "Manage the baby registry",
-        body: "Items from any store, gift activity, suggestions and store perks.",
+        body: "Items, gifts and suggestions.",
       },
       {
         href: "/demo/dashboard/events/baby-shower",
         icon: CalendarHeart,
         title: "Co-host the shower",
-        body: "RSVPs, guests' answers, reminders and messages.",
+        body: "RSVPs, reminders and messages.",
       },
     ],
     guests: [
@@ -60,25 +60,25 @@ const TRACKS: Track[] = [
         href: "/demo",
         icon: Gift,
         title: "Reserve a gift",
-        body: "No account needed. Guests see the address after reserving.",
+        body: "No account needed.",
       },
       {
         href: "/demo/e/remi-and-max-baby-shower?g=demo-s8",
         icon: Mail,
         title: "RSVP to the shower",
-        body: "As Jordan, who hasn't replied yet.",
+        body: "As Jordan.",
       },
       {
         href: groupGiftPath(DEMO_STROLLER_GROUP_GIFT_TOKEN, "/demo"),
         icon: HandCoins,
         title: "Chip in on a group gift",
-        body: "Shower guests are going in on the stroller. Chip in, or see it as Oz, who started it.",
+        body: "Going in on the stroller.",
       },
       {
         href: "/demo/e/meals-for-remi-and-max?g=demo-mt-g4",
         icon: CookingPot,
         title: "Sign up to bring a meal",
-        body: "As Oz. The address shows once you pick a night.",
+        body: "As Oz.",
       },
     ],
   },
@@ -87,25 +87,25 @@ const TRACKS: Track[] = [
     occasion: "christmas",
     icon: TreePine,
     title: "A family Christmas",
-    intro: "Remi & Max host Christmas dinner, where everyone gives everyone, and a Secret Santa with friends.",
+    intro: "Christmas dinner with family, and a Secret Santa with friends.",
     hosts: [
       {
         href: "/demo/dashboard/events/christmas",
         icon: TreePine,
         title: "Host Christmas dinner",
-        body: "Who's coming, whose wishlist is in, and who's bringing what.",
+        body: "Who's coming and who brings what.",
       },
       {
         href: "/demo/dashboard/events/secret-santa",
         icon: Shuffle,
         title: "Run a Secret Santa",
-        body: "Names are drawn. Undo, keep a couple apart, and draw again.",
+        body: "Draw names and keep couples apart.",
       },
       {
         href: "/demo/dashboard/registry/christmas-list",
         icon: ListChecks,
         title: "Your Christmas list",
-        body: "What family can pick from, and what they've reserved.",
+        body: "What family has reserved.",
       },
     ],
     guests: [
@@ -113,19 +113,19 @@ const TRACKS: Track[] = [
         href: "/demo/e/family-christmas?g=demo-c5",
         icon: Mail,
         title: "RSVP with your wishlist",
-        body: "As Nessa: see everyone's lists and pick a dish to bring.",
+        body: "As Nessa.",
       },
       {
         href: "/demo/e/friendsmas-secret-santa?g=demo-ss2",
         icon: Shuffle,
         title: "See who you drew",
-        body: "As Glinda, with her Secret Santa name and their wishlist.",
+        body: "As Glinda.",
       },
       {
         href: "/demo/r/lily-and-sams-christmas-list",
         icon: Gift,
         title: "Shop the kids' list",
-        body: "Lily & Sam's list, with what's already been picked.",
+        body: "Lily & Sam's list.",
       },
     ],
   },
@@ -136,25 +136,25 @@ const MORE: Stop[] = [
     href: "/demo/dashboard/registry/wishlist",
     icon: Cake,
     title: "Max's birthday wishlist",
-    body: "A personal registry, private to approved followers.",
+    body: "Shown to approved followers.",
   },
   {
     href: "/demo/dashboard/following",
     icon: Users,
     title: "Follow friends' registries",
-    body: "Search for people and see what's coming up.",
+    body: "Find people.",
   },
   {
     href: "/demo/dashboard/account#follow-requests",
     icon: Settings,
     title: "Approve follow requests",
-    body: "And choose which registries your profile shows.",
+    body: "And choose what your profile shows.",
   },
   {
     href: demoProfilePath(DEMO_ME),
     icon: UserRound,
     title: "Remi & Max's profile",
-    body: "One link to every registry they chose to share.",
+    body: "Every list they share.",
   },
 ];
 
@@ -173,10 +173,10 @@ function StopLink({ stop, onTint = false }: { stop: Stop; onTint?: boolean }) {
         <span
           className={cx(
             "flex size-9 shrink-0 items-center justify-center rounded-full",
-            onTint ? "bg-primary shadow-xs" : "bg-brand-50",
+            onTint ? "bg-primary shadow-xs" : "bg-brand-primary",
           )}
         >
-          <Icon aria-hidden="true" className="size-4.5 text-brand-600" />
+          <Icon aria-hidden="true" className="size-4.5 text-brand-tertiary" />
         </span>
         <span className="min-w-0">
           <span className="block font-medium text-primary">{stop.title}</span>
@@ -230,13 +230,12 @@ function TrackCard({ track }: { track: Track }) {
  */
 export function DemoTour() {
   return (
-    <section aria-labelledby="demo-tour-heading" className="rounded-2xl bg-brand-50 p-5">
+    <section aria-labelledby="demo-tour-heading" className="rounded-2xl bg-brand-primary p-5">
       <h2 id="demo-tour-heading" className="text-lg font-semibold text-primary">
         Explore the demo
       </h2>
       <p className="mt-1 max-w-2xl text-sm text-secondary">
-        You&apos;re signed in as Remi & Max. Pick a celebration and try it as the hosts or as a guest. Everything here
-        is sample data, so click anything.
+        You&apos;re Remi & Max. It&apos;s all sample data, so click anything.
       </p>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {TRACKS.map((track) => (

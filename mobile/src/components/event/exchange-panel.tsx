@@ -102,12 +102,12 @@ function EveryoneGivesPanel({
     <PanelCard
       icon="people"
       title="Everyone gives everyone"
-      summary={`${exchange.budget ? `About ${exchange.budget} a gift · ` : ""}Guests link wishlists when they RSVP`}
+      summary={exchange.budget ? `About ${exchange.budget} a gift` : ""}
       onEditSettings={onEditSettings}
     >
       <Text variant="callout">
         {taking.length === 0
-          ? "Nobody is taking part yet. Guests who say they're going or might go take part."
+          ? "Nobody is taking part yet."
           : `${taking.length === 1 ? "1 guest is" : `${taking.length} guests are`} taking part, and ${
               withList.length === taking.length
                 ? "everyone has"
@@ -139,9 +139,8 @@ function EveryoneGivesPanel({
       ) : null}
 
       <Text variant="footnote" tone="tertiary">
-        Guests see everyone&apos;s lists on the invitation, and what the others reserved from each one. Nobody sees
-        what&apos;s been reserved from their own list until the day after the event. Taking part yourself? Add yourself
-        to the guest list and RSVP from your own link.
+        Guests see each other&apos;s lists and what&apos;s been reserved, but not what&apos;s reserved from their own
+        until the day after the event. To take part yourself, add yourself as a guest.
       </Text>
     </PanelCard>
   );
@@ -216,7 +215,7 @@ function DrawPanel({
   function confirmDraw() {
     Alert.alert(
       `Draw names for ${participants.length} people?`,
-      "Each gets an email with their person. You won't see who drew whom.",
+      "Each gets an email with their person.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Draw names", onPress: () => draw(false) },
@@ -225,14 +224,14 @@ function DrawPanel({
   }
 
   function confirmAgain() {
-    Alert.alert("Draw again?", "Everyone in gets a new person and a new email, replacing the old one.", [
+    Alert.alert("Draw again?", "Everyone gets a new person by email.", [
       { text: "Cancel", style: "cancel" },
       { text: "Draw names", onPress: () => draw(true) },
     ]);
   }
 
   function confirmUndo() {
-    Alert.alert("Undo the draw?", "Everyone's person is cleared, so you can change who's in. Nobody is emailed.", [
+    Alert.alert("Undo the draw?", "Everyone's person is cleared. Nobody is emailed.", [
       { text: "Cancel", style: "cancel" },
       { text: "Undo the draw", style: "destructive", onPress: undo },
     ]);
@@ -259,20 +258,20 @@ function DrawPanel({
         <View style={{ gap: spacing.sm }}>
           <Text variant="callout">
             Names were drawn on{" "}
-            {new Date(exchange.drawn_at!).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. Everyone with
-            an email got their person. Nobody else can see who drew whom, you included.
+            {new Date(exchange.drawn_at!).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. Nobody else sees
+            who drew whom, not even you.
           </Text>
           {status.withoutEmail > 0 ? (
             <Text variant="footnote" tone="secondary">
-              {status.withoutEmail === 1 ? "1 person has" : `${status.withoutEmail} people have`} no email. Copy their
-              RSVP link from the guest list and text it to them: it shows their person.
+              {status.withoutEmail === 1 ? "1 person has" : `${status.withoutEmail} people have`} no email. Text them
+              their RSVP link from the guest list.
             </Text>
           ) : null}
           {status.stale ? (
             <View style={[styles.warning, { backgroundColor: theme.accentSoft }]}>
               <Icon name="error" size={15} color={theme.onAccentSoft} />
               <Text variant="footnote" style={{ flex: 1, color: theme.onAccentSoft }}>
-                Someone joined or left after the draw, so not everyone has exactly one person. Draw again to fix it.
+                Someone joined or left after the draw. Draw again to fix it.
               </Text>
             </View>
           ) : null}
@@ -280,7 +279,7 @@ function DrawPanel({
       ) : (
         <Text variant="callout">
           {participants.length === 0
-            ? "Nobody has joined yet. Guests join when they RSVP."
+            ? "Nobody has joined yet."
             : `${participants.length === 1 ? "1 person is" : `${participants.length} people are`} in, and ${
                 status.withWishlist === 1 ? "1 has" : `${status.withWishlist} have`
               } added a wishlist or gift ideas.`}
@@ -323,8 +322,7 @@ function DrawPanel({
         ) : null}
         {!drawn ? (
           <Text variant="footnote" tone="tertiary">
-            Taking part yourself? Add yourself to the guest list with your email and RSVP from your own link, so you get
-            your person like everyone else.
+            To take part yourself, add yourself as a guest with your email.
           </Text>
         ) : null}
       </View>
@@ -359,11 +357,7 @@ function DrawPanel({
                 );
               })}
             </View>
-          ) : (
-            <Text variant="footnote" tone="tertiary">
-              Partners usually don&apos;t draw each other. Add them here.
-            </Text>
-          )}
+          ) : null}
           {!drawn && participants.length >= 2 ? (
             <View style={{ gap: spacing.sm }}>
               <Picker

@@ -91,10 +91,7 @@ export function RegistryEventsBanner({
       <div className={cx("flex items-start gap-3 rounded-xl border border-secondary py-3 pr-2 pl-4", className)}>
         <CalendarHeart aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-tertiary sm:mt-2" />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <p className="text-sm text-tertiary">
-            <span className="font-medium text-secondary">Planning a party?</span> Send invitations and track
-            RSVPs, with guests linked to this registry.
-          </p>
+          <p className="text-sm font-medium text-secondary">Planning a party?</p>
           <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-auto" asChild>
             <Link href={planHref(registryId, basePath)}>Plan an event</Link>
           </Button>
@@ -110,7 +107,7 @@ export function RegistryEventsBanner({
             // reappear on the next visit.
             if (result.error) setHidden(false);
           }}
-          className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-tertiary transition outline-none hover:bg-secondary hover:text-secondary focus-visible:ring-2 focus-visible:ring-brand-600 max-sm:size-11 max-sm:-my-1.5"
+          className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-tertiary transition outline-none hover:bg-secondary hover:text-secondary focus-visible:ring-2 focus-visible:ring-brand-solid max-sm:size-11 max-sm:-my-1.5"
         >
           <X aria-hidden="true" className="size-4" />
         </button>
@@ -121,13 +118,13 @@ export function RegistryEventsBanner({
   return (
     <div
       className={cx(
-        "flex flex-col gap-3 rounded-2xl bg-blush-50 p-4 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 rounded-2xl bg-blush-50 dark:bg-blush-300/10 p-4 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <CalendarHeart aria-hidden="true" className="h-4.5 w-4.5 text-blush-700" />
+          <CalendarHeart aria-hidden="true" className="h-4.5 w-4.5 text-blush-700 dark:text-blush-200" />
         </span>
         <div>
           <p className="font-medium">{events.length === 1 ? "Linked event" : "Linked events"}</p>
@@ -139,7 +136,7 @@ export function RegistryEventsBanner({
               return (
                 <li key={event.id} className="flex flex-wrap items-center gap-x-2">
                   <span>
-                    <Link href={href} className="font-medium text-brand-600 hover:underline">
+                    <Link href={href} className="font-medium text-brand-tertiary hover:underline">
                       {event.title}
                     </Link>
                     {" · "}

@@ -234,7 +234,7 @@ function exchangeActions(
           error:
             result.reason === "too_few"
               ? `A gift exchange needs at least ${MIN_EXCHANGE_PARTICIPANTS} people.`
-              : "There's no way to draw names with these exclusions: someone has nobody left to give to. Remove an exclusion and try again.",
+              : "These exclusions leave someone with nobody to draw. Remove one and try again.",
         };
       }
       setGuests((current) => current.map((g) => ({ ...g, giftee_id: result.matches.get(g.id) ?? null })));
@@ -378,14 +378,14 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
       setInvites((current) => [...current, { id: newId("invite"), email: address, expires_at: `${addDays(today, 14)}T00:00:00Z` }]);
       return ok;
     },
-    createLink: async () => ({ error: "The demo can't make co-host links. Invite someone by email to see how it works." }),
+    createLink: async () => ({ error: "The demo can't make co-host links." }),
     revoke: async (_eventId, inviteId) => {
       setInvites((current) => current.filter((i) => i.id !== inviteId));
       return ok;
     },
     remove: async (_eventId, userId) => {
       // Leaving would take this page away, so the demo keeps Remi & Max on.
-      if (userId === DEMO_ME_ID) return { error: "In the demo you stay a host, so you can keep looking around." };
+      if (userId === DEMO_ME_ID) return { error: "You can't leave the demo event." };
       setHosts((current) => current.filter((h) => h.userId !== userId));
       return ok;
     },
@@ -517,13 +517,11 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                 >
                   <ImagePlus aria-hidden="true" className={cx("size-8", theme.icon)} />
                   <span className="font-medium text-primary">Add your invitation</span>
-                  <span className="text-sm text-secondary">Upload a picture guests see first</span>
                 </Link>
               )}
               <CardContent className="p-4">
                 <p className="text-sm text-tertiary">
-                  Guests see this, the details and an RSVP form at the event link.
-                  {event.open_rsvp ? " Anyone with the link can RSVP." : " Only invited guests can RSVP."}
+                  {event.open_rsvp ? "Anyone with the link can RSVP." : "Only invited guests can RSVP."}
                 </p>
               </CardContent>
             </Card>
@@ -531,8 +529,8 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
             <Card className="py-0">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                    <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                    <Gift aria-hidden="true" className="size-4.5 text-brand-tertiary" />
                   </span>
                   <div className="flex min-w-0 flex-col gap-1">
                     <p className="font-medium text-primary">Gifts</p>
@@ -542,7 +540,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                           href={demoRegistryPath(registry)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-brand-600 hover:underline"
+                          className="text-brand-tertiary hover:underline"
                         >
                           {registry.title}
                         </a>
@@ -552,7 +550,7 @@ function HostPage({ event, today }: { event: DemoEvent; today: string }) {
                       <p className="text-sm text-tertiary">No registry linked.</p>
                     )}
                     {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
-                    <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-600 hover:underline">
+                    <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-tertiary hover:underline">
                       {registry || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
                     </Link>
                   </div>

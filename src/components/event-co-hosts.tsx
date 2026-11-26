@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Link2, Loader2, UserPlus, X } from "lucide-react";
+import { Check, Link2, Loader2, LogOut, UserMinus, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { createCoHostLink, inviteCoHost, removeCoHost, revokeCoHostInvite } from "@/lib/actions/events";
 import { isEmail } from "@/lib/events";
 
@@ -34,7 +36,11 @@ export interface EventCoHostsProps {
   actions?: Partial<CoHostActions>;
 }
 
-/** Who hosts the event, and inviting more co-hosts. On the host's event page. */
+/**
+ * Who hosts the event, and inviting more co-hosts. On the host's event page.
+ * Removing a co-host, leaving and taking back an invitation are in each row's
+ * "…" menu, so they can't be clicked by accident. Removing and leaving ask first.
+ */
 export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overrides }: EventCoHostsProps) {
   const router = useRouter();
   const actions = { ...DEFAULT_ACTIONS, ...overrides };
@@ -43,6 +49,24 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const viewerIsOwner = hosts.some((h) => h.isOwner && h.userId === viewerId);
+  // The co-host whose removal (or the viewer's own leaving) waits for a yes.
+  const [removing, setRemoving] = useState<{ userId: string; name: string } | null>(null);
+  const [removeError, setRemoveError] = useState("");
+  const leaving = removing?.userId === viewerId;
+
+  const confirmRemove = async () => {
+    if (!removing) return;
+    setBusy(true);
+    setRemoveError("");
+    const result = await actions.remove(eventId, removing.userId);
+    setBusy(false);
+    if (result.error) {
+      setRemoveError(result.error);
+      return;
+    }
+    setRemoving(null);
+    router.refresh();
+  };
 
   const run = async (work: () => Promise<ActionResult>, success?: string) => {
     setBusy(true);
@@ -94,7 +118,7 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
       <CardContent className="flex flex-col gap-3 p-4">
         <div>
           <h2 className="font-medium text-primary">Hosts</h2>
-          <p className="text-sm text-tertiary">Co-hosts can edit the event, add guests, send invitations and reminders, see RSVPs and draw names.</p>
+          <p className="text-sm text-tertiary">Co-hosts can edit the event and manage guests.</p>
         </div>
         <ul className="flex flex-col gap-1.5">
           {hosts.map((host) => (
@@ -105,14 +129,19 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
                 {host.isOwner && <span className="text-tertiary"> · made the event</span>}
               </span>
               {!host.isOwner && (viewerIsOwner || host.userId === viewerId) && (
-                <button
-                  type="button"
+                <RowActionsMenu
+                  label={`More actions for ${host.userId === viewerId ? "you" : host.name}`}
                   disabled={busy}
-                  onClick={() => run(() => actions.remove(eventId, host.userId))}
-                  className="shrink-0 cursor-pointer text-sm font-medium text-tertiary hover:text-primary hover:underline max-sm:min-h-11"
-                >
-                  {host.userId === viewerId ? "Leave" : "Remove"}
-                </button>
+                  actions={[
+                    host.userId === viewerId
+                      ? { id: "remove", label: "Leave this event", icon: LogOut, destructive: true }
+                      : { id: "remove", label: "Remove co-host", icon: UserMinus, destructive: true },
+                  ]}
+                  onAction={() => {
+                    setRemoveError("");
+                    setRemoving({ userId: host.userId, name: host.name });
+                  }}
+                />
               )}
             </li>
           ))}
@@ -121,15 +150,12 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
               <span className="min-w-0 truncate text-tertiary">
                 {pending.email ?? "Shared link"} · invited
               </span>
-              <button
-                type="button"
+              <RowActionsMenu
+                label={`More actions for the invitation${pending.email ? ` to ${pending.email}` : ""}`}
                 disabled={busy}
-                aria-label={`Take back the invitation${pending.email ? ` to ${pending.email}` : ""}`}
-                onClick={() => run(() => actions.revoke(eventId, pending.id))}
-                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tertiary hover:bg-secondary hover:text-primary max-sm:size-11"
-              >
-                <X aria-hidden="true" className="size-4" />
-              </button>
+                actions={[{ id: "revoke", label: "Cancel invitation", icon: X, destructive: true }]}
+                onAction={() => run(() => actions.revoke(eventId, pending.id))}
+              />
             </li>
           ))}
         </ul>
@@ -161,10 +187,10 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
           type="button"
           onClick={copyLink}
           disabled={busy}
-          className="inline-flex cursor-pointer items-center gap-1.5 self-start text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11"
+          className="inline-flex cursor-pointer items-center gap-1.5 self-start text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
         >
           {copied ? <Check aria-hidden="true" className="size-4" /> : <Link2 aria-hidden="true" className="size-4" />}
-          {copied ? "Copied" : "Copy a co-host link instead"}
+          {copied ? "Copied" : "Copy co-host link"}
         </button>
         {error && (
           <p role="alert" className="text-sm text-error-primary">
@@ -172,6 +198,20 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
           </p>
         )}
       </CardContent>
+      <ConfirmActionDialog
+        open={removing !== null}
+        onOpenChange={(open) => !open && setRemoving(null)}
+        title={leaving ? "Leave this event?" : `Remove ${removing?.name ?? ""} as a co-host?`}
+        description={
+          leaving
+            ? "You'll stop seeing the event's guest list and RSVPs, and can't edit it. The owner can invite you again."
+            : "They'll stop seeing the event's guest list and RSVPs, and can't edit it. You can invite them again."
+        }
+        confirmLabel={leaving ? "Leave" : "Remove"}
+        working={busy}
+        error={removeError}
+        onConfirm={confirmRemove}
+      />
     </Card>
   );
 }

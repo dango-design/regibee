@@ -136,7 +136,7 @@ function SignupForm() {
               isSelected={findable}
               onChange={setFindable}
               label="Let friends find me on Regibee"
-              hint="Signed-in people can find you by name, or by your email address if they already know it. Your email is never shown."
+              hint="People can find you by name or email. Your email is never shown."
             />
             {error && (
               <p className="text-sm text-error-primary">{error}</p>
@@ -146,7 +146,7 @@ function SignupForm() {
             </Button>
             <p className="text-center text-xs text-tertiary">
               Our{" "}
-              <Link href="/privacy" target="_blank" className="text-brand-600 underline underline-offset-4 hover:text-brand-700">
+              <Link href="/privacy" target="_blank" className="text-brand-tertiary underline underline-offset-4 hover:text-brand-secondary">
                 privacy policy
               </Link>{" "}
               says what we keep and how to delete it.
@@ -154,7 +154,7 @@ function SignupForm() {
           </form>
           <p className="mt-4 text-center text-sm text-tertiary">
             Already have an account?{" "}
-            <Link href={redirectTo !== "/dashboard" ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"} className="text-brand-600 underline-offset-4 hover:underline">
+            <Link href={redirectTo !== "/dashboard" ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"} className="text-brand-tertiary underline-offset-4 hover:underline">
               Sign in
             </Link>
           </p>

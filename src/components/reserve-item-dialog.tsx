@@ -132,7 +132,7 @@ function ShipTo({ address, copyable = true }: { address: string; copyable?: bool
         <button
           type="button"
           onClick={copy}
-          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 transition-colors hover:text-brand-700"
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-brand-tertiary transition-colors hover:text-brand-secondary"
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? "Copied!" : "Copy address"}
@@ -144,7 +144,7 @@ function ShipTo({ address, copyable = true }: { address: string; copyable?: bool
 
 // Text buttons get a 44px tap target on phones.
 const textButton =
-  "inline-flex items-center justify-center text-sm font-medium text-brand-600 underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
+  "inline-flex items-center justify-center text-sm font-medium text-brand-tertiary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 const dangerTextButton =
   "inline-flex items-center justify-center text-sm font-medium text-error-primary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 // Quieter than the other buttons: it's there for a guest who reserved by
@@ -357,7 +357,7 @@ export function ReserveItemDialog({
   ) : null;
   const newTabNote = shopName ? (
     <p className={noteText}>
-      {shopName} opens in a new tab. Come back to this tab when you&apos;ve checked out.
+      {shopName} opens in a new tab. Come back here after checkout.
     </p>
   ) : null;
 
@@ -406,7 +406,7 @@ export function ReserveItemDialog({
               <DialogDescription>
                 {registryStoreName
                   ? `It's on ${parentName}'s ${registryStoreName} registry, so the store has their address.`
-                  : "Reserve it so nobody else buys it, and you'll get the address to ship it to."}{" "}
+                  : "Reserve it so nobody else buys it."}{" "}
                 No account required.
               </DialogDescription>
             </DialogHeader>
@@ -423,7 +423,7 @@ export function ReserveItemDialog({
                       href={item.external_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-brand-tertiary hover:underline"
                     >
                       See it
                       <ExternalLink className="h-3.5 w-3.5 shrink-0" />
@@ -438,7 +438,7 @@ export function ReserveItemDialog({
             <DialogHeader className="pr-8">
               <DialogTitle>Tell {parentName} you bought it</DialogTitle>
               <DialogDescription>
-                They&apos;ll see it&apos;s from {fromWhom}, and nobody else will buy it. No account required.
+                They&apos;ll see it&apos;s from {fromWhom}. No account required.
               </DialogDescription>
             </DialogHeader>
             <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
@@ -497,7 +497,7 @@ export function ReserveItemDialog({
             (oneTap ? (
               newTabNote
             ) : (
-              <p className={noteText}>We&apos;ll hold it for you for {GIFT_HOLD_DAYS} days while you buy it.</p>
+              <p className={noteText}>We&apos;ll hold it for you for {GIFT_HOLD_DAYS} days.</p>
             ))}
         </div>
         <div className="flex justify-center">
@@ -521,7 +521,7 @@ export function ReserveItemDialog({
           // The reservation is saved by now, which a guest may not have
           // expected, so the way to cancel it sits next to the notice.
           // mint-800, not 700: 700 on mint-50 is under 4.5:1 contrast.
-          <div className="mr-8 flex items-start gap-2 rounded-lg border border-mint-200 bg-mint-50 px-3 py-2 text-sm text-mint-800">
+          <div className="mr-8 flex items-start gap-2 rounded-lg border border-mint-200 dark:border-mint-800 bg-mint-50 dark:bg-mint-500/10 px-3 py-2 text-sm text-mint-800 dark:text-mint-300">
             <Check className="mt-0.5 h-4 w-4 shrink-0" />
             {/* On a phone the button wraps to its own line, under the text. */}
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3">
@@ -543,8 +543,8 @@ export function ReserveItemDialog({
           ) : !address ? (
             <DialogDescription>
               {prefill?.secretGiver
-                ? "This registry has no shipping address yet. Bring it to the gift exchange, or ask the host where to send it."
-                : `This registry has no shipping address yet. Ask ${parentName} where to send it.`}
+                ? "No shipping address yet. Bring it to the gift exchange, or ask the host."
+                : `No shipping address yet. Ask ${parentName} where to send it.`}
             </DialogDescription>
           ) : null}
         </DialogHeader>
@@ -603,7 +603,7 @@ export function ReserveItemDialog({
         <DialogHeader className="pr-8">
           <DialogTitle>Did you buy the {item.title}?</DialogTitle>
           <DialogDescription>
-            Tell us so nobody else buys it. {parentName} will see it&apos;s from {fromWhom}.
+            {parentName} will see it&apos;s from {fromWhom}.
           </DialogDescription>
         </DialogHeader>
         {errorLine}
@@ -625,14 +625,13 @@ export function ReserveItemDialog({
   } else if (step === "notyet") {
     content = (
       <div className="flex flex-col items-center gap-4 py-2 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-sunshine-100 bg-sunshine-50">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-sunshine-100 dark:border-sunshine-900 bg-sunshine-50 dark:bg-sunshine-400/10">
           <Clock className="h-8 w-8 text-primary" aria-hidden="true" />
         </span>
         <DialogTitle className="text-xl font-bold">It&apos;s still yours</DialogTitle>
         <p className="text-sm text-secondary">
           We&apos;ll hold the {item.title}
-          {until ? <> until {until}</> : null} and remind you the day before. Finish it from the banner
-          at the top of the registry, or the link in your email.
+          {until ? <> until {until}</> : null} and email you the day before.
         </p>
         <Button onClick={close}>Done</Button>
         <button type="button" className={dangerTextButton} onClick={goToRelease}>
@@ -663,7 +662,7 @@ export function ReserveItemDialog({
           <DialogTitle>
             {gift?.status === "purchased" ? `Undo your gift of the ${item.title}?` : `Release the ${item.title}?`}
           </DialogTitle>
-          <DialogDescription>It goes back on the list so another guest can give it.</DialogDescription>
+          <DialogDescription>It goes back on the list.</DialogDescription>
         </DialogHeader>
         {errorLine}
         <DialogFooter sticky>
@@ -706,8 +705,8 @@ export function ReserveItemDialog({
         <DialogHeader className="pr-8">
           <DialogTitle>Your reservation ended</DialogTitle>
           <DialogDescription>
-            The {item.title} went back on the list for other guests.{" "}
-            {remaining > 0 ? "It's still available, so you can reserve it again." : "Another guest has it now."}
+            The {item.title} went back on the list.{" "}
+            {remaining > 0 ? "It's still available." : "Another guest has it now."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter sticky>

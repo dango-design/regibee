@@ -136,10 +136,10 @@ export function GiftIdeaDialog({
       if (guessed) setTitle(guessed);
       setReadStatus({
         text: guessed
-          ? `We couldn't read ${store}, so we took the name from the link. Check it.`
+          ? `We couldn't read ${store}. Check the name.`
           : currentTitle
-            ? `We couldn't read ${store}. Your link and name are kept.`
-            : `We couldn't read ${store}. The link is kept, so add a name yourself.`,
+            ? `We couldn't read ${store}.`
+            : `We couldn't read ${store}. Add a name yourself.`,
         isError: true,
       });
       if (options.fromTap && !currentTitle && !guessed) titleRef.current?.focus();
@@ -192,7 +192,7 @@ export function GiftIdeaDialog({
     }
     const shared = findSharedLink({ text });
     if (!shared) {
-      setReadStatus({ text: "There's no link on your clipboard. Copy the product's link, then tap Paste.", isError: true });
+      setReadStatus({ text: "There's no link on your clipboard.", isError: true });
       return;
     }
     setUrl(shared.url);
@@ -282,7 +282,7 @@ export function GiftIdeaDialog({
           <DialogTitle>{editing ? "Edit gift idea" : "Save a gift idea"}</DialogTitle>
           <DialogDescription>
             <Lock aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" />
-            Only you can see your gift ideas. The person they&apos;re for never does.
+            Only you can see gift ideas.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="min-w-0 space-y-5">
@@ -310,7 +310,7 @@ export function GiftIdeaDialog({
                         className={cx(
                           "min-h-9 cursor-pointer rounded-full px-3 text-sm font-medium outline-focus-ring transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
                           chosen
-                            ? "bg-brand-600 text-white"
+                            ? "bg-brand-solid text-primary_on-brand"
                             : "bg-secondary text-secondary ring-1 ring-secondary ring-inset hover:bg-tertiary",
                         )}
                       >
@@ -381,7 +381,7 @@ export function GiftIdeaDialog({
               </div>
             </div>
             {readStatus && (
-              <p role="status" className={cx("text-xs", readStatus.isError ? "text-warning-primary" : "text-brand-600")}>
+              <p role="status" className={cx("text-xs", readStatus.isError ? "text-warning-primary" : "text-brand-tertiary")}>
                 {readStatus.text}
               </p>
             )}
@@ -414,7 +414,7 @@ export function GiftIdeaDialog({
                       aria-pressed={selected}
                       className={cx(
                         "relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 bg-tertiary transition",
-                        selected ? "border-brand-600 ring-2 ring-brand-600/30" : "border-transparent hover:border-secondary",
+                        selected ? "border-brand-solid ring-2 ring-brand-solid/30" : "border-transparent hover:border-secondary",
                       )}
                     >
                       <img

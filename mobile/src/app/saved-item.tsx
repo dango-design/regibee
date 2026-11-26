@@ -90,7 +90,7 @@ export default function SavedItemScreen() {
       {item.externalUrl ? (
         <Button title="Shop" icon="external" variant="secondary" size="medium" onPress={() => WebBrowser.openBrowserAsync(item.externalUrl!)} />
       ) : null}
-      <Section title="On your lists" footer="Gifts belong to the item, so a gift reserved through any of its lists shows on all of them.">
+      <Section title="On your lists" footer="Its gifts show on every list it's on.">
         {lists.map((list) => (
           <SwitchRow
             key={list.id}

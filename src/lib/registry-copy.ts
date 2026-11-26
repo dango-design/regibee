@@ -16,11 +16,9 @@ export interface RegistryCopy {
   registryNoun: string;
   registryNounPlural: string;
   eventDateLabel: string;
-  eventDatePlaceholderHint: string;
   honoreeLabel: string;
   honoreePlaceholder: string;
   titlePlaceholder: string;
-  tagline: string;
   selfPurchasedLabel: string;
   selfPurchaseButton: string;
   coverItemFlavor: (honoree: string) => string;
@@ -32,12 +30,9 @@ const BABY: RegistryCopy = {
   registryNoun: "baby registry",
   registryNounPlural: "baby registries",
   eventDateLabel: "Due date",
-  // Store perks (src/lib/store-perks-server.ts) email owners around it.
-  eventDatePlaceholderHint: "Guests see it at the top of your registry, and we'll tell you when store discounts open.",
   honoreeLabel: "Parent Names",
   honoreePlaceholder: 'e.g., "Denise & Brian"',
   titlePlaceholder: "The Smith Family Baby Registry",
-  tagline: "Set up your baby registry in just a few steps",
   selfPurchasedLabel: "Purchased by parent",
   selfPurchaseButton: "Mark as bought by parent",
   coverItemFlavor: (honoree) =>
@@ -51,11 +46,9 @@ const PERSONAL_DEFAULTS: RegistryCopy = {
   registryNoun: "registry",
   registryNounPlural: "registries",
   eventDateLabel: "Event date",
-  eventDatePlaceholderHint: "Guests see it at the top of your registry.",
   honoreeLabel: "Honoree",
   honoreePlaceholder: 'e.g., "Alex & Sam"',
   titlePlaceholder: "Alex's Wishlist",
-  tagline: "Set up your registry in just a few steps",
   selfPurchasedLabel: "Already bought",
   selfPurchaseButton: "Mark as already bought",
   coverItemFlavor: (honoree) =>
@@ -71,21 +64,18 @@ const PERSONAL_OVERRIDES: Record<PersonalEventType, Partial<RegistryCopy>> = {
     honoreeLabel: "Birthday Person",
     honoreePlaceholder: 'e.g., "Alex"',
     titlePlaceholder: "Alex's 30th Birthday",
-    tagline: "Set up your birthday wishlist in just a few steps",
   },
   christmas: {
     eventDateLabel: "Celebration date",
     honoreeLabel: "Household",
     honoreePlaceholder: 'e.g., "The Chen Family"',
     titlePlaceholder: "The Chen Family Christmas",
-    tagline: "Set up your Christmas list in just a few steps",
   },
   wedding: {
     eventDateLabel: "Wedding date",
     honoreeLabel: "Couple",
     honoreePlaceholder: 'e.g., "Alex & Sam"',
     titlePlaceholder: "Alex & Sam's Wedding Registry",
-    tagline: "Set up your wedding registry in just a few steps",
     registryNoun: "wedding registry",
   },
   housewarming: {
@@ -93,14 +83,12 @@ const PERSONAL_OVERRIDES: Record<PersonalEventType, Partial<RegistryCopy>> = {
     honoreeLabel: "Household",
     honoreePlaceholder: 'e.g., "Alex & Sam"',
     titlePlaceholder: "Our New Home",
-    tagline: "Set up your housewarming registry in just a few steps",
   },
   graduation: {
     eventDateLabel: "Graduation date",
     honoreeLabel: "Graduate",
     honoreePlaceholder: 'e.g., "Alex"',
     titlePlaceholder: "Alex's Graduation",
-    tagline: "Set up your graduation registry in just a few steps",
   },
   other: {},
 };

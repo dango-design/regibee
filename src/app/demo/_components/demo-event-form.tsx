@@ -26,7 +26,7 @@ function demoLookup(today: string) {
 
 function DemoNotice() {
   return (
-    <p className="mt-4 flex items-start gap-2 rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+    <p className="mt-4 flex items-start gap-2 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4 text-sm text-sunshine-900 dark:text-sunshine-200">
       <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
       Fill it in to see how it works. The demo doesn&apos;t save events, so Save stops with a note.
     </p>
@@ -56,11 +56,6 @@ export function DemoEventForm({ eventId, registryId }: { eventId?: string; regis
           {event ? event.title : "Events"}
         </Link>
         <h1 className="mt-4 text-3xl font-bold">{event ? "Edit event" : "Plan an event"}</h1>
-        <p className="mt-1 text-tertiary">
-          {event
-            ? "Guests see your changes on the event page right away."
-            : "You'll add guests and send the invitation next."}
-        </p>
         <DemoNotice />
         <div className="mt-6">
           {event ? (

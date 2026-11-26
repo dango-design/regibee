@@ -91,9 +91,8 @@ export function FollowingFeed({
     <div className="container mx-auto px-4 pt-6 pb-8">
       <div className="max-w-2xl">
         <h1 className="sr-only">Following</h1>
-        <p className="text-tertiary">Registries from people who&apos;ve approved your follow.</p>
 
-        <div className="mt-6">
+        <div>
           <PeopleSearch
             searchAction={searchAction}
             inviteAction={inviteAction}
@@ -125,17 +124,17 @@ export function FollowingFeed({
         {people.length === 0 ? (
           <EmptyState
             title="You're not following anyone yet"
-            body="Search for friends above by name or email, or open their profile link and tap Follow. Once they approve, their registries show up here."
+            body="Follow friends to see their lists here."
           />
         ) : (
           <>
             {registries.length === 0 ? (
               <EmptyState
-                title="No registries yet"
+                title="No lists yet"
                 body={
                   approved.length === 0
-                    ? "Their registries will show up here once they approve your follow."
-                    : "The people you follow haven't shared any registries on their profiles yet."
+                    ? "Their lists show here once they approve you."
+                    : "The people you follow haven't shared any lists yet."
                 }
               />
             ) : (
@@ -161,12 +160,10 @@ export function FollowingFeed({
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-sm text-tertiary">
-                Manage who you follow on your{" "}
-                <Link href={`${basePath}/dashboard/account#following`} className="font-medium text-brand-600 hover:underline">
-                  account page
+              <p className="mt-3 text-sm">
+                <Link href={`${basePath}/dashboard/account#following`} className="font-medium text-brand-tertiary hover:underline">
+                  Manage who you follow
                 </Link>
-                .
               </p>
             </section>
           </>

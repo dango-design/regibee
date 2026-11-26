@@ -57,7 +57,7 @@ export function ClampedText({
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen(!open)}
-          className="cursor-pointer text-sm font-semibold text-brand-600 hover:underline"
+          className="cursor-pointer text-sm font-semibold text-brand-tertiary hover:underline"
         >
           {open ? "Show less" : "Read more"}
         </button>

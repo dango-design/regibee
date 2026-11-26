@@ -1,0 +1,52 @@
+# Plan: native screens for guest and follower pages
+
+Status: approved by Brian on 2026-11-25, with the whole invitation in the first PR. Step 1 below is built; the rest is not.
+
+## Why
+
+The app shows other people's lists, events, profiles, group gifts and invite links as website pages in a web view (`src/app/web.tsx`). Those pages don't follow the phone's dark mode, use the website's layout, and feel like a website inside the app. The web view was a shortcut: it reused the website's guest flows (reserving, RSVPs, following) without building them twice. This plan replaces those pages with native screens, one at a time, and keeps the web view as the fallback for any page not yet native.
+
+## The pages today
+
+| Page | What a visitor does there | Where its data comes from | Actions it calls | Size |
+| --- | --- | --- | --- | --- |
+| Event invitation `/e/<slug>` (`?g=<token>` is a guest's own link) | Read the details, add to calendar, open the map, read the host's updates, RSVP (answer, party size, kids, note, the host's questions), sign up for a sheet row or a meal train day, join a gift exchange, add a wishlist when everyone gives everyone, see who they drew, follow other guests, open the linked lists and group gifts | Inline in `src/app/e/[slug]/page.tsx`, from helpers in `src/lib/events-server.ts`, `signups.ts`, `group-gifts-server.ts`, `guest-follows.ts`. All service-role reads, filtered by slug and token | `events.submitRsvp`, `events.saveEventWishlist`, `follows.requestFollow` | Large, but splits well |
+| Someone else's list `/r/<slug>` | Reserve an item or mark it bought, confirm or release their gift, chip in to a gift fund, cover an item the owner bought, suggest an item, start a group gift, follow the owner | Inline in `src/app/r/[slug]/page.tsx` (about 300 lines of gift math that reads the `regibee_my_gifts` cookie or a signed buyer link) | `registry.reserveItem`, `confirmGift`, `releaseGift`, `contributeToCashFund`, `coverParentPurchasedItem`, `suggestItem`, `groupGifts.startGroupGift`, `follows.requestFollow` / `cancelFollow` | Large |
+| Profile `/u/<profile>` | See the person's lists, note, gift profile and shared events; follow or follow back | Inline in `src/app/u/[profile]/page.tsx`, from `list-access.ts`, `gift-profile.ts`, `viewer.ts`, `shared-events-server.ts` | `follows.requestFollow` / `cancelFollow` | Small to medium |
+| Group gift `/group-gift/<token>` | Pledge, change or withdraw a pledge; the organizer marks pledges paid, marks it bought or calls it off | Mostly ready: `loadGroupGift` and `groupGiftViewFor` in `src/lib/group-gifts-server.ts` | `groupGifts.pledgeToGroupGift`, `changePledge`, `withdrawPledge`, `setPledgePaid`, `markGroupGiftBought`, `callOffGroupGift` | Medium |
+| `/invite/<token>` (co-manage a list) | Accept | Inline | `registry.acceptInvite` | Small |
+| `/host-invite/<token>` | Accept co-hosting | Inline | `events.acceptCoHostInvite` | Small |
+| `/follow-invite/<token>` | Accept or decline, then follow back | `getFollowInvite`, `getFollowStatus` | `followInvites.acceptFollowInvite` / `declineFollowInvite`, `follows.requestFollow` | Small |
+| `/list-request/<token>` | Make the list the host asked for | Inline | `events.acceptListRequest` | Small |
+| `/privacy` | Read | Static | None | Stays a web page |
+
+## How every native screen gets its data
+
+- Each page's reads move out of its `page.tsx` into a loader in `src/lib/<page>-page.ts`, as `loadListPage` already does. The website page calls the loader and renders what it returns. `src/lib/app-loaders.ts` lists it, so the app gets the same data from `/api/app/data`. The result's types go in a `<page>-page-types.ts` file with no imports from server code, so the app can import them through `@shared/*`.
+- Changes go through the website's own server actions on `/api/app/action`, as the app's other screens do. No new server logic for the app.
+- The loader returns only what the page already sends to the browser. Nothing new reaches the phone.
+- The rules stay where they are, inside the loaders: private lists are not found, owners who hide reservations see everything as unreserved, blocked viewers get not found, profile lists pass through `profileAudience` and `seesOnProfile`, and gift ideas never appear (no guest page reads them).
+- The app keeps one door to these pages: `openSite(path)` in `mobile/src/lib/web.ts`, plus `redirectSystemPath` in `+native-intent.ts` for links from outside. A new `nativeScreenFor(path, signedIn)` decides: a native screen when there is one, the web view otherwise. Links tapped inside the web view that lead to a native page open the native screen.
+- Each native screen is a file at the root of `mobile/src/app`, so it sits in the root stack and back returns to the page it came from. It uses the website's path: `mobile/src/app/e/[slug].tsx` for `/e/<slug>`.
+
+## Signed out
+
+`/api/app/data` and `/api/app/action` refuse any request without a signed-in token (`authenticateApp` in `src/lib/app-request.ts`). A signed-out app opens these pages from Android App Links and from links shared to it.
+
+- Until the list screen, signed-out visitors keep the web view. People who have the app but aren't signed in are rare, so this costs little.
+- With the list screen, add a short allowlist of guest loaders and guest actions that may run without a token: the ones the website already lets anyone call (the invitation, the list, the group gift, `submitRsvp`, `reserveItem`, `contributeToCashFund`, `suggestItem`, `pledgeToGroupGift`). Everything else still needs a token.
+- The website remembers a guest's gifts and pledges in cookies (`regibee_my_gifts`, `regibee_group_pledges`). The app would keep those ids on the phone instead and send them to the loader, so a guest can still confirm or release their gift.
+
+## Order
+
+1. **The whole event invitation** (first PR, built). Native for signed-in accounts: the invitation picture or the event's color, details, calendar, map, the host's updates, the RSVP (answer, party size, kids, note, the host's questions, and RSVPing from the event link with a name and email when the host allows it), sign-up sheets and meal trains, gift exchanges (Secret Santa and everyone gives everyone, with the wishlist step and following other guests), who the guest drew, and group gifts. The list rows open the list in the web view through the event's gift link, as the website does, so the gift is matched to the RSVP. Group gifts open in the web view too, until step 4.
+2. **Someone else's list and reserving a gift**, with the signed-out allowlist and gifts remembered on the phone. The biggest step: pulling the gift math out of `src/app/r/[slug]/page.tsx` into a loader. Probably two PRs: viewing and reserving, then gift funds, covering, suggestions and group gifts.
+3. **Profiles.** Small once lists are native, since a profile is mostly links to lists.
+4. **Group gift page.** The loader is nearly there.
+5. **The four invite pages.** Small, one loader each. Each needs an account, so they're signed-in only.
+6. **Clean up.** The web view stays for `/privacy` and for any path that has no screen, such as a page added to the website later.
+
+## Decided
+
+- The whole invitation went into one PR, instead of leaving gift exchanges and sign-up sheets for a second one.
+- Signed-out visitors keep the web view until step 2, when the signed-out allowlist comes with the list screen.

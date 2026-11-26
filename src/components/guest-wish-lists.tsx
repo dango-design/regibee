@@ -7,6 +7,7 @@ import { initialsFor } from "@/lib/initials";
 import { storeName, type GuestWishList } from "@/lib/events";
 import { cx } from "@/lib/utils/cx";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
+import { HOST_FILL, HOST_INK, hostColorVars } from "@/lib/host-colors";
 
 export interface GuestWishListsProps {
   /**
@@ -123,7 +124,7 @@ function Initials({ name, isYou }: { name: string; isYou: boolean }) {
       aria-hidden="true"
       className={cx(
         "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
-        isYou ? "bg-brand-600 text-white" : "bg-mint-200 text-mint-900",
+        isYou ? "bg-brand-solid text-primary_on-brand" : "bg-mint-200 dark:bg-mint-500/20 text-mint-900 dark:text-mint-300",
       )}
     >
       {initialsFor(name)}
@@ -195,8 +196,8 @@ export function GuestWishLists({
     // invitation picture. Each list is its own outlined row.
     <section
       aria-labelledby="wish-lists-heading"
-      className={cx("flex flex-col gap-4", colors && "rounded-2xl p-4 sm:p-5")}
-      style={colors ? { backgroundColor: colors.fill } : undefined}
+      className={cx("flex flex-col gap-4", colors && cx("rounded-2xl p-4 sm:p-5", HOST_FILL))}
+      style={colors ? hostColorVars(colors) : undefined}
     >
       <div className="flex items-start gap-3">
         <span
@@ -204,8 +205,8 @@ export function GuestWishLists({
         >
           <Users
             aria-hidden="true"
-            className={cx("size-4.5", !colors && "text-brand-600")}
-            style={colors ? { color: colors.ink } : undefined}
+            className={cx("size-4.5", colors ? HOST_INK : "text-brand-tertiary")}
+            style={colors ? hostColorVars(colors) : undefined}
           />
         </span>
         <div className="min-w-0 pt-1">
@@ -238,7 +239,7 @@ export function GuestWishLists({
                   ) : (
                     <span
                       aria-hidden="true"
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-200 text-mint-900"
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-200 dark:bg-mint-500/20 text-mint-900 dark:text-mint-300"
                     >
                       <Gift className="size-4.5" />
                     </span>
@@ -342,7 +343,7 @@ export function GuestWishLists({
 
       {lists && lists.length === 0 && (
         <p className="rounded-xl border border-secondary bg-primary p-3 text-sm text-tertiary">
-          Nobody has RSVPed yet. Lists show here as guests add them.
+          Nobody has RSVPed yet.
         </p>
       )}
 

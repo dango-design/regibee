@@ -59,7 +59,6 @@ export function DashboardSkeleton() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="sr-only">My Registries</h1>
-          <p className="text-tertiary">Manage your registries and track gifts</p>
         </div>
         <Button asChild>
           <Link href="/dashboard/new">
@@ -109,7 +108,6 @@ export function EventsSkeleton() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="sr-only">Events</h1>
-          <p className="text-tertiary">Send invitations and track RSVPs</p>
         </div>
         <Button asChild>
           <Link href="/dashboard/new">
@@ -150,7 +148,6 @@ export function FollowingSkeleton() {
       <div className="max-w-2xl">
         <LoadingMessage>Loading the registries you follow</LoadingMessage>
         <h1 className="sr-only">Following</h1>
-        <p className="text-tertiary">Registries from people who&apos;ve approved your follow.</p>
 
         {/* The people search box */}
         <div className="mt-6 space-y-1.5">
@@ -199,7 +196,6 @@ export function SavedSkeleton() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="sr-only">Saved</h1>
-          <p className="text-tertiary">Everything on your lists, in one place.</p>
         </div>
         <Skeleton className="h-10 w-36 shrink-0 rounded-lg" />
       </div>
@@ -523,9 +519,6 @@ export function PlanPickerSkeleton() {
     <div className="container mx-auto max-w-3xl px-4 py-8" aria-busy="true">
       <LoadingMessage>Loading</LoadingMessage>
       <h1 className="text-3xl font-bold">Start something new</h1>
-      <p className="mt-1 text-tertiary">
-        A gift list on its own, or an event with invitations. You can add the other one later.
-      </p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {[0, 1, 2, 3].map((index) => (
           <Skeleton key={index} className="h-28 w-full rounded-xl" />

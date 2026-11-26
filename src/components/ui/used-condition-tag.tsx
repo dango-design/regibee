@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 // "very good" doesn't. The phone app's item row says the same
 // (mobile/src/components/item-row.tsx).
 const conditions: Record<string, { label: string; border: string; badge: string }> = {
-  "like-new": { label: "like-new", border: "border-blush-200", badge: "bg-blush-200" },
-  "very-good": { label: "very good", border: "border-sunshine-100", badge: "bg-sunshine-100" },
-  "good": { label: "good", border: "border-mint-200", badge: "bg-mint-200" },
-  "acceptable": { label: "acceptable", border: "border-brand-300", badge: "bg-brand-300" },
+  "like-new": { label: "like-new", border: "border-blush-200 dark:border-blush-700/60", badge: "bg-blush-200 dark:bg-blush-300/20" },
+  "very-good": { label: "very good", border: "border-sunshine-100 dark:border-sunshine-900", badge: "bg-sunshine-100 dark:bg-sunshine-400/15" },
+  "good": { label: "good", border: "border-mint-200 dark:border-mint-800", badge: "bg-mint-200 dark:bg-mint-500/20" },
+  "acceptable": { label: "acceptable", border: "border-brand-300 dark:border-brand-700", badge: "bg-brand-300" },
 };
 
 interface UsedConditionTagProps {

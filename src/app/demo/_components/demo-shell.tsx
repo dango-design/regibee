@@ -9,8 +9,8 @@ import { DEMO_FOLLOWS, DEMO_ME, demoProfilePath } from "@/lib/demo-people";
 /** The strip across the top of every demo page. */
 export function DemoBanner() {
   return (
-    <div className="bg-brand-solid px-4 py-2 text-center text-sm text-white">
-      This is a demo with sample data. Try anything: nothing is saved.{" "}
+    <div className="bg-brand-solid px-4 py-2 text-center text-sm text-primary_on-brand">
+      This is a demo. Nothing is saved.{" "}
       <Link href="/signup" className="font-medium underline">
         Create your own registry
       </Link>

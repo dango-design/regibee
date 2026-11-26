@@ -27,7 +27,7 @@ export function SupportPage({
           {back.label}
         </Link>
       )}
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-warning-200 bg-warning-primary p-4 text-sm">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-warning-200 dark:border-warning-800 bg-warning-primary p-4 text-sm">
         <Eye aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-warning-primary" />
         <p className="text-secondary">
           <span className="font-semibold text-primary">Support view.</span> Read only: nothing here changes the
@@ -116,8 +116,8 @@ export function SupportTag({
         tone === "brand" && "bg-brand-primary text-brand-secondary",
         // The 700 shades: the theme's warning and success text colors are too
         // light on these backgrounds for small text (WCAG AA needs 4.5:1).
-        tone === "warning" && "bg-warning-primary text-warning-700",
-        tone === "success" && "bg-success-primary text-success-700",
+        tone === "warning" && "bg-warning-primary text-warning-700 dark:text-warning-300",
+        tone === "success" && "bg-success-primary text-success-700 dark:text-success-300",
       )}
     >
       {children}

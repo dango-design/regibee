@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
               Didn&apos;t receive it?{" "}
               <button
                 onClick={() => setSent(false)}
-                className="text-brand-600 underline-offset-4 hover:underline"
+                className="text-brand-tertiary underline-offset-4 hover:underline"
               >
                 Try again
               </button>
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
           </Link>
           <CardTitle className="text-2xl">Reset your password</CardTitle>
           <CardDescription>
-            Enter the email you signed up with. We&apos;ll send you a link to set a new password.
+            We&apos;ll email you a link to set a new password.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-tertiary">
-            <Link href="/login" className="text-brand-600 underline-offset-4 hover:underline">
+            <Link href="/login" className="text-brand-tertiary underline-offset-4 hover:underline">
               Back to sign in
             </Link>
           </p>

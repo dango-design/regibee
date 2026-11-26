@@ -85,21 +85,21 @@ export function DetailReview({
   return (
     <section
       aria-labelledby="detail-review-heading"
-      className={cn("space-y-4 rounded-xl border border-success-200 bg-primary p-3.5", className)}
+      className={cn("space-y-4 rounded-xl border border-success-200 dark:border-success-800 bg-primary p-3.5", className)}
     >
       <div className="flex items-start gap-2.5">
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-700" aria-hidden="true" />
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-700 dark:text-success-300" aria-hidden="true" />
         <div className="min-w-0 flex-1 space-y-1">
           <h3 id="detail-review-heading" className="text-sm font-semibold text-primary">
             {total === 1 ? "Filled in details for 1 item" : `Filled in details for ${total} items`}
           </h3>
-          <p className="text-sm text-secondary">
-            {replaced.length === 0
-              ? "Everything filled in was empty before."
-              : replaced.length === 1
-                ? "One item already had something the store has differently. Its old value is kept below, so you can switch back."
-                : `${replaced.length} items already had something the store has differently. Their old values are kept below, so you can switch back.`}
-          </p>
+          {replaced.length > 0 && (
+            <p className="text-sm text-secondary">
+              {replaced.length === 1
+                ? "Its old value is below, so you can switch back."
+                : "Their old values are below, so you can switch back."}
+            </p>
+          )}
         </div>
       </div>
 
@@ -150,7 +150,6 @@ export function DetailReview({
         <Button size="sm" onClick={finish} disabled={saving !== null}>
           {saving === "finish" ? "Saving…" : "Done"}
         </Button>
-        <p className="text-sm text-tertiary">Items keep what they show now.</p>
       </div>
     </section>
   );
@@ -236,17 +235,17 @@ function ChangeRow({ review, change, saving, disabled, onChoose }: ChangeRowProp
             key={option.side}
             className={cn(
               "flex items-center gap-x-3 rounded-md px-2.5 py-2 text-sm",
-              showing ? "bg-success-50 ring-1 ring-success-200 ring-inset" : "bg-secondary",
+              showing ? "bg-success-primary ring-1 ring-success-200 dark:ring-success-800 ring-inset" : "bg-secondary",
             )}
           >
-            <span className={cn("w-9 shrink-0 font-semibold", showing ? "text-success-800" : "text-tertiary")}>
+            <span className={cn("w-9 shrink-0 font-semibold", showing ? "text-success-800 dark:text-success-300" : "text-tertiary")}>
               {option.label}
             </span>
             <span className={cn("min-w-0 flex-1 break-words", showing ? "text-primary" : "text-secondary")}>
               {shownValue(change.field, option.value)}
             </span>
             {showing ? (
-              <span className="shrink-0 text-xs font-semibold text-success-800">Showing</span>
+              <span className="shrink-0 text-xs font-semibold text-success-800 dark:text-success-300">Showing</span>
             ) : (
               <Button
                 variant="outline"

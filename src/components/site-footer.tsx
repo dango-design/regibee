@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const linkClass = "font-medium text-brand-600 hover:underline";
+const linkClass = "font-medium text-brand-tertiary hover:underline";
 
 /** The footer on the home page and the privacy policy. */
 export function SiteFooter() {

@@ -92,10 +92,10 @@ function Choice({
       aria-pressed={selected}
       onClick={onClick}
       className={cx(
-        "flex cursor-pointer items-start rounded-xl border text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600",
+        "flex cursor-pointer items-start rounded-xl border text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid",
         compact ? "px-3 py-2" : "px-4 py-3",
         Icon ? "gap-3" : "flex-col gap-0.5",
-        selected ? "border-brand-600 bg-brand-50" : "border-secondary hover:border-primary",
+        selected ? "border-brand-solid bg-brand-primary" : "border-secondary hover:border-primary",
         className,
       )}
     >
@@ -104,7 +104,7 @@ function Choice({
           aria-hidden="true"
           className={cx(
             "flex size-9 shrink-0 items-center justify-center rounded-full",
-            selected ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-600",
+            selected ? "bg-brand-solid text-primary_on-brand" : "bg-brand-primary text-brand-tertiary",
           )}
         >
           {selected ? <Check className="size-4" /> : <Icon className="size-4" />}
@@ -112,7 +112,7 @@ function Choice({
       )}
       <span className="flex flex-col gap-0.5">
         <span className={cx("flex items-center gap-2 text-primary", compact ? "text-sm font-medium" : Icon ? "font-semibold" : "font-medium")}>
-          {selected && !Icon && <Check aria-hidden="true" className="size-4 text-brand-600" />}
+          {selected && !Icon && <Check aria-hidden="true" className="size-4 text-brand-tertiary" />}
           {label}
         </span>
         {hint && <span className={cx("text-tertiary", compact ? "text-xs" : "text-sm")}>{hint}</span>}
@@ -309,7 +309,7 @@ export function PlanPicker({
           ? `${whose} ${occasion.list.noun}, “${listTitleFor(occasion, state.name)}”, linked to the invitation`
           : `${whose} ${occasion.list.noun}`,
       );
-      if (state.audience === "child") summary.push("You'll always see what's been reserved, since you keep it for your child");
+      if (state.audience === "child") summary.push("You'll see what's reserved, since it's for your child");
     }
     if (state.gifts === "link") {
       summary.push(
@@ -319,12 +319,12 @@ export function PlanPicker({
       );
     }
     if (state.gifts === "ask") summary.push(`An email to ${state.askEmail || "them"} asking for a ${occasion.list.noun}`);
-    if (state.gifts === "exchange") summary.push("A Secret Santa draw. Guests add a wishlist when they join. Set the budget and draw date next.");
+    if (state.gifts === "exchange") summary.push("A Secret Santa draw. Set the budget and draw date next.");
     if (state.gifts === "everyone") {
-      summary.push("Everyone gives everyone: guests link their wishlists when they RSVP, and see each other's");
+      summary.push("Guests link their wishlists when they RSVP and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
-    if (state.gifts === "later") summary.push("Nothing about gifts yet. You can set that up from the event any time.");
+    if (state.gifts === "later") summary.push("Nothing about gifts yet");
     // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
     const startsSheet = Boolean(occasion.defaults && "signup" in occasion.defaults);
     if (state.gifts === "signup" || startsSheet) {
@@ -360,7 +360,7 @@ export function PlanPicker({
                 aria-hidden="true"
                 className={cx(
                   "flex size-5 items-center justify-center rounded-full text-xs",
-                  index <= stepIndex ? "bg-brand-600 text-white" : "border border-secondary",
+                  index <= stepIndex ? "bg-brand-solid text-primary_on-brand" : "border border-secondary",
                 )}
               >
                 {index < stepIndex ? <Check className="size-3" /> : index + 1}
@@ -377,20 +377,17 @@ export function PlanPicker({
             <h2 id="plan-list" className="text-xl font-semibold">
               Make a gift list
             </h2>
-            <p className="mt-1 text-sm text-tertiary">
-              Just the list, ready to share. You don&apos;t need an event, and you can plan one later.
-            </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             {LISTS_ON_THEIR_OWN.map(({ label, hint, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="flex items-start gap-3 rounded-xl border border-secondary px-4 py-3 transition outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-brand-600"
+                className="flex items-start gap-3 rounded-xl border border-secondary px-4 py-3 transition outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-brand-solid"
               >
                 <span
                   aria-hidden="true"
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-brand-tertiary"
                 >
                   <Icon className="size-4" />
                 </span>
@@ -410,9 +407,6 @@ export function PlanPicker({
             <h2 id="plan-what" className="text-xl font-semibold">
               Or plan an event
             </h2>
-            <p className="mt-1 text-sm text-tertiary">
-              Invitations and RSVPs, with a gift list if you want one.
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {OCCASIONS.map((o) => {
@@ -424,8 +418,8 @@ export function PlanPicker({
                   aria-pressed={state.occasion === o.id}
                   onClick={() => chooseOccasion(o.id)}
                   className={cx(
-                    "flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium text-primary transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600",
-                    state.occasion === o.id ? "border-brand-600" : "border-secondary hover:border-primary",
+                    "flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium text-primary transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid",
+                    state.occasion === o.id ? "border-brand-solid" : "border-secondary hover:border-primary",
                   )}
                 >
                   <span aria-hidden="true" className={cx("size-3 shrink-0 rounded-full", theme.bg)} />
@@ -471,9 +465,6 @@ export function PlanPicker({
             <h2 id="plan-gifts" className="text-xl font-semibold">
               How do gifts work?
             </h2>
-            <p className="mt-1 text-sm text-tertiary">
-              Optional. Skip it and set up gifts from the event later.
-            </p>
           </div>
           {/* Gift lists first, large. Everything else after them, smaller. */}
           <div className={cx("grid gap-2", giftRows.main.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
@@ -504,7 +495,7 @@ export function PlanPicker({
                 value={state.linkUrl}
                 onChange={(linkUrl) => update({ linkUrl, registryId: "" })}
                 placeholder="regibee.com/r/remi-and-max-1a2b"
-                hint="Linking someone's list shows it to guests. It gives you no rights over it, and its owners get an email."
+                hint="Guests will see the list, and its owners get an email."
               />
             </div>
           )}
@@ -514,7 +505,7 @@ export function PlanPicker({
               value={state.linkUrl}
               onChange={(linkUrl) => update({ linkUrl })}
               placeholder="regibee.com/r/remi-and-max-1a2b"
-              hint="Linking shows the list to guests. It gives you no rights over it, and its owners get an email."
+              hint="Guests will see the list, and its owners get an email."
               className="sm:max-w-lg"
             />
           )}
@@ -525,7 +516,7 @@ export function PlanPicker({
               value={state.askEmail}
               onChange={(askEmail) => update({ askEmail })}
               autoComplete="off"
-              hint={`We'll email them a link to make a ${occasion.list.noun}. It's linked to your invitation once they do.`}
+              hint={`We'll email them a link to make a ${occasion.list.noun}.`}
               className="sm:max-w-lg"
             />
           )}
@@ -534,7 +525,6 @@ export function PlanPicker({
               isSelected={state.invitation}
               onChange={(invitation) => update({ invitation })}
               label="Also make an invitation"
-              hint="Email guests an invitation with RSVPs, with your list on it. You can also add one later."
             />
           )}
           {giftRows.other.length > 0 && (
@@ -588,16 +578,11 @@ export function PlanPicker({
               <ul className="mt-1 flex flex-col gap-1 text-sm text-secondary">
                 {summary.map((line) => (
                   <li key={line} className="flex items-start gap-2">
-                    <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-mint-700" />
+                    <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-mint-700 dark:text-mint-300" />
                     {line}
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-sm text-tertiary">
-                {withEvent
-                  ? "Next you'll add guests, a place and time, and your invitation picture."
-                  : "Next you'll add things from any store."}
-              </p>
             </div>
           )}
         </section>
@@ -631,9 +616,9 @@ export function PlanPicker({
       )}
 
       <p className="border-t border-secondary pt-4 text-sm text-tertiary">
-        Rather fill in every detail of an event yourself?{" "}
-        <Link href="/dashboard/events/new" className="font-medium text-brand-600 hover:underline">
-          Use the full event form
+        Or{" "}
+        <Link href="/dashboard/events/new" className="font-medium text-brand-tertiary hover:underline">
+          use the full event form
         </Link>
         .
       </p>

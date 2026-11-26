@@ -9,7 +9,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { SelectField } from "@/components/base/select/select-field";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { submitRsvp, type RsvpInput } from "@/lib/actions/events";
-import type { ExchangeKind, RsvpStatus } from "@/lib/events";
+import type { ExchangeKind } from "@/lib/events";
 import {
   MAX_CLAIM_NOTE_LENGTH,
   describeClaim,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/rsvp-questions";
 import { cx } from "@/lib/utils/cx";
 import { RsvpWishlistStep, type RsvpWishlist } from "@/components/rsvp-wishlist-step";
+import type { RsvpGuest } from "@/lib/invitation-page-types";
 
 type Answer = "yes" | "maybe" | "no";
 
@@ -55,19 +56,7 @@ const SUMMARY: Record<Answer, string> = {
   no: "You can't make it",
 };
 
-export interface RsvpGuest {
-  name: string;
-  status: RsvpStatus;
-  partySize: number;
-  note: string | null;
-  kidsCount?: number;
-  inExchange?: boolean;
-  wishlistUrl?: string | null;
-  giftIdeas?: string | null;
-  shippingAddress?: string | null;
-  /** Their answers to the host's questions. */
-  answers?: RsvpAnswers;
-}
+export type { RsvpGuest };
 
 export interface RsvpFormProps {
   slug: string;
@@ -213,7 +202,7 @@ export function RsvpForm({
           </p>
         )}
         {exchange && !everyone && current.inExchange && !exchange.drawn && (
-          <p className="mt-1 text-sm text-tertiary">We&apos;ll email you who you&apos;re giving to when names are drawn.</p>
+          <p className="mt-1 text-sm text-tertiary">We&apos;ll email you when names are drawn.</p>
         )}
         {current.status !== "no" && answerLines(questions, current.answers, "You").length > 0 && (
           <dl className="mt-3 flex flex-col gap-1 text-sm">
@@ -289,7 +278,7 @@ export function RsvpForm({
       return;
     }
     if (exchange?.mailed && inExchange && !address.trim()) {
-      setError("Add a shipping address, so your Secret Santa can mail your gift.");
+      setError("Add a shipping address.");
       return;
     }
     if (mealTrain && answer === "yes" && picks.size === 0) {
@@ -382,9 +371,9 @@ export function RsvpForm({
                 setError("");
               }}
               className={cx(
-                "flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:flex-row sm:gap-1.5",
+                "flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid sm:flex-row sm:gap-1.5",
                 answer === value
-                  ? "border-brand-600 bg-brand-600 text-white"
+                  ? "border-brand-solid bg-brand-solid text-primary_on-brand"
                   : "border-secondary text-primary hover:border-primary",
               )}
             >
@@ -454,14 +443,14 @@ export function RsvpForm({
         )}
 
         {showSignup && signup && (
-          <fieldset className="flex flex-col gap-3 rounded-xl bg-sunshine-50 p-4">
+          <fieldset className="flex flex-col gap-3 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4">
             <legend className="sr-only">{signup.title}</legend>
             <div>
               <p className="font-medium text-primary">{mealTrain ? "Pick a day" : "I'll bring…"}</p>
               <p className="text-sm text-tertiary">
                 {mealTrain
-                  ? "Choose one or more. You'll see the drop-off address once you send."
-                  : "Optional. Choose anything you'd like to bring or help with."}
+                  ? "You'll see the drop-off address once you send."
+                  : "Optional."}
               </p>
             </div>
             {rows.length === 0 ? (
@@ -504,24 +493,22 @@ export function RsvpForm({
 
         {everyone && attending && !guest?.wishlistUrl && !guest?.giftIdeas && (
           <p className="rounded-xl bg-secondary p-3 text-sm text-secondary">
-            Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wishlist, so the others know
-            what you&apos;d like.
+            Everyone gives everyone. You&apos;ll add your wishlist after you RSVP.
           </p>
         )}
 
         {exchange && !everyone && (attending || exchangeOnly) && answer !== "no" && (
-          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 p-4">
+          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 dark:bg-mint-500/10 p-4">
             <legend className="sr-only">Gift exchange</legend>
             {canChooseJoin ? (
               <Checkbox
                 isSelected={join}
                 onChange={setJoin}
                 label={<span className="font-medium">Join the gift exchange</span>}
-                hint="You'll draw one name and give that person a gift."
               />
             ) : exchange.drawn && !alreadyIn ? (
               <p className="text-sm text-secondary">
-                Names for the gift exchange have been drawn, so it&apos;s closed. Ask the host if you&apos;d like to join.
+                Names have been drawn. Ask the host if you&apos;d like to join.
               </p>
             ) : (
               <p className="font-medium text-primary">Your gift exchange details</p>
@@ -533,7 +520,7 @@ export function RsvpForm({
                   value={wishlistUrl}
                   onChange={setWishlistUrl}
                   placeholder="regibee.com/r/your-wishlist or any store's list"
-                  hint="Paste a link to your Regibee wishlist or a list at any store. Only the person who draws you sees it."
+                  hint="Only the person who draws you sees it."
                 />
                 <TextArea
                   label="Gift ideas (optional)"

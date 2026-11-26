@@ -228,17 +228,8 @@ function Choice({
   );
 }
 
-function Heading({ title, description }: { title: string; description?: string }) {
-  return (
-    <View style={{ gap: 4 }}>
-      <Text variant="title">{title}</Text>
-      {description ? (
-        <Text variant="subhead" tone="tertiary">
-          {description}
-        </Text>
-      ) : null}
-    </View>
-  );
+function Heading({ title }: { title: string }) {
+  return <Text variant="title">{title}</Text>;
 }
 
 function StepSection({ children }: { children: ReactNode }) {
@@ -423,7 +414,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
           ? `${whose} ${occasion.list.noun}, “${listTitleFor(occasion, state.name)}”, linked to the invitation`
           : `${whose} ${occasion.list.noun}`,
       );
-      if (state.audience === "child") summary.push("You'll always see what's been reserved, since you keep it for your child");
+      if (state.audience === "child") summary.push("You'll see what's reserved, since it's for your child");
     }
     if (state.gifts === "link") {
       summary.push(
@@ -431,12 +422,12 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
       );
     }
     if (state.gifts === "ask") summary.push(`An email to ${state.askEmail || "them"} asking for a ${occasion.list.noun}`);
-    if (state.gifts === "exchange") summary.push("A Secret Santa draw. Guests add a wishlist when they join. Set the budget and draw date next.");
+    if (state.gifts === "exchange") summary.push("A Secret Santa draw. Set the budget and draw date next.");
     if (state.gifts === "everyone") {
-      summary.push("Everyone gives everyone: guests link their wishlists when they RSVP, and see each other's");
+      summary.push("Guests link their wishlists when they RSVP and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
-    if (state.gifts === "later") summary.push("Nothing about gifts yet. You can set that up from the event any time.");
+    if (state.gifts === "later") summary.push("Nothing about gifts yet");
     // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
     const startsSheet = Boolean(occasion.defaults && "signup" in occasion.defaults);
     if (state.gifts === "signup" || startsSheet) {
@@ -458,10 +449,6 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
   return (
     <>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
-        <Text variant="callout" tone="secondary">
-          A gift list on its own, or an event with invitations. You can add the other one later.
-        </Text>
-
         {state.step !== "what" ? (
           <View accessibilityLabel="Steps" style={{ flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: 4 }}>
             {STEPS.map((s, index) => {
@@ -505,7 +492,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
         {state.step === "what" ? (
           <>
             <StepSection>
-              <Heading title="Make a gift list" description="Just the list, ready to share. You don't need an event, and you can plan one later." />
+              <Heading title="Make a gift list" />
               <View style={{ gap: spacing.sm }}>
                 {LISTS_ON_THEIR_OWN.map((list) => (
                   <Choice
@@ -521,7 +508,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
             </StepSection>
 
             <StepSection>
-              <Heading title="Or plan an event" description="Invitations and RSVPs, with a gift list if you want one." />
+              <Heading title="Or plan an event" />
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
                 {OCCASIONS.map((o) => {
                   const selected = state.occasion === o.id;
@@ -587,7 +574,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
 
         {state.step === "gifts" && occasion && state.audience ? (
           <StepSection>
-            <Heading title="How do gifts work?" description="Optional. Skip it and set up gifts from the event later." />
+            <Heading title="How do gifts work?" />
             {/* Gift lists first, large. Everything else after them, smaller. */}
             <View style={{ gap: spacing.sm }}>
               {giftRows.main.map((plan) => {
@@ -618,7 +605,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
                   value={state.linkUrl}
                   onChangeText={(linkUrl) => update({ linkUrl, registryId: "" })}
                   placeholder="regibee.com/r/remi-and-max-1a2b"
-                  hint="Linking someone's list shows it to guests. It gives you no rights over it, and its owners get an email."
+                  hint="Guests will see the list, and its owners get an email."
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -631,7 +618,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
                 value={state.linkUrl}
                 onChangeText={(linkUrl) => update({ linkUrl })}
                 placeholder="regibee.com/r/remi-and-max-1a2b"
-                hint="Linking shows the list to guests. It gives you no rights over it, and its owners get an email."
+                hint="Guests will see the list, and its owners get an email."
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
@@ -646,14 +633,13 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="off"
-                hint={`We'll email them a link to make a ${occasion.list.noun}. It's linked to your invitation once they do.`}
+                hint={`We'll email them a link to make a ${occasion.list.noun}.`}
               />
             ) : null}
             {state.gifts === "new_list" ? (
               <Section>
                 <SwitchRow
                   label="Also make an invitation"
-                  description="Email guests an invitation with RSVPs, with your list on it. You can also add one later."
                   value={state.invitation}
                   onValueChange={(invitation) => update({ invitation })}
                 />
@@ -706,9 +692,6 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
                     </View>
                   ))}
                 </View>
-                <Text variant="footnote" tone="tertiary">
-                  {withEvent ? "Next you'll add guests, a place and time, and your invitation picture." : "Next you'll add things from any store."}
-                </Text>
               </View>
             ) : null}
           </StepSection>
@@ -716,9 +699,9 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
 
         <View style={{ borderTopWidth: 1, borderTopColor: theme.border, paddingTop: spacing.lg }}>
           <Text variant="footnote" tone="tertiary">
-            Rather fill in every detail of an event yourself?{" "}
+            Or{" "}
             <Text variant="footnote" tone="tint" style={{ fontWeight: "600" }} accessibilityRole="link" onPress={() => router.replace("/event-form")}>
-              Use the full event form
+              use the full event form
             </Text>
             .
           </Text>

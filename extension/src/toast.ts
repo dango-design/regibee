@@ -86,12 +86,12 @@ export function showImportToast(options: ImportToastOptions) {
     title.textContent = `${options.count} new ${noun} added to Regibee`;
     body.textContent =
       (options.count === 1
-        ? `From your ${options.storeName} registry, with its registry link. It's in ${options.registryTitle}.`
-        : `From your ${options.storeName} registry, with their registry links. They're in ${options.registryTitle}.`) +
+        ? `It's in ${options.registryTitle}.`
+        : `They're in ${options.registryTitle}.`) +
       (options.linkedCount > 0 ? ` ${linkedText}` : "");
   } else {
     title.textContent = options.linkedCount === 1 ? "Registry link saved" : "Registry links saved";
-    body.textContent = `${linkedText} Gifts bought through Regibee now count toward your ${options.storeName} registry.`;
+    body.textContent = linkedText;
   }
   text.append(title, body);
   const close = document.createElement("button");

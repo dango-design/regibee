@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Plus } from "lucide-react";
 import { SwitchHorizontal01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import { cancelFollow, requestFollow } from "@/lib/actions/follows";
 
 export type FollowButtonState = "signed-out" | "none" | "pending" | "approved" | "blocked";
@@ -21,6 +22,10 @@ export interface FollowActions {
 /**
  * Follow state for one person, and the click that changes it. FollowButton
  * uses it, and so does the people search, which lays out the hint itself.
+ *
+ * Following happens on the click. Withdrawing a request or unfollowing asks
+ * first, in `dialog`, which the caller must render. The dialog stays open
+ * while the action runs and shows its error if it fails.
  */
 export function useFollow<State extends FollowButtonState>({
   publicId,
@@ -38,32 +43,67 @@ export function useFollow<State extends FollowButtonState>({
   const [state, setState] = useState<State | FollowToggleState>(initialState);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // What the dialog asks. It's kept after the dialog closes, so its words
+  // don't change while it fades out.
+  const [asking, setAsking] = useState<"withdraw" | "unfollow">("unfollow");
+  const [askOpen, setAskOpen] = useState(false);
+  const [askError, setAskError] = useState("");
 
-  const run = async (next: FollowToggleState, action: () => ReturnType<typeof requestFollow>) => {
+  const follow = async () => {
     setBusy(true);
     setError("");
-    const result = await action();
+    const result = await requestAction(publicId);
     if (result?.error) {
       setError(result.error);
     } else {
-      setState(next);
+      setState("pending");
     }
     setBusy(false);
   };
 
+  const cancel = async () => {
+    setBusy(true);
+    setAskError("");
+    const result = await cancelAction(publicId);
+    setBusy(false);
+    if (result?.error) {
+      setAskError(result.error);
+      return;
+    }
+    setAskOpen(false);
+    setState("none");
+  };
+
   const toggle = () => {
     if (state === "none") {
-      run("pending", () => requestAction(publicId));
-    } else if (state === "pending") {
-      if (confirm(`Withdraw your request to follow ${name}?`)) {
-        run("none", () => cancelAction(publicId));
-      }
-    } else if (confirm(`Unfollow ${name}? You'll stop seeing their private registries.`)) {
-      run("none", () => cancelAction(publicId));
+      void follow();
+    } else if (state === "pending" || state === "approved") {
+      setError("");
+      setAskError("");
+      setAsking(state === "pending" ? "withdraw" : "unfollow");
+      setAskOpen(true);
     }
   };
 
-  return { state, busy, error, toggle };
+  const dialog = (
+    <ConfirmActionDialog
+      open={askOpen}
+      onOpenChange={setAskOpen}
+      title={asking === "withdraw" ? `Withdraw your request to follow ${name}?` : `Unfollow ${name}?`}
+      description={
+        asking === "withdraw"
+          ? "You can ask again later from their profile."
+          : "You'll stop seeing their private registries."
+      }
+      confirmLabel={asking === "withdraw" ? "Withdraw" : "Unfollow"}
+      destructive={asking === "unfollow"}
+      working={busy}
+      error={askError}
+      onConfirm={cancel}
+    />
+  );
+
+  return { state, busy, error, toggle, dialog };
 }
 
 /**
@@ -180,7 +220,7 @@ export function WithdrawRequest({
       onClick={onClick}
       disabled={busy}
       aria-label={`Withdraw your request to follow ${name}`}
-      className="cursor-pointer font-medium text-brand-600 hover:underline disabled:cursor-default disabled:opacity-50"
+      className="cursor-pointer font-medium text-brand-tertiary hover:underline disabled:cursor-default disabled:opacity-50"
     >
       Withdraw
     </button>
@@ -211,7 +251,7 @@ export function FollowButton({
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
 }) {
-  const { state, busy, error, toggle } = useFollow({
+  const { state, busy, error, toggle, dialog } = useFollow({
     publicId,
     name,
     state: initialState,
@@ -225,7 +265,6 @@ export function FollowButton({
         <Button size="sm" asChild>
           <Link href={`/login?redirect=${encodeURIComponent(returnTo)}`}>Follow</Link>
         </Button>
-        <p className="text-xs text-tertiary">Log in to ask to follow {name}.</p>
       </div>
     );
   }
@@ -238,7 +277,7 @@ export function FollowButton({
         </Button>
         <p className="text-xs text-tertiary">
           You blocked {name}.{" "}
-          <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-600 hover:underline">
+          <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-tertiary hover:underline">
             Unblock
           </Link>
         </p>
@@ -247,26 +286,27 @@ export function FollowButton({
   }
 
   const hint = {
-    none: followsYou ? `${name} follows you. They approve every follower.` : `${name} approves every follower.`,
+    none: followsYou ? `${name} follows you.` : null,
     pending: `Waiting for ${name} to approve.`,
-    approved: followsYou
-      ? "You follow each other."
-      : `You can see ${name}'s private registries.`,
+    approved: followsYou ? "You follow each other." : null,
   }[state];
 
   return (
     <div className="flex flex-col items-center gap-1">
       <FollowToggle state={state} busy={busy} onClick={toggle} followsYou={followsYou} />
-      <p className="text-xs text-tertiary">
-        {hint}
-        {state === "pending" && (
-          <>
-            {" "}
-            <WithdrawRequest name={name} busy={busy} onClick={toggle} />
-          </>
-        )}
-      </p>
+      {hint && (
+        <p className="text-xs text-tertiary">
+          {hint}
+          {state === "pending" && (
+            <>
+              {" "}
+              <WithdrawRequest name={name} busy={busy} onClick={toggle} />
+            </>
+          )}
+        </p>
+      )}
       {error && <p className="text-xs text-error-primary">{error}</p>}
+      {dialog}
     </div>
   );
 }
@@ -299,7 +339,13 @@ export function GuestFollowButton({
   cancelAction?: typeof cancelFollow;
   className?: string;
 }) {
-  const { state, busy, error, toggle } = useFollow({ publicId, name, state: initialState, requestAction, cancelAction });
+  const { state, busy, error, toggle, dialog } = useFollow({
+    publicId,
+    name,
+    state: initialState,
+    requestAction,
+    cancelAction,
+  });
 
   return (
     <span className={`inline-flex shrink-0 flex-col items-start gap-1 ${className ?? ""}`}>
@@ -333,6 +379,7 @@ export function GuestFollowButton({
         </Button>
       )}
       {error && <span className="max-w-48 text-xs text-error-primary">{error}</span>}
+      {dialog}
     </span>
   );
 }

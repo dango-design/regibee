@@ -26,7 +26,7 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
   await waitForReact(saveButton);
   await saveButton.click();
   let dialog = page.getByRole("dialog", { name: "Save a gift idea" });
-  await expect(dialog.getByText("Only you can see your gift ideas.")).toBeVisible();
+  await expect(dialog.getByText("Only you can see gift ideas.")).toBeVisible();
   await dialog.getByRole("button", { name: "Save idea" }).click();
   // The browser asks for a name before anything is sent.
   await expect(dialog).toBeVisible();
@@ -56,7 +56,7 @@ test("an owner saves gift ideas, and nobody else can see them", async ({ page })
   dialog = page.getByRole("dialog", { name: "Save a gift idea" });
   await expect(dialog.getByLabel("Product link")).toHaveValue("https://shop.invalid/coffee-set");
   await expect(dialog.getByLabel("What is it?")).toHaveValue("Pour-over coffee set");
-  await expect(dialog.getByText("We couldn't read that page. Your link and name are kept.")).toBeVisible();
+  await expect(dialog.getByText("We couldn't read that page.")).toBeVisible();
   // People already saved for are one tap away.
   await dialog.getByRole("button", { name: "Mom" }).click();
   await expect(dialog.getByLabel("Who's it for? (optional)")).toHaveValue("Mom");

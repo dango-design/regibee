@@ -15,7 +15,7 @@ function CountdownTile({ days, eventType }: { days: number; eventType: EventType
       aria-hidden="true"
       className={cx(
         "flex size-14 shrink-0 flex-col items-center justify-center rounded-xl",
-        soon ? "bg-brand-solid text-white" : cx(theme.bg, theme.text),
+        soon ? "bg-brand-solid text-primary_on-brand" : cx(theme.bg, theme.text),
       )}
     >
       {days === 0 ? (
@@ -61,7 +61,7 @@ export function UpcomingEvents({
         </h2>
         <Link
           href={`${basePath}/dashboard/events`}
-          className="group inline-flex items-center gap-0.5 text-sm font-medium text-brand-600 hover:underline"
+          className="group inline-flex items-center gap-0.5 text-sm font-medium text-brand-tertiary hover:underline"
         >
           All events
           <ChevronRight

@@ -29,7 +29,7 @@ export default async function InvitePage({
             <AlertCircle className="h-12 w-12 text-error-primary mb-4" />
             <h2 className="text-xl font-semibold mb-2">Invalid Invite</h2>
             <p className="text-tertiary text-center">
-              This invite link is invalid or has been revoked.
+              This link no longer works.
             </p>
             <Button asChild className="mt-6">
               <Link href="/login">Go to Login</Link>
@@ -72,7 +72,7 @@ export default async function InvitePage({
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center py-12">
-            <CheckCircle2 className="h-12 w-12 text-success-600 mb-4" aria-hidden="true" />
+            <CheckCircle2 className="h-12 w-12 text-success-primary mb-4" aria-hidden="true" />
             <h2 className="text-xl font-semibold mb-2">
               {membership.role === "owner" ? "This Is Your Registry" : "You Already Help Manage This"}
             </h2>
@@ -106,7 +106,7 @@ export default async function InvitePage({
             <AlertCircle className="h-12 w-12 text-error-primary mb-4" />
             <h2 className="text-xl font-semibold mb-2">Invite Expired</h2>
             <p className="text-tertiary text-center">
-              This invite link has expired. Please ask the registry owner for a new invite.
+              Ask the owner for a new one.
             </p>
             <Button asChild className="mt-6">
               <Link href="/login">Go to Login</Link>
@@ -126,7 +126,7 @@ export default async function InvitePage({
             <AlertCircle className="h-12 w-12 text-error-primary mb-4" />
             <h2 className="text-xl font-semibold mb-2">Invite Fully Used</h2>
             <p className="text-tertiary text-center">
-              This invite link has reached its maximum number of uses.
+              This link has been used up.
             </p>
             <Button asChild className="mt-6">
               <Link href="/login">Go to Login</Link>
@@ -155,7 +155,7 @@ export default async function InvitePage({
               <strong>{registryTitle}</strong>.
             </p>
             <p className="text-tertiary text-sm">
-              Sign in or create an account to accept this invitation.
+              Sign in or create an account to accept.
             </p>
             <div className="flex gap-3 justify-center mt-6">
               <Button asChild>
@@ -189,10 +189,6 @@ export default async function InvitePage({
           <p className="text-secondary">
             <strong>{ownerName}</strong> invited you to help manage{" "}
             <strong>{registryTitle}</strong>.
-          </p>
-          <p className="text-tertiary text-sm">
-            As a manager, you&apos;ll be able to add and edit items, view gift
-            activity, and help organize the registry.
           </p>
           <AcceptInviteButton token={token} />
         </CardContent>

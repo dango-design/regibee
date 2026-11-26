@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 // Underlined as well as colored, since they sit inside a line of text. Each
 // link stays on one line, so a phone wraps between them instead of inside one.
 const demoLinkClass =
-  "rounded-sm font-medium whitespace-nowrap text-brand-600 underline underline-offset-4 outline-focus-ring hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2";
+  "rounded-sm font-medium whitespace-nowrap text-brand-tertiary underline underline-offset-4 outline-focus-ring hover:text-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2";
 
 function DashboardButton({ className }: { className?: string }) {
   return (
@@ -48,18 +48,16 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
           <img src="/hero/panda.svg" alt="" aria-hidden="true" className="mx-auto mb-8 h-24 w-auto -rotate-3 xl:hidden" />
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
             One Registry,{" "}
-            <span className="relative isolate inline-block text-brand-600">
+            <span className="relative isolate inline-block text-brand-tertiary">
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-[0.06em] -z-10 h-[0.32em] rounded-full bg-sunshine-200"
+                className="absolute inset-x-0 bottom-[0.06em] -z-10 h-[0.32em] rounded-full bg-sunshine-200 dark:bg-sunshine-400/20"
               />
               Every Occasion
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-tertiary">
-            Baby showers, birthdays, Christmas, weddings — build a wishlist with
-            items from any store and share a single link. No more juggling
-            multiple lists.
+            Add gifts from any store to one list, and share one link.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             {signedIn ? (
@@ -92,16 +90,16 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
           )}
           {/* Each occasion gets its own tint from the palette. */}
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blush-100 px-3 py-1 text-blush-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blush-100 dark:bg-blush-300/15 px-3 py-1 text-blush-700 dark:text-blush-200">
               <Baby className="h-4 w-4" /> Baby
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sunshine-100 px-3 py-1 text-sunshine-900">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sunshine-100 dark:bg-sunshine-400/15 px-3 py-1 text-sunshine-900 dark:text-sunshine-200">
               <Cake className="h-4 w-4" /> Birthday
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-100 px-3 py-1 text-mint-800">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-100 dark:bg-mint-500/15 px-3 py-1 text-mint-800 dark:text-mint-300">
               <PartyPopper className="h-4 w-4" /> Christmas
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-3 py-1 text-brand-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-3 py-1 text-brand-secondary">
               <Gift className="h-4 w-4" /> Any occasion
             </span>
           </div>
@@ -114,33 +112,30 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
             <h2 className="text-center text-3xl font-bold">How It Works</h2>
             <div className="mt-16 grid gap-8 md:grid-cols-3">
               <div className="text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blush-100">
-                  <Gift className="h-8 w-8 text-brand-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blush-100 dark:bg-blush-300/15">
+                  <Gift className="h-8 w-8 text-brand-tertiary" />
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">1. Create Your Registry</h3>
                 <p className="mt-2 text-tertiary">
-                  Pick an occasion — baby shower, birthday, Christmas, wedding,
-                  anything — and set up your registry in under 5 minutes.
+                  Pick an occasion and set up your list in minutes.
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sunshine-100">
-                  <Link2 className="h-8 w-8 text-brand-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sunshine-100 dark:bg-sunshine-400/15">
+                  <Link2 className="h-8 w-8 text-brand-tertiary" />
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">2. Add Items From Anywhere</h3>
                 <p className="mt-2 text-tertiary">
-                  Add products from any online store by pasting a URL, or browse
-                  our curated checklist of essentials.
+                  Paste a link from any store, or start from our checklist.
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mint-100">
-                  <Gift className="h-8 w-8 text-brand-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mint-100 dark:bg-mint-500/15">
+                  <Gift className="h-8 w-8 text-brand-tertiary" />
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">3. Share & Receive Gifts</h3>
                 <p className="mt-2 text-tertiary">
-                  Share your unique registry link. Gift givers can reserve items
-                  with no sign-up required.
+                  Share your link. Guests reserve gifts without signing up.
                 </p>
               </div>
             </div>
@@ -158,29 +153,29 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 {
                   icon: Link2,
                   title: "Universal Registry",
-                  desc: "Add items from Amazon, Target, or any online store into one list.",
+                  desc: "Add items from any store to one list.",
                 },
                 {
                   icon: Shield,
                   title: "No Duplicate Gifts",
-                  desc: "Real-time reservations prevent two people from buying the same item.",
+                  desc: "Guests reserve gifts, so nobody buys the same one twice.",
                 },
                 {
                   icon: Gift,
                   title: "Cash Funds",
-                  desc: "Set up funds for diapers, college savings, honeymoons, or anything you need.",
+                  desc: "Ask for money toward diapers, college, a honeymoon or anything.",
                 },
                 {
                   icon: Baby,
                   title: "Baby Checklist",
-                  desc: "Baby registries get a curated list of 100 essentials across 10 categories.",
+                  desc: "Baby registries start with a checklist of 100 essentials.",
                 },
               ].map((feature) => (
                 <div
                   key={feature.title}
                   className="rounded-2xl border bg-primary p-6"
                 >
-                  <feature.icon className="h-6 w-6 text-brand-600" />
+                  <feature.icon className="h-6 w-6 text-brand-tertiary" />
                   <h3 className="mt-4 font-display font-semibold">{feature.title}</h3>
                   <p className="mt-2 text-sm text-tertiary">
                     {feature.desc}
@@ -197,10 +192,6 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
             {signedIn ? (
               <>
                 <h2 className="text-3xl font-bold">Pick Up Where You Left Off</h2>
-                <p className="mt-4 text-tertiary">
-                  Your registries, events and the people you follow are all on
-                  your dashboard.
-                </p>
                 <DashboardButton className="mt-8" />
               </>
             ) : (
@@ -208,10 +199,6 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 <h2 className="text-3xl font-bold">
                   Ready to Build Your Registry?
                 </h2>
-                <p className="mt-4 text-tertiary">
-                  Join thousands of people who trust Regibee for their registry — baby
-                  shower, birthday, Christmas, or anything in between.
-                </p>
                 <Button size="lg" className="mt-8" asChild>
                   <Link href="/signup">Get Started Free</Link>
                 </Button>

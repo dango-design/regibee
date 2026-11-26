@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarHeart, Gift, Loader2, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { CalendarHeart, Gift, Loader2, Pencil, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -178,8 +179,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
           </div>
         )}
         <p className="mt-1 text-tertiary">
-          {memberCountLabel(members.length)}. Invite the whole group from an event&apos;s guest list, run a gift exchange
-          with it, or share a wishlist with it.
+          {memberCountLabel(members.length)}
         </p>
       </div>
 
@@ -194,7 +194,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
           <CardHeader>
             <CardTitle>People</CardTitle>
             <CardDescription>
-              Anyone here with a Regibee account under this email sees the lists you share with the group.
+              Everyone here with a Regibee account sees the lists you share with this group.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -208,7 +208,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                   autoCorrect="off"
                   spellCheck="false"
                   placeholder={"Glinda Upland, glinda@example.com\nElphaba Thropp <elphie@example.com>\nNessa Thropp"}
-                  hint="One person per line: a name and an email address."
+                  hint="One person per line."
                 />
                 {pasted.trim() && (
                   <p className="text-sm text-tertiary">
@@ -252,7 +252,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
               <button
                 type="button"
                 onClick={() => setPasting(true)}
-                className="self-start text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11"
+                className="self-start text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
               >
                 Paste a list
               </button>
@@ -266,7 +266,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                   <li key={member.id} className="flex items-center gap-3 px-3 py-2">
                     <span
                       aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-secondary"
                     >
                       {initialsFor(member.name)}
                     </span>
@@ -274,19 +274,19 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                       <span className="block truncate text-sm font-medium text-primary">{member.name}</span>
                       <span className="block truncate text-xs text-tertiary">{emailLabel(member)}</span>
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Remove ${member.name}`}
+                    {/* In a menu, not a button on every row, so nobody is
+                        removed by a stray click. It doesn't ask first: nobody
+                        is emailed, and adding them back is quick. */}
+                    <RowActionsMenu
+                      label={`More actions for ${member.name}`}
                       disabled={busy !== null}
-                      onClick={async () => {
+                      actions={[{ id: "remove", label: "Remove from group", icon: UserMinus, destructive: true }]}
+                      onAction={async () => {
                         if (await run(`remove-${member.id}`, () => actions.removeMember(group.id, member.id))) {
                           router.refresh();
                         }
                       }}
-                    >
-                      <X className="size-4" />
-                    </Button>
+                    />
                   </li>
                 ))}
               </ul>
@@ -298,22 +298,18 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
           <Card className="py-0">
             <CardContent className="flex flex-col gap-3 p-4">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-100">
-                  <Gift aria-hidden="true" className="size-4.5 text-mint-800" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-100 dark:bg-mint-500/15">
+                  <Gift aria-hidden="true" className="size-4.5 text-mint-800 dark:text-mint-300" />
                 </span>
                 <div className="min-w-0">
                   <p className="font-medium text-primary">Gift exchange</p>
-                  <p className="text-sm text-tertiary">
-                    {current
-                      ? "This year's exchange is started. Add people from its guest list, and draw names when everyone's in."
-                      : lastExchange
-                        ? "Starts a new exchange with everyone in the group. It keeps last time's budget and pairs who shouldn't draw each other, and nobody draws the same person as last time."
-                        : "Makes an event with everyone in the group as guests and a Secret Santa draw. Set the date and budget next."}
-                  </p>
+                  {(current || lastExchange) && (
+                    <p className="text-sm text-tertiary">{current ? "This year's exchange has started." : "Keeps last time's settings. Nobody draws the same person again."}</p>
+                  )}
                   {!current && lastExchange && (
                     <p className="mt-1 text-sm">
                       Last time:{" "}
-                      <Link href={`/dashboard/events/${lastExchange.id}`} className="font-medium text-brand-600 hover:underline">
+                      <Link href={`/dashboard/events/${lastExchange.id}`} className="font-medium text-brand-tertiary hover:underline">
                         {lastExchange.title}
                       </Link>
                       {lastExchange.event_date && (
@@ -339,15 +335,15 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
             <Card className="py-0">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blush-50">
-                    <CalendarHeart aria-hidden="true" className="size-4.5 text-blush-700" />
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blush-50 dark:bg-blush-300/10">
+                    <CalendarHeart aria-hidden="true" className="size-4.5 text-blush-700 dark:text-blush-200" />
                   </span>
                   <div className="min-w-0">
                     <p className="font-medium text-primary">Events with this group</p>
                     <ul className="text-sm">
                       {events.map((event) => (
                         <li key={event.id}>
-                          <Link href={`/dashboard/events/${event.id}`} className="text-brand-600 hover:underline">
+                          <Link href={`/dashboard/events/${event.id}`} className="text-brand-tertiary hover:underline">
                             {event.title}
                           </Link>
                           {event.event_date && (
@@ -369,7 +365,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                 <ul className="text-sm">
                   {sharedLists.map((list) => (
                     <li key={list.id}>
-                      <Link href={`/dashboard/registry/${list.id}`} className="text-brand-600 hover:underline">
+                      <Link href={`/dashboard/registry/${list.id}`} className="text-brand-tertiary hover:underline">
                         {list.title}
                       </Link>
                     </li>
@@ -377,7 +373,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                 </ul>
               ) : (
                 <p className="text-sm text-tertiary">
-                  None yet. Share a wishlist from its Settings page, and people here see it on their Following page.
+                  None yet. Share a wishlist from its Settings page.
                 </p>
               )}
             </CardContent>

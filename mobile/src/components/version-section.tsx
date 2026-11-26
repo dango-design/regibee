@@ -31,7 +31,7 @@ export function VersionSection() {
       title="This version"
       footer={
         canCheck
-          ? "Each pull request merged into main that changes the app arrives as an update. A change to native code comes as a new build instead, which an update can't replace."
+          ? "Merged changes arrive as updates. Native changes need a new build."
           : "Reload the app to get the latest changes from your computer."
       }
     >
@@ -172,11 +172,11 @@ function PlayCheck() {
   let status: string | null = null;
   if (play.available) {
     const build = play.available.versionCode ? ` (build ${play.available.versionCode})` : "";
-    status = `Google Play has a newer build${build}. Updates made after it only reach that build, so install it to get them.`;
+    status = `Google Play has a newer build${build}. Install it to get the latest updates.`;
     if (play.error) status += ` Couldn't open Google Play's update screen. ${play.error}`;
   } else if (play.error) {
     // Play only answers for a copy installed from Play.
-    status = `Couldn't ask Google Play for a newer build. A copy that wasn't installed from Play can't check. ${play.error}`;
+    status = `Couldn't check Google Play. Only a copy installed from Play can check. ${play.error}`;
   } else if (play.checkedAt) {
     status = `Google Play has no newer build. Checked ${clock(play.checkedAt)}.`;
   }

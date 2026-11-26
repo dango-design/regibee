@@ -15,7 +15,7 @@ type ReplaceResult = { path: string } | { error: string };
 export function ShareLinkField({
   path,
   onReplace,
-  replacedMessage = "Done. The old link no longer works. Send this one to the people you want to have it.",
+  replacedMessage = "Done. The old link no longer works.",
   startConfirming = false,
 }: {
   /** The list's page, like /r/birthday-wishlist-k7m2p9qx4tab. */
@@ -86,14 +86,10 @@ export function ShareLinkField({
 
       {confirming ? (
         <div className="space-y-3 rounded-xl border border-secondary bg-secondary p-4">
-          <p className="text-sm text-secondary">
-            The link you have now will stop working for everyone who has it. You&apos;ll get a new one to send to
-            the people you still want to see this list. Guests who already gave a gift can still get to it from
-            their emails.
-          </p>
+          <p className="text-sm text-secondary">The current link will stop working for everyone who has it.</p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={replace} disabled={replacing}>
-              {replacing ? "Getting a new link..." : "Turn off this link and get a new one"}
+              {replacing ? "Replacing..." : "Replace link"}
             </Button>
             <Button
               type="button"
@@ -110,10 +106,9 @@ export function ShareLinkField({
         </div>
       ) : (
         <p className="text-xs text-tertiary">
-          Sent it to someone by mistake?{" "}
           <button
             type="button"
-            className="font-medium text-brand-600 hover:underline max-sm:min-h-11"
+            className="font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
             onClick={() => {
               setConfirming(true);
               setReplaced(false);
@@ -125,7 +120,7 @@ export function ShareLinkField({
       )}
 
       {replaced && (
-        <p role="status" className="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-800">
+        <p role="status" className="rounded-lg bg-success-primary px-3 py-2 text-sm text-success-800 dark:text-success-300">
           {replacedMessage}
         </p>
       )}

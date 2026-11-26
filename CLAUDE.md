@@ -80,6 +80,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
 - Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
 
+## Gift profiles
+
+- A person's gift profile (birthday, sizes, colors, likes, things to skip, notes) is in `profiles.gift_profile`. The rules are in `src/lib/gift-profile.ts`.
+- The person chooses who sees each of three parts: the birthday, the sizes, and likes and dislikes (colors, likes, things to skip and notes). Each is only them, friends, followers or everyone, saved in `gift_profile.audience`. A part they haven't chosen uses the old rule: the birthday shows to followers, the rest to friends.
+- Pass a gift profile through `visibleGiftProfile` on the server before it reaches a page, so the hidden parts never leave the server. The birthday's choice also decides who gets it on the Following page and in reminder emails (`src/lib/birthdays-server.ts`).
+- Older phone app builds save a gift profile without `audience`. `saveGiftProfile` keeps the saved choices then.
+- A child's list keeps its own gift profile in its settings, with no choices: it shows to anyone who opens the list, and its birthday only to approved followers while the list is on the owner's profile.
+
 ## Deleting things
 
 - Deleting a registry, an event, a group or an account that holds something asks the person to type a sentence first, such as "I want to delete this registry". A brand-new one, with nothing in it, only asks with two buttons. The sentences and what counts as holding something are in `src/lib/delete-confirmation.ts`: a registry with an item or a gift fund, an event with a guest, a group with a member, an account with a registry or an event.
@@ -144,6 +152,22 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Spell it "wishlist", one word, or "Wishlist" at the start of a sentence. This goes for text people see, emails, code comments, docs and PR titles. Don't write "wish list". New code names use `Wishlist` too. Older names such as `GuestWishLists` and `WishListHero`, and the comments in migrations that have already run, still say it the old way.
 - Each kind of list has its own name in `src/lib/occasions.ts`, such as "baby registry", "birthday wishlist" and "Christmas list". "Gift list" is the general word, used where the kind isn't known yet, as on the New page.
 
+## Screen text
+
+Keep text on screens short. People learn the app by using it, not by reading it. This covers the website, the phone app and the extension.
+
+- A label or button names the thing. Don't add a line under it that says the same again ("Shipping address" doesn't need "Share your shipping address with gift givers so they know where to send gifts.").
+- Don't explain what the app does when someone taps something. If it works as expected, they'll see.
+- A hint is one short sentence, or nothing. A notice or empty state is one or two.
+- Keep text that stops a surprise someone can't undo or would mind:
+  - who can see something, when that isn't obvious ("Only you see gift ideas.")
+  - what a delete or a link change breaks for other people
+  - when an email goes out to someone
+  - money: Regibee never handles it
+- Say it once. If a page's title or a field's label already makes a point, the hint doesn't repeat it.
+- Don't name the code, the demo's internals or how the server works.
+- The privacy policy and the emails are the exceptions. They can be as long as they need to be.
+
 ## Clickable cards
 
 - A card that opens one thing, like a registry, an event or an item to edit, opens it from a click anywhere on the card, not only from its title or button. Its other buttons keep doing their own thing.
@@ -154,6 +178,19 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - A page that reads data on the server needs a `loading.tsx` next to it, with a skeleton from `src/components/page-skeletons.tsx`. Without one, a click on a link to it shows nothing until the server has finished the whole page. With one, the skeleton shows at once.
 - The public pages (`/r`, `/e`, `/u`) have none on purpose. With a loading screen, a list that doesn't exist would answer 200 instead of 404.
 - `NavigationProgress` (`src/components/navigation-progress.tsx`), in the root layout, shows a bar across the top of the window from a click on any link until the next page or its skeleton shows. It covers the pages with no loading screen.
+
+## Dark mode
+
+- The website follows the device's light or dark setting. It's CSS only: the `dark` variant in `src/app/globals.css` matches `prefers-color-scheme: dark`, so pages never flash light first. There's no switch on the site.
+- The dark colors are in the `@variant dark` block at the end of `src/styles/theme.css`. They follow the phone app's `darkTheme` (`mobile/src/lib/theme.ts`). Change both together. The header above a website page in the app (`mobile/src/app/web.tsx`) takes the page's colors in each mode from `useSitePageColors` in the same file, so change those with the page's `bg-primary`, `text-primary` or `border-secondary`.
+- Only the semantic tokens change in dark mode: `bg-primary`, `text-secondary`, `border-secondary`, `bg-brand-solid`, `text-brand-tertiary` and so on. Palette colors such as `text-brand-600`, `bg-mint-50` or `bg-sunshine-100` stay the same in both modes. So prefer a semantic token, and give a palette color its own `dark:` class, such as `bg-sunshine-50 dark:bg-sunshine-400/10`.
+- On a brand button (`bg-brand-solid`), use `text-primary_on-brand`, not `text-white`. In dark mode the button is light teal and its text is dark.
+- Text on a fill that stays light in both modes, like `bg-mint-500` or `bg-sunshine-400`, needs a palette color such as `text-gray-900`. `text-primary` would turn light.
+- A host's event color has a dark pair (`darkFill`, `darkInk` in `src/lib/event-colors.ts`). On the website, use `hostColorVars`, `HOST_FILL` and `HOST_INK` from `src/lib/host-colors.ts`.
+- Store photos keep a light tile in dark mode, since most have a white background.
+- The phone app's web view gets the phone's setting. iOS passes it through. On Android, WebView reports it from the app's theme, which Expo sets to follow the phone.
+- Storybook shows every story in light. A story with `parameters: { theme: "dark" }` shows in dark, and the toolbar's Theme menu shows any story in dark locally. A few page stories have a dark copy. Add one for a new page whose dark mode could break on its own, not for every story.
+- Emails stay light. Email apps handle dark mode in their own ways.
 
 ## Dropdowns
 
@@ -177,7 +214,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - On a branch build, accept only the changes that branch made.
 - Merging before the branch's `chromatic` check finishes is fine. It can cost extra snapshots, but development speed matters more.
 - The free plan includes 5,000 snapshots a month. When they run out, Chromatic pauses testing and review until the billing month resets. The Billing page in Chromatic shows the date.
-- While it's paused, the `chromatic` job still passes and still publishes the Storybook, but it takes no snapshots. The build reads `PASSED` with 0 changes and has `isLimited: true`. That means nothing was tested, not that nothing changed. `UI Tests` and `UI Review` stay pending on every PR, so don't wait for them, and there is nothing to accept. Merge on the other checks, and look at changed stories yourself in the published Storybook or a local one.
+- While it's paused, the `chromatic` job still passes and still publishes the Storybook, but it takes no snapshots. The build reads `PASSED` with 0 changes and has `isLimited: true`. That means nothing was tested, not that nothing changed. `UI Tests` and `UI Review` stay pending on every PR, so don't wait for them, and there is nothing to accept in Chromatic. The **Story screenshots** check takes Chromatic's place: wait for it, use its pictures to review, and accept its changes before merging (see "Story screenshots"). The review page does this on its own when Chromatic is paused.
 - Changes merged while Chromatic is paused get no snapshot. When it resumes, `onlyChanged` only captures stories affected by later commits, so those stories may keep their old baselines until a later PR touches them, and that PR's build then shows the earlier changes too.
 - Storybook can't render async server components. Put a page's markup in a plain component and write the story for that. The landing page works this way.
 
@@ -229,7 +266,8 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
   - `POST /api/app/action` runs an exported server action from `src/lib/actions/*` by name (`registry.updateRegistry`). Server actions are already public endpoints that check who's asking, so this lets nobody do more than the website does. An argument written `{ "$form": {...} }` arrives as FormData.
   - Both take the app's access token as `Authorization: Bearer`, never cookies. While one runs, `createClient()` (`src/utils/supabase/server.ts`) acts as the app's user (`src/lib/app-request.ts`). Changing a loader's or action's arguments or result changes the app too, and older app builds keep calling the old shape until they update, so add fields instead of renaming or removing them.
   - The app still reads and writes a few things directly under RLS: an item's "Most wanted", cancelling a gift, gift ideas, and photo uploads to storage.
-- Other people's lists, profiles, invitations, group gifts and invite links have no screens in the app. The app shows the website's pages for them in its own web view (`mobile/src/app/web.tsx`), signed in as the app's user. `GET /api/app/open?next=<path>` does the signing in: it saves the app's access token as the website's session cookie, sets the `regibee_in_app` cookie and redirects to the page. It acts only on requests with the app's `x-regibee-app` header, which a link from another site can't add; any other visit just goes on to the page. While that cookie is set, `Nav` shows nothing, since the app has its own tabs. `src/lib/in-app.ts` lists the pages the web view may show and maps `/dashboard/...` links to the app's screens. When you add a page for guests or followers, add its path there.
+- An event's invitation (`/e/<slug>`) has its own screen in the app, `mobile/src/app/e/[slug].tsx`, at the website's own path. It loads `loadInvitationPage` (`src/lib/invitation-page.ts`), the same loader the website's page uses, and sends RSVPs and wishlists through the website's server actions. `nativeRoute` in `mobile/src/lib/web.ts` decides which website paths open a native screen. Signed out, the screen hands the page to the web view, since `/api/app/data` needs a signed-in account. The plan for the other pages is in `mobile/docs/native-guest-screens.md`.
+- Other people's lists, profiles, group gifts and invite links have no screens in the app yet. The app shows the website's pages for them in its own web view (`mobile/src/app/web.tsx`), signed in as the app's user. `GET /api/app/open?next=<path>` does the signing in: it saves the app's access token as the website's session cookie, sets the `regibee_in_app` cookie and redirects to the page. It acts only on requests with the app's `x-regibee-app` header, which a link from another site can't add; any other visit just goes on to the page. While that cookie is set, `Nav` shows nothing, since the app has its own tabs. `src/lib/in-app.ts` lists the pages the web view may show and maps `/dashboard/...` links to the app's screens. When you add a page for guests or followers, add its path there.
 - Like the extension, the app only works against a site that has these routes deployed. `/api/account` (deleting the account) works the same way.
 - The app says and does what the website does. Use the website's words for the same thing, and its rules for what's shown. Do something differently only where a phone app can clearly do it better, such as the share sheet, native menus or haptics. When both show the same thing, put the logic in a shared file and call it from both, as `ownerItemStatus` in `src/lib/gifts.ts` does for an item's gift status.
 - It shares website files through the `@shared/*` path, such as `src/lib/gifts.ts`, `events.ts`, `retailers.ts`, `store-perks.ts`, `checklist-matching.ts`, `item-categories.ts` and the loaders' types (`*-page-types.ts`). A shared file may only import other shared files, with relative paths (`./occasions`), and nothing that runs only on a server. An `@/` import breaks the app's build.
@@ -285,4 +323,4 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 ## After opening a pull request
 
-- When the PR's `chromatic`, `Vercel`, `Story screenshots` and `End-to-end tests` checks finish (the last two run only on pull requests that change the site), publish a review page with the `pr-review-page` skill (`.claude/skills/pr-review-page`) and give the user the link. End that turn with an Accept and merge button. The skill says how to set it up and what to do when the user clicks it.
+- When the PR's `chromatic`, `Vercel`, `Story screenshots` and `End-to-end tests` checks finish (the last two run only on pull requests that change the site), publish a review page. While Chromatic is paused, don't wait for `chromatic`; the page uses the Story screenshots pictures instead. Publish it with the `pr-review-page` skill (`.claude/skills/pr-review-page`) and give the user the link. End that turn with an Accept and merge button. The skill says how to set it up and what to do when the user clicks it.

@@ -73,8 +73,7 @@ export function MessagesPanel({ data, onChangeReminder }: { data: EventPageData;
       {open ? (
         <View style={{ gap: spacing.md }}>
           <Text variant="footnote" tone="secondary">
-            It goes by email, with each guest&apos;s own RSVP link, and replies come to you. It also shows on the invitation, for
-            anyone with its link, including guests you texted it to.
+            It&apos;s emailed to guests, and anyone with the invitation&apos;s link can see it there.
           </Text>
           <View style={{ gap: spacing.sm }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>

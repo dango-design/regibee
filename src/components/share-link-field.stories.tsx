@@ -39,7 +39,7 @@ export const Replaced: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Get a new link" }));
-    await userEvent.click(canvas.getByRole("button", { name: "Turn off this link and get a new one" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Replace link" }));
     await waitFor(() => expect(canvas.getByRole("status")).toHaveTextContent("The old link no longer works"));
     await expect(canvas.getByText(/wd3hn8ec6ryu/)).toBeVisible();
   },
@@ -54,7 +54,7 @@ export const Refused: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Turn off this link and get a new one" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Replace link" }));
     await waitFor(() => expect(canvas.getByRole("alert")).toBeVisible());
   },
 };

@@ -105,8 +105,7 @@ export function EventActionsMenu({
           <DialogHeader>
             <DialogTitle>Plan this event again?</DialogTitle>
             <DialogDescription>
-              This makes a new event a year later, with the same guests, co-hosts and gift settings. Guests&apos;
-              replies start over, and no one is emailed. A gift exchange avoids this year&apos;s pairs.
+              A new event a year later, with the same guests and settings. Replies start over. No one is emailed.
             </DialogDescription>
           </DialogHeader>
           {error && (

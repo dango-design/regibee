@@ -113,6 +113,9 @@ function RootNavigator({ ready }: { ready: boolean }) {
         {/* Signed in or out: a link to a list or an invitation opens here
             either way. Signed out, the page shows as it does to guests. */}
         <Stack.Screen name="web" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
+        {/* An invitation, at the website's own path. Signed out, it sends the
+            page on to the web view. */}
+        <Stack.Screen name="e/[slug]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ title: "Create an account" }} />
@@ -157,7 +160,7 @@ function ShareRouter({ signedIn }: { signedIn: boolean }) {
     shownError.current = error;
     Alert.alert(
       "Couldn't read what you shared",
-      `Copy the product's link instead, then add it on your registry with the + button.\n\n(${error})`,
+      `Copy the product's link and add it on your registry instead.\n\n(${error})`,
     );
     // Clear it so the same failure shows again next time, unless that would
     // drop a share that's waiting.

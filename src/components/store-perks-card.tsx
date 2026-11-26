@@ -27,9 +27,9 @@ interface StorePerksCardProps {
 }
 
 const TONE_CLASSES: Record<PerkTone, string> = {
-  ready: "bg-success-50 text-success-800 ring-success-200",
+  ready: "bg-success-primary text-success-800 dark:text-success-300 ring-success-200 dark:ring-success-800",
   waiting: "bg-secondary text-secondary ring-secondary",
-  upcoming: "bg-brand-50 text-brand-700 ring-brand-200",
+  upcoming: "bg-brand-primary text-brand-secondary ring-brand-200 dark:ring-brand-800",
   done: "bg-primary text-tertiary ring-secondary",
 };
 
@@ -125,20 +125,17 @@ export function StorePerksCard({
     <Card>
       <CardHeader>
         <CardTitle>Store perks</CardTitle>
-        <CardDescription>
-          Perks your store registries may give you. Rules change and differ by store, so
-          check each store&apos;s terms.
-        </CardDescription>
+        <CardDescription>Rules differ by store, so check each store&apos;s terms.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {giftUnlocked.map((row) => (
           <div
             key={row.storeId}
-            className="flex items-start gap-3 rounded-xl border border-success-200 bg-success-50 p-3.5"
+            className="flex items-start gap-3 rounded-xl border border-success-200 dark:border-success-800 bg-success-primary p-3.5"
           >
-            <Package className="mt-0.5 h-4.5 w-4.5 shrink-0 text-success-700" aria-hidden="true" />
+            <Package className="mt-0.5 h-4.5 w-4.5 shrink-0 text-success-700 dark:text-success-300" aria-hidden="true" />
             <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-              <p className="text-sm text-success-800">
+              <p className="text-sm text-success-800 dark:text-success-300">
                 <span className="font-semibold">
                   {row.giftCount === 1
                     ? `Your first ${row.name} gift was reserved.`
@@ -151,7 +148,7 @@ export function StorePerksCard({
                   href={row.registryUrl ?? `https://www.${row.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-brand-solid px-3.5 text-sm font-semibold text-white hover:bg-brand-solid_hover max-sm:min-h-11"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-brand-solid px-3.5 text-sm font-semibold text-primary_on-brand hover:bg-brand-solid_hover max-sm:min-h-11"
                 >
                   <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   Request at {row.name}
@@ -160,7 +157,7 @@ export function StorePerksCard({
                   type="button"
                   disabled={saving}
                   onClick={() => setWelcomeBoxDone(row.storeId, true)}
-                  className="min-h-9 px-1 text-sm font-semibold text-success-800 hover:underline disabled:opacity-60 max-sm:min-h-11"
+                  className="min-h-9 px-1 text-sm font-semibold text-success-800 dark:text-success-300 hover:underline disabled:opacity-60 max-sm:min-h-11"
                 >
                   Done, hide this
                 </button>
@@ -270,8 +267,7 @@ export function StorePerksCard({
           />
           <p className="flex items-start gap-1.5 text-xs text-tertiary">
             <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            We count gifts guests reserve on Regibee. Gifts bought straight from a store
-            registry won&apos;t show here.
+            Only gifts reserved on Regibee count here.
           </p>
         </div>
       </CardContent>

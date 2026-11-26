@@ -116,7 +116,7 @@ test("a host can rename a guest from a follow, but not change their email", asyn
 
   await page.getByRole("button", { name: "Edit Oz Diggs" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText(/It stays private, and invitations still reach it/)).toBeVisible();
+  await expect(dialog.getByText("Private to them. Invitations still reach it.")).toBeVisible();
   await dialog.getByRole("textbox", { name: "Name" }).fill("Uncle Oz");
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Uncle Oz")).toBeVisible();

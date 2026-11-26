@@ -68,3 +68,34 @@ test("a checkmark on a swatch stands out, on dark colors and light ones", () => 
     assert.ok(contrast(markOn(color), color) >= 3, `the mark on ${color} is ${contrast(markOn(color), color).toFixed(2)}`);
   }
 });
+
+// The site's dark-mode text colors: primary, secondary, tertiary.
+const DARK_TEXT = ["#fdfaf6", "#dcd5cf", "#ada5a0"];
+// The dark-mode page (gray-950).
+const DARK_PAGE = "#110b0a";
+
+test("in dark mode, every text color reads on the dark fill", () => {
+  for (const color of SAMPLES) {
+    const { darkFill } = themeColors(color);
+    for (const text of DARK_TEXT) {
+      assert.ok(
+        contrast(text, darkFill) >= 4.5,
+        `${text} on ${darkFill} (from ${color}) is ${contrast(text, darkFill).toFixed(2)}`,
+      );
+    }
+  }
+});
+
+test("in dark mode, the ink reads on the dark fill and on the dark page", () => {
+  for (const color of SAMPLES) {
+    const { darkFill, darkInk } = themeColors(color);
+    assert.ok(contrast(darkInk, darkFill) >= 4.5, `${darkInk} on ${darkFill} (from ${color})`);
+    assert.ok(contrast(darkInk, DARK_PAGE) >= 4.5, `${darkInk} on the dark page (from ${color})`);
+  }
+});
+
+test("the dark fill keeps the host's hue", () => {
+  const { darkFill } = themeColors("#a0e4d4");
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(darkFill.slice(i, i + 2), 16));
+  assert.ok(g > r && b > r, `${darkFill} should still be mint`);
+});

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { updateReservationPrivacy } from "@/lib/actions/registry";
@@ -66,11 +66,6 @@ export function ReservationPrivacyCard({
     <Card id="reservations" className={SECTION_SCROLL_MARGIN}>
       <CardHeader>
         <SectionTitle sectionId="reservations">What&apos;s been reserved</SectionTitle>
-        <CardDescription>
-          {isOwner
-            ? "Choose whether you see what people reserve and pledge on this list."
-            : "The owner chooses whether they see what people reserve and pledge."}
-        </CardDescription>
       </CardHeader>
       <CardContent>
         {isOwner ? (
@@ -85,13 +80,8 @@ export function ReservationPrivacyCard({
               label="Hide what's been reserved from me"
               hint={
                 <>
-                  Every item shows as not yet reserved for you, and you don&apos;t get gift emails. Guests still see
-                  what&apos;s taken, so nobody buys the same thing twice. Co-managers still see everything. When the
-                  list is part of an event, you see what was given, and by whom, from the day after it. Or turn this
-                  off any time to see everything.
-                  {turnedOnByExchange && (
-                    <> Regibee turned this on when you added this list to a gift exchange.</>
-                  )}
+                  You won&apos;t see what&apos;s reserved or get gift emails. Guests and co-managers still do.
+                  {turnedOnByExchange && <> Turned on when you added this list to a gift exchange.</>}
                 </>
               }
             />
@@ -103,7 +93,7 @@ export function ReservationPrivacyCard({
                   setSaved(false);
                 }}
                 label="I keep this list for my child"
-                hint="You always see what's been reserved, so you can plan, even when the list is in a gift exchange."
+                hint="You always see what's reserved, even in a gift exchange."
               />
             )}
             {error && <p className="text-sm text-error-primary">{error}</p>}
@@ -114,7 +104,7 @@ export function ReservationPrivacyCard({
         ) : (
           <p className="text-sm text-secondary">
             {ownerHides
-              ? "The owner hides what's been reserved from themselves, so their gifts stay a surprise. You still see everything and get gift emails."
+              ? "The owner hides what's reserved from themselves. You still see it and get gift emails."
               : "Everyone who manages this list sees what's been reserved."}
           </p>
         )}

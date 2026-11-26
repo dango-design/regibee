@@ -6,7 +6,7 @@ import { FollowButton } from "@/components/follow-button";
 import { PublicProfile } from "@/components/public-profile";
 import { PoweredByFooter } from "@/components/site-footer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getViewer, getViewerRelation, seesBirthday, seesGiftDetails } from "@/lib/viewer";
+import { getViewer, getViewerRelation, giftProfileViewer } from "@/lib/viewer";
 import { cleanPublicNote, parseGiftProfile, visibleGiftProfile } from "@/lib/gift-profile";
 import { sharedRegistrySlugsFrom } from "@/lib/groups-server";
 import { listSharedEvents } from "@/lib/shared-events-server";
@@ -138,14 +138,14 @@ export default async function ProfilePage({
         )
       : Promise.resolve([]),
   ]);
-  // Sizes, likes and the rest are for the person and the people they follow
-  // who follow them back. The birthday is for every follower they approved.
-  // Neither leaves the server for anyone else.
-  const showBirthday = seesBirthday(relation);
-  const giftProfile = visibleGiftProfile(parseGiftProfile(giftRow.error ? null : giftRow.data?.gift_profile), {
-    details: seesGiftDetails(relation),
-    birthday: showBirthday,
-  });
+  // The person chooses who sees their birthday, their sizes, and their likes
+  // and dislikes (src/lib/gift-profile.ts). The parts this viewer may not see
+  // never leave the server.
+  const giftProfile = visibleGiftProfile(
+    parseGiftProfile(giftRow.error ? null : giftRow.data?.gift_profile),
+    giftProfileViewer(relation),
+  );
+  const showBirthday = Boolean(giftProfile.birthday);
   // The public note is for everyone who opens the profile.
   const publicNote = cleanPublicNote(noteRow.error ? null : noteRow.data?.public_note);
   // The audience columns are only for choosing; they aren't sent on.

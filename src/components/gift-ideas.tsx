@@ -68,18 +68,14 @@ function errorOf(result: unknown): string | null {
 function EmptyState({ saveButton }: { saveButton: React.ReactNode }) {
   return (
     <div className="mt-6 flex flex-col items-center rounded-2xl border border-secondary px-4 py-12 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-brand-50">
-        <Lightbulb aria-hidden="true" className="size-6 text-brand-600" />
+      <span className="flex size-12 items-center justify-center rounded-full bg-brand-primary">
+        <Lightbulb aria-hidden="true" className="size-6 text-brand-tertiary" />
       </span>
       <h2 className="mt-3 font-semibold text-primary">No gift ideas yet</h2>
-      <p className="mt-1 max-w-md text-sm text-tertiary">
-        See something that would make a good gift for someone? Save it here to think about before their next
-        birthday or holiday. Only you can see it.
-      </p>
       <ul className="mt-4 max-w-md space-y-1.5 text-left text-sm text-secondary">
-        <li>• Paste its link into Save a gift idea.</li>
-        <li>• In the Regibee app, share it to Regibee from the store&apos;s app or your browser, then pick Gift ideas.</li>
-        <li>• With the Regibee extension for Chrome, open it on the product&apos;s page and pick Gift ideas under Add to.</li>
+        <li>• Paste a link into Save a gift idea.</li>
+        <li>• In the Regibee app, share it to Regibee from a store&apos;s app.</li>
+        <li>• In the Regibee extension, pick Gift ideas under Add to.</li>
       </ul>
       <div className="mt-6">{saveButton}</div>
     </div>
@@ -326,7 +322,7 @@ export function GiftIdeas({ ideas, openWithLink, saveAction, deleteAction, setBo
                       cx(
                         "inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-semibold whitespace-nowrap outline-focus-ring transition-colors",
                         isSelected
-                          ? "bg-brand-600 text-white"
+                          ? "bg-brand-solid text-primary_on-brand"
                           : "bg-secondary text-secondary ring-1 ring-secondary ring-inset hover:bg-tertiary",
                         isFocusVisible && "outline-2 outline-offset-2",
                       )
@@ -338,7 +334,7 @@ export function GiftIdeas({ ideas, openWithLink, saveAction, deleteAction, setBo
                         <span
                           className={cx(
                             "rounded-full px-1.5 text-xs font-medium tabular-nums",
-                            isSelected ? "bg-white/20 text-white" : "bg-primary text-tertiary",
+                            isSelected ? "bg-white/20 text-primary_on-brand" : "bg-primary text-tertiary",
                           )}
                         >
                           {option.count}

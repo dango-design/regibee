@@ -35,9 +35,9 @@ export function ListAccessField({
             <label
               key={value}
               className={cx(
-                "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-600 sm:flex-col sm:gap-1",
+                "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-solid sm:flex-col sm:gap-1",
                 selected
-                  ? "border-brand-600 bg-brand-600/5 ring-1 ring-brand-600"
+                  ? "border-brand-solid bg-brand-solid/5 ring-1 ring-brand-solid"
                   : "border-secondary hover:border-primary",
               )}
             >
@@ -51,12 +51,9 @@ export function ListAccessField({
               />
               <Icon
                 aria-hidden="true"
-                className={cx("mt-0.5 h-4 w-4 shrink-0 sm:mt-0", selected ? "text-brand-700" : "text-tertiary")}
+                className={cx("mt-0.5 h-4 w-4 shrink-0 sm:mt-0", selected ? "text-brand-secondary" : "text-tertiary")}
               />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-primary">{option.label}</span>
-                <span className="block text-xs text-tertiary">{option.who}</span>
-              </span>
+              <span className="min-w-0 text-sm font-medium text-primary">{option.label}</span>
             </label>
           );
         })}

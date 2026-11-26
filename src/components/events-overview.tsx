@@ -50,20 +50,20 @@ export function NewEventButton({ basePath = "" }: { basePath?: string }) {
 /** The Events tab on the dashboard. Its page (dashboard/(tabs)/events) loads the events. */
 function LinkedEvents({ linked }: { linked: NonNullable<EventsOverviewProps["linked"]> }) {
   return (
-    <section aria-labelledby="linked-events-heading" className="mt-8 rounded-2xl bg-blush-50 p-4">
+    <section aria-labelledby="linked-events-heading" className="mt-8 rounded-2xl bg-blush-50 dark:bg-blush-300/10 p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <Gift aria-hidden="true" className="size-4.5 text-blush-700" />
+          <Gift aria-hidden="true" className="size-4.5 text-blush-700 dark:text-blush-200" />
         </span>
         <div className="min-w-0">
           <h2 id="linked-events-heading" className="font-medium text-primary">
             Celebrating you
           </h2>
-          <p className="text-sm text-tertiary">Events other people are hosting that link your registry.</p>
+          <p className="text-sm text-tertiary">Events that link your registry.</p>
           <ul className="mt-2 flex flex-col gap-1">
             {linked.map((event) => (
               <li key={event.id} className="text-sm">
-                <Link href={event.href} className="font-medium text-brand-600 hover:underline">
+                <Link href={event.href} className="font-medium text-brand-tertiary hover:underline">
                   {event.title}
                 </Link>
                 <span className="text-tertiary">
@@ -117,7 +117,6 @@ export function EventsOverview({
         <div>
           {/* The Events tab is the visible title (see (tabs)/layout.tsx). */}
           <h1 className="sr-only">Events</h1>
-          <p className="text-tertiary">Send invitations and track RSVPs</p>
         </div>
         <NewEventButton basePath={basePath} />
       </div>
@@ -127,13 +126,12 @@ export function EventsOverview({
       {none ? (
         <Card className="mt-8">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <span className="flex size-16 items-center justify-center rounded-full bg-blush-100">
-              <CalendarHeart aria-hidden="true" className="size-8 text-blush-700" />
+            <span className="flex size-16 items-center justify-center rounded-full bg-blush-100 dark:bg-blush-300/15">
+              <CalendarHeart aria-hidden="true" className="size-8 text-blush-700 dark:text-blush-200" />
             </span>
             <h2 className="mt-4 text-xl font-semibold">Plan your first event</h2>
             <p className="mt-2 max-w-md text-tertiary">
-              A baby shower, a birthday, a holiday party: upload your invitation, email it to guests, and see who&apos;s
-              coming. Link your registry so guests know what to bring.
+              Send invitations and see who&apos;s coming.
             </p>
             <div className="mt-6">
               <NewEventButton basePath={basePath} />

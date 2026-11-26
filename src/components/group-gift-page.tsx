@@ -79,11 +79,11 @@ const linkClass =
 function ShareLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-25 p-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-brand-200 dark:border-brand-800 bg-brand-25 dark:bg-brand-primary p-4">
       <div>
         <h2 className="font-semibold text-primary">Share this link with friends</h2>
         <p className="text-sm text-secondary">
-          Anyone with it can chip in, no account needed, so only send it to people you trust.
+          Anyone with the link can chip in.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -298,19 +298,17 @@ export function GroupGiftPage({
 
   const statusBanner =
     view.status === "bought" ? (
-      <div className="flex items-start gap-3 rounded-2xl border border-mint-500 bg-mint-50 p-4">
-        <Gift aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-mint-800" />
+      <div className="flex items-start gap-3 rounded-2xl border border-mint-500 bg-mint-50 dark:bg-mint-500/10 p-4">
+        <Gift aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-mint-800 dark:text-mint-300" />
         <div className="min-w-0">
           <p className="font-semibold text-primary">
             {isOrganizer ? "You bought it" : `${view.organizerName} bought it`}
           </p>
-          <p className="text-sm text-secondary">
-            {isOrganizer
-              ? "Keep ticking people off as they pay you back."
-              : mine && !mine.paid
-                ? `If you haven't paid ${view.organizerName} back yet, now's the time.`
-                : `Thanks for going in on it together.`}
-          </p>
+          {!isOrganizer && (
+            <p className="text-sm text-secondary">
+              {mine && !mine.paid ? `Remember to pay ${view.organizerName} back.` : "Thanks for chipping in."}
+            </p>
+          )}
         </div>
       </div>
     ) : view.status === "ended" ? (
@@ -327,7 +325,7 @@ export function GroupGiftPage({
         </p>
       </div>
     ) : !view.item.onList ? (
-      <div className="rounded-2xl border border-warning-300 bg-warning-primary p-4 text-sm text-primary">
+      <div className="rounded-2xl border border-warning-300 dark:border-warning-800 bg-warning-primary p-4 text-sm text-primary">
         This item was taken off {view.recipientName}&apos;s list.
         {isOrganizer ? " You can call off the group gift below." : ` Check with ${view.organizerName} before you pay.`}
       </div>
@@ -533,11 +531,6 @@ export function GroupGiftPage({
           <Users aria-hidden="true" className="size-4" />
           Who&apos;s in
         </h2>
-        {isOrganizer && view.pledges.length > 0 && (
-          <p className="text-sm text-tertiary">
-            {view.status === "ended" ? "Who you'd marked paid." : "Tick people off as they pay you back."}
-          </p>
-        )}
         {view.pledges.length === 0 ? (
           <p className="text-sm text-tertiary">Nobody has chipped in yet.</p>
         ) : (
@@ -584,12 +577,12 @@ export function GroupGiftPage({
               aria-labelledby="finish-confirm"
               className={cn(
                 "flex flex-col gap-3 rounded-xl border p-4",
-                confirming === "calloff" ? "border-warning-300 bg-warning-primary" : "border-secondary bg-secondary",
+                confirming === "calloff" ? "border-warning-300 dark:border-warning-800 bg-warning-primary" : "border-secondary bg-secondary",
               )}
             >
               <p id="finish-confirm" className="text-sm text-primary">
                 {confirming === "bought"
-                  ? `Mark the ${view.item.title} as bought? ${view.recipientName} hears it's from you and others, the same way they hear about any gift.`
+                  ? `Mark the ${view.item.title} as bought? ${view.recipientName} hears it's from you and others.`
                   : `Call off this group gift? The ${view.item.title} opens up again on ${view.recipientName}'s list, and everyone who chipped in gets an email.${
                       view.pledges.some((p) => p.paid) ? " Send back any money you've been paid." : ""
                     }`}
@@ -641,7 +634,7 @@ export function GroupGiftPage({
           {errorAt("finish")}
           {view.item.onList && (
             <p className="text-sm text-tertiary">
-              It stays reserved in your name until then, so nobody else buys it.
+              It stays reserved until then.
             </p>
           )}
         </section>

@@ -284,16 +284,12 @@ export function reservationsHiddenText(opts: {
     title: revealed > 0 ? "New reservations are hidden from you" : "What's been reserved is hidden from you",
     revealed:
       revealed > 0
-        ? `${revealed === 1 ? "1 gift from your last event is" : `${revealed} gifts from your last event are`} revealed below, with who gave ${revealed === 1 ? "it" : "them"}, for your thank-you notes.`
+        ? `${revealed === 1 ? "1 gift from your last event is" : `${revealed} gifts from your last event are`} shown below, with who gave ${revealed === 1 ? "it" : "them"}.`
         : null,
-    next: opts.next
-      ? `Gifts reserved before ${opts.next.eventTitle} are revealed on ${opts.next.date}, the day after.`
-      : null,
+    next: opts.next ? `Gifts reserved before ${opts.next.eventTitle} show on ${opts.next.date}.` : null,
     why: `${
-      opts.turnedOnByExchange
-        ? "Regibee hid it when you added this list to a gift exchange, so your gifts stay a surprise."
-        : "Your gifts stay a surprise."
-    } Guests still see what's taken, so nobody buys the same thing twice.`,
+      opts.turnedOnByExchange ? "Regibee turned this on for the gift exchange. " : ""
+    }Guests still see what's taken.`,
   };
 }
 

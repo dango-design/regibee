@@ -4,16 +4,18 @@
 // a screen, so send it to the share screen. ShareIntentProvider reads the
 // shared content itself.
 //
-// A link to a website page the app shows in its web view, such as
-// regibee://r/<slug> or https://www.regibee.com/e/<slug>, opens that page
-// inside the app (src/app/web.tsx).
+// A link to a website page for guests and followers, such as
+// regibee://r/<slug> or https://www.regibee.com/e/<slug>, opens inside the
+// app: on the app's own screen at the same path when it has one (nativeRoute
+// in src/lib/web.ts), and otherwise in the web view (src/app/web.tsx).
 
-import { sitePathFromLink } from "@/lib/web";
+import { nativeRoute, sitePathFromLink } from "@/lib/web";
 
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
   try {
     if (path.includes("dataUrl=")) return "/share";
     const sitePath = sitePathFromLink(path);
+    if (sitePath && nativeRoute(sitePath)) return sitePath.split("#")[0];
     if (sitePath) return `/web?path=${encodeURIComponent(sitePath)}`;
     return path;
   } catch {

@@ -167,7 +167,7 @@ function StepMarker({ step, status }: { step: number; status: StepStatus }) {
     <span
       className={cx(
         "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-        status === "open" && "bg-brand-600 text-white",
+        status === "open" && "bg-brand-solid text-primary_on-brand",
         status === "incomplete" && "bg-error-secondary text-error-primary ring-1 ring-error ring-inset",
         (status === "upcoming" || status === "skipped") && "text-tertiary ring-1 ring-secondary ring-inset",
       )}
@@ -210,7 +210,7 @@ export function StepSection({
       data-state={isOpen ? "open" : "closed"}
       className={cx(
         "rounded-xl border bg-primary transition-shadow duration-200",
-        isOpen ? "border-brand-600 shadow-md ring-1 ring-brand-600" : "border-secondary",
+        isOpen ? "border-brand-solid shadow-md ring-1 ring-brand-solid" : "border-secondary",
       )}
     >
       <h2>
@@ -220,7 +220,7 @@ export function StepSection({
           aria-expanded={isOpen}
           aria-controls={panelId}
           onClick={onToggle}
-          className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+          className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-solid"
         >
           <StepMarker step={step} status={status} />
           <span className="min-w-0 flex-1">
@@ -244,7 +244,7 @@ export function StepSection({
             )}
           </span>
           {!isOpen && status !== "upcoming" && (
-            <span className="shrink-0 text-sm font-medium text-brand-600">
+            <span className="shrink-0 text-sm font-medium text-brand-tertiary">
               {status === "skipped" ? "Add" : "Edit"}
             </span>
           )}
@@ -303,13 +303,11 @@ export function ChoiceCard({
   onClick,
   icon,
   title,
-  description,
 }: {
   selected: boolean;
   onClick: () => void;
   icon?: ReactNode;
   title: string;
-  description: string;
 }) {
   return (
     <button
@@ -318,9 +316,9 @@ export function ChoiceCard({
       data-autofocus={selected || undefined}
       onClick={onClick}
       className={cx(
-        "flex cursor-pointer flex-col items-start rounded-lg border p-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600",
+        "flex cursor-pointer flex-col items-start rounded-lg border p-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid",
         selected
-          ? "border-brand-600 bg-brand-600/5 ring-1 ring-brand-600"
+          ? "border-brand-solid bg-brand-solid/5 ring-1 ring-brand-solid"
           : "border-secondary hover:border-primary",
       )}
     >
@@ -330,7 +328,6 @@ export function ChoiceCard({
         {icon && <span className="flex h-[1lh] shrink-0 items-center">{icon}</span>}
         {title}
       </span>
-      <span className="mt-1 block text-xs text-tertiary">{description}</span>
     </button>
   );
 }
@@ -352,8 +349,8 @@ export function ChoiceChip({
       data-autofocus={selected || undefined}
       onClick={onClick}
       className={cx(
-        "cursor-pointer rounded-full border px-3 py-1.5 text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1 max-sm:min-h-11",
-        selected ? "border-brand-600 bg-brand-600 text-white" : "border-secondary text-secondary hover:border-primary",
+        "cursor-pointer rounded-full border px-3 py-1.5 text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-1 ring-offset-bg-primary max-sm:min-h-11",
+        selected ? "border-brand-solid bg-brand-solid text-primary_on-brand" : "border-secondary text-secondary hover:border-primary",
       )}
     >
       {label}

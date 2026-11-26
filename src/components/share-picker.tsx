@@ -54,10 +54,7 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
       {!shared ? (
         <>
           <h1 className="font-display text-display-xs font-semibold text-primary">There&apos;s no link to add</h1>
-          <p className="mt-2 text-tertiary">
-            What you shared didn&apos;t include a link to a product. Open the product in its store&apos;s app or
-            your browser, then share it to Regibee again.
-          </p>
+          <p className="mt-2 text-tertiary">Share it again from the product&apos;s page.</p>
           <Button asChild className="mt-6 max-sm:w-full">
             <Link href="/dashboard">Go to my registries</Link>
           </Button>
@@ -79,14 +76,13 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
           <h2 className="mt-6 text-sm font-semibold text-secondary">For you</h2>
           {registries.length === 0 ? (
             <p className="mt-2 text-sm text-tertiary">
-              To add it to a registry of your own, first{" "}
               <Link
                 href="/dashboard/registry/new"
-                className="rounded-sm font-medium text-brand-600 underline underline-offset-4 outline-focus-ring hover:text-brand-700 focus-visible:outline-2"
+                className="rounded-sm font-medium text-brand-tertiary underline underline-offset-4 outline-focus-ring hover:text-brand-secondary focus-visible:outline-2"
               >
-                create a registry
-              </Link>
-              , then share it to Regibee again.
+                Create a registry
+              </Link>{" "}
+              first, then share it again.
             </p>
           ) : (
             <ul className="mt-2 space-y-3">
@@ -100,8 +96,8 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
                         className="size-12 text-base ring-2"
                       />
                     ) : (
-                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                        <Gift01 aria-hidden="true" className="size-5 text-brand-700" />
+                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                        <Gift01 aria-hidden="true" className="size-5 text-brand-secondary" />
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
@@ -119,12 +115,12 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
 
           <h2 className="mt-6 text-sm font-semibold text-secondary">For someone else</h2>
           <Link href={saveGiftIdeaHref(shared)} className={`mt-2 ${choiceClass}`}>
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-sunshine-100">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-sunshine-100 dark:bg-sunshine-400/15">
               <Lightbulb02 aria-hidden="true" className="size-5 text-primary" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold text-primary">Save as a gift idea</span>
-              <span className="block text-sm text-tertiary">Only you can see it. The person never does.</span>
+              <span className="block text-sm text-tertiary">Only you can see it.</span>
             </span>
             <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-fg-quaternary" />
           </Link>

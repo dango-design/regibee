@@ -53,13 +53,9 @@ export default function RegistriesScreen() {
                 and events. */}
             {data ? (
               <View style={{ gap: spacing.md, marginBottom: spacing.xs }}>
-                {list.length > 0 ? (
+                {list.length > 0 && data.giftsThisWeek > 0 ? (
                   <Text variant="subhead" tone="secondary">
-                    {data.giftsThisWeek > 0
-                      ? data.giftsThisWeek === 1
-                        ? "1 gift reserved this week"
-                        : `${data.giftsThisWeek} gifts reserved this week`
-                      : "Manage your registries and track gifts"}
+                    {data.giftsThisWeek === 1 ? "1 gift reserved this week" : `${data.giftsThisWeek} gifts reserved this week`}
                   </Text>
                 ) : null}
                 {data.followRequestCount > 0 ? (
@@ -71,7 +67,7 @@ export default function RegistriesScreen() {
                         ? "1 person wants to follow you"
                         : `${data.followRequestCount} people want to follow you`
                     }
-                    message="People you approve can see the registries you show to followers on your profile."
+                    message="People you approve see your birthday and the lists you show followers."
                     action={{ title: "Review requests", onPress: () => router.push("/account/follows") }}
                   />
                 ) : null}
@@ -80,7 +76,7 @@ export default function RegistriesScreen() {
                     icon="link"
                     tone="tint"
                     title="Give friends one link to all your registries"
-                    message="Your profile shows only the registries you choose. Friends can follow it to see new ones."
+                    message="It shows only the registries you choose."
                     action={{ title: "Choose registries", onPress: () => router.push("/account/profile") }}
                   />
                 ) : null}
@@ -92,11 +88,8 @@ export default function RegistriesScreen() {
         renderItem={({ item, index }) => (
           <>
             {index === firstShared ? (
-              <View style={{ marginTop: index > 0 ? spacing.lg : 0, marginBottom: spacing.sm, gap: 2 }}>
+              <View style={{ marginTop: index > 0 ? spacing.lg : 0, marginBottom: spacing.sm }}>
                 <Text variant="headline">Shared with you</Text>
-                <Text variant="footnote" tone="tertiary">
-                  Registries you&apos;ve been invited to manage
-                </Text>
               </View>
             ) : null}
             <RegistryCard
@@ -115,7 +108,6 @@ export default function RegistriesScreen() {
             <EmptyState
               icon="gift"
               title="No registries yet"
-              message="Create your first registry to start adding items."
               action={
                 <View style={{ width: "100%", maxWidth: 320 }}>
                   <Button title="Start something new" icon="add" onPress={() => router.push("/new")} />

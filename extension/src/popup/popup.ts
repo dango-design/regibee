@@ -169,9 +169,9 @@ function showConnect(signedOut = false) {
       h(
         "p",
         { className: "lead" },
-        "Sign in once on regibee.com. Then the extension can bring the items on your store registries into Regibee, with their registry links."
+        "Sign in once on regibee.com to add items to Regibee."
       ),
-      signedOut && h("p", { className: "note" }, "The extension was signed out. Connect it again to keep going."),
+      signedOut && h("p", { className: "note" }, "The extension was signed out."),
       h(
         "div",
         { className: "footer-actions" },
@@ -198,7 +198,7 @@ function showNoRegistries(user: { name: string }) {
     h(
       "main",
       { className: "body" },
-      h("p", { className: "lead" }, "You don't manage any registries on Regibee yet. Make one, then come back to add your store items."),
+      h("p", { className: "lead" }, "You don't manage any registries on Regibee yet."),
       h(
         "div",
         { className: "footer-actions" },
@@ -220,7 +220,7 @@ function showCouldntRead(user: { name: string }, store: StoreInfo, retry: () => 
         "p",
         { className: "muted" },
         store.openRegistryStep ??
-          "Make sure the page lists your registry's items. If the store changed its page, you can still paste each item's registry link on Regibee."
+          "Make sure the page lists your registry's items."
       ),
       h("div", { className: "footer-actions" }, h("button", { type: "button", className: "button secondary", onclick: retry }, "Try again"))
     )
@@ -380,7 +380,7 @@ async function showImport(ctx: ImportContext) {
       storeRow(store, summary),
       linkedNote,
       !store.registryPage?.verified &&
-        h("p", { className: "note" }, `Reading ${store.name} registries is new. Check the items look right before you add them.`),
+        h("p", { className: "note" }, "Check the items look right before you add them."),
       registrySelect(registries, registryId, "Add to", onRegistryChange),
       h("div", { className: "picker" }, h("ul", { className: "items" }, ...itemRows), alreadyRow),
       h("label", { className: "check" }, autoBox, "Add new items automatically next time"),
@@ -814,7 +814,7 @@ function showHome(state: PopupState, user: { name: string }, data: RegistriesRes
       h(
         "p",
         { className: "lead" },
-        "Open one of your store registries and we'll find items to add to Regibee. On a product page, click the Regibee button, or right-click and choose Add to Regibee."
+        "Open a store registry or a product page to add items."
       ),
       h("ul", { className: "stores" }, ...storeItems, elfsterItem),
       data.registries.length > 1 &&
@@ -1138,8 +1138,8 @@ function showProduct(ctx: ProductContext) {
       "p",
       { className: "note" },
       plainStore.registryPage
-        ? `This is a plain ${name} link, so gifts bought through it won't count toward your ${name} registry yet. Add it here, then add it to your ${name} registry on this page. The next time you open your ${name} registry, we'll swap in its registry link.`
-        : `This is a plain ${name} link, so gifts bought through it won't count toward your ${name} registry. Add it to your ${name} registry first, then open it from there and add it to Regibee.`
+        ? `This plain ${name} link won't count toward your ${name} registry. Add it there too, and we'll switch to its registry link next time you open your registry.`
+        : `This plain ${name} link won't count toward your ${name} registry. Add it there first, then add it from your registry.`
     );
   }
   const duplicateNote = h("p", { className: "note", hidden: true });
@@ -1158,7 +1158,7 @@ function showProduct(ctx: ProductContext) {
     button.textContent = "Add to Regibee";
     const result = await ask<{ exists: boolean; plain?: boolean }>({ type: "check-url", registryId, url: product.url });
     if (result.ok && result.data.exists && result.data.plain && link?.kind === "registry") {
-      duplicateNote.textContent = `This item is already on ${registry().title} with a plain ${link.store.name} link. Use this registry link instead, so gifts bought through it count toward your ${link.store.name} registry.`;
+      duplicateNote.textContent = `This item is already on ${registry().title} with a plain ${link.store.name} link. Use this registry link instead.`;
       duplicateNote.hidden = false;
       swapLink = true;
       button.textContent = "Use this registry link";
@@ -1367,7 +1367,7 @@ function showProduct(ctx: ProductContext) {
       "p",
       { className: "private-note" },
       icon(LOCK, 14),
-      h("span", {}, "Only you can see gift ideas. The person they're for never does.")
+      h("span", {}, "Only you can see gift ideas.")
     ),
     h(
       "div",
@@ -1492,7 +1492,7 @@ function showProductAdded(
           h(
             "p",
             { className: "muted" },
-            `The next time you open your ${plainStore.name} registry, we'll swap in its registry link, so gifts bought through Regibee count toward your ${plainStore.name} registry.`
+            `Next time you open your ${plainStore.name} registry, we'll switch to its registry link.`
           )
         ),
         h(
@@ -1547,7 +1547,7 @@ function showLinked(user: { name: string }, registryId: string, registryTitle: s
         h(
           "p",
           { className: "lead" },
-          `The item on ${registryTitle} now has its ${store.name} registry link, so gifts bought through it count toward your ${store.name} registry.`
+          `The item on ${registryTitle} now has its ${store.name} registry link.`
         )
       ),
       h(

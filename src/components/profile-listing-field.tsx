@@ -10,16 +10,20 @@ import {
   type ProfileAudience,
 } from "@/lib/list-access";
 
-/** What the field says under the choice: who sees the list, and what the choice doesn't change. */
+/**
+ * What the field says under the choice, or "" for nothing: who Friends are,
+ * and what the choice doesn't change.
+ */
 export function profileAudienceHint(audience: ProfileAudience, hasShippingAddress = false): string {
-  let hint: string = PROFILE_AUDIENCE[audience].description;
-  // Friends and followers are about the profile only. Say so, or the choice
-  // reads as who can open the list.
-  if (audience === "friends" || audience === "followers") hint += ` ${PROFILE_AUDIENCE_LINK_NOTE}`;
-  if (audience !== "hidden" && hasShippingAddress) {
-    hint += " Anyone who reserves a gift can see your shipping address.";
-  }
-  return hint;
+  return [
+    PROFILE_AUDIENCE[audience].description,
+    // Friends and followers are about the profile only. Say so, or the choice
+    // reads as who can open the list.
+    audience === "friends" || audience === "followers" ? PROFILE_AUDIENCE_LINK_NOTE : "",
+    audience !== "hidden" && hasShippingAddress ? "Anyone who reserves a gift can see your shipping address." : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**

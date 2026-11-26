@@ -117,7 +117,7 @@ export default async function ManageEventPage({
 
       {image === "failed" && (
         <p role="alert" className="mt-6 rounded-xl bg-error-secondary p-4 text-sm text-error-primary">
-          Your event is saved, but the invitation picture didn&apos;t upload.{" "}
+          The invitation picture didn&apos;t upload.{" "}
           <Link href={editSectionHref(editPath, "invitation")} className="font-medium underline">
             Add it again
           </Link>
@@ -178,13 +178,11 @@ export default async function ManageEventPage({
               >
                 <ImagePlus aria-hidden="true" className={cx("size-8", theme.icon)} />
                 <span className="font-medium text-primary">Add your invitation</span>
-                <span className="text-sm text-secondary">Upload a picture guests see first</span>
               </Link>
             )}
             <CardContent className="p-4">
               <p className="text-sm text-tertiary">
-                Guests see this, the details and an RSVP form at the event link.
-                {event.open_rsvp ? " Anyone with the link can RSVP." : " Only invited guests can RSVP."}
+                {event.open_rsvp ? "Anyone with the link can RSVP." : "Only invited guests can RSVP."}
               </p>
             </CardContent>
           </Card>
@@ -192,8 +190,8 @@ export default async function ManageEventPage({
           <Card className="py-0">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                  <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                  <Gift aria-hidden="true" className="size-4.5 text-brand-tertiary" />
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
                   <p className="font-medium text-primary">Gifts</p>
@@ -205,7 +203,7 @@ export default async function ManageEventPage({
                             href={`/r/${registry.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-brand-600 hover:underline"
+                            className="text-brand-tertiary hover:underline"
                           >
                             {registry.title}
                           </a>
@@ -222,7 +220,7 @@ export default async function ManageEventPage({
                     </p>
                   ))}
                   {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
-                  <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-600 hover:underline">
+                  <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-tertiary hover:underline">
                     {registries.length > 0 || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
                   </Link>
                 </div>

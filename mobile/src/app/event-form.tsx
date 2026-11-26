@@ -144,28 +144,19 @@ export default function EventFormScreen() {
   );
 }
 
-/** A section of the form: a heading, maybe a line under it, then its fields. */
+/** A section of the form: a heading, then its fields. */
 function Group({
   title,
-  description,
   onLayout,
   children,
 }: {
   title: string;
-  description?: string;
   onLayout?: (event: LayoutChangeEvent) => void;
   children: ReactNode;
 }) {
   return (
     <View style={{ gap: spacing.md }} onLayout={onLayout}>
-      <View style={{ gap: 2 }}>
-        <Text variant="headline">{title}</Text>
-        {description ? (
-          <Text variant="footnote" tone="tertiary">
-            {description}
-          </Text>
-        ) : null}
-      </View>
+      <Text variant="headline">{title}</Text>
       {children}
     </View>
   );
@@ -666,9 +657,6 @@ function EventForm({
           <Text variant="callout" style={{ fontWeight: "600" }}>
             Upload your invitation
           </Text>
-          <Text variant="footnote" tone="tertiary">
-            Choose a picture from your photos.
-          </Text>
         </Pressable>
       )}
       {imageError ? (
@@ -861,20 +849,18 @@ function EventForm({
             label="Draw names by (optional)"
             value={drawBy || null}
             onChange={(value) => setDrawBy(value ?? "")}
-            hint={brief ? undefined : "Guests see this, so they know when to join by."}
           />
         ) : null}
         {kind === "everyone" && !brief ? (
           <Text variant="footnote" tone="tertiary">
-            Each list hides what's been reserved from its owner, and shows it to them the day after the event, so they know who to
-            thank.
+            Nobody sees what's been reserved from their own list until the day after.
           </Text>
         ) : null}
         {kind === "draw" ? (
           <Section>
             <ToggleRow
               label="There's no get-together: gifts are mailed"
-              hint={brief ? undefined : "Guests answer “I'm in” instead of RSVPing, and give a shipping address that only the person who draws them sees."}
+              hint={brief ? undefined : "Guests give a shipping address. Only the person who draws them sees it."}
               value={mailed}
               onValueChange={setMailed}
             />
@@ -888,10 +874,6 @@ function EventForm({
     return (
       <>
         <ScrollView {...scrollProps} contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
-          <Text variant="callout" tone="secondary">
-            You'll add guests and send the invitation next.
-          </Text>
-
           <StepCard {...stepCard("what")}>
             <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
               {EVENT_TYPE_OPTIONS.map((option) => (
@@ -1050,9 +1032,6 @@ function EventForm({
             </Text>
           ) : null}
           <Button title="Create event" onPress={() => void submit()} loading={saving} />
-          <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
-            Only the name is required. You can change all of this later.
-          </Text>
         </View>
       </>
     );
@@ -1061,10 +1040,6 @@ function EventForm({
   return (
     <>
       <ScrollView ref={editScroll} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xxl }} keyboardShouldPersistTaps="handled">
-        <Text variant="callout" tone="secondary">
-          {editing ? "Guests see your changes on the event page right away." : "Add the details now. You'll add guests and send the invitation next."}
-        </Text>
-
         <Group title="What are you celebrating?" onLayout={(event) => sectionLayout("details", event)}>
           <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {EVENT_TYPE_OPTIONS.map((option) => (
@@ -1085,7 +1060,7 @@ function EventForm({
             onChangeText={setHostedBy}
             maxLength={120}
             placeholder='e.g., "Aunt Linda & Grandma Jo"'
-            hint="Guests see this on the invitation. Emails come from this name."
+            hint="Emails to guests come from this name."
             autoCapitalize="words"
           />
         </Group>
@@ -1093,7 +1068,6 @@ function EventForm({
         <Group
           title="Invitation"
           onLayout={(event) => sectionLayout("invitation", event)}
-          description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
         >
           {pictureField}
           <ThemeColorField value={themeColor} onChange={setThemeColor} />
@@ -1122,7 +1096,7 @@ function EventForm({
               maxLength={300}
               multiline
               placeholder={"123 Main St\nSan Francisco, CA 94102"}
-              hint="Only people who sign up for a day see it, on their own link and in their email."
+              hint="Only people who sign up for a day see it."
               textContentType="fullStreetAddress"
             />
           </Group>
@@ -1142,7 +1116,7 @@ function EventForm({
               maxLength={300}
               multiline
               placeholder={"123 Main St\nSan Francisco, CA 94102"}
-              hint="Only people with the event link see it. Guests get a map link."
+              hint="Only people with the event link see it."
               textContentType="fullStreetAddress"
             />
           </Group>
@@ -1150,7 +1124,6 @@ function EventForm({
 
         <Group
           title="Message to guests"
-          description="Parking, dress code, what to bring: anything guests should know."
           onLayout={(event) => sectionLayout("message", event)}
         >
           <Field
@@ -1176,20 +1149,18 @@ function EventForm({
               ) : null}
             </View>
             <Text variant="footnote" tone="tertiary">
-              Including the guest. 2 lets each guest bring one person.
+              Including the guest.
             </Text>
           </View>
           <Section>
             <SwitchRow
               label="Anyone with the event link can RSVP"
-              description="They're added to your guest list. Turn this off to take RSVPs only from guests you invite."
               value={openRsvp}
               onValueChange={setOpenRsvp}
             />
             <Divider inset={spacing.lg} />
             <SwitchRow
               label="Ask how many kids are coming"
-              description="Guests say how many of their party are kids, and you see both counts."
               value={askKids}
               onValueChange={changeAskKids}
             />
@@ -1198,7 +1169,6 @@ function EventForm({
             <Divider inset={spacing.lg} />
             <SwitchRow
               label="Email everyone going a reminder the day before"
-              description="With the time, the place and anything they signed up to bring."
               value={remindDayBefore}
               onValueChange={setRemindDayBefore}
             />
@@ -1206,13 +1176,12 @@ function EventForm({
           <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
         </Group>
 
-        <Group title="Gifts" description="What guests see about gifts, under the details on the invitation." onLayout={(event) => sectionLayout("gifts", event)}>
+        <Group title="Gifts" onLayout={(event) => sectionLayout("gifts", event)}>
           <View style={{ gap: spacing.md }}>
             <View style={{ gap: 2 }}>
               <Label>Registries and wishlists</Label>
               <Text variant="footnote" tone="tertiary">
-                Link yours, or someone else's with its link, like the parents' registry for a baby shower. They get an email saying you
-                linked it. Linking doesn't let you change their registry.
+                Linking someone else's list emails them.
               </Text>
             </View>
             {registryFields(false)}
@@ -1223,7 +1192,6 @@ function EventForm({
 
         <Group
           title="Gifts among the guests"
-          description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other."
           onLayout={(event) => sectionLayout("exchange", event)}
         >
           <Section>
@@ -1231,8 +1199,8 @@ function EventForm({
               label="Guests give gifts to each other"
               hint={
                 drawn
-                  ? "Names have been drawn. To turn this off, undo the draw on the event's page first."
-                  : "Guests add a wishlist or gift ideas when they RSVP."
+                  ? "Names have been drawn. Undo the draw on the event's page to turn this off."
+                  : undefined
               }
               value={exchangeOn}
               disabled={drawn}
@@ -1249,7 +1217,7 @@ function EventForm({
           <View style={{ borderRadius: radius.lg, backgroundColor: theme.tintSoft, paddingVertical: spacing.xs }}>
             <ToggleRow
               label={`Email guests about the ${changeSummary(changes).replace(/^New /, "new ")}`}
-              hint="Everyone who said yes or maybe, and everyone invited who hasn't answered, gets the new details, and a line on the invitation says what changed. Turn this off for a small fix, like a typo."
+              hint="Goes to everyone who said yes or maybe, or hasn't answered yet."
               value={notifyGuests}
               onValueChange={setNotifyGuests}
             />
@@ -1288,12 +1256,7 @@ function RsvpQuestionsEditor({ questions, onChange }: { questions: RsvpQuestion[
 
   return (
     <View style={{ gap: spacing.md }}>
-      <View style={{ gap: 2 }}>
-        <Label>Questions</Label>
-        <Text variant="footnote" tone="tertiary">
-          Guests who are coming answer these when they RSVP. You see the answers on the guest list.
-        </Text>
-      </View>
+      <Label>Questions</Label>
       {questions.map((question) => (
         <Card key={question.id} style={{ padding: spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>

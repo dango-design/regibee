@@ -4,14 +4,18 @@
 // a list kept for a child (see 20261112062844_gift_profiles_and_birthday_reminders.sql).
 // Every field is optional.
 //
-// Who sees what of a person's own gift profile, on their profile page and
-// their personal wishlists:
-// - Sizes, colors, likes, things to skip and notes show only to the person
-//   and to people they follow who follow them back. They can be sensitive.
-// - The birthday shows to the person and to every follower they approved,
-//   who also get it on their Following page and in a reminder email.
-// visibleGiftProfile applies both rules. A child's list shows its own gift
-// profile to anyone who opens that list, apart from the birthday.
+// Who sees what of a person's own gift profile is their choice, in three
+// parts (GIFT_PROFILE_SECTIONS): the birthday, the sizes, and likes and
+// dislikes (favorite colors, likes, things to skip and notes). Each part
+// shows to only them, friends, followers or everyone, saved in
+// `audience`. Without a choice, the birthday shows to followers and the
+// rest to friends, as it did before the choice existed. Friends are people
+// they follow who follow them back. visibleGiftProfile applies the choices.
+// The birthday also goes to the followers or friends who see it on their
+// Following page and in a reminder email (src/lib/birthdays-server.ts).
+//
+// A child's list shows its own gift profile to anyone who opens that list,
+// apart from the birthday. It has no audience choices.
 //
 // A profile's public note (profiles.public_note) is separate: anyone who
 // opens the profile sees it. cleanPublicNote is at the end of this file.
@@ -39,6 +43,80 @@ export interface GiftProfile {
   /** "Please skip": things they have or don't want. */
   skip?: string[];
   notes?: string;
+  /**
+   * Who sees each part. Only on a person's own profile, and only the parts
+   * they chose: read it with giftProfileAudiences, which fills in the rest.
+   */
+  audience?: Partial<GiftProfileAudiences>;
+}
+
+// ── Who sees each part ───────────────────────────────────────────────────
+
+/** The parts of a gift profile that each have their own audience. */
+export type GiftProfileSection = "birthday" | "sizes" | "likes";
+
+export const GIFT_PROFILE_SECTIONS: readonly GiftProfileSection[] = ["birthday", "sizes", "likes"];
+
+export const GIFT_PROFILE_SECTION_LABELS: Record<GiftProfileSection, string> = {
+  birthday: "Birthday",
+  sizes: "Sizes",
+  likes: "Likes and dislikes",
+};
+
+/** "private" is only the person. Friends are followers too, so they see what followers see. */
+export type GiftProfileAudience = "private" | "friends" | "followers" | "everyone";
+
+export const GIFT_PROFILE_AUDIENCES: readonly GiftProfileAudience[] = ["private", "friends", "followers", "everyone"];
+
+export type GiftProfileAudiences = Record<GiftProfileSection, GiftProfileAudience>;
+
+export const GIFT_PROFILE_AUDIENCE_LABELS: Record<GiftProfileAudience, string> = {
+  private: "Only me",
+  friends: "Friends",
+  followers: "Followers",
+  everyone: "Everyone",
+};
+
+/** Who sees each part before the person chooses: what it was before the choice existed. */
+export const DEFAULT_GIFT_PROFILE_AUDIENCES: GiftProfileAudiences = {
+  birthday: "followers",
+  sizes: "friends",
+  likes: "friends",
+};
+
+function isAudience(value: unknown): value is GiftProfileAudience {
+  return GIFT_PROFILE_AUDIENCES.includes(value as GiftProfileAudience);
+}
+
+function cleanAudiences(value: unknown): Partial<GiftProfileAudiences> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const input = value as Record<string, unknown>;
+  const audiences: Partial<GiftProfileAudiences> = {};
+  for (const section of GIFT_PROFILE_SECTIONS) {
+    if (isAudience(input[section])) audiences[section] = input[section];
+  }
+  return Object.keys(audiences).length ? audiences : undefined;
+}
+
+/** Who sees each part of this profile, with the defaults for parts not chosen. */
+export function giftProfileAudiences(profile: GiftProfile): GiftProfileAudiences {
+  return { ...DEFAULT_GIFT_PROFILE_AUDIENCES, ...profile.audience };
+}
+
+/**
+ * How the viewer relates to the profile's owner. The same as ProfileViewer
+ * in src/lib/list-access.ts: "friend" is a follower the owner follows back,
+ * both approved; "follower" is an approved follower who isn't a friend.
+ */
+export type GiftProfileViewer = "owner" | "friend" | "follower" | "other";
+
+/** Whether this viewer sees a part with this audience. */
+export function seesGiftProfileSection(audience: GiftProfileAudience, viewer: GiftProfileViewer): boolean {
+  if (viewer === "owner") return true;
+  if (audience === "everyone") return true;
+  if (audience === "followers") return viewer === "follower" || viewer === "friend";
+  if (audience === "friends") return viewer === "friend";
+  return false;
 }
 
 export const MAX_TAGS = 20;
@@ -132,6 +210,8 @@ export function parseGiftProfile(raw: unknown): GiftProfile {
   if (skip) profile.skip = skip;
   const notes = cleanNotes(input.notes);
   if (notes) profile.notes = notes;
+  const audience = cleanAudiences(input.audience);
+  if (audience) profile.audience = audience;
 
   return profile;
 }
@@ -155,16 +235,63 @@ export function withoutBirthday(profile: GiftProfile): GiftProfile {
 }
 
 /**
- * The parts of a gift profile a viewer may see. `details` is everything but
- * the birthday. Run it on the server, so the rest never reaches the browser.
+ * The parts of a person's own gift profile a viewer may see, by the person's
+ * choices. Run it on the server, so the rest never reaches the browser. Only
+ * the owner gets the choices themselves back.
  */
-export function visibleGiftProfile(
-  profile: GiftProfile,
-  sees: { details: boolean; birthday: boolean },
-): GiftProfile {
-  const visible: GiftProfile = sees.details ? withoutBirthday(profile) : {};
-  if (sees.birthday && profile.birthday) visible.birthday = profile.birthday;
+export function visibleGiftProfile(profile: GiftProfile, viewer: GiftProfileViewer): GiftProfile {
+  if (viewer === "owner") return profile;
+  const audiences = giftProfileAudiences(profile);
+  const sees = (section: GiftProfileSection) => seesGiftProfileSection(audiences[section], viewer);
+  const visible: GiftProfile = {};
+  if (sees("birthday") && profile.birthday) visible.birthday = profile.birthday;
+  if (sees("sizes") && profile.sizes) visible.sizes = profile.sizes;
+  if (sees("likes")) {
+    if (profile.colors) visible.colors = profile.colors;
+    if (profile.likes) visible.likes = profile.likes;
+    if (profile.skip) visible.skip = profile.skip;
+    if (profile.notes) visible.notes = profile.notes;
+  }
   return visible;
+}
+
+/**
+ * A child's list's gift profile, as a viewer may see it: everything, and the
+ * birthday only when `birthday` is set. A child's profile has no choices.
+ */
+export function visibleChildGiftProfile(profile: GiftProfile, sees: { birthday: boolean }): GiftProfile {
+  const visible = sees.birthday ? { ...profile } : withoutBirthday(profile);
+  delete visible.audience;
+  return visible;
+}
+
+/** What the form says under a part, for the audience chosen. */
+export function giftProfileAudienceHint(section: GiftProfileSection, audience: GiftProfileAudience): string {
+  if (section === "birthday") {
+    if (audience === "private") return "Only you see it.";
+    if (audience === "friends") return `Friends see it and get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
+    if (audience === "followers") {
+      return `Followers you approve see it and get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
+    }
+    return `Anyone who opens your profile or wishlists sees it. Followers get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
+  }
+  if (audience === "private") return "Only you see these.";
+  if (audience === "friends") return "Friends see these: people you follow who follow you back.";
+  if (audience === "followers") return "Followers you approve see these.";
+  return "Anyone who opens your profile or wishlists sees these.";
+}
+
+/**
+ * "Birthday: followers · Sizes: friends · Likes and dislikes: only you", for
+ * the owner on their own profile.
+ */
+export function giftProfileAudienceSummary(profile: GiftProfile): string {
+  const audiences = giftProfileAudiences(profile);
+  return GIFT_PROFILE_SECTIONS.map((section) => {
+    const audience = audiences[section];
+    const who = audience === "private" ? "only you" : GIFT_PROFILE_AUDIENCE_LABELS[audience].toLowerCase();
+    return `${GIFT_PROFILE_SECTION_LABELS[section]}: ${who}`;
+  }).join(" · ");
 }
 
 const MONTHS = [

@@ -19,7 +19,6 @@ function EditPage({ children }: { children: React.ReactNode }) {
       <div className="sticky top-0 z-50 h-16 border-b border-secondary bg-primary" />
       <div className="container mx-auto max-w-2xl px-4 py-8 lg:max-w-5xl">
         <h1 className="text-3xl font-bold">Edit event</h1>
-        <p className="mt-1 text-tertiary">Guests see your changes on the event page right away.</p>
         <div className="mt-6">{children}</div>
       </div>
     </>

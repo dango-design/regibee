@@ -44,7 +44,7 @@ export function PublicRegistryHero({
     // personal registries size to content with a looser minimum, and tighten
     // further when there's no welcome message.
     <section
-      className={`relative flex items-center justify-center bg-white py-12 ${
+      className={`relative flex items-center justify-center bg-primary py-12 ${
         isBabyRegistry ? "min-h-[400px]" : description ? "min-h-[260px]" : "min-h-[200px]"
       }`}
     >
@@ -91,7 +91,7 @@ export function PublicRegistryHero({
         </div>
         <p className="inline-flex items-center gap-1.5 text-xs text-tertiary">
           <LockOpen className="h-3.5 w-3.5" />
-          Reserve a gift in 10 seconds — no sign-up required.
+          No sign-up needed to give a gift.
         </p>
         {owner && (
           <div className="flex flex-col items-center gap-2 border-t border-secondary pt-4">

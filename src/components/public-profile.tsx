@@ -6,7 +6,7 @@ import { ProfileRegistryCard } from "@/components/profile-registry-card";
 import { PandaMark } from "@/components/panda-mark";
 import { GiftProfileCard } from "@/components/gift-profile-card";
 import { ProfileAvatar } from "@/components/profile-avatar";
-import { hasGiftDetails, type GiftProfile } from "@/lib/gift-profile";
+import { giftProfileAudienceSummary, hasGiftDetails, type GiftProfile } from "@/lib/gift-profile";
 import { displayName as nameToShow } from "@/lib/profile-link";
 import { eventHasPassed, eventTypeLabel } from "@/lib/events";
 import type { SharedEvent } from "@/lib/shared-events";
@@ -24,8 +24,8 @@ function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today
       href={`${basePath}${event.href}`}
       className="group clickable-card flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10">
-        <Icon aria-hidden="true" className="h-5 w-5 text-brand-600 motion-safe:group-hover:animate-wiggle" />
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-solid/10">
+        <Icon aria-hidden="true" className="h-5 w-5 text-brand-tertiary motion-safe:group-hover:animate-wiggle" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block break-words font-medium text-primary">{event.title}</span>
@@ -53,9 +53,6 @@ function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today
   );
 }
 
-/** Who sees the About card. Shown to the owner on their own profile. */
-const GIFT_PROFILE_AUDIENCE =
-  "Only you and the people you follow who follow you back see this. Followers you approved see your birthday.";
 
 export function PublicProfile({
   fullName,
@@ -86,12 +83,12 @@ export function PublicProfile({
   /** What the person wrote for everyone who opens their profile. */
   publicNote?: string | null;
   /**
-   * Sizes, likes and the rest. Only the person and the people they follow who
-   * follow them back get these, so for anyone else the page passes a profile
-   * without them.
+   * The parts of the gift profile this viewer may see, by the person's
+   * choices (visibleGiftProfile). On their own profile, it holds the choices
+   * too, for the line that says who sees each part.
    */
   giftProfile?: GiftProfile;
-  /** Shows the birthday too. Only for the person and the followers they approved. */
+  /** Shows the birthday too, when the viewer may see it. */
   showBirthday?: boolean;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
@@ -125,12 +122,12 @@ export function PublicProfile({
           profile={giftProfile}
           name={displayName}
           showBirthday={showBirthday}
-          caption={isOwnProfile && GIFT_PROFILE_AUDIENCE}
+          caption={isOwnProfile && giftProfileAudienceSummary(giftProfile)}
           action={
             isOwnProfile && (
               <Link
                 href={`${basePath}/dashboard/account#gift-profile`}
-                className="text-sm font-medium text-brand-600 hover:underline"
+                className="text-sm font-medium text-brand-tertiary hover:underline"
               >
                 Edit
               </Link>
@@ -140,13 +137,11 @@ export function PublicProfile({
       ) : (
         isOwnProfile && (
           <p className="mt-8 rounded-2xl border border-dashed border-secondary px-4 py-3 text-center text-sm text-tertiary">
-            Add your sizes, likes and birthday so the people you follow who follow you back know what to get
-            you.{" "}
             <Link
               href={`${basePath}/dashboard/account#gift-profile`}
-              className="font-medium text-brand-600 hover:underline"
+              className="font-medium text-brand-tertiary hover:underline"
             >
-              Add a gift profile
+              Add your sizes, likes and birthday
             </Link>
           </p>
         )
@@ -159,7 +154,7 @@ export function PublicProfile({
           {isOwnProfile && (
             <Link
               href={`${basePath}/dashboard/account#profile-registries`}
-              className="mt-2 text-sm font-medium text-brand-600 hover:underline"
+              className="mt-2 text-sm font-medium text-brand-tertiary hover:underline"
             >
               Choose which registries to show
             </Link>
@@ -185,7 +180,7 @@ export function PublicProfile({
         <div className="mt-10">
           <h2 className="text-lg font-semibold">Events together</h2>
           <p className="mt-1 text-sm text-tertiary">
-            Events you and {displayName} both went to or are going to. Only you see this.
+            Only you see this.
           </p>
           <div className="mt-3 flex flex-col gap-3">
             {sharedEvents.map((event) => (

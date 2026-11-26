@@ -71,7 +71,7 @@ interface CoverItemDialogProps {
 
 // Text buttons get a 44px tap target on phones.
 const textButton =
-  "inline-flex items-center justify-center text-sm font-medium text-brand-600 underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
+  "inline-flex items-center justify-center text-sm font-medium text-brand-tertiary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 const dangerTextButton =
   "inline-flex items-center justify-center text-sm font-medium text-error-primary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 
@@ -300,7 +300,7 @@ export function CoverItemDialog({
             icon={Mail01}
             defaultValue={prefill?.email || undefined}
             isRequired
-            hint="We'll email you a copy, with a link to undo it if you need to."
+            hint="We'll email you a copy."
           />
           <TextArea label="Message (optional)" name="message" placeholder="Congratulations!" rows={3} />
           {errorLine}
@@ -354,8 +354,8 @@ export function CoverItemDialog({
         <DialogHeader className="pr-8">
           <DialogTitle>Undo your gift of the {item.title}?</DialogTitle>
           <DialogDescription>
-            It goes back on the list so another guest can give it. Undoing doesn&apos;t move any money, so
-            if you sent some, ask {parentName} to send it back.
+            It goes back on the list. Regibee doesn&apos;t move money, so ask {parentName} if you need it
+            back.
           </DialogDescription>
         </DialogHeader>
         {errorLine}

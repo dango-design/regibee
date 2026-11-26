@@ -285,11 +285,7 @@ export default async function RegistryManagePage({
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <PandaMark className="mb-4 h-20 w-auto" />
-                  <p className="text-tertiary">
-                    {showChecklist
-                      ? "No items yet. Add items manually or browse the checklist."
-                      : "No items yet. Add items from any store to get started."}
-                  </p>
+                  <p className="text-tertiary">No items yet.</p>
                   <div className="mt-4 flex gap-2">
                     <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} />
                     {showChecklist && (
@@ -399,9 +395,6 @@ export default async function RegistryManagePage({
           <>
             <div className="mb-6">
               <h2 className="text-xl font-semibold">Gift Activity</h2>
-              <p className="text-sm text-tertiary">
-                See who has reserved or bought items and contributed to funds
-              </p>
             </div>
 
             {/* With reservations hidden, only revealed gifts are listed. */}
@@ -418,7 +411,7 @@ export default async function RegistryManagePage({
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="text-tertiary">
-                    No gifts reserved yet. Share your registry link to get started!
+                    No gifts yet.
                   </p>
                 </CardContent>
               </Card>
@@ -451,12 +444,12 @@ export default async function RegistryManagePage({
                                   tagType === "cancelled"
                                     ? "bg-error-primary/10 border-error-primary/20 text-error-primary"
                                     : tagType === "contribution"
-                                      ? "bg-mint-500 border-mint-500 text-primary"
+                                      ? "bg-mint-500 border-mint-500 text-gray-900"
                                       : tagType === "covered"
-                                        ? "bg-mint-200 border-mint-200 text-primary"
+                                        ? "bg-mint-200 dark:bg-mint-500/20 border-mint-200 dark:border-mint-800 text-primary"
                                         : tagType === "reserved"
-                                          ? "bg-sunshine-50 border-sunshine-200 text-primary"
-                                          : "bg-sunshine-100 border-sunshine-100 text-primary"
+                                          ? "bg-sunshine-50 dark:bg-sunshine-400/10 border-sunshine-200 dark:border-sunshine-900 text-primary"
+                                          : "bg-sunshine-100 dark:bg-sunshine-400/15 border-sunshine-100 dark:border-sunshine-900 text-primary"
                                 }`}
                               >
                                 {tag.label}

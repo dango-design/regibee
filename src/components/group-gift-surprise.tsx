@@ -9,13 +9,12 @@ import { Button } from "@/components/ui/button";
 export function GroupGiftSurprise({ listSlug }: { listSlug: string }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-sunshine-50">
+      <span className="flex size-12 items-center justify-center rounded-full bg-sunshine-50 dark:bg-sunshine-400/10">
         <Gift aria-hidden="true" className="size-6 text-primary" />
       </span>
       <h1 className="font-display text-2xl font-bold text-primary">This one&apos;s a surprise</h1>
       <p className="text-secondary">
-        Someone is planning a gift from a list you manage. We&apos;re keeping the details from you so it stays a
-        surprise.
+        Someone is planning a gift from a list you manage.
       </p>
       <Button variant="outline" asChild>
         <Link href={`/r/${listSlug}`}>Back to your list</Link>

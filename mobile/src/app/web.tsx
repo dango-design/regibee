@@ -4,13 +4,19 @@
 // an RSVP works as it does for the account on the website.
 //
 // Links to things the app has its own screen for, such as a list this account
-// manages, open that screen. Links to other sites, such as a store, open in
-// the browser.
+// manages or an invitation, open that screen. Links to other sites, such as a
+// store, open in the browser.
 //
-// The header matches the page: white, since the website has no dark mode,
-// and with no title while the page's own title shows. Once the page's title
-// scrolls up under the header, the header fills in: that title fades into
-// it and a line appears under it, as in Spotify or Apple Music.
+// The header matches the page. The website follows the phone's light or dark
+// setting, and so do the header, the status bar and the background behind the
+// page. iOS tells the page the phone's setting. On Android, the web view tells
+// it the app's setting, which follows the phone. forceDarkOn stays off, so
+// Android uses the website's own dark colours instead of darkening a light
+// page itself.
+//
+// The header has no title while the page's own title shows. Once the page's
+// title scrolls up under the header, the header fills in: that title fades
+// into it and a line appears under it, as in Spotify or Apple Music.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -22,9 +28,10 @@ import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react
 import { appScreenForPath, IN_APP_HEADER } from "@shared/in-app";
 
 import { ErrorState, IconButton, LoadingState } from "@/components/ui";
+import { useSession } from "@/lib/auth";
 import { SITE_URL } from "@/lib/supabase";
-import { fonts, sitePageColors } from "@/lib/theme";
-import { freshAccessToken, signedInAddress, sitePath } from "@/lib/web";
+import { fonts, useSitePageColors, type SitePageColors } from "@/lib/theme";
+import { freshAccessToken, nativeRoute, signedInAddress, sitePath } from "@/lib/web";
 
 /** The path of an address on the website, or null for another site. */
 function pathOnSite(url: string): string | null {
@@ -67,13 +74,23 @@ const HEADER_SCRIPT = `(function () {
 true;`;
 
 /** The header's title, which fades in once the page's own title has scrolled under it. */
-function HeaderTitle({ title, shown, opacity }: { title: string; shown: boolean; opacity: Animated.Value }) {
+function HeaderTitle({
+  title,
+  shown,
+  opacity,
+  colors,
+}: {
+  title: string;
+  shown: boolean;
+  opacity: Animated.Value;
+  colors: SitePageColors;
+}) {
   return (
     <Animated.Text
       numberOfLines={1}
       accessibilityElementsHidden={!shown}
       importantForAccessibility={shown ? "auto" : "no-hide-descendants"}
-      style={{ opacity, fontFamily: fonts.displayMedium, fontSize: 17, color: sitePageColors.text }}
+      style={{ opacity, fontFamily: fonts.displayMedium, fontSize: 17, color: colors.text }}
     >
       {title}
     </Animated.Text>
@@ -83,6 +100,8 @@ function HeaderTitle({ title, shown, opacity }: { title: string; shown: boolean;
 export default function WebScreen() {
   const { path: pathParam } = useLocalSearchParams<{ path: string }>();
   const path = sitePath(pathParam ?? "/");
+  const { session } = useSession();
+  const site = useSitePageColors();
   const web = useRef<WebView<object>>(null);
   // undefined while the token is being read, null when signed out.
   const [token, setToken] = useState<string | null | undefined>(undefined);
@@ -125,23 +144,33 @@ export default function WebScreen() {
 
   // The last app screen opened from this page, so one tap doesn't open it twice.
   const lastOpened = useRef({ path: "", at: 0 });
+  const signedIn = Boolean(session);
 
   /**
    * Opens the app's own screen for a website path. True when it has one. The
    * screen opens on top of this page, so back from it comes back here.
    */
   const openInApp = useCallback((sitePathname: string): boolean => {
-    const target = appScreenForPath(sitePathname);
-    if (!target) return false;
+    // A page the app has its own screen for, such as an invitation, opens
+    // there, on top of this one. Not the page this web view was opened for:
+    // the native screen sends a page here when it can't show it itself.
+    const native = signedIn && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0] ? nativeRoute(sitePathname) : null;
+    const target = native ? null : appScreenForPath(sitePathname);
+    if (!native && !target) return false;
     const now = Date.now();
     if (lastOpened.current.path === sitePathname && now - lastOpened.current.at < 1000) return true;
     lastOpened.current = { path: sitePathname, at: now };
+    if (native) {
+      router.push(native);
+      return true;
+    }
+    if (!target) return false;
     if (target.screen === "registry") router.push({ pathname: "/registry/[id]", params: { id: target.id } });
     else if (target.screen === "event") router.push({ pathname: "/events/[eventId]", params: { eventId: target.id } });
     else if (target.screen === "group") router.push({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
     else router.back();
     return true;
-  }, []);
+  }, [signedIn, path]);
 
   function onNavigation(state: WebViewNavigation) {
     setCanGoBack(state.canGoBack);
@@ -183,11 +212,11 @@ export default function WebScreen() {
           title,
           ...(onPage
             ? {
-                headerStyle: { backgroundColor: sitePageColors.background },
-                headerTintColor: sitePageColors.tint,
+                headerStyle: { backgroundColor: site.background },
+                headerTintColor: site.tint,
                 // The page's own title, which just scrolled up under the
                 // header, or the page's name when it has none.
-                headerTitle: () => <HeaderTitle title={heading || title} shown={filled} opacity={fill} />,
+                headerTitle: () => <HeaderTitle title={heading || title} shown={filled} opacity={fill} colors={site} />,
               }
             : {}),
           headerRight: () => (
@@ -195,21 +224,21 @@ export default function WebScreen() {
               <IconButton
                 icon="share"
                 accessibilityLabel="Share this page's link"
-                color={onPage ? sitePageColors.tint : undefined}
+                color={onPage ? site.tint : undefined}
                 onPress={() => Share.share(Platform.OS === "ios" ? { url: current } : { message: current })}
               />
               <IconButton
                 icon="external"
                 accessibilityLabel="Open in your browser"
-                color={onPage ? sitePageColors.tint : undefined}
+                color={onPage ? site.tint : undefined}
                 onPress={() => WebBrowser.openBrowserAsync(current)}
               />
             </View>
           ),
         }}
       />
-      {/* Dark clock and battery over the white header, even in dark mode. */}
-      {onPage && <StatusBar style="dark" />}
+      {/* Clock and battery icons that show up on the header's colour. */}
+      {onPage && <StatusBar style={site.dark ? "light" : "dark"} />}
       {failed ? (
         <ErrorState
           message="You're offline, or Regibee can't be reached. Try again."
@@ -224,10 +253,10 @@ export default function WebScreen() {
           key={attempt}
           ref={web}
           source={{ uri: signedInAddress(path), headers: token ? { [IN_APP_HEADER]: "1", Authorization: `Bearer ${token}` } : { [IN_APP_HEADER]: "1" } }}
-          style={{ flex: 1, backgroundColor: sitePageColors.background }}
+          style={{ flex: 1, backgroundColor: site.background }}
           startInLoadingState
           renderLoading={() => (
-            <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: sitePageColors.background }}>
+            <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: site.background }}>
               <LoadingState />
             </View>
           )}
@@ -264,7 +293,7 @@ export default function WebScreen() {
             left: 0,
             right: 0,
             height: StyleSheet.hairlineWidth,
-            backgroundColor: sitePageColors.border,
+            backgroundColor: site.border,
             opacity: fill,
           }}
         />

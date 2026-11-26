@@ -120,10 +120,10 @@ export interface EventGuestManagerProps {
 type Filter = "all" | RsvpStatus;
 
 const STATUS_STYLES: Record<RsvpStatus, string> = {
-  yes: "bg-mint-100 text-mint-800",
-  maybe: "bg-sunshine-100 text-sunshine-900",
+  yes: "bg-mint-100 dark:bg-mint-500/15 text-mint-800 dark:text-mint-300",
+  maybe: "bg-sunshine-100 dark:bg-sunshine-400/15 text-sunshine-900 dark:text-sunshine-200",
   no: "bg-secondary text-tertiary",
-  pending: "bg-brand-50 text-brand-700",
+  pending: "bg-brand-primary text-brand-secondary",
 };
 
 function formatShortDate(iso: string) {
@@ -400,7 +400,7 @@ export function EventGuestManager({
 
       {/* Sending */}
       {(uninvited.length > 0 || remindable.length > 0) && (
-        <div className="rounded-2xl bg-brand-50 p-4">
+        <div className="rounded-2xl bg-brand-primary p-4">
           {confirming ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -409,11 +409,7 @@ export function EventGuestManager({
                     ? `Email the invitation to ${confirmCount === 1 ? "1 guest" : `${confirmCount} guests`} now?`
                     : `Remind ${confirmCount === 1 ? "1 guest who hasn't" : `${confirmCount} guests who haven't`} replied?`}
                 </p>
-                <p className="text-sm text-tertiary">
-                  {replyToEmail
-                    ? `If they reply to the email, it goes to ${replyToEmail}.`
-                    : "Each guest gets their own RSVP link."}
-                </p>
+                {replyToEmail && <p className="text-sm text-tertiary">Replies go to {replyToEmail}.</p>}
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button onClick={() => send(confirming)} disabled={sending}>
@@ -431,7 +427,7 @@ export function EventGuestManager({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-                  <Mail aria-hidden="true" className="size-4.5 text-brand-600" />
+                  <Mail aria-hidden="true" className="size-4.5 text-brand-tertiary" />
                 </span>
                 <div>
                   <p className="font-medium text-primary">
@@ -439,11 +435,9 @@ export function EventGuestManager({
                       ? `${uninvited.length === 1 ? "1 guest hasn't" : `${uninvited.length} guests haven't`} been sent the invitation`
                       : `${remindable.length === 1 ? "1 guest hasn't" : `${remindable.length} guests haven't`} replied yet`}
                   </p>
-                  <p className="text-sm text-tertiary">
-                    {uninvited.length > 0
-                      ? "Each guest gets the invitation by email with their own RSVP link."
-                      : "Send a friendly reminder. Each guest gets at most one a day."}
-                  </p>
+                  {uninvited.length === 0 && (
+                    <p className="text-sm text-tertiary">Each guest gets at most one a day.</p>
+                  )}
                 </div>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
@@ -481,7 +475,7 @@ export function EventGuestManager({
               setPasting(!pasting);
               setAddError("");
             }}
-            className="cursor-pointer text-sm font-medium text-brand-600 hover:underline max-sm:-my-3 max-sm:min-h-11"
+            className="cursor-pointer text-sm font-medium text-brand-tertiary hover:underline max-sm:-my-3 max-sm:min-h-11"
           >
             {pasting ? "Type them in" : "Paste a list"}
           </button>
@@ -496,7 +490,7 @@ export function EventGuestManager({
               autoCorrect="off"
               spellCheck="false"
               placeholder={"Glinda Upland, glinda@example.com\nElphaba Thropp <elphie@example.com>\nNessa Thropp"}
-              hint="One guest per line: a name and an email address. Copy them from a spreadsheet or your contacts."
+              hint="One guest per line: name and email."
             />
             {pasted.trim() && (
               <p className="text-sm text-tertiary">
@@ -566,8 +560,8 @@ export function EventGuestManager({
         )}
         {withoutEmail > 0 && (
           <p className="mt-2 text-sm text-tertiary">
-            {withoutEmail === 1 ? "1 guest has" : `${withoutEmail} guests have`} no email address. Copy their RSVP link
-            from the guest&apos;s Edit button and text it to them.
+            {withoutEmail === 1 ? "1 guest has" : `${withoutEmail} guests have`} no email address. To invite them, copy
+            their RSVP link from Edit.
           </p>
         )}
       </section>
@@ -607,9 +601,9 @@ export function EventGuestManager({
                   aria-pressed={filter === value}
                   onClick={() => setFilter(value)}
                   className={cx(
-                    "cursor-pointer rounded-full border px-3 py-1 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 max-sm:min-h-11",
+                    "cursor-pointer rounded-full border px-3 py-1 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid max-sm:min-h-11",
                     filter === value
-                      ? "border-brand-600 bg-brand-600 text-white"
+                      ? "border-brand-solid bg-brand-solid text-primary_on-brand"
                       : "border-secondary text-secondary hover:border-primary",
                   )}
                 >
@@ -623,11 +617,10 @@ export function EventGuestManager({
         {guests.length === 0 ? (
           <Card className="mt-4">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <UserPlus aria-hidden="true" className="size-8 text-brand-600" />
+              <UserPlus aria-hidden="true" className="size-8 text-brand-tertiary" />
               <p className="mt-3 font-medium">No guests yet</p>
               <p className="mt-1 max-w-sm text-sm text-tertiary">
-                Add your guests above, then send the invitation. Or share the event link, and guests who RSVP are
-                added here.
+                Add guests above, or share the event link.
               </p>
             </CardContent>
           </Card>
@@ -661,7 +654,7 @@ export function EventGuestManager({
                         : ""}
                     </span>
                     {hasExchange && guest.in_exchange && (
-                      <span className="rounded-full bg-mint-50 px-2 py-0.5 text-xs font-medium text-mint-800">
+                      <span className="rounded-full bg-mint-50 dark:bg-mint-500/10 px-2 py-0.5 text-xs font-medium text-mint-800 dark:text-mint-300">
                         {everyoneGives
                           ? guest.wishlist_url
                             ? "Wishlist added"
@@ -803,9 +796,7 @@ function SaveGroupDialog({
         <DialogHeader>
           <DialogTitle>Save as a group</DialogTitle>
           <DialogDescription>
-            Keep these {guestCount === 1 ? "1 guest" : `${guestCount} guests`} as a group, like &ldquo;The Chens&rdquo; or
-            &ldquo;Book club&rdquo;. Invite the whole group to your next event, run a gift exchange with it, or share a
-            wishlist with it.
+            Invite these {guestCount === 1 ? "1 guest" : `${guestCount} guests`} together next time.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="flex flex-col gap-4">
@@ -940,8 +931,8 @@ function GuestDialog({
                 isDisabled
                 hint={
                   guest.email_hidden
-                    ? "From their Regibee account. It stays private, and invitations still reach it."
-                    : "From their Regibee account. Only they can change it."
+                    ? "Private to them. Invitations still reach it."
+                    : "Only they can change it."
                 }
               />
             ) : (
