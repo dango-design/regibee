@@ -92,8 +92,7 @@ export default function GiftActivityScreen() {
           data.reservationsHidden ? undefined : (
             <EmptyState
               icon="gift"
-              title="No gifts reserved yet"
-              message="Share your registry link to get started!"
+              title="No gifts yet"
               action={
                 <View style={{ width: "100%", maxWidth: 320 }}>
                   <Button title="Share your registry" icon="share" variant="secondary" onPress={shareRegistry} />

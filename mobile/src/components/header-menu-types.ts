@@ -15,4 +15,6 @@ export interface HeaderMenuProps {
   /** Shown above the choices where the menu falls back to a sheet (the web preview). */
   title: string;
   choices: HeaderMenuChoice[];
+  /** "small" for a "…" at the end of a row in a list, such as a follower. Defaults to "large", for a header. */
+  size?: "large" | "small";
 }

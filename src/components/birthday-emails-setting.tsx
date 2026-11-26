@@ -40,7 +40,7 @@ export function BirthdayEmailsSetting({
         isReadOnly={saving}
         onChange={change}
         label="Email me before birthdays"
-        hint={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they approved you and show you their birthday.`}
+        hint={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they show it to you.`}
       />
       {error && <p className="text-sm text-error-primary">{error}</p>}
     </div>

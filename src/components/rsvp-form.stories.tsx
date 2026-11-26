@@ -75,7 +75,7 @@ export const EveryoneGivesEveryone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Going" }));
-    await expect(canvas.getByText(/Once you send your RSVP, you.ll add your wishlist/)).toBeVisible();
+    await expect(canvas.getByText(/You.ll add your wishlist after you RSVP/)).toBeVisible();
     await expect(canvas.queryByRole("checkbox", { name: /Join the gift exchange/ })).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Send RSVP" }));
     await expect(canvas.getByRole("heading", { name: "Now add your wishlist" })).toBeVisible();

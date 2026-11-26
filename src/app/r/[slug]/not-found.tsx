@@ -18,8 +18,7 @@ export default function ListNotFound() {
       <main className="container mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="font-display text-display-xs font-semibold text-primary">This link doesn&apos;t open a list</h1>
         <p className="mt-3 text-tertiary">
-          It may have a typo, or the list may be gone. Its owner may also have turned this link off and made a new
-          one. Ask the person who sent it to you for the current link.
+          The link may be wrong or out of date. Ask the person who sent it for the current link.
         </p>
         <Button asChild className="mt-6 max-sm:w-full">
           <Link href="/">Go to Regibee</Link>

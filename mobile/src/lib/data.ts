@@ -795,7 +795,7 @@ export function useAddChecklistItem(registryId: string) {
   );
 }
 
-/** "Manually mark as registered" and "Undo" on the checklist. */
+/** "Mark as registered" and "Undo" on the checklist. */
 export function useToggleChecklistDismissed(registryId: string) {
   return useListChange<{ name: string; dismissed: boolean }>(
     () => registryId,

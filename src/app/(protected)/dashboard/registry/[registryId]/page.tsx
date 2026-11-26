@@ -263,11 +263,7 @@ export default async function RegistryManagePage({
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <PandaMark className="mb-4 h-20 w-auto" />
-                  <p className="text-tertiary">
-                    {showChecklist
-                      ? "No items yet. Add items manually or browse the checklist."
-                      : "No items yet. Add items from any store to get started."}
-                  </p>
+                  <p className="text-tertiary">No items yet.</p>
                   <div className="mt-4 flex gap-2">
                     <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} />
                     {showChecklist && (
@@ -377,9 +373,6 @@ export default async function RegistryManagePage({
           <>
             <div className="mb-6">
               <h2 className="text-xl font-semibold">Gift Activity</h2>
-              <p className="text-sm text-tertiary">
-                See who has reserved or bought items and contributed to funds
-              </p>
             </div>
 
             {/* With reservations hidden, only revealed gifts are listed. */}
@@ -396,7 +389,7 @@ export default async function RegistryManagePage({
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="text-tertiary">
-                    No gifts reserved yet. Share your registry link to get started!
+                    No gifts yet.
                   </p>
                 </CardContent>
               </Card>

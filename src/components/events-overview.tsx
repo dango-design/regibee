@@ -59,7 +59,7 @@ function LinkedEvents({ linked }: { linked: NonNullable<EventsOverviewProps["lin
           <h2 id="linked-events-heading" className="font-medium text-primary">
             Celebrating you
           </h2>
-          <p className="text-sm text-tertiary">Events other people are hosting that link your registry.</p>
+          <p className="text-sm text-tertiary">Events that link your registry.</p>
           <ul className="mt-2 flex flex-col gap-1">
             {linked.map((event) => (
               <li key={event.id} className="text-sm">
@@ -117,7 +117,6 @@ export function EventsOverview({
         <div>
           {/* The Events tab is the visible title (see (tabs)/layout.tsx). */}
           <h1 className="sr-only">Events</h1>
-          <p className="text-tertiary">Send invitations and track RSVPs</p>
         </div>
         <NewEventButton basePath={basePath} />
       </div>
@@ -132,8 +131,7 @@ export function EventsOverview({
             </span>
             <h2 className="mt-4 text-xl font-semibold">Plan your first event</h2>
             <p className="mt-2 max-w-md text-tertiary">
-              A baby shower, a birthday, a holiday party: upload your invitation, email it to guests, and see who&apos;s
-              coming. Link your registry so guests know what to bring.
+              Send invitations and see who&apos;s coming.
             </p>
             <div className="mt-6">
               <NewEventButton basePath={basePath} />

@@ -1,4 +1,4 @@
-// The "…" button in a screen's header. iPhone and Android use the system's own
+// The "…" button in a screen's header, or at the end of a row in a list. iPhone and Android use the system's own
 // menu (header-menu.ios.tsx, header-menu.android.tsx). This file is for the
 // web preview, which has no native menu, so it opens the bottom sheet.
 

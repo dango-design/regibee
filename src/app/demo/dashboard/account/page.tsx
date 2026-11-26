@@ -61,7 +61,7 @@ export default function DemoAccountPage() {
             events: demoEvents(today).filter((event) => event.owner_id === DEMO_ME_ID).length,
           }),
           deleteAction: async () => ({
-            error: "This is the demo, so there's no account to delete. Nothing in it is saved.",
+            error: "This is the demo, so there's no account to delete.",
           }),
         }}
         basePath="/demo"

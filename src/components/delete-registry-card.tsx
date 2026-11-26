@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ConfirmDeleteDialog, DeletionLines } from "@/components/confirm-delete-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteRegistry, getRegistryDeletionSummary } from "@/lib/actions/registry";
@@ -84,7 +84,6 @@ export function DeleteRegistryCard({
           >
             Delete registry
           </SectionTitle>
-          <CardDescription>Permanently delete this registry and all its items</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" onClick={openDialog}>
@@ -97,7 +96,7 @@ export function DeleteRegistryCard({
         open={open}
         onOpenChange={setOpen}
         title="Delete this registry?"
-        description="This can't be undone. Deleting this registry does this:"
+        description="This can't be undone."
         phrase={summary && registryHasData(summary) ? deletePhrase("registry") : null}
         confirmLabel="Delete registry"
         working={deleting}

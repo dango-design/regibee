@@ -116,7 +116,7 @@ export function WishlistStep({ page, wishlist, token }: { page: InvitationPageDa
           ) : null}
           {justMade && current?.ownListId ? (
             <Text variant="footnote" tone="tertiary">
-              It&apos;s linked to the invitation. Add a few things, so everyone knows what to get you.
+              Add a few things so everyone knows what to get you.
             </Text>
           ) : null}
         </View>
@@ -181,7 +181,7 @@ export function WishlistStep({ page, wishlist, token }: { page: InvitationPageDa
                 />
                 {more.length === 0 ? (
                   <Text variant="footnote" tone="tertiary">
-                    Like a list you keep for your child. Everyone sees it under yours.
+                    Like a list for your child.
                   </Text>
                 ) : null}
               </View>
@@ -283,11 +283,6 @@ export function WishlistStep({ page, wishlist, token }: { page: InvitationPageDa
           loading={busy === "new"}
           onPress={() => save({ makeNew: true }, "new")}
         />
-        {lists.length === 0 ? (
-          <Text variant="footnote" tone="tertiary">
-            It&apos;s free. Add things from any store, and it&apos;s linked here as soon as you make it.
-          </Text>
-        ) : null}
       </View>
       {errorLine}
       {hasSomething ? (

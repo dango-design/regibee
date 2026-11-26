@@ -22,7 +22,8 @@ Actions), `Vercel` and `End-to-end tests` (GitHub Actions, only on pull requests
 that change the site) have finished. A failed `End-to-end tests` makes the verdict
 **Check first**: name the failing test and link its run. If you opened the PR, the app wakes you
 when CI finishes; don't poll. `UI Tests` and `UI Review` stay pending until
-someone reviews in Chromatic, so don't wait for those.
+someone reviews in Chromatic, so don't wait for those. When Chromatic is paused, wait for
+`Story screenshots` instead of `chromatic` (see "When Chromatic is paused").
 
 ## 2. Find the two builds
 
@@ -53,19 +54,40 @@ has `isLimited: true`. It still reads `PASSED` with 0 changes, and the
 `chromatic` job still passes, but nothing was tested. `UI Tests` and
 `UI Review` stay pending with "Update your plan to resume testing".
 
-When the head build's `isLimited` is true:
+The **Story screenshots** check does the same job with no limit (see "Story
+screenshots" in CLAUDE.md and `story-screenshots/README.md`). When the head
+build's `isLimited` is true, it takes Chromatic's place for the whole review:
 
-- Skip steps 3 to 5. There are no pictures to compare and nothing to accept.
-- Never write "no visual changes" or "0 snapshots changed". Write that Chromatic
-  was paused and the PR's look was not checked.
-- In **Visual changes**, list the story files the PR's diff touches or affects,
-  and link each in the build's published Storybook (`storybookUrl`), which
-  still updates. The user can open those to look for themselves.
-- The verdict rests on the other checks. Make it **Check first** only for the
-  usual reasons, but say in the stamp's plain sentence that visual tests didn't
-  run.
-- The button is labeled `Merge`, and its question doesn't mention accepting.
-  Step 8 skips its Chromatic steps (2 and 4).
+- **Waiting**: don't wait for `chromatic`, `UI Tests`, `UI Review` or the
+  Storybook. Wait for `Story screenshots`, `End-to-end tests` and `Vercel`.
+  `Story screenshots` runs only on pull requests that change `src/`, `public/`,
+  `.storybook/`, `story-screenshots/` or `package.json`. Without it, say the
+  PR's look wasn't checked.
+- **Pictures**: skip steps 3 and 4's Chromatic queries. Get the check's run for
+  the head commit and download its new pictures:
+
+  ```bash
+  gh run list --repo dango-design/regibee --workflow story-screenshots.yml --commit <head sha> --json databaseId --jq '.[0].databaseId'
+  gh run download <run id> --repo dango-design/regibee --name story-screenshots-new-baselines --dir <scratchpad>/pr<n>/new
+  ```
+
+  `manifest.json` in that folder lists the stories to update (changed or new)
+  and the baselines whose story is gone. The before picture of a changed story
+  is the baseline the check compared with:
+  `git show <head sha>:story-screenshots/baselines/<file>.png > <scratchpad>/pr<n>/old/<file>.png`.
+  A story with no baseline there is new. Then run step 4's `render` with the
+  two local paths in place of the URLs, and judge each change the same way.
+  The run's summary page also lists unstable stories (they differed once, then
+  matched). Mention them, but don't count them as changes.
+- If the check passed, no snapshotted story changed. Say "No story changed in
+  the Story screenshots check", never "no visual changes": stories with
+  `disableSnapshot` aren't pictured.
+- **Accessibility**: there's none to report (step 5).
+- **The page**: link the check's run instead of the Chromatic build, and say in
+  the footer that Chromatic was paused and which run the pictures came from.
+- **The button**: label it `Accept and merge` when the check found changes, or
+  `Merge` when it passed. Step 8 accepts the screenshots instead of Chromatic
+  tests.
 
 When only the base build is limited (Chromatic came back after the branch
 started), compare the head build with Chromatic's accepted baselines instead:
@@ -256,7 +278,15 @@ When the user clicks the button, or asks for the same thing in words:
      to run it. If production has part of a file, don't run it: running the
      whole file again could fail or apply some of it twice, so tell the user
      what's there and what isn't.
-4. Accept the PR's changed and new tests with `chromatic_mutate`. When the head
+4. If Chromatic was paused, step 2 doesn't apply, and you accept the
+   screenshots instead of Chromatic tests: on the PR's branch, run `npm run screenshots:accept`
+   (add `-- --run <run id>` to name the reviewed run when a later commit only
+   changed files the check doesn't watch, such as `CLAUDE.md`),
+   check that the only changes are in `story-screenshots/baselines`, commit
+   them ("Accept story screenshots for …") and push. Wait for the new
+   `Story screenshots` run on that commit to pass, then merge at the new head
+   in step 5. Otherwise, accept the PR's changed and new tests with
+   `chromatic_mutate`. When the head
    build's `pendingCount` equals the PR's changes, accept them all in one call:
    any one of those test ids, with `batch: BUILD` added to the input. Otherwise
    send one test id per call, with no `batch`, so the changes already waiting on
@@ -276,7 +306,7 @@ When the user clicks the button, or asks for the same thing in words:
    Don't merge.
 5. Merge, refusing if the branch moved:
    `gh pr merge <n> --repo dango-design/regibee --merge --match-head-commit <head sha>`.
-6. Tell the user how many changes were accepted on which build, and that the PR
-   merged. `main` then deploys to regibee.com. Name any migration you ran. If a
+6. Tell the user how many changes were accepted on which build (or how many
+   screenshots were accepted, in which commit), and that the PR merged. `main` then deploys to regibee.com. Name any migration you ran. If a
    migration runs after the deploy, say it still has to run once regibee.com has
    the new code, and end the turn asking whether to run it then.

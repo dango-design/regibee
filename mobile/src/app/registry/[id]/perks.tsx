@@ -63,7 +63,7 @@ export default function PerksScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 80 }}
       >
         <Text variant="subhead" tone="secondary">
-          Perks your store registries may give you. Rules change and differ by store, so check each store&apos;s terms.
+          Rules differ by store, so check each store&apos;s terms.
         </Text>
 
         {giftUnlocked.map((row) => (
@@ -139,7 +139,7 @@ export default function PerksScreen() {
           </Text>
         ) : null}
 
-        <Section footer="We count gifts guests reserve on Regibee. Gifts bought straight from a store registry won't show here.">
+        <Section footer="Only gifts reserved on Regibee count here.">
           <SwitchRow
             icon="mail"
             label="Email me when a perk may be ready"

@@ -65,7 +65,7 @@ export const ConfirmingSend: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Send invitations" }));
     await expect(canvas.getByText("Email the invitation to 1 guest now?")).toBeVisible();
-    await expect(canvas.getByText(/goes to linda@example.com/)).toBeVisible();
+    await expect(canvas.getByText(/Replies go to linda@example.com/)).toBeVisible();
   },
 };
 
@@ -221,7 +221,7 @@ export const PrivateEmail: Story = {
     await expect(canvas.getByText(/Email private/)).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "Edit Oz Diggs" }));
     const dialog = within(await screen.findByRole("dialog"));
-    await expect(dialog.getByText(/It stays private, and invitations still reach it/)).toBeInTheDocument();
+    await expect(dialog.getByText(/Invitations still reach it/)).toBeInTheDocument();
     await expect(dialog.getByRole("button", { name: "Send invitation" })).toBeInTheDocument();
   },
 };

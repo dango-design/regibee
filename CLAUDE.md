@@ -152,6 +152,22 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Spell it "wishlist", one word, or "Wishlist" at the start of a sentence. This goes for text people see, emails, code comments, docs and PR titles. Don't write "wish list". New code names use `Wishlist` too. Older names such as `GuestWishLists` and `WishListHero`, and the comments in migrations that have already run, still say it the old way.
 - Each kind of list has its own name in `src/lib/occasions.ts`, such as "baby registry", "birthday wishlist" and "Christmas list". "Gift list" is the general word, used where the kind isn't known yet, as on the New page.
 
+## Screen text
+
+Keep text on screens short. People learn the app by using it, not by reading it. This covers the website, the phone app and the extension.
+
+- A label or button names the thing. Don't add a line under it that says the same again ("Shipping address" doesn't need "Share your shipping address with gift givers so they know where to send gifts.").
+- Don't explain what the app does when someone taps something. If it works as expected, they'll see.
+- A hint is one short sentence, or nothing. A notice or empty state is one or two.
+- Keep text that stops a surprise someone can't undo or would mind:
+  - who can see something, when that isn't obvious ("Only you see gift ideas.")
+  - what a delete or a link change breaks for other people
+  - when an email goes out to someone
+  - money: Regibee never handles it
+- Say it once. If a page's title or a field's label already makes a point, the hint doesn't repeat it.
+- Don't name the code, the demo's internals or how the server works.
+- The privacy policy and the emails are the exceptions. They can be as long as they need to be.
+
 ## Clickable cards
 
 - A card that opens one thing, like a registry, an event or an item to edit, opens it from a click anywhere on the card, not only from its title or button. Its other buttons keep doing their own thing.
@@ -166,7 +182,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 ## Dark mode
 
 - The website follows the device's light or dark setting. It's CSS only: the `dark` variant in `src/app/globals.css` matches `prefers-color-scheme: dark`, so pages never flash light first. There's no switch on the site.
-- The dark colors are in the `@variant dark` block at the end of `src/styles/theme.css`. They follow the phone app's `darkTheme` (`mobile/src/lib/theme.ts`). Change both together.
+- The dark colors are in the `@variant dark` block at the end of `src/styles/theme.css`. They follow the phone app's `darkTheme` (`mobile/src/lib/theme.ts`). Change both together. The header above a website page in the app (`mobile/src/app/web.tsx`) takes the page's colors in each mode from `useSitePageColors` in the same file, so change those with the page's `bg-primary`, `text-primary` or `border-secondary`.
 - Only the semantic tokens change in dark mode: `bg-primary`, `text-secondary`, `border-secondary`, `bg-brand-solid`, `text-brand-tertiary` and so on. Palette colors such as `text-brand-600`, `bg-mint-50` or `bg-sunshine-100` stay the same in both modes. So prefer a semantic token, and give a palette color its own `dark:` class, such as `bg-sunshine-50 dark:bg-sunshine-400/10`.
 - On a brand button (`bg-brand-solid`), use `text-primary_on-brand`, not `text-white`. In dark mode the button is light teal and its text is dark.
 - Text on a fill that stays light in both modes, like `bg-mint-500` or `bg-sunshine-400`, needs a palette color such as `text-gray-900`. `text-primary` would turn light.
@@ -198,7 +214,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - On a branch build, accept only the changes that branch made.
 - Merging before the branch's `chromatic` check finishes is fine. It can cost extra snapshots, but development speed matters more.
 - The free plan includes 5,000 snapshots a month. When they run out, Chromatic pauses testing and review until the billing month resets. The Billing page in Chromatic shows the date.
-- While it's paused, the `chromatic` job still passes and still publishes the Storybook, but it takes no snapshots. The build reads `PASSED` with 0 changes and has `isLimited: true`. That means nothing was tested, not that nothing changed. `UI Tests` and `UI Review` stay pending on every PR, so don't wait for them, and there is nothing to accept. Merge on the other checks, and look at changed stories yourself in the published Storybook or a local one.
+- While it's paused, the `chromatic` job still passes and still publishes the Storybook, but it takes no snapshots. The build reads `PASSED` with 0 changes and has `isLimited: true`. That means nothing was tested, not that nothing changed. `UI Tests` and `UI Review` stay pending on every PR, so don't wait for them, and there is nothing to accept in Chromatic. The **Story screenshots** check takes Chromatic's place: wait for it, use its pictures to review, and accept its changes before merging (see "Story screenshots"). The review page does this on its own when Chromatic is paused.
 - Changes merged while Chromatic is paused get no snapshot. When it resumes, `onlyChanged` only captures stories affected by later commits, so those stories may keep their old baselines until a later PR touches them, and that PR's build then shows the earlier changes too.
 - Storybook can't render async server components. Put a page's markup in a plain component and write the story for that. The landing page works this way.
 
@@ -306,4 +322,4 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 ## After opening a pull request
 
-- When the PR's `chromatic`, `Vercel`, `Story screenshots` and `End-to-end tests` checks finish (the last two run only on pull requests that change the site), publish a review page with the `pr-review-page` skill (`.claude/skills/pr-review-page`) and give the user the link. End that turn with an Accept and merge button. The skill says how to set it up and what to do when the user clicks it.
+- When the PR's `chromatic`, `Vercel`, `Story screenshots` and `End-to-end tests` checks finish (the last two run only on pull requests that change the site), publish a review page. While Chromatic is paused, don't wait for `chromatic`; the page uses the Story screenshots pictures instead. Publish it with the `pr-review-page` skill (`.claude/skills/pr-review-page`) and give the user the link. End that turn with an Accept and merge button. The skill says how to set it up and what to do when the user clicks it.

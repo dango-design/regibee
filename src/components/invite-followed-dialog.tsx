@@ -61,8 +61,7 @@ export function InviteFollowedDialog({
         <DialogHeader>
           <DialogTitle>Invite people you follow</DialogTitle>
           <DialogDescription>
-            They&apos;re added to your guest list, and Regibee emails each one the invitation when you send it. You&apos;ll
-            see the email of people who follow you back.
+            They&apos;re emailed when you send invitations.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">

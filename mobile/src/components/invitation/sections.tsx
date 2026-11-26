@@ -274,7 +274,7 @@ export function WishListsSection({ page, colors }: { page: InvitationPageData; c
       {lists && lists.length === 0 ? (
         <View style={[styles.wishRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text variant="footnote" tone="tertiary">
-            Nobody has RSVPed yet. Lists show here as guests add them.
+            Nobody has RSVPed yet.
           </Text>
         </View>
       ) : null}
@@ -524,7 +524,7 @@ export function ExchangeSection({ page }: { page: InvitationPageData }) {
             : exchange.draw_by
               ? `Names are drawn by ${formatEventDate(exchange.draw_by)}.`
               : "Names are drawn once everyone's in."}{" "}
-          {exchange.mailed ? "Gifts are mailed, so you'll add a shipping address." : "Bring your gift to the party."}
+          {exchange.mailed ? "Gifts are mailed." : "Bring your gift to the party."}
         </Text>
       </SectionHeading>
     </View>
@@ -550,7 +550,7 @@ export function SecretSantaCard({ santa }: { santa: NonNullable<InvitationPageDa
             You&apos;re getting a gift for {giftee.name}
           </Text>
           <Text variant="footnote" tone="secondary">
-            {budget ? `The budget is ${budget}. ` : ""}Keep it a secret: nobody else knows who drew whom.
+            {budget ? `Budget: ${budget}. ` : ""}Only you know who you drew.
           </Text>
         </View>
       </View>
@@ -589,7 +589,7 @@ export function SecretSantaCard({ santa }: { santa: NonNullable<InvitationPageDa
 
       {!wishlistHref && !giftee.giftIdeas ? (
         <Text variant="footnote" tone="secondary">
-          {giftee.name} hasn&apos;t added a wishlist or gift ideas yet. This page shows them as soon as they do.
+          {giftee.name} hasn&apos;t added a wishlist or gift ideas yet.
         </Text>
       ) : null}
 
@@ -630,7 +630,7 @@ export function GroupGiftsSection({ gifts }: { gifts: EventGroupGift[] }) {
           </Text>
         </View>
         <Text variant="footnote" tone="secondary">
-          Guests are going in on these together. Chip in if you&apos;d like.
+          Guests are going in on these together.
         </Text>
       </View>
       {gifts.map((gift) => {

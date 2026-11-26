@@ -32,7 +32,7 @@ export function OpenLinkCard() {
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="headline">Got a Regibee link?</Text>
           <Text variant="footnote" tone="secondary">
-            Copy a link to a list, a profile or an invitation, then paste it to open it here, signed in as you.
+            Paste a link to a list, profile or invitation to open it here.
           </Text>
         </View>
         <PasteLinkButton onPaste={open} />

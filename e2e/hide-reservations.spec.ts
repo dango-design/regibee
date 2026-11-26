@@ -81,7 +81,7 @@ test("a wishlist added to a gift exchange hides reservations from its owner only
   await page.getByRole("link", { name: /Gifts hidden from you/ }).click();
   await expect(page).toHaveURL(/\?tab=purchases$/);
   await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();
-  await expect(page.getByText("Regibee hid it when you added this list to a gift exchange")).toBeVisible();
+  await expect(page.getByText("Regibee turned this on for the gift exchange.")).toBeVisible();
   await expect(page.getByText("Glinda Guest")).toHaveCount(0);
   await page.goto(`/r/${registry.slug}`);
   await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();

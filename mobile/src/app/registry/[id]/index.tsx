@@ -149,8 +149,7 @@ export default function RegistryScreen() {
       onSuccess: ({ sorted, added, undo }) => {
         if (sorted === 0) {
           Alert.alert(
-            count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit.",
-            "Choose one on each item instead."
+            count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit."
           );
           return;
         }
@@ -312,11 +311,6 @@ export default function RegistryScreen() {
               <EmptyState
                 icon="bag"
                 title="No items yet"
-                message={
-                  data.showChecklist
-                    ? "Add items manually or browse the checklist."
-                    : "Add items from any store to get started."
-                }
                 action={
                   data.showChecklist ? (
                     <View style={{ width: "100%", maxWidth: 320 }}>

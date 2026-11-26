@@ -115,16 +115,16 @@ function EmptyState({ hasLists }: { hasLists: boolean }) {
     <div className="mt-6 flex flex-col items-center rounded-2xl border border-secondary px-4 py-12 text-center">
       <PandaMark className="h-16 w-auto" />
       <h2 className="mt-3 font-semibold text-primary">Nothing saved yet</h2>
-      <p className="mt-1 max-w-sm text-sm text-tertiary">
-        {hasLists
-          ? "Found something you'd love? Paste its link into Save an item, or save it with the Regibee extension while you shop."
-          : "Start your wishlist, then save things to it as you find them."}
-      </p>
+      {hasLists && (
+        <p className="mt-1 max-w-sm text-sm text-tertiary">
+          Paste a link into Save an item, or use the Regibee extension.
+        </p>
+      )}
     </div>
   );
 }
 
-function StartWishlistCallout({ action, hasLists }: { action: typeof startMyWishlist; hasLists: boolean }) {
+function StartWishlistCallout({ action }: { action: typeof startMyWishlist }) {
   const router = useRouter();
   const headingId = useId();
   const [busy, setBusy] = useState(false);
@@ -135,8 +135,11 @@ function StartWishlistCallout({ action, hasLists }: { action: typeof startMyWish
     setBusy(true);
     setError("");
     let message: string | null;
+    let registryId: string | null = null;
     try {
-      message = errorOf(await action());
+      const result = await action();
+      message = errorOf(result);
+      if (!message && "registryId" in result) registryId = result.registryId;
     } catch {
       message = "Your wishlist wasn't made. Try again in a moment.";
     }
@@ -145,7 +148,9 @@ function StartWishlistCallout({ action, hasLists }: { action: typeof startMyWish
       setError(message);
       return;
     }
-    startRefresh(() => router.refresh());
+    // Open the new wishlist. It has no items yet, so on this page the only
+    // sign it was made would be this callout going away.
+    startRefresh(() => (registryId ? router.push(`/dashboard/registry/${registryId}`) : router.refresh()));
   };
 
   const working = busy || refreshing;
@@ -163,10 +168,7 @@ function StartWishlistCallout({ action, hasLists }: { action: typeof startMyWish
           Start your wishlist
         </h2>
         <p className="mt-1 text-sm text-secondary">
-          One list for birthdays, Christmas and any other day.{" "}
-          {hasLists
-            ? "Save things to it as you find them, and put them on your other lists too."
-            : "Save things to it as you find them, and family and friends always know what you'd love."}
+          One list for birthdays, Christmas and any other day.
         </p>
         {error && (
           <p role="alert" className="mt-2 text-sm text-error-primary">
@@ -744,12 +746,11 @@ export function SavedItems({
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="sr-only">Saved</h1>
-          <p className="text-tertiary">Everything on your lists, in one place.</p>
         </div>
         {saveButton && <div className="shrink-0">{saveButton}</div>}
       </div>
 
-      {!ownWishlist && <StartWishlistCallout action={startWishlistAction} hasLists={lists.length > 0} />}
+      {!ownWishlist && <StartWishlistCallout action={startWishlistAction} />}
 
       {current.length === 0 ? (
         <EmptyState hasLists={lists.length > 0} />

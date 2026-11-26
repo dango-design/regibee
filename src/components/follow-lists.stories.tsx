@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fireEvent } from "storybook/test";
+import { expect, fireEvent, screen, waitFor, within } from "storybook/test";
 import { FollowLists } from "./follow-lists";
 
 const mockAction = async () => {
@@ -60,5 +60,25 @@ export const AfterApproving: Story = {
     fireEvent.click(canvas.getByRole("button", { name: "Approve" }));
     const followBack = await canvas.findAllByRole("button", { name: "Follow back Grandma Dorothy" });
     await expect(followBack).toHaveLength(2);
+  },
+};
+
+// Remove and Block are in each follower's "…" menu, not buttons on the row.
+// Choosing Block asks first, in a dialog.
+export const BlockAsksFirst: Story = {
+  args: {
+    requests: [],
+    followers: [{ public_id: "a3f9c2xz7e", full_name: "Alex Kim", status: "approved" }],
+    following: [],
+  },
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.queryByRole("button", { name: "Block" })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "More actions for Alex Kim" }));
+    await expect(await screen.findByRole("menuitem", { name: "Remove follower" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Block" }));
+    // The menu's popover also has the dialog role while it fades out.
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument(), { timeout: 3000 });
+    const dialog = within(await screen.findByRole("dialog"));
+    await expect(dialog.getByRole("heading", { name: "Block Alex Kim?" })).toBeInTheDocument();
   },
 };

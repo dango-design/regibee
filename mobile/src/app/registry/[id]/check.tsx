@@ -53,7 +53,7 @@ export default function ItemsToCheckScreen() {
         {/* Always here, so it keeps reading while the list reloads after each item. */}
         <MissingDetailsNotice registryId={data.registry.id} items={data.missingDetails} />
         <PlainLinksNotices detail={data} />
-        {nothing ? <EmptyState icon="checkCircle" title="Nothing to check" message="Every item has its details." /> : null}
+        {nothing ? <EmptyState icon="checkCircle" title="Nothing to check" /> : null}
       </ScrollView>
     </>
   );
@@ -78,8 +78,8 @@ function PlainLinksNotices({ detail }: { detail: RegistryDetail }) {
             title={one ? `1 item has a plain ${store.name} link` : `${count} items have plain ${store.name} links`}
             message={
               one
-                ? `Gifts bought through it won't count toward your ${store.name} registry. Add it to your ${store.name} registry, then edit the item and paste its registry link.`
-                : `Gifts bought through them won't count toward your ${store.name} registry. Add them to your ${store.name} registry, then edit each item and paste its registry link.`
+                ? `Gifts bought through it won't count toward your ${store.name} registry. Add it there, then paste its registry link into the item.`
+                : `Gifts bought through them won't count toward your ${store.name} registry. Add them there, then paste each registry link into its item.`
             }
             action={{ title: `Open my ${store.name} registry`, icon: "external", onPress: () => WebBrowser.openBrowserAsync(openUrl) }}
             secondary={{

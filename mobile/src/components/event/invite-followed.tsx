@@ -50,8 +50,7 @@ export function InviteFollowed({
     <Card>
       <Text variant="headline">Invite people you follow</Text>
       <Text variant="footnote" tone="secondary">
-        They&apos;re added to your guest list, and Regibee emails each one the invitation when you send it. You&apos;ll see
-        the email of people who follow you back.
+        They&apos;re emailed when you send invitations.
       </Text>
       {people.length >= SEARCH_FROM ? (
         <Field

@@ -107,9 +107,9 @@ export function StartGroupGiftDialog({
           <DialogHeader className="pr-8">
             <DialogTitle>Go in on it together</DialogTitle>
             <DialogDescription>
-              Reserve the {item.title}
-              {item.price ? ` (${formatPrice(item.price)})` : ""} and share a link so friends can chip in. They pay
-              you back, and you buy it. {recipientName} sees it&apos;s from you and others, never who chipped in.
+              You reserve the {item.title}
+              {item.price ? ` (${formatPrice(item.price)})` : ""}, friends chip in and pay you back, and you buy it.{" "}
+              {recipientName} never sees who chipped in.
             </DialogDescription>
           </DialogHeader>
           <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
@@ -131,7 +131,7 @@ export function StartGroupGiftDialog({
                 value={goal}
                 onChange={setGoal}
                 isInvalid={Boolean(error) && goal.trim() !== "" && parseGroupGiftAmount(goal) === null}
-                hint="Usually the price. Leave it empty if you're not sure yet."
+                hint="Usually the price. Optional."
               />
               <Input
                 label="How should people pay you back?"
@@ -139,12 +139,13 @@ export function StartGroupGiftDialog({
                 maxLength={PAYBACK_NOTE_MAX}
                 value={payback}
                 onChange={setPayback}
-                hint="Your Venmo, PayPal or Zelle. Regibee never holds the money."
+                hint="Regibee never holds the money."
               />
-              <p className="text-sm text-tertiary">
-                It stays reserved in your name until you buy it, so nobody else will.
-                {eventTitle && ` Guests of ${eventTitle} will see it on their invitation and can chip in too.`}
-              </p>
+              {eventTitle && (
+                <p className="text-sm text-tertiary">
+                  Guests of {eventTitle} see it on their invitation and can chip in.
+                </p>
+              )}
               {error && (
                 <p role="alert" className="text-sm text-error-primary">
                   {error}

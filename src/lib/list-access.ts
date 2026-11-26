@@ -15,19 +15,16 @@ export const LIST_ACCESS = {
   private: {
     label: "Private",
     short: "Private",
-    who: "You and co-managers",
-    description: "Only you and your co-managers can open it. The link won't work for anyone else.",
+    description: "Only you and co-managers can open it.",
   },
   link: {
     label: "Anyone with the link",
     short: "Link only",
-    who: "People you send it to",
-    description: "People you send the link to can open it. Search engines won't show it.",
+    description: "Anyone with the link can open it. Search engines won't show it.",
   },
   public: {
     label: "Public",
     short: "Public",
-    who: "Anyone can find it",
     description: "Anyone can open it, and search engines can show it.",
   },
 } as const;
@@ -78,26 +75,28 @@ export type ProfileAudience = "hidden" | "friends" | "followers" | "everyone";
 
 export const PROFILE_AUDIENCES: readonly ProfileAudience[] = ["hidden", "friends", "followers", "everyone"];
 
+// `description` is the hint under the choice. Only Friends needs one: the
+// other labels say it all.
 export const PROFILE_AUDIENCE = {
   hidden: {
     label: "Nobody",
     short: "not on your profile",
-    description: "It isn't on your profile.",
+    description: "",
   },
   friends: {
     label: "Friends",
     short: "friends see it on your profile",
-    description: "Friends see it on your profile: people you follow who follow you back.",
+    description: "Friends are people you follow who follow you back.",
   },
   followers: {
     label: "Followers",
     short: "followers see it on your profile",
-    description: "Followers you've approved see it on your profile.",
+    description: "",
   },
   everyone: {
     label: "Everyone",
     short: "anyone sees it on your profile",
-    description: "Anyone who opens your profile sees it.",
+    description: "",
   },
 } as const;
 

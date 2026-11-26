@@ -343,7 +343,7 @@ export function GuestWishLists({
 
       {lists && lists.length === 0 && (
         <p className="rounded-xl border border-secondary bg-primary p-3 text-sm text-tertiary">
-          Nobody has RSVPed yet. Lists show here as guests add them.
+          Nobody has RSVPed yet.
         </p>
       )}
 

@@ -162,7 +162,7 @@ function ShareRouter({ signedIn }: { signedIn: boolean }) {
     shownError.current = error;
     Alert.alert(
       "Couldn't read what you shared",
-      `Copy the product's link instead, then add it on your registry with the + button.\n\n(${error})`,
+      `Copy the product's link and add it on your registry instead.\n\n(${error})`,
     );
     // Clear it so the same failure shows again next time, unless that would
     // drop a share that's waiting.

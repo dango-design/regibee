@@ -405,8 +405,7 @@ export function EventInvitation({
                 Gift exchange
               </h2>
               <p className="mt-1 text-secondary">
-                Everyone who joins draws one name and gives that person a gift
-                {exchange.budget ? `, about ${exchange.budget}` : ""}. Nobody knows who drew them.
+                Draw a name and give that person a gift{exchange.budget ? `, about ${exchange.budget}` : ""}.
               </p>
               <p className="mt-1 text-sm text-tertiary">
                 {exchange.drawn_at
@@ -414,7 +413,7 @@ export function EventInvitation({
                   : exchange.draw_by
                     ? `Names are drawn by ${formatEventDate(exchange.draw_by)}.`
                     : "Names are drawn once everyone's in."}{" "}
-                {exchange.mailed ? "Gifts are mailed, so you'll add a shipping address." : "Bring your gift to the party."}
+                {exchange.mailed ? "Gifts are mailed." : "Bring your gift to the party."}
               </p>
             </div>
           </section>

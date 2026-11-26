@@ -202,7 +202,7 @@ export function RsvpForm({
           </p>
         )}
         {exchange && !everyone && current.inExchange && !exchange.drawn && (
-          <p className="mt-1 text-sm text-tertiary">We&apos;ll email you who you&apos;re giving to when names are drawn.</p>
+          <p className="mt-1 text-sm text-tertiary">We&apos;ll email you when names are drawn.</p>
         )}
         {current.status !== "no" && answerLines(questions, current.answers, "You").length > 0 && (
           <dl className="mt-3 flex flex-col gap-1 text-sm">
@@ -278,7 +278,7 @@ export function RsvpForm({
       return;
     }
     if (exchange?.mailed && inExchange && !address.trim()) {
-      setError("Add a shipping address, so your Secret Santa can mail your gift.");
+      setError("Add a shipping address.");
       return;
     }
     if (mealTrain && answer === "yes" && picks.size === 0) {
@@ -449,8 +449,8 @@ export function RsvpForm({
               <p className="font-medium text-primary">{mealTrain ? "Pick a day" : "I'll bring…"}</p>
               <p className="text-sm text-tertiary">
                 {mealTrain
-                  ? "Choose one or more. You'll see the drop-off address once you send."
-                  : "Optional. Choose anything you'd like to bring or help with."}
+                  ? "You'll see the drop-off address once you send."
+                  : "Optional."}
               </p>
             </div>
             {rows.length === 0 ? (
@@ -493,8 +493,7 @@ export function RsvpForm({
 
         {everyone && attending && !guest?.wishlistUrl && !guest?.giftIdeas && (
           <p className="rounded-xl bg-secondary p-3 text-sm text-secondary">
-            Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wishlist, so the others know
-            what you&apos;d like.
+            Everyone gives everyone. You&apos;ll add your wishlist after you RSVP.
           </p>
         )}
 
@@ -506,11 +505,10 @@ export function RsvpForm({
                 isSelected={join}
                 onChange={setJoin}
                 label={<span className="font-medium">Join the gift exchange</span>}
-                hint="You'll draw one name and give that person a gift."
               />
             ) : exchange.drawn && !alreadyIn ? (
               <p className="text-sm text-secondary">
-                Names for the gift exchange have been drawn, so it&apos;s closed. Ask the host if you&apos;d like to join.
+                Names have been drawn. Ask the host if you&apos;d like to join.
               </p>
             ) : (
               <p className="font-medium text-primary">Your gift exchange details</p>
@@ -522,7 +520,7 @@ export function RsvpForm({
                   value={wishlistUrl}
                   onChange={setWishlistUrl}
                   placeholder="regibee.com/r/your-wishlist or any store's list"
-                  hint="Paste a link to your Regibee wishlist or a list at any store. Only the person who draws you sees it."
+                  hint="Only the person who draws you sees it."
                 />
                 <TextArea
                   label="Gift ideas (optional)"

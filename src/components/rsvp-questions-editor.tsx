@@ -40,10 +40,7 @@ export function RsvpQuestionsEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <div>
-        <p className="text-sm font-medium text-secondary">Questions</p>
-        <p className="text-sm text-tertiary">Guests who are coming answer these when they RSVP. You see the answers on the guest list.</p>
-      </div>
+      <p className="text-sm font-medium text-secondary">Questions</p>
       {questions.length > 0 && (
         <ul className="flex flex-col gap-3">
           {questions.map((question) => (
