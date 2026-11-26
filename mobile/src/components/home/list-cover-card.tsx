@@ -55,7 +55,9 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
   const isPrivate = listVisibility(registry) === "private";
   const progress = registry.totalItems > 0 ? registry.fulfilledItems / registry.totalItems : 0;
   const newThisWeek = registry.giftsThisWeek ?? 0;
-  const newText = newThisWeek > 0 ? `${newThisWeek} new this week` : null;
+  const allDone = registry.totalItems > 0 && registry.fulfilledItems >= registry.totalItems;
+  // A finished list celebrates instead of counting new gifts, as on the website.
+  const newText = allDone ? null : newThisWeek > 0 ? `${newThisWeek} new this week` : null;
 
   return (
     <Pressable
@@ -67,6 +69,7 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
         when,
         isPrivate ? "Private" : null,
         registry.reservationsHidden ? "What's been reserved is hidden from you" : giftedText(registry),
+        allDone && !registry.reservationsHidden ? "All done" : null,
         newText,
       ]
         .filter(Boolean)
@@ -118,17 +121,18 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
         ) : (
           <>
             {registry.totalItems > 0 ? <ProgressBar value={progress} /> : null}
-            <Text variant="footnote" tone="secondary">
-              {giftedText(registry)}
-              {newText ? (
-                <>
-                  {" · "}
-                  <Text variant="footnote" tone="success" style={{ fontWeight: "600" }}>
-                    {newText}
-                  </Text>
-                </>
+            <View style={styles.giftLine}>
+              <Text variant="footnote" tone="secondary">
+                {giftedText(registry)}
+                {allDone || newText ? " ·" : null}
+              </Text>
+              {allDone ? <Icon name="party" size={13} color={theme.success} /> : null}
+              {allDone || newText ? (
+                <Text variant="footnote" tone="success" style={{ fontWeight: "600" }}>
+                  {allDone ? "All done" : newText}
+                </Text>
               ) : null}
-            </Text>
+            </View>
           </>
         )}
       </View>
@@ -143,4 +147,5 @@ const styles = StyleSheet.create({
   badges: { flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: 14 },
   badge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
   body: { paddingHorizontal: spacing.lg, paddingTop: 14, paddingBottom: spacing.lg, gap: spacing.sm },
+  giftLine: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 },
 });

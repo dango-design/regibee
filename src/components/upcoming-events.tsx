@@ -63,16 +63,18 @@ export function UpcomingEvents({
                   <span className="text-[11px] leading-none font-bold tracking-wider text-brand-tertiary">{month}</span>
                   <span className="mt-1 font-display text-[28px] leading-none font-bold tabular-nums">{day}</span>
                 </span>
+                {/* The countdown sits at the right while the title keeps at least
+                    9rem beside it. On a narrower screen it wraps under the title. */}
                 <span
                   className={cx(
-                    "flex min-w-0 flex-1 items-center gap-3 py-3",
+                    "flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 py-3",
                     index > 0 && "border-t border-secondary",
                   )}
                 >
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-[1_1_9rem]">
                     <span className="line-clamp-2 font-semibold break-words text-primary">{event.title}</span>
                     <span className="sr-only">. {countdownLabel(event.eventDate, today, "personal")}. </span>
-                    <span className="mt-0.5 block truncate text-sm text-tertiary">{details}</span>
+                    <span className="mt-0.5 block text-sm text-tertiary">{details}</span>
                   </span>
                   <span
                     aria-hidden="true"

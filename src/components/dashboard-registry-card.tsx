@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EyeOff, Lock } from "lucide-react";
+import { EyeOff, Lock, PartyPopper } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RegistryIcon } from "@/components/registry-icon";
@@ -64,6 +64,7 @@ export function DashboardRegistryCard({
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const theme = occasionTheme(registryType, eventType);
   const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
+  const allDone = totalItems > 0 && fulfilledItems >= totalItems;
   // Only while the date is ahead: once it's gone by, there's nothing to count down to.
   const countdown = eventDate && eventDate >= today ? countdownLabel(eventDate, today, registryType) : null;
 
@@ -118,11 +119,21 @@ export function DashboardRegistryCard({
             {totalItems > 0 && <Progress value={progress} aria-label={`Items gifted for ${title}`} />}
             <p className="text-sm text-secondary">
               {totalItems > 0 ? `${fulfilledItems} of ${totalItems} gifted` : "No items yet"}
-              {giftsThisWeek > 0 && (
+              {allDone ? (
                 <>
                   {" · "}
-                  <span className="font-semibold text-mint-800 dark:text-mint-300">{giftsThisWeek} new this week</span>
+                  <span className="inline-flex items-center gap-1 font-semibold text-mint-800 dark:text-mint-300">
+                    <PartyPopper aria-hidden="true" className="size-3.5 motion-safe:group-hover/card:animate-wiggle" />
+                    All done
+                  </span>
                 </>
+              ) : (
+                giftsThisWeek > 0 && (
+                  <>
+                    {" · "}
+                    <span className="font-semibold text-mint-800 dark:text-mint-300">{giftsThisWeek} new this week</span>
+                  </>
+                )
               )}
             </p>
           </>

@@ -60,25 +60,29 @@ export function ComingUp({ events, today }: { events: DashboardEvent[]; today: s
                   </Text>
                   <Text style={{ fontFamily: fonts.display, fontSize: 28, lineHeight: 31, color: theme.text }}>{day}</Text>
                 </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="callout" numberOfLines={2} style={{ fontWeight: "600" }}>
-                    {event.title}
-                  </Text>
-                  <Text variant="footnote" tone="tertiary" numberOfLines={1}>
-                    {details}
-                  </Text>
-                </View>
-                {next ? (
-                  <View style={[styles.countdown, { backgroundColor: theme.tintSoft }]}>
-                    <Text variant="caption" style={{ color: theme.tint, fontWeight: "700" }}>
-                      {daysLeftText(days)}
+                {/* The countdown sits at the right while the title keeps at least
+                    144 points beside it. On a narrower screen it wraps under the title. */}
+                <View style={styles.body}>
+                  <View style={styles.text}>
+                    <Text variant="callout" numberOfLines={2} style={{ fontWeight: "600" }}>
+                      {event.title}
+                    </Text>
+                    <Text variant="footnote" tone="tertiary" numberOfLines={2}>
+                      {details}
                     </Text>
                   </View>
-                ) : (
-                  <Text variant="caption" tone="secondary" style={{ fontWeight: "600" }}>
-                    {daysLeftText(days)}
-                  </Text>
-                )}
+                  {next ? (
+                    <View style={[styles.countdown, { backgroundColor: theme.tintSoft }]}>
+                      <Text variant="caption" style={{ color: theme.tint, fontWeight: "700" }}>
+                        {daysLeftText(days)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text variant="caption" tone="secondary" style={{ fontWeight: "600" }}>
+                      {daysLeftText(days)}
+                    </Text>
+                  )}
+                </View>
               </Pressable>
             </Fragment>
           );
@@ -91,5 +95,7 @@ export function ComingUp({ events, today }: { events: DashboardEvent[]; today: s
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.xs },
   date: { width: 44, alignItems: "center" },
+  body: { flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: spacing.md, rowGap: 6 },
+  text: { flexGrow: 1, flexShrink: 1, flexBasis: 144, minWidth: 0, gap: 2 },
   countdown: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
 });

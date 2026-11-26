@@ -63,7 +63,10 @@ export default function DemoDashboardPage() {
     is_private: false,
     totalItems: registry.items.length,
     fulfilledItems: registry.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length,
-    giftsThisWeek: registry.purchases.filter((p) => p.status !== "cancelled" && p.created_at >= weekAgo).length,
+    // Item gifts only, as the real loader counts them: chip-ins to a fund aren't items.
+    giftsThisWeek: registry.purchases.filter(
+      (p) => p.status !== "cancelled" && !p.cash_fund_id && p.created_at >= weekAgo,
+    ).length,
     reservationsHidden: false,
   }));
 
