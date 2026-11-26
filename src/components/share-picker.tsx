@@ -78,7 +78,7 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
             <p className="mt-2 text-sm text-tertiary">
               <Link
                 href="/dashboard/registry/new"
-                className="rounded-sm font-medium text-brand-600 underline underline-offset-4 outline-focus-ring hover:text-brand-700 focus-visible:outline-2"
+                className="rounded-sm font-medium text-brand-tertiary underline underline-offset-4 outline-focus-ring hover:text-brand-secondary focus-visible:outline-2"
               >
                 Create a registry
               </Link>{" "}
@@ -96,8 +96,8 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
                         className="size-12 text-base ring-2"
                       />
                     ) : (
-                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                        <Gift01 aria-hidden="true" className="size-5 text-brand-700" />
+                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                        <Gift01 aria-hidden="true" className="size-5 text-brand-secondary" />
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export function SharePicker({ shared, registries }: { shared: SharedLink | null;
 
           <h2 className="mt-6 text-sm font-semibold text-secondary">For someone else</h2>
           <Link href={saveGiftIdeaHref(shared)} className={`mt-2 ${choiceClass}`}>
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-sunshine-100">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-sunshine-100 dark:bg-sunshine-400/15">
               <Lightbulb02 aria-hidden="true" className="size-5 text-primary" />
             </span>
             <span className="min-w-0 flex-1">

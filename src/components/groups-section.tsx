@@ -99,8 +99,8 @@ export function GroupsSection({
                 href={`${basePath}/dashboard/groups/${group.id}`}
                 className="group clickable-card flex items-center gap-3 rounded-xl border border-secondary bg-primary p-4"
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                  <Users aria-hidden="true" className="size-4.5 text-brand-600 motion-safe:group-hover:animate-hop" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                  <Users aria-hidden="true" className="size-4.5 text-brand-tertiary motion-safe:group-hover:animate-hop" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-primary">{group.name}</span>

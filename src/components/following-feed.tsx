@@ -161,7 +161,7 @@ export function FollowingFeed({
                 ))}
               </ul>
               <p className="mt-3 text-sm">
-                <Link href={`${basePath}/dashboard/account#following`} className="font-medium text-brand-600 hover:underline">
+                <Link href={`${basePath}/dashboard/account#following`} className="font-medium text-brand-tertiary hover:underline">
                   Manage who you follow
                 </Link>
               </p>

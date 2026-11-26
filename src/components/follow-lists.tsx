@@ -315,7 +315,7 @@ export function FollowLists({
           {following.length === 0 ? (
             <p className="text-sm text-tertiary">
               You&apos;re not following anyone yet. Find people on your{" "}
-              <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
+              <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-tertiary hover:underline">
                 Following page
               </Link>
               .

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 // Underlined as well as colored, since they sit inside a line of text. Each
 // link stays on one line, so a phone wraps between them instead of inside one.
 const demoLinkClass =
-  "rounded-sm font-medium whitespace-nowrap text-brand-600 underline underline-offset-4 outline-focus-ring hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2";
+  "rounded-sm font-medium whitespace-nowrap text-brand-tertiary underline underline-offset-4 outline-focus-ring hover:text-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2";
 
 function DashboardButton({ className }: { className?: string }) {
   return (
@@ -48,10 +48,10 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
           <img src="/hero/panda.svg" alt="" aria-hidden="true" className="mx-auto mb-8 h-24 w-auto -rotate-3 xl:hidden" />
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
             One Registry,{" "}
-            <span className="relative isolate inline-block text-brand-600">
+            <span className="relative isolate inline-block text-brand-tertiary">
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-[0.06em] -z-10 h-[0.32em] rounded-full bg-sunshine-200"
+                className="absolute inset-x-0 bottom-[0.06em] -z-10 h-[0.32em] rounded-full bg-sunshine-200 dark:bg-sunshine-400/20"
               />
               Every Occasion
             </span>
@@ -90,16 +90,16 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
           )}
           {/* Each occasion gets its own tint from the palette. */}
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blush-100 px-3 py-1 text-blush-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blush-100 dark:bg-blush-300/15 px-3 py-1 text-blush-700 dark:text-blush-200">
               <Baby className="h-4 w-4" /> Baby
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sunshine-100 px-3 py-1 text-sunshine-900">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sunshine-100 dark:bg-sunshine-400/15 px-3 py-1 text-sunshine-900 dark:text-sunshine-200">
               <Cake className="h-4 w-4" /> Birthday
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-100 px-3 py-1 text-mint-800">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-100 dark:bg-mint-500/15 px-3 py-1 text-mint-800 dark:text-mint-300">
               <PartyPopper className="h-4 w-4" /> Christmas
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-3 py-1 text-brand-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-3 py-1 text-brand-secondary">
               <Gift className="h-4 w-4" /> Any occasion
             </span>
           </div>
@@ -112,8 +112,8 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
             <h2 className="text-center text-3xl font-bold">How It Works</h2>
             <div className="mt-16 grid gap-8 md:grid-cols-3">
               <div className="text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blush-100">
-                  <Gift className="h-8 w-8 text-brand-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blush-100 dark:bg-blush-300/15">
+                  <Gift className="h-8 w-8 text-brand-tertiary" />
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">1. Create Your Registry</h3>
                 <p className="mt-2 text-tertiary">
@@ -121,8 +121,8 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sunshine-100">
-                  <Link2 className="h-8 w-8 text-brand-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sunshine-100 dark:bg-sunshine-400/15">
+                  <Link2 className="h-8 w-8 text-brand-tertiary" />
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">2. Add Items From Anywhere</h3>
                 <p className="mt-2 text-tertiary">
@@ -130,8 +130,8 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mint-100">
-                  <Gift className="h-8 w-8 text-brand-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mint-100 dark:bg-mint-500/15">
+                  <Gift className="h-8 w-8 text-brand-tertiary" />
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">3. Share & Receive Gifts</h3>
                 <p className="mt-2 text-tertiary">
@@ -175,7 +175,7 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                   key={feature.title}
                   className="rounded-2xl border bg-primary p-6"
                 >
-                  <feature.icon className="h-6 w-6 text-brand-600" />
+                  <feature.icon className="h-6 w-6 text-brand-tertiary" />
                   <h3 className="mt-4 font-display font-semibold">{feature.title}</h3>
                   <p className="mt-2 text-sm text-tertiary">
                     {feature.desc}

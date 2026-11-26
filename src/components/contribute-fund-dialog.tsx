@@ -107,7 +107,7 @@ export function ContributeFundDialog({
           <button
             type="button"
             onClick={() => setShowCelebration(true)}
-            className="text-xs font-medium text-brand-600 hover:underline max-sm:min-h-11 max-sm:px-2"
+            className="text-xs font-medium text-brand-tertiary hover:underline max-sm:min-h-11 max-sm:px-2"
           >
             View details
           </button>

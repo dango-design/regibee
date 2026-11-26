@@ -251,7 +251,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
               <button
                 type="button"
                 onClick={() => setPasting(true)}
-                className="self-start text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11"
+                className="self-start text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
               >
                 Paste a list
               </button>
@@ -265,7 +265,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                   <li key={member.id} className="flex items-center gap-3 px-3 py-2">
                     <span
                       aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-secondary"
                     >
                       {initialsFor(member.name)}
                     </span>
@@ -297,8 +297,8 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
           <Card className="py-0">
             <CardContent className="flex flex-col gap-3 p-4">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-100">
-                  <Gift aria-hidden="true" className="size-4.5 text-mint-800" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-mint-100 dark:bg-mint-500/15">
+                  <Gift aria-hidden="true" className="size-4.5 text-mint-800 dark:text-mint-300" />
                 </span>
                 <div className="min-w-0">
                   <p className="font-medium text-primary">Gift exchange</p>
@@ -308,7 +308,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                   {!current && lastExchange && (
                     <p className="mt-1 text-sm">
                       Last time:{" "}
-                      <Link href={`/dashboard/events/${lastExchange.id}`} className="font-medium text-brand-600 hover:underline">
+                      <Link href={`/dashboard/events/${lastExchange.id}`} className="font-medium text-brand-tertiary hover:underline">
                         {lastExchange.title}
                       </Link>
                       {lastExchange.event_date && (
@@ -334,15 +334,15 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
             <Card className="py-0">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blush-50">
-                    <CalendarHeart aria-hidden="true" className="size-4.5 text-blush-700" />
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blush-50 dark:bg-blush-300/10">
+                    <CalendarHeart aria-hidden="true" className="size-4.5 text-blush-700 dark:text-blush-200" />
                   </span>
                   <div className="min-w-0">
                     <p className="font-medium text-primary">Events with this group</p>
                     <ul className="text-sm">
                       {events.map((event) => (
                         <li key={event.id}>
-                          <Link href={`/dashboard/events/${event.id}`} className="text-brand-600 hover:underline">
+                          <Link href={`/dashboard/events/${event.id}`} className="text-brand-tertiary hover:underline">
                             {event.title}
                           </Link>
                           {event.event_date && (
@@ -364,7 +364,7 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                 <ul className="text-sm">
                   {sharedLists.map((list) => (
                     <li key={list.id}>
-                      <Link href={`/dashboard/registry/${list.id}`} className="text-brand-600 hover:underline">
+                      <Link href={`/dashboard/registry/${list.id}`} className="text-brand-tertiary hover:underline">
                         {list.title}
                       </Link>
                     </li>

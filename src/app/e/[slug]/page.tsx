@@ -288,7 +288,7 @@ export default async function PublicEventPage({
                 />
               )}
               {token && !guest && (
-                <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+                <p className="rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4 text-sm text-sunshine-900 dark:text-sunshine-200">
                   This RSVP link no longer works. Ask the host for a new one.
                 </p>
               )}

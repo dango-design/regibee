@@ -33,10 +33,10 @@ const FILTERS: { value: FilterMode; label: string }[] = [
 
 const TAG_STYLES: Record<SuggestionStatus, string> = {
   pending: "border-gray-500 text-primary",
-  offering: "border-mint-200 text-primary",
-  added: "bg-brand-600 border-brand-600 text-white",
-  accepted: "bg-mint-200 border-mint-200 text-primary",
-  declined: "bg-blush-200 border-blush-200 text-primary",
+  offering: "border-mint-200 dark:border-mint-800 text-primary",
+  added: "bg-brand-solid border-brand-solid text-primary_on-brand",
+  accepted: "bg-mint-200 dark:bg-mint-500/20 border-mint-200 dark:border-mint-800 text-primary",
+  declined: "bg-blush-200 dark:bg-blush-300/20 border-blush-200 dark:border-blush-700/60 text-primary",
 };
 
 const TAG_LABELS: Record<SuggestionStatus, string> = {

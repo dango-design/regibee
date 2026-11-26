@@ -225,9 +225,9 @@ function DemoAddItemDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Step 1 — URL hero */}
-          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 space-y-2">
+          <div className="rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-primary p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-solid text-xs font-semibold text-primary_on-brand">
                 1
               </span>
               <Label className="!text-sm !font-semibold !text-primary">
@@ -265,7 +265,7 @@ function DemoAddItemDialog({
               </Button>
             </div>
             {scrapeStatus && (
-              <p className={`text-xs pl-8 text-brand-600`}>{scrapeStatus}</p>
+              <p className={`text-xs pl-8 text-brand-tertiary`}>{scrapeStatus}</p>
             )}
           </div>
 
@@ -907,10 +907,10 @@ function DemoGiftActivity({ purchases, items }: { purchases: DemoPurchase[]; ite
                             tagType === "cancelled"
                               ? "bg-error-primary/10 border-error-primary/20 text-error-primary"
                               : tagType === "contribution"
-                                ? "bg-mint-500 border-mint-500 text-primary"
+                                ? "bg-mint-500 border-mint-500 text-gray-900"
                                 : tagType === "covered"
-                                  ? "bg-mint-200 border-mint-200 text-primary"
-                                  : "bg-sunshine-100 border-sunshine-100 text-primary"
+                                  ? "bg-mint-200 dark:bg-mint-500/20 border-mint-200 dark:border-mint-800 text-primary"
+                                  : "bg-sunshine-100 dark:bg-sunshine-400/15 border-sunshine-100 dark:border-sunshine-900 text-primary"
                           }`}
                         >
                           {tag.label}
@@ -992,8 +992,8 @@ function DemoSuggestionInbox({
                           suggestion.status === "pending"
                             ? "border-gray-500 text-primary"
                             : suggestion.status === "accepted"
-                              ? "bg-brand-600 border-brand-600 text-white"
-                              : "bg-blush-200 border-blush-200 text-primary"
+                              ? "bg-brand-solid border-brand-solid text-primary_on-brand"
+                              : "bg-blush-200 dark:bg-blush-300/20 border-blush-200 dark:border-blush-700/60 text-primary"
                         }`}
                       >
                         {suggestion.status === "pending"

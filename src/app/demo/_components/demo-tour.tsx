@@ -173,10 +173,10 @@ function StopLink({ stop, onTint = false }: { stop: Stop; onTint?: boolean }) {
         <span
           className={cx(
             "flex size-9 shrink-0 items-center justify-center rounded-full",
-            onTint ? "bg-primary shadow-xs" : "bg-brand-50",
+            onTint ? "bg-primary shadow-xs" : "bg-brand-primary",
           )}
         >
-          <Icon aria-hidden="true" className="size-4.5 text-brand-600" />
+          <Icon aria-hidden="true" className="size-4.5 text-brand-tertiary" />
         </span>
         <span className="min-w-0">
           <span className="block font-medium text-primary">{stop.title}</span>
@@ -230,7 +230,7 @@ function TrackCard({ track }: { track: Track }) {
  */
 export function DemoTour() {
   return (
-    <section aria-labelledby="demo-tour-heading" className="rounded-2xl bg-brand-50 p-5">
+    <section aria-labelledby="demo-tour-heading" className="rounded-2xl bg-brand-primary p-5">
       <h2 id="demo-tour-heading" className="text-lg font-semibold text-primary">
         Explore the demo
       </h2>

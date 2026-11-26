@@ -139,7 +139,7 @@ export function DemoGroupGift({ token, as = "visitor" }: { token: string; as?: D
     <DemoGuestShell>
       <DemoGuestHeader />
       <main className="container mx-auto px-4 py-8 sm:py-12">
-        <p className="mx-auto mb-6 flex max-w-2xl items-start gap-2 rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+        <p className="mx-auto mb-6 flex max-w-2xl items-start gap-2 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4 text-sm text-sunshine-900 dark:text-sunshine-200">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>{data.note}</span>
         </p>

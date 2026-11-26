@@ -37,7 +37,7 @@ export function RegistryAvatar({ photoUrl, names, className }: RegistryAvatarPro
       <img
         src={photoUrl}
         alt=""
-        className={cx("size-24 shrink-0 rounded-full object-cover ring-4 ring-white shadow-sm", className)}
+        className={cx("size-24 shrink-0 rounded-full object-cover ring-4 ring-bg-primary shadow-sm", className)}
       />
     );
   }
@@ -48,7 +48,7 @@ export function RegistryAvatar({ photoUrl, names, className }: RegistryAvatarPro
     <span
       aria-hidden="true"
       className={cx(
-        "flex size-24 shrink-0 items-center justify-center rounded-full bg-brand-50 font-display font-semibold text-brand-700 ring-4 ring-white shadow-sm",
+        "flex size-24 shrink-0 items-center justify-center rounded-full bg-brand-primary font-display font-semibold text-brand-secondary ring-4 ring-bg-primary shadow-sm",
         monogram.length > 3 ? "text-2xl" : "text-3xl",
         className,
       )}

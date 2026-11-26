@@ -276,7 +276,7 @@ export default function ChecklistPage() {
                 ) : (
                   <ChevronRight className="h-4 w-4 shrink-0" />
                 )}
-                <Icon className="h-5 w-5 text-brand-600 shrink-0" />
+                <Icon className="h-5 w-5 text-brand-tertiary shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-medium">{category.name}</span>

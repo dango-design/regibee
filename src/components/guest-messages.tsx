@@ -99,8 +99,8 @@ export function GuestMessages({
     <Card className="py-0">
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50">
-            <Mail aria-hidden="true" className="size-4.5 text-brand-600" />
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+            <Mail aria-hidden="true" className="size-4.5 text-brand-tertiary" />
           </span>
           <div className="flex min-w-0 flex-col gap-1">
             <p className="font-medium text-primary">Messages to guests</p>
@@ -108,7 +108,7 @@ export function GuestMessages({
               {remindDayBefore
                 ? "Everyone going gets a reminder the day before. "
                 : "The day-before reminder is off. "}
-              <a href={editHref} className="font-medium text-brand-600 hover:underline">
+              <a href={editHref} className="font-medium text-brand-tertiary hover:underline">
                 Change
               </a>
             </p>

@@ -153,10 +153,10 @@ function StartWishlistCallout({ action }: { action: typeof startMyWishlist }) {
   return (
     <section
       aria-labelledby={headingId}
-      className="mt-6 flex flex-col gap-4 rounded-2xl bg-brand-50 p-4 sm:flex-row sm:items-center sm:p-5"
+      className="mt-6 flex flex-col gap-4 rounded-2xl bg-brand-primary p-4 sm:flex-row sm:items-center sm:p-5"
     >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary">
-        <Gift aria-hidden="true" className="size-5 text-brand-600" />
+        <Gift aria-hidden="true" className="size-5 text-brand-tertiary" />
       </span>
       <div className="min-w-0 flex-1">
         <h2 id={headingId} className="font-semibold text-primary">
@@ -305,7 +305,7 @@ function SavedItemCard({
     <li
       className={cx(
         "flex flex-col rounded-xl border bg-primary p-3 shadow-xs transition-colors",
-        selected ? "border-brand-600 ring-1 ring-brand-600" : "border-secondary",
+        selected ? "border-brand-solid ring-1 ring-brand-solid" : "border-secondary",
       )}
     >
       <div className="flex gap-3">

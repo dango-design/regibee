@@ -36,13 +36,13 @@ function getTagStyle(purchase: Purchase) {
   }
   if (purchase.cash_fund_id) {
     return {
-      className: "bg-mint-500 border-mint-500 text-primary",
+      className: "bg-mint-500 border-mint-500 text-gray-900",
       label: "Contribution",
     };
   }
   if (isOpenReservation(purchase)) {
     return {
-      className: "bg-sunshine-50 border-sunshine-200 text-primary",
+      className: "bg-sunshine-50 dark:bg-sunshine-400/10 border-sunshine-200 dark:border-sunshine-900 text-primary",
       label: isHeldUntilBought(purchase)
         ? "Reserved"
         : `Reserved until ${formatReservedUntil(purchase.reserved_until!, "short")}`,
@@ -50,12 +50,12 @@ function getTagStyle(purchase: Purchase) {
   }
   if (purchase.registry_items?.is_parent_purchased) {
     return {
-      className: "bg-mint-200 border-mint-200 text-primary",
+      className: "bg-mint-200 dark:bg-mint-500/20 border-mint-200 dark:border-mint-800 text-primary",
       label: "Covered by guest",
     };
   }
   return {
-    className: "bg-sunshine-100 border-sunshine-100 text-primary",
+    className: "bg-sunshine-100 dark:bg-sunshine-400/15 border-sunshine-100 dark:border-sunshine-900 text-primary",
     label: "Gifted by guest",
   };
 }

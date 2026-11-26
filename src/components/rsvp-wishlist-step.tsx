@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { saveEventWishlist, type EventWishlistInput } from "@/lib/actions/events";
 import { storeName } from "@/lib/events";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
+import { HOST_FILL, HOST_INK, hostColorVars } from "@/lib/host-colors";
 import { cx } from "@/lib/utils/cx";
 
 /** What the wishlist step needs from the event page, besides the event and the guest's token. */
@@ -63,17 +64,17 @@ export function RsvpWishlistStep({
   const colors = color ? themeColors(color) : null;
   const box = cx(
     "mt-4 flex scroll-mt-24 flex-col",
-    colors ? "rounded-xl p-4" : "border-t border-secondary pt-4",
+    colors ? cx("rounded-xl p-4", HOST_FILL) : "border-t border-secondary pt-4",
   );
-  const boxStyle = colors ? { backgroundColor: colors.fill } : undefined;
+  const boxStyle = colors ? hostColorVars(colors) : undefined;
   const icon = (
     <span
       className={cx("flex size-9 shrink-0 items-center justify-center rounded-full", colors ? "bg-primary" : "bg-secondary")}
     >
       <Gift
         aria-hidden="true"
-        className={cx("size-4.5", !colors && "text-brand-600")}
-        style={colors ? { color: colors.ink } : undefined}
+        className={cx("size-4.5", colors ? HOST_INK : "text-brand-tertiary")}
+        style={colors ? hostColorVars(colors) : undefined}
       />
     </span>
   );
@@ -248,7 +249,7 @@ export function RsvpWishlistStep({
                 ) : (
                   <p className="text-sm text-tertiary">
                     You have no other lists to add.{" "}
-                    <Link href="/dashboard/new" className="font-medium text-brand-600 underline">
+                    <Link href="/dashboard/new" className="font-medium text-brand-tertiary underline">
                       Make a new list
                     </Link>
                     , then come back here to add it.

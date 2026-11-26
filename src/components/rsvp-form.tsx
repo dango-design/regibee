@@ -382,9 +382,9 @@ export function RsvpForm({
                 setError("");
               }}
               className={cx(
-                "flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:flex-row sm:gap-1.5",
+                "flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid sm:flex-row sm:gap-1.5",
                 answer === value
-                  ? "border-brand-600 bg-brand-600 text-white"
+                  ? "border-brand-solid bg-brand-solid text-primary_on-brand"
                   : "border-secondary text-primary hover:border-primary",
               )}
             >
@@ -454,7 +454,7 @@ export function RsvpForm({
         )}
 
         {showSignup && signup && (
-          <fieldset className="flex flex-col gap-3 rounded-xl bg-sunshine-50 p-4">
+          <fieldset className="flex flex-col gap-3 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4">
             <legend className="sr-only">{signup.title}</legend>
             <div>
               <p className="font-medium text-primary">{mealTrain ? "Pick a day" : "I'll bring…"}</p>
@@ -509,7 +509,7 @@ export function RsvpForm({
         )}
 
         {exchange && !everyone && (attending || exchangeOnly) && answer !== "no" && (
-          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 p-4">
+          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 dark:bg-mint-500/10 p-4">
             <legend className="sr-only">Gift exchange</legend>
             {canChooseJoin ? (
               <Checkbox

@@ -71,7 +71,7 @@ export function NavigationProgress() {
       data-state={state}
       className="navigation-progress pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5"
     >
-      <div className="navigation-progress-bar h-full origin-left bg-brand-600" />
+      <div className="navigation-progress-bar h-full origin-left bg-brand-solid" />
     </div>
   );
 }

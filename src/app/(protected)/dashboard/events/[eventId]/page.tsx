@@ -190,8 +190,8 @@ export default async function ManageEventPage({
           <Card className="py-0">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50">
-                  <Gift aria-hidden="true" className="size-4.5 text-brand-600" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                  <Gift aria-hidden="true" className="size-4.5 text-brand-tertiary" />
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
                   <p className="font-medium text-primary">Gifts</p>
@@ -203,7 +203,7 @@ export default async function ManageEventPage({
                             href={`/r/${registry.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-brand-600 hover:underline"
+                            className="text-brand-tertiary hover:underline"
                           >
                             {registry.title}
                           </a>
@@ -220,7 +220,7 @@ export default async function ManageEventPage({
                     </p>
                   ))}
                   {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
-                  <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-600 hover:underline">
+                  <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-tertiary hover:underline">
                     {registries.length > 0 || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
                   </Link>
                 </div>

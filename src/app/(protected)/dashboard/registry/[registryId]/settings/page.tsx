@@ -502,7 +502,7 @@ export default function RegistrySettingsPage() {
                   <ListAccessField visibility={visibilityChoice} onChange={setVisibilityChoice} />
 
                   {visibilityChoice === "private" && listVisibility(registry) !== "private" && (
-                    <p role="status" className="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-800">
+                    <p role="status" className="rounded-lg bg-warning-primary px-3 py-2 text-sm text-warning-800 dark:text-warning-300">
                       Once you save, people with the link can&apos;t open it, and it comes off any events and groups.
                     </p>
                   )}

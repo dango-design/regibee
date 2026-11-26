@@ -82,7 +82,7 @@ function LoginForm() {
                 isRequired
               />
               <div className="mt-1 text-right">
-                <Link href="/forgot-password" className="text-sm text-brand-600 underline-offset-4 hover:underline max-sm:inline-block max-sm:py-2.5">
+                <Link href="/forgot-password" className="text-sm text-brand-tertiary underline-offset-4 hover:underline max-sm:inline-block max-sm:py-2.5">
                   Forgot your password?
                 </Link>
               </div>
@@ -96,7 +96,7 @@ function LoginForm() {
           </form>
           <p className="mt-4 text-center text-sm text-tertiary">
             New to Regibee?{" "}
-            <Link href={redirectTo !== "/dashboard" ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"} className="text-brand-600 underline-offset-4 hover:underline">
+            <Link href={redirectTo !== "/dashboard" ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"} className="text-brand-tertiary underline-offset-4 hover:underline">
               Create an account
             </Link>
           </p>

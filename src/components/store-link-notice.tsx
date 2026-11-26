@@ -51,9 +51,9 @@ export function StoreLinkNotice({
   // whether or not they've linked that store in settings.
   if (kind === "registry") {
     return (
-      <div className={cn("flex items-start gap-2.5 rounded-lg border border-success-200 bg-success-50 px-3 py-2.5", className)}>
-        <CheckCircle2 className="mt-px h-4 w-4 shrink-0 text-success-700" aria-hidden="true" />
-        <p className="text-sm text-success-800">
+      <div className={cn("flex items-start gap-2.5 rounded-lg border border-success-200 dark:border-success-800 bg-success-primary px-3 py-2.5", className)}>
+        <CheckCircle2 className="mt-px h-4 w-4 shrink-0 text-success-700 dark:text-success-300" aria-hidden="true" />
+        <p className="text-sm text-success-800 dark:text-success-300">
           <span className="font-semibold">{store.name} registry link.</span> Gifts bought
           through it count toward your registry.
         </p>
@@ -67,9 +67,9 @@ export function StoreLinkNotice({
 
   if (!hasStoreRegistry) {
     return (
-      <div className={cn("space-y-2.5 rounded-lg border border-brand-200 bg-primary p-3", className)}>
+      <div className={cn("space-y-2.5 rounded-lg border border-brand-200 dark:border-brand-800 bg-primary p-3", className)}>
         <div className="flex items-start gap-2.5">
-          <Package className="mt-px h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+          <Package className="mt-px h-4 w-4 shrink-0 text-brand-tertiary" aria-hidden="true" />
           <p className="text-sm text-secondary">
             <span className="font-semibold text-primary">Have a {store.name} registry?</span>{" "}
             Link it so gifts bought there count toward it.
@@ -98,23 +98,23 @@ export function StoreLinkNotice({
 
   if (kind === "plain") {
     return (
-      <div className={cn("space-y-2.5 rounded-lg border border-warning-200 bg-warning-50 p-3", className)}>
+      <div className={cn("space-y-2.5 rounded-lg border border-warning-200 dark:border-warning-800 bg-warning-primary p-3", className)}>
         <div className="flex items-start gap-2.5">
-          <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-warning-700" aria-hidden="true" />
-          <p className="text-sm text-warning-800">
+          <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-warning-700 dark:text-warning-300" aria-hidden="true" />
+          <p className="text-sm text-warning-800 dark:text-warning-300">
             <span className="font-semibold">This looks like a regular {store.name} link.</span>{" "}
             Gifts bought through it may not count toward your {store.name} registry.
           </p>
         </div>
         <div className="space-y-2 pl-6.5">
-          <p className="text-xs font-semibold text-warning-800">To use your registry link instead</p>
-          <CopySteps store={store} className="text-warning-800" />
+          <p className="text-xs font-semibold text-warning-800 dark:text-warning-300">To use your registry link instead</p>
+          <CopySteps store={store} className="text-warning-800 dark:text-warning-300" />
           <div className="flex flex-wrap items-center gap-3 pt-1">
             {linked && <OpenRegistryLink store={store} url={linked.url} />}
             <button
               type="button"
               onClick={() => setDismissedFor(url)}
-              className="min-h-9 px-1 text-sm font-semibold text-warning-800 underline underline-offset-2"
+              className="min-h-9 px-1 text-sm font-semibold text-warning-800 dark:text-warning-300 underline underline-offset-2"
             >
               Use this link anyway
             </button>
@@ -126,7 +126,7 @@ export function StoreLinkNotice({
 
   // We can't tell from the link alone, so explain rather than warn.
   return (
-    <div className={cn("space-y-2 rounded-lg border border-brand-200 bg-primary p-3", className)}>
+    <div className={cn("space-y-2 rounded-lg border border-brand-200 dark:border-brand-800 bg-primary p-3", className)}>
       <p className="text-sm text-secondary">
         <span className="font-semibold text-primary">{store.name} link.</span> If it&apos;s
         from your {store.name} registry, gifts bought through it count toward it.

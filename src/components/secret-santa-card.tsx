@@ -19,13 +19,13 @@ export function SecretSantaCard({
   wishlistHref: string | null;
 }) {
   return (
-    <section aria-labelledby="santa-heading" className="flex flex-col gap-4 rounded-2xl border-2 border-mint-500 bg-mint-50 p-5">
+    <section aria-labelledby="santa-heading" className="flex flex-col gap-4 rounded-2xl border-2 border-mint-500 bg-mint-50 dark:bg-mint-500/10 p-5">
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary">
-          <Gift aria-hidden="true" className="size-5 text-mint-800" />
+          <Gift aria-hidden="true" className="size-5 text-mint-800 dark:text-mint-300" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-wide text-mint-800 uppercase">Your Secret Santa name</p>
+          <p className="text-sm font-semibold tracking-wide text-mint-800 dark:text-mint-300 uppercase">Your Secret Santa name</p>
           <h2 id="santa-heading" className="font-display text-2xl font-bold text-primary">
             You&apos;re getting a gift for {giftee.name}
           </h2>

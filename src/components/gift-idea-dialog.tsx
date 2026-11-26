@@ -310,7 +310,7 @@ export function GiftIdeaDialog({
                         className={cx(
                           "min-h-9 cursor-pointer rounded-full px-3 text-sm font-medium outline-focus-ring transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
                           chosen
-                            ? "bg-brand-600 text-white"
+                            ? "bg-brand-solid text-primary_on-brand"
                             : "bg-secondary text-secondary ring-1 ring-secondary ring-inset hover:bg-tertiary",
                         )}
                       >
@@ -381,7 +381,7 @@ export function GiftIdeaDialog({
               </div>
             </div>
             {readStatus && (
-              <p role="status" className={cx("text-xs", readStatus.isError ? "text-warning-primary" : "text-brand-600")}>
+              <p role="status" className={cx("text-xs", readStatus.isError ? "text-warning-primary" : "text-brand-tertiary")}>
                 {readStatus.text}
               </p>
             )}
@@ -414,7 +414,7 @@ export function GiftIdeaDialog({
                       aria-pressed={selected}
                       className={cx(
                         "relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 bg-tertiary transition",
-                        selected ? "border-brand-600 ring-2 ring-brand-600/30" : "border-transparent hover:border-secondary",
+                        selected ? "border-brand-solid ring-2 ring-brand-solid/30" : "border-transparent hover:border-secondary",
                       )}
                     >
                       <img

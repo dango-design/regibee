@@ -87,7 +87,7 @@ export function RegistryGroupsCard({
         ) : groups.length === 0 ? (
           <p className="text-sm text-tertiary">
             No groups yet. Make one on the{" "}
-            <Link href="/dashboard/events" className="font-medium text-brand-600 hover:underline">
+            <Link href="/dashboard/events" className="font-medium text-brand-tertiary hover:underline">
               Events tab
             </Link>
             .

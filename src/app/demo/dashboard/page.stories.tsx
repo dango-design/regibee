@@ -14,3 +14,6 @@ type Story = StoryObj<typeof DemoDashboardPage>;
 // The My registries tab: the demo's guide, a follow request, and the baby
 // registry and birthday wishlist.
 export const Default: Story = {};
+
+// The dashboard in dark mode.
+export const Dark: Story = { parameters: { theme: "dark" } };

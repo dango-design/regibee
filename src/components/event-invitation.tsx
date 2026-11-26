@@ -26,6 +26,7 @@ import { GuestWishLists } from "@/components/guest-wish-lists";
 import { SignupSheetSection, type InvitationSignup } from "@/components/signup-sheet";
 import { cx } from "@/lib/utils/cx";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
+import { HOST_FILL, HOST_INK, hostColorVars } from "@/lib/host-colors";
 
 export type InvitationEvent = Pick<
   EventDetails,
@@ -113,7 +114,7 @@ function DetailRow({ icon: Icon, children }: { icon: typeof CalendarDays; childr
   return (
     <div className="flex gap-3">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
-        <Icon aria-hidden="true" className="size-4.5 text-brand-600" />
+        <Icon aria-hidden="true" className="size-4.5 text-brand-tertiary" />
       </span>
       <div className="min-w-0 pt-1.5 text-secondary">{children}</div>
     </div>
@@ -175,7 +176,7 @@ function HostUpdates({ updates, timeZone }: { updates: InvitationUpdate[]; timeZ
     <section aria-labelledby="updates-heading" className="flex flex-col gap-3 rounded-2xl bg-secondary p-4">
       <div className="flex items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <Megaphone aria-hidden="true" className="size-4.5 text-brand-600" />
+          <Megaphone aria-hidden="true" className="size-4.5 text-brand-tertiary" />
         </span>
         <h2 id="updates-heading" className="font-medium text-primary">
           Updates from the host
@@ -252,33 +253,33 @@ export function EventInvitation({
           <img
             src={event.image_url!}
             alt={`${event.title} invitation`}
-            className="mx-auto block h-auto max-h-[80vh] w-auto max-w-full rounded-2xl shadow-lg ring-1 ring-black/5"
+            className="mx-auto block h-auto max-h-[80vh] w-auto max-w-full rounded-2xl shadow-lg ring-1 ring-black/5 dark:ring-white/10"
           />
         </div>
       ) : (
         <div
-          className={cx("flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center", !colors && theme.bg)}
-          style={colors ? { backgroundColor: colors.fill } : undefined}
+          className={cx("flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center", colors ? HOST_FILL : theme.bg)}
+          style={colors ? hostColorVars(colors) : undefined}
         >
           <span className="flex size-14 items-center justify-center rounded-full bg-primary">
             {/* A meal train is help after a birth, an illness or a loss, not a party. */}
             {event.event_type === "meal_train" ? (
               <CookingPot
                 aria-hidden="true"
-                className={cx("size-7", !colors && theme.icon)}
-                style={colors ? { color: colors.ink } : undefined}
+                className={cx("size-7", colors ? HOST_INK : theme.icon)}
+                style={colors ? hostColorVars(colors) : undefined}
               />
             ) : (
               <PartyPopper
                 aria-hidden="true"
-                className={cx("size-7", !colors && theme.icon)}
-                style={colors ? { color: colors.ink } : undefined}
+                className={cx("size-7", colors ? HOST_INK : theme.icon)}
+                style={colors ? hostColorVars(colors) : undefined}
               />
             )}
           </span>
           <p
-            className={cx("text-sm font-semibold tracking-wide uppercase", !colors && theme.text)}
-            style={colors ? { color: colors.ink } : undefined}
+            className={cx("text-sm font-semibold tracking-wide uppercase", colors ? HOST_INK : theme.text)}
+            style={colors ? hostColorVars(colors) : undefined}
           >
             {eventTypeLabel(event.event_type)}
           </p>
@@ -309,12 +310,12 @@ export function EventInvitation({
                     href={calendar.google}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-medium text-brand-600 hover:underline max-sm:min-h-11"
+                    className="inline-flex items-center gap-1 font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
                   >
                     <CalendarPlus aria-hidden="true" className="size-3.5" />
                     Google Calendar
                   </a>
-                  <a href={calendar.ics} className="font-medium text-brand-600 hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
+                  <a href={calendar.ics} className="font-medium text-brand-tertiary hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
                     Apple or Outlook (.ics)
                   </a>
                 </p>
@@ -330,7 +331,7 @@ export function EventInvitation({
                   href={map}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 inline-block text-sm font-medium text-brand-600 hover:underline max-sm:mt-0 max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"
+                  className="mt-1 inline-block text-sm font-medium text-brand-tertiary hover:underline max-sm:mt-0 max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"
                 >
                   Open in Maps
                 </a>
@@ -374,15 +375,15 @@ export function EventInvitation({
         {!everyone && (registries.length > 0 || event.gift_note) && (
           <section
             aria-labelledby="gifts-heading"
-            className={cx("flex flex-col gap-4 rounded-2xl p-4", !colors && "bg-brand-50")}
-            style={colors ? { backgroundColor: colors.fill } : undefined}
+            className={cx("flex flex-col gap-4 rounded-2xl p-4", colors ? HOST_FILL : "bg-brand-primary")}
+            style={colors ? hostColorVars(colors) : undefined}
           >
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
                 <Gift
                   aria-hidden="true"
-                  className={cx("size-4.5", !colors && "text-brand-600")}
-                  style={colors ? { color: colors.ink } : undefined}
+                  className={cx("size-4.5", colors ? HOST_INK : "text-brand-tertiary")}
+                  style={colors ? hostColorVars(colors) : undefined}
                 />
               </span>
               <div className="min-w-0 pt-1">
@@ -429,9 +430,9 @@ export function EventInvitation({
         {signup && <SignupSheetSection signup={signup} />}
 
         {exchange && exchange.kind !== "everyone" && (
-          <section aria-labelledby="exchange-heading" className="flex items-start gap-3 rounded-2xl bg-mint-50 p-4">
+          <section aria-labelledby="exchange-heading" className="flex items-start gap-3 rounded-2xl bg-mint-50 dark:bg-mint-500/10 p-4">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-              <Shuffle aria-hidden="true" className="size-4.5 text-mint-800" />
+              <Shuffle aria-hidden="true" className="size-4.5 text-mint-800 dark:text-mint-300" />
             </span>
             <div className="min-w-0 pt-1">
               <h2 id="exchange-heading" className="font-medium text-primary">

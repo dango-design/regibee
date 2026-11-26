@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 export function GroupGiftSurprise({ listSlug }: { listSlug: string }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-sunshine-50">
+      <span className="flex size-12 items-center justify-center rounded-full bg-sunshine-50 dark:bg-sunshine-400/10">
         <Gift aria-hidden="true" className="size-6 text-primary" />
       </span>
       <h1 className="font-display text-2xl font-bold text-primary">This one&apos;s a surprise</h1>
