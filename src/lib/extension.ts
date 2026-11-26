@@ -11,6 +11,9 @@ import {
   type RetailerRegistry,
   type StoreId,
 } from "@/lib/retailers";
+import { titleKey, type ImportItem } from "@/lib/wishlist-import";
+
+export type { ImportItem } from "@/lib/wishlist-import";
 
 /** An item the extension read from a store's registry page. */
 export interface StoreItem {
@@ -183,6 +186,39 @@ export function itemMatchKey(raw: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+// ── Importing a wishlist from another site ──────────────────────────────
+// The popup reads the Elfster wishlist the owner has open and adds the items
+// they pick. The checks are in src/lib/wishlist-import.ts.
+
+/**
+ * How an imported item is matched against the list: by its link, like any
+ * other item, or by its name when it has no link.
+ */
+export function importItemKey(item: { url: string | null; title: string | null }): string | null {
+  return itemMatchKey(item.url) ?? titleKey(item.title);
+}
+
+export interface ImportCheckRequest {
+  registryId: string;
+  items: ImportItem[];
+}
+
+export interface ImportCheckResponse {
+  /** importItemKey values that are already on the registry. */
+  existing: string[];
+}
+
+export interface ImportRequest {
+  registryId: string;
+  items: ImportItem[];
+}
+
+export interface ImportResponse {
+  added: { id: string; title: string; key: string }[];
+  /** Items left out because they're already on the registry. */
+  skipped: number;
 }
 
 export interface AddRequest {

@@ -1,8 +1,10 @@
 // The toolbar popup. On a store registry page it lists the items that aren't
-// on Regibee yet; on a product page it offers to add that item; anywhere else
-// it shows the stores and settings.
+// on Regibee yet; on an Elfster wishlist it does the same for its wishes; on
+// a product page it offers to add that item; anywhere else it shows the
+// stores and settings.
 
 import {
+  importItemKey,
   USED_CONDITIONS,
   type AddProductResponse,
   type AddResponse,
@@ -10,13 +12,18 @@ import {
   type ExtensionRegistry,
   type IdeaRequest,
   type IdeaResponse,
+  type ImportCheckResponse,
+  type ImportItem,
+  type ImportResponse,
   type LinkResponse,
   type ProductItem,
   type StoreItem,
 } from "@/lib/extension";
 import { categoryName, MAX_CATEGORY_NAME_LENGTH } from "@/lib/item-categories";
 import { classifyStoreLink, EXTENSION_STORES, getStore, storeItemKey, type StoreId, type StoreInfo } from "@/lib/retailers";
+import { ELFSTER_WISHLISTS_URL, isElfsterWishlistUrl } from "@/lib/wishlist-import";
 import { REGIBEE_URL, VERSION_NAME } from "../config";
+import { readElfsterWishlist, type WishlistPage } from "../elfster-reader";
 import { readProductPage, type ProductPage } from "../product-reader";
 import {
   ask,
@@ -440,6 +447,260 @@ function showAdded(user: { name: string }, store: StoreInfo, registryId: string,
   );
 }
 
+// ── An Elfster wishlist ──────────────────────────────────────────────────
+
+function wishlistRow(title: string | null, detail: string) {
+  return h(
+    "div",
+    { className: "store-row" },
+    h("span", { className: "initial", "aria-hidden": "true" }, "E"),
+    h(
+      "div",
+      { className: "stack" },
+      h("h1", { className: "name" }, title ? `${title} on Elfster` : "Elfster wishlist"),
+      h("span", { className: "muted" }, detail)
+    )
+  );
+}
+
+function showCouldntReadWishlist(user: { name: string }, wishlist: WishlistPage, retry: () => void) {
+  render(
+    header(user),
+    h(
+      "main",
+      { className: "body" },
+      wishlistRow(wishlist.title, wishlist.failed ? "Couldn't read this wishlist" : "No items found"),
+      h(
+        "p",
+        { className: "lead" },
+        wishlist.failed
+          ? "We couldn't read this wishlist. Reload the page, then try again."
+          : wishlist.received > 0
+            ? "Everything on this wishlist is marked as received on Elfster, so there's nothing to add."
+            : "This wishlist has no items yet."
+      ),
+      h("div", { className: "footer-actions" }, h("button", { type: "button", className: "button secondary", onclick: retry }, "Try again"))
+    )
+  );
+}
+
+/** The shop an item's link goes to, such as "etsy.com". */
+function shopOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+interface WishlistContext {
+  user: { name: string };
+  wishlist: WishlistPage;
+  registries: ExtensionRegistry[];
+  registryId: string;
+  reload: () => void;
+}
+
+/**
+ * The wishes on the Elfster wishlist the owner has open, with the ones that
+ * aren't on Regibee yet ticked. Always asks first: there's no automatic mode
+ * here, since the owner may be looking at someone else's wishlist.
+ */
+async function showWishlist(ctx: WishlistContext) {
+  const { user, wishlist, registries } = ctx;
+  let registryId = ctx.registryId;
+  const registryTitle = () => registries.find((r) => r.id === registryId)?.title ?? "your registry";
+
+  // One row for each item: Elfster lets the same wish be added twice.
+  const byKey = new Map<string, ImportItem>();
+  for (const item of wishlist.items) {
+    const key = importItemKey(item);
+    if (key && !byKey.has(key)) byKey.set(key, item);
+  }
+  const items = [...byKey].map(([key, item]) => ({ key, item }));
+  const found = `${plural(items.length, "item")} found`;
+
+  render(header(user), h("main", { className: "body" }, wishlistRow(wishlist.title, found), h("p", { className: "muted" }, "Checking Regibee…")));
+
+  const checked = await ask<ImportCheckResponse>({ type: "import-check", registryId, items: items.map((i) => i.item) });
+  if (!checked.ok) return handleFailure(checked, user, ctx.reload);
+  const existing = new Set(checked.data.existing);
+  const fresh = items.filter((i) => !existing.has(i.key));
+  const already = items.filter((i) => existing.has(i.key));
+  const picked = new Set(fresh.map((i) => i.key));
+  const summary = `${found} · ${fresh.length === 0 ? "all on Regibee" : `${fresh.length} not on Regibee yet`}`;
+
+  const onRegistryChange = async (id: string) => {
+    registryId = id;
+    await ask({ type: "set-registry", registryId: id });
+    await showWishlist({ ...ctx, registryId: id });
+  };
+  const receivedNote =
+    wishlist.received > 0 &&
+    h(
+      "p",
+      { className: "muted" },
+      wishlist.received === 1
+        ? "1 item you marked as received on Elfster is left out."
+        : `${wishlist.received} items you marked as received on Elfster are left out.`
+    );
+
+  if (fresh.length === 0) {
+    render(
+      header(user),
+      h(
+        "main",
+        { className: "body" },
+        wishlistRow(wishlist.title, summary),
+        registries.length > 1 && registrySelect(registries, registryId, "Add to", onRegistryChange),
+        h("p", { className: "lead" }, `Everything on this wishlist is already on ${registryTitle()}.`),
+        receivedNote,
+        h(
+          "div",
+          { className: "footer-actions" },
+          h(
+            "button",
+            { type: "button", className: "button secondary", onclick: () => openTab(`${REGIBEE_URL}/dashboard/registry/${registryId}`) },
+            "Review on Regibee"
+          )
+        )
+      )
+    );
+    return;
+  }
+
+  const button = h("button", { type: "button", className: "button primary" }) as HTMLButtonElement;
+  const updateButton = () => {
+    button.disabled = picked.size === 0;
+    button.textContent = picked.size === 0 ? "Pick items to add" : `Add ${plural(picked.size, "item")} to Regibee`;
+  };
+  updateButton();
+
+  const itemRows = fresh.map(({ key, item }) => {
+    const box = h("input", {
+      type: "checkbox",
+      checked: true,
+      onchange: (e: Event) => {
+        if ((e.target as HTMLInputElement).checked) picked.add(key);
+        else picked.delete(key);
+        updateButton();
+      },
+    });
+    return h(
+      "li",
+      {},
+      h(
+        "label",
+        { className: "item" },
+        box,
+        item.imageUrl
+          ? h("img", { className: "thumb", src: item.imageUrl, alt: "", loading: "lazy", referrerpolicy: "no-referrer" })
+          : h("span", { className: "thumb", "aria-hidden": "true" }),
+        h(
+          "span",
+          { className: "stack" },
+          h("span", { className: "item-title", title: item.title }, item.title),
+          h(
+            "span",
+            { className: "meta" },
+            item.price !== null && h("span", { className: "price" }, money.format(item.price)),
+            h("span", { className: "muted" }, item.url ? shopOf(item.url) : "No link")
+          )
+        )
+      )
+    );
+  });
+
+  let alreadyRow: HTMLElement | null = null;
+  if (already.length > 0) {
+    const list = h(
+      "ul",
+      { className: "existing", id: "already", hidden: true },
+      ...already.map((i) => h("li", { title: i.item.title }, i.item.title))
+    );
+    const toggle = h(
+      "button",
+      {
+        type: "button",
+        className: "toggle",
+        "aria-expanded": "false",
+        "aria-controls": "already",
+        onclick: () => {
+          const open = toggle.getAttribute("aria-expanded") === "true";
+          toggle.setAttribute("aria-expanded", String(!open));
+          list.hidden = open;
+        },
+      },
+      `${already.length} already on Regibee`,
+      icon(CHEVRON)
+    );
+    alreadyRow = h("div", { className: "already" }, toggle, list);
+  }
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = "Adding…";
+    const chosen = fresh.filter((i) => picked.has(i.key)).map((i) => i.item);
+    const added = await ask<ImportResponse>({ type: "import", registryId, items: chosen });
+    if (!added.ok) return handleFailure(added, user, ctx.reload);
+    showImported(user, registryId, registryTitle(), added.data);
+  });
+
+  render(
+    header(user),
+    h(
+      "main",
+      { className: "body" },
+      wishlistRow(wishlist.title, summary),
+      registrySelect(registries, registryId, "Add to", onRegistryChange),
+      h("div", { className: "picker" }, h("ul", { className: "items" }, ...itemRows), alreadyRow),
+      receivedNote,
+      h(
+        "div",
+        { className: "footer-actions" },
+        button,
+        h("p", { className: "footnote" }, "Each item comes with its name, price, picture, note and the link to its shop.")
+      )
+    )
+  );
+}
+
+function showImported(user: { name: string }, registryId: string, registryTitle: string, result: ImportResponse) {
+  const count = result.added.length;
+  render(
+    header(user),
+    h(
+      "main",
+      { className: "body" },
+      h(
+        "div",
+        { className: "done", role: "status" },
+        icon(CIRCLE_CHECK, 36),
+        h("h1", {}, count === 0 ? "Nothing new to add" : `Added ${plural(count, "item")} to Regibee`),
+        h(
+          "p",
+          { className: "lead" },
+          count === 0
+            ? `Those items are already on ${registryTitle}.`
+            : count === 1
+              ? `It's on ${registryTitle}.`
+              : `They're on ${registryTitle}.`
+        ),
+        result.skipped > 0 && count > 0 && h("p", { className: "muted" }, `${plural(result.skipped, "item was", "items were")} already there.`)
+      ),
+      h(
+        "div",
+        { className: "footer-actions" },
+        h(
+          "button",
+          { type: "button", className: "button primary", onclick: () => openTab(`${REGIBEE_URL}/dashboard/registry/${registryId}`) },
+          "Review on Regibee"
+        )
+      )
+    )
+  );
+}
+
 function showHome(state: PopupState, user: { name: string }, data: RegistriesResult, page: ProductPage | null = null) {
   const registryId = data.registryId!;
   const registry = data.registries.find((r) => r.id === registryId);
@@ -481,6 +742,34 @@ function showHome(state: PopupState, user: { name: string }, data: RegistriesRes
       )
     );
   });
+
+  // Elfster isn't a store: there's nothing to check on its own, so the row
+  // only says how to bring a wishlist over.
+  const elfsterItem = h(
+    "li",
+    {},
+    h("span", { className: "initial", "aria-hidden": "true" }, "E"),
+    h(
+      "span",
+      { className: "stack" },
+      h("span", { className: "name", style: "font-weight: 600" }, "Elfster"),
+      h("span", { className: "muted" }, "Open a wishlist, then click the Regibee button")
+    ),
+    h(
+      "a",
+      {
+        className: "open",
+        href: ELFSTER_WISHLISTS_URL,
+        "aria-label": "Open your Elfster wishlists",
+        onclick: (e: Event) => {
+          e.preventDefault();
+          openTab(ELFSTER_WISHLISTS_URL);
+        },
+      },
+      "Open",
+      icon(EXTERNAL, 14)
+    )
+  );
 
   const modeRadio = (mode: Mode, label: string) =>
     h(
@@ -527,7 +816,7 @@ function showHome(state: PopupState, user: { name: string }, data: RegistriesRes
         { className: "lead" },
         "Open one of your store registries and we'll find items to add to Regibee. On a product page, click the Regibee button, or right-click and choose Add to Regibee."
       ),
-      h("ul", { className: "stores" }, ...storeItems),
+      h("ul", { className: "stores" }, ...storeItems, elfsterItem),
       data.registries.length > 1 &&
         registrySelect(data.registries, registryId, "New items go to", async (id) => {
           await ask({ type: "set-registry", registryId: id });
@@ -1282,6 +1571,22 @@ async function readProduct(tab: chrome.tabs.Tab | null): Promise<ProductPage | n
   }
 }
 
+/**
+ * The Elfster wishlist on the tab, or null on any other page. Like the
+ * product reader, it runs in the page only because the owner clicked the
+ * button.
+ */
+async function readWishlist(tab: chrome.tabs.Tab | null): Promise<WishlistPage | null> {
+  if (tab?.id === undefined || !isElfsterWishlistUrl(tab.url)) return null;
+  try {
+    const [injection] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readElfsterWishlist });
+    const page = injection?.result as WishlistPage | undefined;
+    return page?.isWishlist ? page : null;
+  } catch {
+    return null;
+  }
+}
+
 function storesWithRegistries(state: PopupState, registry: ExtensionRegistry | undefined): Set<StoreId> {
   return new Set<StoreId>([
     ...(registry?.storeRegistries ?? []).map((r) => r.store),
@@ -1340,6 +1645,13 @@ async function start() {
       mode: state.mode,
       reload: start,
     });
+  }
+
+  // An Elfster wishlist, unless the owner right-clicked to add the page itself.
+  const wishlist = menuClick ? null : await readWishlist(tab);
+  if (wishlist) {
+    if (wishlist.failed || wishlist.items.length === 0) return showCouldntReadWishlist(user, wishlist, start);
+    return showWishlist({ user, wishlist, registries: data.registries, registryId: data.registryId, reload: start });
   }
 
   const page = await readProduct(tab);
