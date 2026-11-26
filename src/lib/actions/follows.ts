@@ -8,6 +8,7 @@ import { getBlockState } from "@/lib/follows";
 import { notifyFollowRequest } from "@/lib/email";
 import { isValidPublicId } from "@/lib/profile-link";
 import { looksLikeEmail, normalizeEmail } from "@/lib/email-address";
+import { track } from "@/lib/analytics-server";
 
 // People are addressed by the public id in their profile link, so the browser
 // never handles user ids.
@@ -81,6 +82,7 @@ export async function requestFollow(publicId: string) {
     if (error) return { error: error.message };
 
     after(() => notifyFollowRequest({ followerId: user.id, followeeId: target.id }));
+    track("follow_requested", { userId: user.id }, {});
   }
 
   revalidateFollowPages();

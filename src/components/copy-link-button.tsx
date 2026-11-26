@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackClick } from "@/lib/analytics-client";
 
 export function CopyLinkButton({ path }: { path: string }) {
   const [copied, setCopied] = useState(false);
@@ -10,6 +11,7 @@ export function CopyLinkButton({ path }: { path: string }) {
   const handleCopy = async () => {
     const url = `${window.location.origin}${path}`;
     await navigator.clipboard.writeText(url);
+    trackClick("link_copied", { page: path.startsWith("/e/") ? "event" : "list" });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

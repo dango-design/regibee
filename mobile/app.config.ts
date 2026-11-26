@@ -81,6 +81,8 @@ const config: ExpoConfig = {
       },
     ],
     "expo-sqlite",
+    // Added with posthog-react-native (analytics), which reads the phone's language.
+    "expo-localization",
     [
       "expo-image-picker",
       {

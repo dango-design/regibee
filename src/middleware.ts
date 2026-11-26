@@ -14,7 +14,8 @@ export const config = {
      * - favicon.ico (favicon file)
      * - manifest.webmanifest (web app manifest, see src/app/manifest.ts)
      * - public files (public folder)
+     * - ingest (analytics events passed on to PostHog, see next.config.ts)
      */
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|ingest/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
