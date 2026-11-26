@@ -166,7 +166,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 ## Dark mode
 
 - The website follows the device's light or dark setting. It's CSS only: the `dark` variant in `src/app/globals.css` matches `prefers-color-scheme: dark`, so pages never flash light first. There's no switch on the site.
-- The dark colors are in the `@variant dark` block at the end of `src/styles/theme.css`. They follow the phone app's `darkTheme` (`mobile/src/lib/theme.ts`). Change both together.
+- The dark colors are in the `@variant dark` block at the end of `src/styles/theme.css`. They follow the phone app's `darkTheme` (`mobile/src/lib/theme.ts`). Change both together. The header above a website page in the app (`mobile/src/app/web.tsx`) takes the page's colors in each mode from `useSitePageColors` in the same file, so change those with the page's `bg-primary`, `text-primary` or `border-secondary`.
 - Only the semantic tokens change in dark mode: `bg-primary`, `text-secondary`, `border-secondary`, `bg-brand-solid`, `text-brand-tertiary` and so on. Palette colors such as `text-brand-600`, `bg-mint-50` or `bg-sunshine-100` stay the same in both modes. So prefer a semantic token, and give a palette color its own `dark:` class, such as `bg-sunshine-50 dark:bg-sunshine-400/10`.
 - On a brand button (`bg-brand-solid`), use `text-primary_on-brand`, not `text-white`. In dark mode the button is light teal and its text is dark.
 - Text on a fill that stays light in both modes, like `bg-mint-500` or `bg-sunshine-400`, needs a palette color such as `text-gray-900`. `text-primary` would turn light.
