@@ -118,6 +118,7 @@ export function OwnerChip({
         </span>
       )}
       {follow.error && <p className="basis-full text-xs text-error-primary">{follow.error}</p>}
+      {follow.dialog}
     </div>
   );
 }

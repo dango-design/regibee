@@ -91,12 +91,11 @@ test("an owner makes a baby registry, sees it on the dashboard, and adds, change
 
   // And removes it. It's on no other list, so it's deleted.
   await page.getByText("Convertible Crib, Natural").click();
-  page.once("dialog", (confirm) => {
-    expect(confirm.message()).toBe(`Delete "Convertible Crib, Natural"? This cannot be undone.`);
-    void confirm.accept();
-  });
   await editDialog.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove item" }).click();
+  const confirmDelete = page.getByRole("dialog", { name: `Delete "Convertible Crib, Natural"?` });
+  await expect(confirmDelete).toContainText("This cannot be undone.");
+  await confirmDelete.getByRole("button", { name: "Delete item" }).click();
   await expect(editDialog).toBeHidden();
   await expect(page.getByText("Convertible Crib, Natural")).toHaveCount(0);
   const { count } = await db.from("registry_items").select("id", { count: "exact", head: true }).eq("id", added!.id);
@@ -125,13 +124,12 @@ test("taking an item off its home list moves it, and its gift, to the other list
   await waitForReact(onHome);
   await onHome.click();
   const dialog = page.getByRole("dialog", { name: "Edit item" });
-  page.once("dialog", (confirm) => {
-    expect(confirm.message()).toContain(`Remove "${item.title}" from this list? It stays on`);
-    expect(confirm.message()).toContain(other.title);
-    void confirm.accept();
-  });
   await dialog.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove from list" }).click();
+  const confirmRemove = page.getByRole("dialog", { name: `Remove "${item.title}" from this list?` });
+  await expect(confirmRemove).toContainText(`It stays on`);
+  await expect(confirmRemove).toContainText(other.title);
+  await confirmRemove.getByRole("button", { name: "Remove from list" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText(item.title)).toHaveCount(0);
 
@@ -152,9 +150,9 @@ test("taking an item off its home list moves it, and its gift, to the other list
   // On its last list, removing it deletes it.
   await waitForReact(onOther);
   await onOther.click();
-  page.once("dialog", (confirm) => void confirm.accept());
   await dialog.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove item" }).click();
+  await page.getByRole("dialog", { name: `Delete "${item.title}"?` }).getByRole("button", { name: "Delete item" }).click();
   await expect(dialog).toBeHidden();
   const { count } = await db.from("registry_items").select("id", { count: "exact", head: true }).eq("id", item.id);
   expect(count).toBe(0);
