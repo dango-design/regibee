@@ -1,17 +1,49 @@
-// Website pages inside the app. Other people's lists, profiles and
-// invitations are website pages: the app shows them in its own web view
-// (src/app/web.tsx), signed in as this account, so they work the way they do
-// for the account on the website.
+// Website pages inside the app. Pages for guests and followers open as the
+// app's own screens where it has one (nativeRoute below), and otherwise in
+// its web view (src/app/web.tsx), signed in as this account, so they work the
+// way they do for the account on the website. The plan for the rest is in
+// docs/native-guest-screens.md.
 
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 
 import { isWebViewPath, safeAppPath } from "@shared/in-app";
 
 import { SITE_URL, supabase } from "@/lib/supabase";
 
-/** Opens a page of the website, such as "/r/<slug>", inside the app. */
+/**
+ * The app's own screen for a website page, or null when it shows the page in
+ * the web view. Each native screen lives at the website's own path, so a
+ * link from outside can open it as it is.
+ *
+ * - /e/<slug>, with the guest's ?g=<token>: the invitation (src/app/e/[slug].tsx).
+ *
+ * The screens need a signed-in account. Signed out, they send the page on to
+ * the web view themselves.
+ */
+export function nativeRoute(path: string): Href | null {
+  const [beforeHash] = path.split("#");
+  const [pathname, query = ""] = beforeHash.split("?");
+  const invitation = pathname.match(/^\/e\/([^/]+)\/?$/);
+  if (invitation) {
+    const token = query.match(/(?:^|&)g=([^&]*)/)?.[1];
+    const slug = decodeURIComponent(invitation[1]);
+    return token ? { pathname: "/e/[slug]", params: { slug, g: decodeURIComponent(token) } } : { pathname: "/e/[slug]", params: { slug } };
+  }
+  return null;
+}
+
+/** Opens a page of the website, such as "/r/<slug>", inside the app: its own screen, or the web view. */
 export function openSite(path: string) {
-  router.push({ pathname: "/web", params: { path: sitePath(path) } });
+  const native = nativeRoute(sitePath(path));
+  if (native) router.push(native);
+  else openWebView(path);
+}
+
+/** Opens a page of the website in the web view, even one the app has its own screen for. */
+export function openWebView(path: string, { replace = false }: { replace?: boolean } = {}) {
+  const target = { pathname: "/web", params: { path: sitePath(path) } } as const;
+  if (replace) router.replace(target);
+  else router.push(target);
 }
 
 /** A website address or path, as a path on the website. */

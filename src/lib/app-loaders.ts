@@ -5,6 +5,7 @@
 
 import { loadDashboard } from "@/lib/dashboard-page";
 import { loadEventForm, loadEventPage, loadEventsTab, loadGroupPage, loadPlanPicker } from "@/lib/events-page";
+import { loadInvitationPage } from "@/lib/invitation-page";
 import { loadListPage } from "@/lib/list-page";
 import { loadAccountPage, loadFollowingTab } from "@/lib/people-page";
 import { loadSavedItems } from "@/lib/saved-items";
@@ -27,4 +28,8 @@ export const APP_LOADERS = {
   followingTab: () => loadFollowingTab(),
   accountPage: () => loadAccountPage(),
   groupPage: (groupId: unknown) => (typeof groupId === "string" ? loadGroupPage(groupId) : null),
+  // An event's invitation, as a guest sees it (/e/<slug>). `token` is the
+  // guest's own RSVP token from their link, or null.
+  invitationPage: (slug: unknown, token: unknown) =>
+    typeof slug === "string" ? loadInvitationPage(slug, typeof token === "string" && token ? token : null) : null,
 };

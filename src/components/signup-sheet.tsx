@@ -1,15 +1,9 @@
 import { ClipboardList } from "lucide-react";
-import { formatSlotDate, spotsLabel, type GuestSignupRow } from "@/lib/signups";
+import { formatSlotDate, spotsLabel } from "@/lib/signups";
+import type { InvitationSignup } from "@/lib/invitation-page-types";
 import { cx } from "@/lib/utils/cx";
 
-/** A sign-up sheet as the invitation shows it. */
-export interface InvitationSignup {
-  title: string;
-  note: string | null;
-  rows: GuestSignupRow[];
-  /** A meal train: guests pick a day to help instead of coming to something. */
-  mealTrain?: boolean;
-}
+export type { InvitationSignup };
 
 /**
  * The sign-up sheet on the invitation: each row, how many spots are left, and

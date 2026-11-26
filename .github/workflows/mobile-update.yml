@@ -38,15 +38,19 @@ on:
       - src/lib/gift-ideas.ts
       - src/lib/gift-profile.ts
       - src/lib/gifts.ts
+      - src/lib/group-gifts.ts
       - src/lib/groups.ts
       - src/lib/guest-emails.ts
       - src/lib/guest-follow-rules.ts
       - src/lib/guest-input.ts
       - src/lib/in-app.ts
+      - src/lib/initials.ts
+      - src/lib/invitation-page-types.ts
       - src/lib/item-categories.ts
       - src/lib/item-details.ts
       - src/lib/list-access.ts
       - src/lib/list-page-types.ts
+      - src/lib/money.ts
       - src/lib/occasion-theme.ts
       - src/lib/occasions.ts
       - src/lib/people-page-types.ts

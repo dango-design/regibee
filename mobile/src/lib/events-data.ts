@@ -13,6 +13,7 @@ import type {
   GroupPageData,
   PlanPickerData,
 } from "@shared/events-page-types";
+import type { InvitationPageData } from "@shared/invitation-page-types";
 
 import { ApiError, loadPage, runAction } from "@/lib/api";
 import { useSession } from "@/lib/auth";
@@ -23,6 +24,7 @@ export const eventKeys = {
   form: (eventId: string) => ["events", "form", eventId] as const,
   planPicker: (userId: string) => ["events", "plan-picker", userId] as const,
   group: (groupId: string) => ["events", "group", groupId] as const,
+  invitation: (slug: string, token: string | null) => ["events", "invitation", slug, token ?? ""] as const,
 };
 
 /** The demo has no events in the app. Making an account brings them. */
@@ -64,6 +66,15 @@ export function usePlanPicker() {
 
 export function useGroupPage(groupId: string) {
   return usePage<GroupPageData>(eventKeys.group(groupId), "groupPage", groupId);
+}
+
+/**
+ * An event's invitation, as a guest sees it: what the website's /e/<slug>
+ * loads (src/lib/invitation-page.ts on the website). `token` is the guest's
+ * own RSVP token from their link, or null for the plain event link.
+ */
+export function useInvitationPage(slug: string, token: string | null) {
+  return usePage<InvitationPageData>(eventKeys.invitation(slug, token), "invitationPage", slug, token);
 }
 
 /**

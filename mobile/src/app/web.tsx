@@ -4,8 +4,8 @@
 // an RSVP works as it does for the account on the website.
 //
 // Links to things the app has its own screen for, such as a list this account
-// manages, open that screen. Links to other sites, such as a store, open in
-// the browser.
+// manages or an invitation, open that screen. Links to other sites, such as a
+// store, open in the browser.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -16,9 +16,10 @@ import { WebView, type WebViewNavigation } from "react-native-webview";
 import { appScreenForPath, IN_APP_HEADER } from "@shared/in-app";
 
 import { ErrorState, IconButton, LoadingState } from "@/components/ui";
+import { useSession } from "@/lib/auth";
 import { SITE_URL } from "@/lib/supabase";
 import { useTheme } from "@/lib/theme";
-import { freshAccessToken, signedInAddress, sitePath } from "@/lib/web";
+import { freshAccessToken, nativeRoute, signedInAddress, sitePath } from "@/lib/web";
 
 /** The path of an address on the website, or null for another site. */
 function pathOnSite(url: string): string | null {
@@ -31,6 +32,7 @@ export default function WebScreen() {
   const { path: pathParam } = useLocalSearchParams<{ path: string }>();
   const path = sitePath(pathParam ?? "/");
   const theme = useTheme();
+  const { session } = useSession();
   const web = useRef<WebView<object>>(null);
   // undefined while the token is being read, null when signed out.
   const [token, setToken] = useState<string | null | undefined>(undefined);
@@ -64,7 +66,20 @@ export default function WebScreen() {
   }, [canGoBack]);
 
   /** Opens the app's own screen for a website path. True when it has one. */
+  const signedIn = Boolean(session);
+  // The page last handed to a native screen. Navigation events can repeat
+  // for one page, which would open the screen twice.
+  const handedOff = useRef<string | null>(null);
   const openInApp = useCallback((sitePathname: string): boolean => {
+    // A page the app has its own screen for, such as an invitation, opens
+    // there, on top of this one. Not the page this web view was opened for:
+    // the native screen sends a page here when it can't show it itself.
+    const native = signedIn ? nativeRoute(sitePathname) : null;
+    if (native && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0]) {
+      if (handedOff.current !== sitePathname) router.push(native);
+      handedOff.current = sitePathname;
+      return true;
+    }
     const target = appScreenForPath(sitePathname);
     if (!target) return false;
     if (target.screen === "registry") router.replace({ pathname: "/registry/[id]", params: { id: target.id } });
@@ -72,7 +87,7 @@ export default function WebScreen() {
     else if (target.screen === "group") router.replace({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
     else router.back();
     return true;
-  }, []);
+  }, [signedIn, path]);
 
   function onNavigation(state: WebViewNavigation) {
     setCanGoBack(state.canGoBack);

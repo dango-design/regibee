@@ -22,49 +22,15 @@ import {
   type LinkedRegistry,
 } from "@/lib/events";
 import type { InvitationUpdate } from "@/lib/event-updates";
+import type { InvitationEvent, InvitationRegistry } from "@/lib/invitation-page-types";
 import { GuestWishLists } from "@/components/guest-wish-lists";
-import { SignupSheetSection, type InvitationSignup } from "@/components/signup-sheet";
+import { SignupSheetSection } from "@/components/signup-sheet";
+import type { InvitationSignup } from "@/lib/invitation-page-types";
 import { cx } from "@/lib/utils/cx";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
 
-export type InvitationEvent = Pick<
-  EventDetails,
-  | "event_type"
-  | "title"
-  | "hosted_by"
-  | "event_date"
-  | "start_time"
-  | "end_time"
-  | "time_zone"
-  | "location_name"
-  | "location_address"
-  | "message"
-  | "image_url"
-  | "rsvp_by"
-> &
-  Partial<Pick<EventDetails, "gift_note" | "theme_color">>;
-
-/** A registry linked to the event, as the invitation shows it. */
-export interface InvitationRegistry extends LinkedRegistry {
-  /** Whose list it is: "Remi & Max". */
-  honoree?: string | null;
-  /** A few gifts still needed. The invitation shows up to three of their pictures. */
-  items?: { id: string; title: string; image_url: string | null; price: number | null }[];
-  /** How many items still need a giver. */
-  itemsLeft?: number;
-  /**
-   * Everyone gives everyone: whose list it is, to show it like a guest's.
-   * Their account name, or the names written on the list.
-   */
-  ownerName?: string | null;
-  /**
-   * The viewer owns this list. Nobody shops their own list, so its button
-   * opens the viewer's own page for it instead, by `id`.
-   */
-  isYours?: boolean;
-  /** The list's id. Your own list opens on your own page for it, by its id. */
-  id?: string;
-}
+// The invitation's data types are shared with the phone app.
+export type { InvitationEvent, InvitationRegistry };
 
 export interface EventInvitationProps {
   event: InvitationEvent;
