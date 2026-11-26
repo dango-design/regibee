@@ -1,9 +1,13 @@
-// The gifts this account reserved from the app's list screen, kept on the
-// phone: purchase ids by item id. The website keeps the same thing in its
-// `regibee_my_gifts` cookie. A purchase id is the guest's proof that a gift is
-// theirs: with it they can say they bought it or release it, and see the
-// shipping address. The list loader only counts an id that matches a live
-// gift on that item, so an old one does no harm.
+// The gifts this account gave from the app's list screen, kept on the phone.
+// The website keeps the same two things in its `regibee_my_gifts` cookie:
+//
+// - Purchase ids by item id, for items reserved, bought or covered. A
+//   purchase id is the guest's proof that a gift is theirs: with it they can
+//   say they bought it or release it, and see the shipping address. The list
+//   loader only counts an id that matches a live gift on that item, so an old
+//   one does no harm.
+// - Amounts by gift fund id, for contributions. These only make the fund say
+//   "Contributed" and show what was given.
 //
 // Kept per account, so someone else signing in on the same phone doesn't see
 // them. Signing out leaves them, like the website's cookie.
@@ -11,6 +15,8 @@
 import { kvStorage } from "@/lib/kv-storage";
 
 const key = (userId: string) => `my-gifts:${userId}`;
+// Funds have their own key, so the item ids saved before funds were kept here still read the same.
+const fundsKey = (userId: string) => `my-fund-gifts:${userId}`;
 
 /** Purchase ids by item id. */
 export async function readMyGifts(userId: string): Promise<Record<string, string>> {
@@ -42,4 +48,28 @@ export async function forgetGift(userId: string, itemId: string) {
   if (!(itemId in gifts)) return;
   delete gifts[itemId];
   await kvStorage.setItem(key(userId), JSON.stringify(gifts));
+}
+
+/** Amounts given by gift fund id. */
+export async function readMyFundGifts(userId: string): Promise<Record<string, number>> {
+  if (!userId) return {};
+  try {
+    const raw = await kvStorage.getItem(fundsKey(userId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const funds: Record<string, number> = {};
+    for (const [fundId, amount] of Object.entries(parsed)) {
+      if (typeof amount === "number" && Number.isFinite(amount) && amount > 0) funds[fundId] = amount;
+    }
+    return funds;
+  } catch {
+    return {};
+  }
+}
+
+/** Remembers a contribution. A later one to the same fund replaces the earlier amount, as the cookie does. */
+export async function rememberFundGift(userId: string, fundId: string, amount: number) {
+  const funds = await readMyFundGifts(userId);
+  funds[fundId] = amount;
+  await kvStorage.setItem(fundsKey(userId), JSON.stringify(funds));
 }

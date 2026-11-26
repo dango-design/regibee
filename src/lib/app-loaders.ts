@@ -40,8 +40,13 @@ export const APP_LOADERS = {
   // - `eventLink`: { event, token } when the list was opened from a gift link
   //   on the guest's invitation, in place of the website's event guest
   //   cookie. The token is checked against the event's guest list.
-  publicList: (slug: unknown, items: unknown, eventLink: unknown) =>
-    typeof slug === "string" ? loadPublicList(slug, { gifts: { items: purchaseIds(items) }, eventLink: eventLinkFrom(eventLink) }) : null,
+  // - `funds`: what this account gave to each gift fund, by fund id, kept on
+  //   the phone like the cookie's `funds`. Only used to show "Contributed".
+  //   Older app builds don't send it.
+  publicList: (slug: unknown, items: unknown, eventLink: unknown, funds?: unknown) =>
+    typeof slug === "string"
+      ? loadPublicList(slug, { gifts: { items: purchaseIds(items), funds: fundAmounts(funds) }, eventLink: eventLinkFrom(eventLink) })
+      : null,
 };
 
 /** Purchase ids by item id, keeping only string pairs. */
@@ -52,6 +57,16 @@ function purchaseIds(value: unknown): Record<string, string> {
     if (typeof purchaseId === "string") ids[itemId] = purchaseId;
   }
   return ids;
+}
+
+/** Amounts by fund id, keeping only positive numbers. */
+function fundAmounts(value: unknown): Record<string, number> {
+  const amounts: Record<string, number> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return amounts;
+  for (const [fundId, amount] of Object.entries(value)) {
+    if (typeof amount === "number" && Number.isFinite(amount) && amount > 0) amounts[fundId] = amount;
+  }
+  return amounts;
 }
 
 /** An event's slug and a guest's RSVP token, when both are strings. */

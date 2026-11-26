@@ -7,6 +7,7 @@ import { requireAccount } from "@/lib/require-account";
 import { getViewer } from "@/lib/viewer";
 import { isUuid } from "@/lib/extension";
 import { readEventGuestCookie } from "@/lib/event-guest-cookie";
+import { eventGuestFromToken } from "@/lib/events-server";
 import { looksLikeEmail, normalizeEmail } from "@/lib/email-address";
 import { GIFT_HOLD_DAYS, GROUP_GIFT_HOLD_DAYS } from "@/lib/gifts";
 import {
@@ -68,11 +69,17 @@ async function slugOf(registryId: string): Promise<string | null> {
 
 /**
  * The event to record on a new group gift: the one whose invitation the
- * organizer came from (the event guest cookie), when it links this list.
+ * organizer came from, when it links this list. On the website that's the
+ * event guest cookie. The phone app has no cookie, so it sends the event's
+ * slug and the guest's RSVP token instead (`link`), checked against the
+ * event's guest list.
  */
-async function eventFromInvitation(registryId: string): Promise<string | null> {
+async function eventFromInvitation(
+  registryId: string,
+  link: { eventSlug: string; token: string } | null,
+): Promise<string | null> {
   try {
-    const guest = await readEventGuestCookie();
+    const guest = link ? await eventGuestFromToken(link.eventSlug, link.token, [registryId]) : await readEventGuestCookie();
     if (!guest || !isUuid(guest.eventId)) return null;
     const { data } = await supabaseAdmin
       .from("event_registries")
@@ -86,6 +93,13 @@ async function eventFromInvitation(registryId: string): Promise<string | null> {
   }
 }
 
+/** The event slug and RSVP token the phone app sends, when both are there. */
+function invitationLink(eventSlug: unknown, token: unknown): { eventSlug: string; token: string } | null {
+  const slug = typeof eventSlug === "string" ? eventSlug.trim() : "";
+  const guestToken = typeof token === "string" ? token.trim() : "";
+  return slug && guestToken ? { eventSlug: slug, token: guestToken } : null;
+}
+
 /**
  * Starts a group gift on an open item. Reserves it in the organizer's name,
  * "Oz and others", held until they buy it, so nobody else buys it. Returns the
@@ -97,6 +111,9 @@ export async function startGroupGift(input: {
   itemId: string;
   goalAmount?: string | number | null;
   paybackNote?: string | null;
+  /** From the phone app: the invitation the organizer came from, in place of the event guest cookie. */
+  eventSlug?: string | null;
+  guestToken?: string | null;
 }): Promise<Result<{ token: string }>> {
   const { user, supabase, error } = await requireAccount();
   if (error || !user) return { error: "Sign in to start a group gift." };
@@ -151,7 +168,7 @@ export async function startGroupGift(input: {
   const heldUntil = new Date(Date.now() + GROUP_GIFT_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const [{ error: holdError }, eventId] = await Promise.all([
     supabaseAdmin.from("purchases").update({ reserved_until: heldUntil }).eq("id", purchaseId),
-    eventFromInvitation(registryId),
+    eventFromInvitation(registryId, invitationLink(input.eventSlug, input.guestToken)),
   ]);
 
   const token = newGroupGiftToken();

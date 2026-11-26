@@ -9,7 +9,8 @@
 // the way the website's event guest cookie does it.
 //
 // Gift funds, covering an item the owners bought, starting a group gift and
-// suggesting an item still happen on the website's page, in the web view.
+// suggesting an item each open their own sheet, with the website's server
+// actions. A new group gift's page still opens in the web view.
 //
 // It sits in the root stack, at the website's own path, so back returns to
 // whatever opened it. Signed out, lists still open in the web view, since the
@@ -20,16 +21,20 @@ import { useMemo, useState } from "react";
 import { Platform, Pressable, RefreshControl, ScrollView, Share, View } from "react-native";
 
 import { eventTypeLabel, formatShortEventDate } from "@shared/events";
-import { reservationsHiddenText, formatReservedUntil, type MyItemGift } from "@shared/gifts";
+import { guestItemStatus, reservationsHiddenText, formatReservedUntil, type MyItemGift } from "@shared/gifts";
 import { groupGiftPath } from "@shared/group-gifts";
 import type { PublicListItem, PublicListPageData } from "@shared/public-list-page-types";
 import { classifyStoreLink, registryStoreFor } from "@shared/retailers";
 
 import { Icon } from "@/components/icon";
 import { Notice } from "@/components/notice";
+import { CoverSheet } from "@/components/public-list/cover-sheet";
+import { FundSheet } from "@/components/public-list/fund-sheet";
 import { GiftSheet, type GiftStep, type ItemShop } from "@/components/public-list/gift-sheet";
+import { GroupGiftSheet } from "@/components/public-list/group-gift-sheet";
 import { PublicListHero } from "@/components/public-list/hero";
 import { GuestItemCard, type GuestItemActions } from "@/components/public-list/item-card";
+import { SuggestSheet } from "@/components/public-list/suggest-sheet";
 import { Button, Card, EmptyState, Field, IconButton, LoadingState, ProgressBar, Text } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
@@ -39,6 +44,9 @@ import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { radius, spacing, useTheme } from "@/lib/theme";
 import { openSite, openWebView, sitePath } from "@/lib/web";
+
+/** The sheets besides the gift sheet: a gift fund, covering an item the owners bought, a new group gift, a suggestion. */
+type OtherSheet = { kind: "fund"; fundId: string } | { kind: "cover" | "groupGift"; itemId: string } | { kind: "suggest" };
 
 const PART_LABEL = { host: "You're hosting", yes: "You're going", maybe: "You said maybe", pending: "You haven't replied" } as const;
 
@@ -74,6 +82,8 @@ export default function PublicListScreen() {
   const pull = usePullToRefresh(page.refetch);
   const confirm = useConfirmGift();
   const [sheet, setSheet] = useState<{ itemId: string; step: GiftStep } | null>(null);
+  // The other sheets: one at a time, like the gift sheet.
+  const [other, setOther] = useState<OtherSheet | null>(null);
   const [search, setSearch] = useState("");
   const [bannerError, setBannerError] = useState<{ itemId: string; message: string } | null>(null);
 
@@ -120,12 +130,10 @@ export default function PublicListScreen() {
     const url = `${SITE_URL}/r/${data.registry.slug}`;
     Share.share(Platform.OS === "ios" ? { url } : { message: url });
   };
-  const openWeb = () => openWebView(webPath);
-
   const actions: GuestItemActions = {
     openGift: (item, step) => setSheet({ itemId: item.id, step }),
-    cover: openWeb,
-    startGroupGift: openWeb,
+    cover: (item) => setOther({ kind: "cover", itemId: item.id }),
+    startGroupGift: (item) => setOther({ kind: "groupGift", itemId: item.id }),
     openGroupGift: (token) => openSite(groupGiftPath(token)),
   };
 
@@ -231,7 +239,7 @@ export default function PublicListScreen() {
           <View style={{ gap: spacing.md }}>
             <Text variant="title">Gift Funds</Text>
             {data.cashFunds.map((fund) => (
-              <FundCard key={fund.id} fund={fund} given={data.myGifts.funds?.[fund.id]} onContribute={openWeb} />
+              <FundCard key={fund.id} fund={fund} given={data.myGifts.funds?.[fund.id]} onOpen={() => setOther({ kind: "fund", fundId: fund.id })} />
             ))}
           </View>
         ) : null}
@@ -282,9 +290,8 @@ export default function PublicListScreen() {
           </View>
         ))}
 
-        {/* Suggesting an item happens on the website's page for now. */}
         <View style={{ alignItems: "center", gap: spacing.sm }}>
-          <Button title="Suggest an item" icon="add" variant="secondary" size="medium" onPress={openWeb} />
+          <Button title="Suggest an item" icon="add" variant="secondary" size="medium" onPress={() => setOther({ kind: "suggest" })} />
         </View>
       </ScrollView>
 
@@ -300,8 +307,30 @@ export default function PublicListScreen() {
           onClose={() => setSheet(null)}
         />
       ) : null}
+      {otherSheet(other, data, link, () => setOther(null))}
     </>
   );
+}
+
+/** The sheet for a gift fund, a cover, a new group gift or a suggestion, or null. */
+function otherSheet(
+  other: OtherSheet | null,
+  data: PublicListPageData,
+  link: EventLink | null,
+  onClose: () => void,
+) {
+  if (!other) return null;
+  if (other.kind === "suggest") return <SuggestSheet registryId={data.registry.id} onClose={onClose} />;
+  if (other.kind === "fund") {
+    const fund = data.cashFunds.find((f) => f.id === other.fundId);
+    return fund ? <FundSheet fund={fund} page={data} given={data.myGifts.funds?.[fund.id]} link={link} onClose={onClose} /> : null;
+  }
+  const item = data.items.find((i) => i.id === other.itemId);
+  if (!item) return null;
+  if (other.kind === "groupGift") return <GroupGiftSheet item={item} page={data} link={link} onClose={onClose} />;
+  const gift = data.myItemGifts[item.id] ?? null;
+  const { availableToGift } = guestItemStatus(item, { gift, coveredQty: data.coverCounts[item.id] ?? 0 });
+  return <CoverSheet key={item.id} item={item} page={data} gift={gift} availableToGift={availableToGift} link={link} onClose={onClose} />;
 }
 
 /** Tells the list's owner that what's been reserved is hidden from them. */
@@ -364,15 +393,15 @@ function ReservationBanner({
   );
 }
 
-/** A gift fund: how much is raised toward its goal. Contributing happens on the website's page for now. */
+/** A gift fund: how much is raised toward its goal, and Contribute, or what this guest gave. */
 function FundCard({
   fund,
   given,
-  onContribute,
+  onOpen,
 }: {
   fund: PublicListPageData["cashFunds"][number];
   given?: number;
-  onContribute: () => void;
+  onOpen: () => void;
 }) {
   const goal = fund.goal_amount && fund.goal_amount > 0 ? fund.goal_amount : null;
   return (
@@ -397,9 +426,12 @@ function FundCard({
       ) : null}
       <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
         {given ? (
-          <Button title="Contributed" icon="check" variant="secondary" size="small" disabled />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Button title="View details" variant="ghost" size="small" onPress={onOpen} />
+            <Button title="Contributed" icon="check" variant="secondary" size="small" disabled />
+          </View>
         ) : (
-          <Button title="Contribute" icon="fund" size="small" onPress={onContribute} />
+          <Button title="Contribute" icon="fund" size="small" onPress={onOpen} />
         )}
       </View>
     </Card>
