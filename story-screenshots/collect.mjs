@@ -29,6 +29,11 @@ function allTests(suite) {
 }
 const tests = report.suites.flatMap(allTests);
 
+// Each test's title is "<story title> / <story name>". Its story id, and so its
+// baseline's file name, comes from storybook-static.
+const index = JSON.parse(readFileSync(path.join(root, "storybook-static", "index.json"), "utf8"));
+const titles = new Map(Object.values(index.entries).map((e) => [`${e.title} / ${e.name}`, `${e.id}.png`]));
+
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
@@ -53,7 +58,10 @@ for (const { title, test } of tests) {
     broken.push(title);
     continue;
   }
-  const file = actual.name.replace(/-actual\.png$/, ".png");
+  // Playwright shortens a long name and adds a hash to it
+  // ("components-missingdetailsn-34e5d-…-actual.png"), so take the file name
+  // from the story id when the title is known.
+  const file = titles.get(title) ?? actual.name.replace(/-actual\.png$/, ".png");
   cpSync(actual.path, path.join(outDir, file));
   update.push(file);
 }
@@ -71,8 +79,6 @@ const kept = new Set([...expected, ...update]);
 const existing = existsSync(baselinesDir) ? readdirSync(baselinesDir).filter((f) => f.endsWith(".png")) : [];
 // A passing test attaches nothing, so its baseline is known only by being
 // there. Stories that ran are matched through the ids in storybook-static.
-const index = JSON.parse(readFileSync(path.join(root, "storybook-static", "index.json"), "utf8"));
-const titles = new Map(Object.values(index.entries).map((e) => [`${e.title} / ${e.name}`, `${e.id}.png`]));
 for (const { title, test } of tests) {
   if (test.status !== "skipped" && titles.has(title)) kept.add(titles.get(title));
 }
