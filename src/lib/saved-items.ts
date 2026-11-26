@@ -63,19 +63,39 @@ function toSavedList(row: ListRow, categories: { id: string; name: string }[]): 
   };
 }
 
+/**
+ * Whether the person closed the "Start your wishlist" prompt
+ * (dismissWishlistPrompt). A failed read shows the prompt, as before.
+ */
+async function closedWishlistPrompt(userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("wishlist_prompt_dismissed_at")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[saved] Failed to read the wishlist prompt setting:", error);
+    return false;
+  }
+  return Boolean(data?.wishlist_prompt_dismissed_at);
+}
+
 export async function loadSavedItems(userId: string): Promise<SavedItemsData> {
-  const { data: registries, error } = await supabaseAdmin
-    .from("registries")
-    .select("id, title, registry_type, event_type, honoree_names, settings, created_at")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false });
+  const [{ data: registries, error }, wishlistPromptClosed] = await Promise.all([
+    supabaseAdmin
+      .from("registries")
+      .select("id, title, registry_type, event_type, honoree_names, settings, created_at")
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false }),
+    closedWishlistPrompt(userId),
+  ]);
   if (error) throw error;
 
   // Your own wishlist first, then the rest newest first, like My registries.
   const rows = ((registries ?? []) as ListRow[]).sort(
     (a, b) => Number(isOwnWishlist(b)) - Number(isOwnWishlist(a)),
   );
-  if (rows.length === 0) return { lists: [], items: [] };
+  if (rows.length === 0) return { lists: [], items: [], wishlistPromptClosed };
 
   const ids = rows.map((r) => r.id);
   const [itemsByList, { data: categories }] = await Promise.all([
@@ -128,5 +148,6 @@ export async function loadSavedItems(userId: string): Promise<SavedItemsData> {
   return {
     lists,
     items: [...items.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    wishlistPromptClosed,
   };
 }
