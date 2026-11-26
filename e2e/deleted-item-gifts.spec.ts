@@ -104,15 +104,13 @@ test("an owner removes an item a guest reserved, and the guest's gift goes with 
   await waitForReact(card);
   await card.click();
   const dialog = page.getByRole("dialog", { name: "Edit item" });
-  let question = "";
-  page.once("dialog", (confirm) => {
-    question = confirm.message();
-    void confirm.accept();
-  });
   await dialog.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove item" }).click();
+  const confirm = page.getByRole("dialog", { name: `Delete "${item.title}"?` });
+  await expect(confirm).toContainText("This cannot be undone.");
+  await confirm.getByRole("button", { name: "Delete item" }).click();
   await expect(dialog).toBeHidden();
-  expect(question).toBe(`Delete "${item.title}"? This cannot be undone.`);
+  await expect(confirm).toBeHidden();
   await expect(page.getByRole("heading", { name: item.title })).toHaveCount(0);
 
   // The item and Glinda's name, email and message are gone.

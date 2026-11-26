@@ -4,8 +4,8 @@
 // an RSVP works as it does for the account on the website.
 //
 // Links to things the app has its own screen for, such as a list this account
-// manages, open that screen. Links to other sites, such as a store, open in
-// the browser.
+// manages or an invitation, open that screen. Links to other sites, such as a
+// store, open in the browser.
 //
 // The header matches the page: white, since the website has no dark mode,
 // and with no title while the page's own title shows. Once the page's title
@@ -22,9 +22,10 @@ import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react
 import { appScreenForPath, IN_APP_HEADER } from "@shared/in-app";
 
 import { ErrorState, IconButton, LoadingState } from "@/components/ui";
+import { useSession } from "@/lib/auth";
 import { SITE_URL } from "@/lib/supabase";
 import { fonts, sitePageColors } from "@/lib/theme";
-import { freshAccessToken, signedInAddress, sitePath } from "@/lib/web";
+import { freshAccessToken, nativeRoute, signedInAddress, sitePath } from "@/lib/web";
 
 /** The path of an address on the website, or null for another site. */
 function pathOnSite(url: string): string | null {
@@ -83,6 +84,7 @@ function HeaderTitle({ title, shown, opacity }: { title: string; shown: boolean;
 export default function WebScreen() {
   const { path: pathParam } = useLocalSearchParams<{ path: string }>();
   const path = sitePath(pathParam ?? "/");
+  const { session } = useSession();
   const web = useRef<WebView<object>>(null);
   // undefined while the token is being read, null when signed out.
   const [token, setToken] = useState<string | null | undefined>(undefined);
@@ -125,23 +127,33 @@ export default function WebScreen() {
 
   // The last app screen opened from this page, so one tap doesn't open it twice.
   const lastOpened = useRef({ path: "", at: 0 });
+  const signedIn = Boolean(session);
 
   /**
    * Opens the app's own screen for a website path. True when it has one. The
    * screen opens on top of this page, so back from it comes back here.
    */
   const openInApp = useCallback((sitePathname: string): boolean => {
-    const target = appScreenForPath(sitePathname);
-    if (!target) return false;
+    // A page the app has its own screen for, such as an invitation, opens
+    // there, on top of this one. Not the page this web view was opened for:
+    // the native screen sends a page here when it can't show it itself.
+    const native = signedIn && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0] ? nativeRoute(sitePathname) : null;
+    const target = native ? null : appScreenForPath(sitePathname);
+    if (!native && !target) return false;
     const now = Date.now();
     if (lastOpened.current.path === sitePathname && now - lastOpened.current.at < 1000) return true;
     lastOpened.current = { path: sitePathname, at: now };
+    if (native) {
+      router.push(native);
+      return true;
+    }
+    if (!target) return false;
     if (target.screen === "registry") router.push({ pathname: "/registry/[id]", params: { id: target.id } });
     else if (target.screen === "event") router.push({ pathname: "/events/[eventId]", params: { eventId: target.id } });
     else if (target.screen === "group") router.push({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
     else router.back();
     return true;
-  }, []);
+  }, [signedIn, path]);
 
   function onNavigation(state: WebViewNavigation) {
     setCanGoBack(state.canGoBack);

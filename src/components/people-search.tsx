@@ -77,7 +77,7 @@ function FollowablePerson({
   followActions?: FollowActions;
 }) {
   const name = displayName(person);
-  const { state, busy, error, toggle } = useFollow({
+  const { state, busy, error, toggle, dialog } = useFollow({
     publicId: person.public_id,
     name,
     state: initialState,
@@ -97,7 +97,12 @@ function FollowablePerson({
         )
       }
       error={error}
-      action={<FollowToggle state={state} busy={busy} onClick={toggle} />}
+      action={
+        <>
+          <FollowToggle state={state} busy={busy} onClick={toggle} />
+          {dialog}
+        </>
+      }
     />
   );
 }

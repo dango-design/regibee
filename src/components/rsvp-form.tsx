@@ -9,7 +9,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { SelectField } from "@/components/base/select/select-field";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { submitRsvp, type RsvpInput } from "@/lib/actions/events";
-import type { ExchangeKind, RsvpStatus } from "@/lib/events";
+import type { ExchangeKind } from "@/lib/events";
 import {
   MAX_CLAIM_NOTE_LENGTH,
   describeClaim,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/rsvp-questions";
 import { cx } from "@/lib/utils/cx";
 import { RsvpWishlistStep, type RsvpWishlist } from "@/components/rsvp-wishlist-step";
+import type { RsvpGuest } from "@/lib/invitation-page-types";
 
 type Answer = "yes" | "maybe" | "no";
 
@@ -55,19 +56,7 @@ const SUMMARY: Record<Answer, string> = {
   no: "You can't make it",
 };
 
-export interface RsvpGuest {
-  name: string;
-  status: RsvpStatus;
-  partySize: number;
-  note: string | null;
-  kidsCount?: number;
-  inExchange?: boolean;
-  wishlistUrl?: string | null;
-  giftIdeas?: string | null;
-  shippingAddress?: string | null;
-  /** Their answers to the host's questions. */
-  answers?: RsvpAnswers;
-}
+export type { RsvpGuest };
 
 export interface RsvpFormProps {
   slug: string;

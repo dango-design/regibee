@@ -18,6 +18,7 @@ import {
 import { updateCashFund, deleteCashFund } from "@/lib/actions/registry";
 import { Tag } from "@/components/ui/tag";
 import { GiftDetailModal, type Purchase } from "@/components/gift-detail-modal";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { formatDollars, formatPrice } from "@/lib/money";
 import { giverNameForOwner } from "@/lib/gifts";
 
@@ -56,7 +57,9 @@ export function CashFundCard({
 }: CashFundCardProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [askingDelete, setAskingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [error, setError] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [giftDetailOpen, setGiftDetailOpen] = useState(false);
@@ -86,12 +89,19 @@ export function CashFundCard({
     setLoading(false);
   };
 
+  const askToDelete = () => {
+    setDeleteError("");
+    setAskingDelete(true);
+  };
+
+  // The dialog stays open while the fund is deleted. Once it's gone, the page
+  // reloads its data and this card goes away. On an error, the dialog shows it.
   const handleDelete = async () => {
-    if (!confirm(`Delete "${fund.title}"? This cannot be undone.`)) return;
     setDeleting(true);
+    setDeleteError("");
     const result = await deleteAction(fund.id, registryId);
     if (result?.error) {
-      setError(result.error);
+      setDeleteError(result.error);
       setDeleting(false);
     }
   };
@@ -191,10 +201,10 @@ export function CashFundCard({
               <Button
                 type="button"
                 variant="destructive-outline"
-                onClick={handleDelete}
+                onClick={askToDelete}
                 disabled={deleting}
               >
-                {deleting ? "Removing..." : "Delete"}
+                Delete
               </Button>
               <Button
                 type="button"
@@ -213,6 +223,17 @@ export function CashFundCard({
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDeleteDialog
+        open={askingDelete}
+        onOpenChange={setAskingDelete}
+        title={`Delete "${fund.title}"?`}
+        description="This cannot be undone."
+        phrase={null}
+        confirmLabel="Delete fund"
+        working={deleting}
+        error={deleteError}
+        onConfirm={handleDelete}
+      />
       {purchases && purchases.length > 0 && (
         <GiftDetailModal
           open={giftDetailOpen}

@@ -41,6 +41,8 @@ import { StoreLinkNotice } from "@/components/store-link-notice";
 import { ItemImage } from "@/components/item-image";
 import { readLinkMessages, storeNameForLink } from "@/components/add-item-dialog";
 import { uploadRegistryPhoto } from "@/lib/upload-registry-photo";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 
 interface Category {
   id: string;
@@ -242,6 +244,10 @@ export function EditItemDialog({
   // until the action ends, so "Saving..." would never appear.
   const [loading, setLoading] = useOptimistic(false);
   const [deleting, setDeleting] = useState(false);
+  // Removing the item asks first, in a dialog over this one. It shows the
+  // error if the remove fails.
+  const [askingDelete, setAskingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   // Adding the item to another list, or moving it there, is under way.
   const [placing, setPlacing] = useState(false);
   // Lists it was added to since the dialog opened. The page's own list of
@@ -726,29 +732,35 @@ export function EditItemDialog({
     });
   };
 
-  const handleDelete = async () => {
-    const question = onOtherLists
-      ? `Remove "${item.title}" from this list? It stays on ${listNames(alsoOn)}.`
-      : `Delete "${item.title}"? This cannot be undone.`;
-    if (!confirm(question)) return;
+  const askToDelete = () => {
     setError("");
     setNotice("");
+    setDeleteError("");
+    setAskingDelete(true);
+  };
+
+  // Both dialogs stay open until the list behind them shows the change.
+  const handleDelete = () => {
+    setDeleteError("");
     setDeleting(true);
     startTransition(async () => {
       const result = await deleteRegistryItem(item.id, registryId);
       if (result?.error) {
-        setError(result.error);
+        setDeleteError(result.error);
         setDeleting(false);
         return;
       }
-      closeWithNewPage(() => setDeleting(false));
+      closeWithNewPage(() => {
+        setDeleting(false);
+        setAskingDelete(false);
+      });
     });
   };
   const removeLabel = onOtherLists ? "Remove from list" : "Remove item";
   const menuBusy = deleting || placing;
   /** Runs a choice from the More actions menu or one of its two lists. */
   const chooseMenuAction = (key: string) => {
-    if (key === "remove") return void handleDelete();
+    if (key === "remove") return askToDelete();
     const [action, listId] = key.split(":");
     const list = listsToOffer.find((l) => l.id === listId);
     if (!list) return;
@@ -1319,6 +1331,32 @@ export function EditItemDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      {/* After the edit dialog's content, not inside it, so its form isn't
+          inside the edit form. It opens on top. */}
+      {onOtherLists ? (
+        <ConfirmActionDialog
+          open={askingDelete}
+          onOpenChange={setAskingDelete}
+          title={`Remove "${item.title}" from this list?`}
+          description={`It stays on ${listNames(alsoOn)}.`}
+          confirmLabel="Remove from list"
+          working={deleting}
+          error={deleteError}
+          onConfirm={handleDelete}
+        />
+      ) : (
+        <ConfirmDeleteDialog
+          open={askingDelete}
+          onOpenChange={setAskingDelete}
+          title={`Delete "${item.title}"?`}
+          description="This cannot be undone."
+          phrase={null}
+          confirmLabel="Delete item"
+          working={deleting}
+          error={deleteError}
+          onConfirm={handleDelete}
+        />
+      )}
     </Dialog>
   );
 }

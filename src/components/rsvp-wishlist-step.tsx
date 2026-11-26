@@ -10,26 +10,12 @@ import { storeName } from "@/lib/events";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
 import { HOST_FILL, HOST_INK, hostColorVars } from "@/lib/host-colors";
 import { cx } from "@/lib/utils/cx";
+import type { RsvpWishlistData } from "@/lib/invitation-page-types";
 
 /** What the wishlist step needs from the event page, besides the event and the guest's token. */
-export interface RsvpWishlist {
-  /**
-   * The guest's wishlist now, or null. A Regibee list has its title, and its
-   * id when it's one of the signed-in account's own lists, so they can add to it.
-   */
-  current: { url: string; title: string | null; ownListId: string | null } | null;
-  giftIdeas: string | null;
-  /**
-   * More of the guest's own lists on the event, besides their wishlist, like
-   * one they keep for their child. Each has its id when their account owns it.
-   */
-  more?: { id: string; title: string; ownListId: string | null }[];
-  /** The signed-in account's own lists that others can open. Null when signed out. */
-  account: { lists: { id: string; title: string }[] } | null;
+export interface RsvpWishlist extends RsvpWishlistData {
   /** Where signing up or logging in comes back to. Defaults to the guest's own link. */
   returnTo?: string;
-  /** The host's color for the invitation, which fills the step. None leaves it without a fill. */
-  themeColor?: string | null;
   saveAction?: (input: EventWishlistInput) => Promise<{ error: string | null }>;
 }
 

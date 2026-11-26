@@ -147,6 +147,21 @@ export const PickingAList: Story = {
   },
 };
 
+// Remove item asks first, in a second dialog on top of this one. The item is
+// on no other list, so removing it deletes it.
+export const ConfirmingRemove: Story = {
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "More actions" }));
+    await userEvent.click(await body.findByRole("menuitem", { name: "Remove item" }));
+    const confirm = await body.findByRole("dialog", {
+      name: 'Delete "Philips Avent Natural Baby Bottles, 4 pack"?',
+    });
+    await waitFor(() => expect(within(confirm).getByRole("button", { name: "Delete item" })).toBeVisible());
+    await expect(confirm).toHaveTextContent("This cannot be undone.");
+  },
+};
+
 // With no other list to put it on, as for a co-manager, only removing is left.
 export const OnlyRemove: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
