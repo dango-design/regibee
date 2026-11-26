@@ -160,10 +160,15 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
   const hasOwnWishlist = (data?.lists ?? []).some((l) => l.isOwnWishlist);
   const hidesSome = (data?.lists ?? []).some((l) => l.hidesReservations);
 
-  // The new wishlist shows here once the lists reload, as on the website.
+  // Opens the new wishlist, as on the website. It has no items yet, so the
+  // only sign here would be the callout going away.
   function startWishlist() {
     setStartError("");
     start.mutate(undefined, {
+      onSuccess: ({ registryId }) => {
+        haptic("success");
+        if (registryId) router.push({ pathname: "/registry/[id]", params: { id: registryId } });
+      },
       onError: (e) => setStartError(errorMessage(e) || "Your wishlist wasn't made. Try again in a moment."),
     });
   }
