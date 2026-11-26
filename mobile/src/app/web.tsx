@@ -187,7 +187,6 @@ export default function WebScreen() {
 
   // The last app screen opened from this page, so one tap doesn't open it twice.
   const lastOpened = useRef({ path: "", at: 0 });
-  const signedIn = Boolean(session);
 
   /**
    * Opens the app's own screen for a website path. True when it has one. The
@@ -198,10 +197,10 @@ export default function WebScreen() {
     // there, on top of this one. Not the screen this web view was opened
     // for: the native screen sends a page here when it can't show it itself.
     // A gift link (/e/<event>/gifts?to=<list>) redirects to its list, which
-    // is the same screen, so it stays here too.
+    // is the same screen, so it stays here too. Signed out too: the native
+    // guest screens work without an account.
     const ownScreen = nativeScreenKey(path) ?? path.split(/[?#]/)[0];
-    const native =
-      signedIn && (nativeScreenKey(sitePathname) ?? sitePathname.split(/[?#]/)[0]) !== ownScreen ? nativeRoute(sitePathname) : null;
+    const native = (nativeScreenKey(sitePathname) ?? sitePathname.split(/[?#]/)[0]) !== ownScreen ? nativeRoute(sitePathname) : null;
     const target = native ? null : appScreenForPath(sitePathname);
     if (!native && !target) return false;
     const now = Date.now();
@@ -217,7 +216,7 @@ export default function WebScreen() {
     else if (target.screen === "group") router.push({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
     else router.back();
     return true;
-  }, [signedIn, path]);
+  }, [path]);
 
   function onNavigation(state: WebViewNavigation) {
     setCanGoBack(state.canGoBack);

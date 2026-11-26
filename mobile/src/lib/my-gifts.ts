@@ -12,6 +12,12 @@
 // Kept per account, so someone else signing in on the same phone doesn't see
 // them. Signing out leaves them, like the website's cookie.
 //
+// Gifts given while signed out are kept under the phone's own keys, which an
+// empty `userId` reads and writes. When someone signs in, those move to their
+// account (moveSignedOutGifts), so they can still say they bought them or
+// release them. That's what the website does too: its cookie belongs to the
+// browser, not the account.
+//
 // The website's pages in the web view (src/app/web.tsx) share the item gifts
 // both ways: the web view hands them to the website when it opens, and the
 // gifts given on a page there come back here. The rules are in the website's
@@ -19,13 +25,15 @@
 
 import { kvStorage } from "@/lib/kv-storage";
 
-const key = (userId: string) => `my-gifts:${userId}`;
+const SIGNED_OUT = "my-gifts:signed-out";
+const SIGNED_OUT_FUNDS = "my-fund-gifts:signed-out";
 // Funds have their own key, so the item ids saved before funds were kept here still read the same.
-const fundsKey = (userId: string) => `my-fund-gifts:${userId}`;
+const fundsKey = (userId: string) => (userId ? `my-fund-gifts:${userId}` : SIGNED_OUT_FUNDS);
 
-/** Purchase ids by item id. */
+const key = (userId: string) => (userId ? `my-gifts:${userId}` : SIGNED_OUT);
+
+/** Purchase ids by item id. An empty `userId` reads the signed-out gifts. */
 export async function readMyGifts(userId: string): Promise<Record<string, string>> {
-  if (!userId) return {};
   try {
     const raw = await kvStorage.getItem(key(userId));
     const parsed = raw ? JSON.parse(raw) : null;
@@ -47,7 +55,7 @@ export async function rememberGift(userId: string, itemId: string, purchaseId: s
 
 /** Remembers new gifts, by item id. They go last, as the newest. */
 export async function rememberGifts(userId: string, newGifts: Record<string, string>) {
-  if (!userId || Object.keys(newGifts).length === 0) return;
+  if (Object.keys(newGifts).length === 0) return;
   const gifts = await readMyGifts(userId);
   for (const [itemId, purchaseId] of Object.entries(newGifts)) {
     delete gifts[itemId];
@@ -64,9 +72,8 @@ export async function forgetGift(userId: string, itemId: string) {
   await kvStorage.setItem(key(userId), JSON.stringify(gifts));
 }
 
-/** Amounts given by gift fund id. */
+/** Amounts given by gift fund id. An empty `userId` reads the signed-out ones. */
 export async function readMyFundGifts(userId: string): Promise<Record<string, number>> {
-  if (!userId) return {};
   try {
     const raw = await kvStorage.getItem(fundsKey(userId));
     const parsed = raw ? JSON.parse(raw) : null;
@@ -86,4 +93,23 @@ export async function rememberFundGift(userId: string, fundId: string, amount: n
   const funds = await readMyFundGifts(userId);
   funds[fundId] = amount;
   await kvStorage.setItem(fundsKey(userId), JSON.stringify(funds));
+}
+
+/**
+ * Moves the gifts given while signed out to this account. Called when someone
+ * signs in. A gift the account already has on the same item or fund stays.
+ */
+export async function moveSignedOutGifts(userId: string) {
+  if (!userId) return;
+  const [items, funds] = await Promise.all([readMyGifts(""), readMyFundGifts("")]);
+  if (Object.keys(items).length > 0) {
+    const gifts = { ...items, ...(await readMyGifts(userId)) };
+    await kvStorage.setItem(key(userId), JSON.stringify(gifts));
+    await kvStorage.removeItem(SIGNED_OUT);
+  }
+  if (Object.keys(funds).length > 0) {
+    const amounts = { ...funds, ...(await readMyFundGifts(userId)) };
+    await kvStorage.setItem(fundsKey(userId), JSON.stringify(amounts));
+    await kvStorage.removeItem(SIGNED_OUT_FUNDS);
+  }
 }

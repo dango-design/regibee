@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { DEMO_USER_ID, setDemoActive } from "@/lib/demo";
+import { moveSignedOutGifts } from "@/lib/my-gifts";
 import { forgetThisPhone, registerAfterSignIn } from "@/lib/notifications";
 import { queryClient } from "@/lib/query";
 import { supabase, SITE_URL } from "@/lib/supabase";
@@ -61,6 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (signedInUserId) registerAfterSignIn();
   }, [signedInUserId]);
 
+  // Gifts reserved on this phone while signed out become the account's, so
+  // its lists show them as this person's.
+  useEffect(() => {
+    if (!signedInUserId) return;
+    moveSignedOutGifts(signedInUserId)
+      .then(() => queryClient.invalidateQueries({ queryKey: ["public-list"] }))
+      .catch(() => {});
+  }, [signedInUserId]);
+
   // Data hooks read the demo flag outside React. Keep it in step with this state.
   setDemoActive(demo && !session);
 
@@ -85,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 // Guests get anonymous sessions on the website when they reserve a gift.
-// Those aren't accounts, so the app treats them as signed out.
+// Those aren't accounts, so the app treats them as signed out. The app's own
+// guest session is a separate client (guestSupabase in src/lib/supabase.ts),
+// so it never shows up here.
 function usable(session: Session | null) {
   return session && !session.user.is_anonymous ? session : null;
 }

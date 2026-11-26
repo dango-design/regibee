@@ -1,12 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { appAccessToken, appUserClient } from "@/lib/app-request";
+import { appAccessToken, appUserClient, inAppRequest } from "@/lib/app-request";
 
 export async function createClient() {
   // A request from the phone app (src/app/api/app) acts as the app's user,
-  // from its access token, instead of the website's cookies.
-  const accessToken = appAccessToken();
-  if (accessToken) return appUserClient(accessToken);
+  // from its access token, instead of the website's cookies. A signed-out
+  // app's request has no token, and acts as nobody.
+  if (inAppRequest()) return appUserClient(appAccessToken());
 
   const cookieStore = await cookies();
 

@@ -14,7 +14,8 @@ import * as registry from "@/lib/actions/registry";
 import * as saved from "@/lib/actions/saved";
 import * as signups from "@/lib/actions/signups";
 import * as tax from "@/lib/actions/tax";
-import { appError, authenticateApp, navigationFromError, runAsAppUser } from "@/lib/app-request";
+import { appCallRefusal } from "@/lib/app-guest-calls";
+import { appError, identifyAppCaller, navigationFromError, runAsAppUser } from "@/lib/app-request";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export const dynamic = "force-dynamic";
 //
 // An argument written { "$form": { name: value } } arrives as FormData, for
 // the actions that read forms.
+//
+// A guest's anonymous session may run only the guest actions in
+// src/lib/app-guest-calls.ts, and a request with no token none at all.
 const MODULES: Record<string, Record<string, unknown>> = {
   categories,
   eventMessages,
@@ -65,8 +69,8 @@ function toArgument(value: unknown): unknown {
 }
 
 export async function POST(request: Request) {
-  const auth = await authenticateApp(request);
-  if (auth.response) return auth.response;
+  const who = await identifyAppCaller(request);
+  if (who.response) return who.response;
 
   let body: { action?: unknown; args?: unknown };
   try {
@@ -74,6 +78,8 @@ export async function POST(request: Request) {
   } catch {
     return appError("Invalid request", 400);
   }
+  const refusal = appCallRefusal(who.caller, { action: typeof body.action === "string" ? body.action : "" });
+  if (refusal) return appError(refusal.error, refusal.status);
   const [moduleName, actionName] = typeof body.action === "string" ? body.action.split(".") : [];
   const action =
     moduleName && actionName && Object.hasOwn(MODULES, moduleName) && Object.hasOwn(MODULES[moduleName], actionName)
@@ -83,7 +89,7 @@ export async function POST(request: Request) {
   const args = Array.isArray(body.args) ? body.args.map(toArgument) : [];
 
   try {
-    const result = await runAsAppUser(auth.accessToken, auth.user, () =>
+    const result = await runAsAppUser(who.accessToken, who.user, () =>
       (action as (...args: unknown[]) => Promise<unknown>)(...args),
     );
     return NextResponse.json({ result: result ?? null });

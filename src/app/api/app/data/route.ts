@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { appError, authenticateApp, navigationFromError, runAsAppUser } from "@/lib/app-request";
+import { appCallRefusal } from "@/lib/app-guest-calls";
+import { appError, identifyAppCaller, navigationFromError, runAsAppUser } from "@/lib/app-request";
 import { APP_LOADERS } from "@/lib/app-loaders";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +9,12 @@ export const dynamic = "force-dynamic";
 // loads, as JSON, for the same screen in the app: { data }, or { notFound }
 // when the user can't see it. Each loader checks who's asking, the same way
 // the website's page does (src/lib/app-loaders.ts).
+//
+// Without a signed-in account, only the guest loaders in
+// src/lib/app-guest-calls.ts run.
 export async function POST(request: Request) {
-  const auth = await authenticateApp(request);
-  if (auth.response) return auth.response;
+  const who = await identifyAppCaller(request);
+  if (who.response) return who.response;
 
   let body: { loader?: unknown; args?: unknown };
   try {
@@ -19,12 +23,14 @@ export async function POST(request: Request) {
     return appError("Invalid request", 400);
   }
   const name = typeof body.loader === "string" ? body.loader : "";
+  const refusal = appCallRefusal(who.caller, { loader: name });
+  if (refusal) return appError(refusal.error, refusal.status);
   const loader = Object.hasOwn(APP_LOADERS, name) ? APP_LOADERS[name as keyof typeof APP_LOADERS] : undefined;
   if (!loader) return appError("Unknown loader", 404);
   const args = Array.isArray(body.args) ? body.args : [];
 
   try {
-    const data = await runAsAppUser(auth.accessToken, auth.user, () =>
+    const data = await runAsAppUser(who.accessToken, who.user, () =>
       (loader as (...args: unknown[]) => Promise<unknown>)(...args),
     );
     if (data === null || data === undefined) return NextResponse.json({ notFound: true });

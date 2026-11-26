@@ -15,6 +15,8 @@ import type {
 } from "@shared/events-page-types";
 import type { InvitationPageData } from "@shared/invitation-page-types";
 
+import { isGuestAction } from "@shared/app-guest-calls";
+
 import { ApiError, loadPage, runAction } from "@/lib/api";
 import { useSession } from "@/lib/auth";
 
@@ -24,7 +26,8 @@ export const eventKeys = {
   form: (eventId: string) => ["events", "form", eventId] as const,
   planPicker: (userId: string) => ["events", "plan-picker", userId] as const,
   group: (groupId: string) => ["events", "group", groupId] as const,
-  invitation: (slug: string, token: string | null) => ["events", "invitation", slug, token ?? ""] as const,
+  invitation: (slug: string, token: string | null, accountId: string) =>
+    ["events", "invitation", slug, token ?? "", accountId] as const,
 };
 
 /** The demo has no events in the app. Making an account brings them. */
@@ -36,7 +39,9 @@ function usePage<T>(key: readonly unknown[], loader: string, ...args: unknown[])
   const { userId, demo } = useSession();
   return useQuery({
     queryKey: key,
-    enabled: Boolean(userId) && !demo,
+    // The invitation is a guest page, which works signed out and in the demo
+    // too (src/lib/api.ts). The rest need an account.
+    enabled: loader === "invitationPage" || (Boolean(userId) && !demo),
     queryFn: async () => {
       const data = await loadPage<T>(loader, ...args);
       if (!data) throw new ApiError("This is gone, or you can't open it anymore.");
@@ -71,10 +76,13 @@ export function useGroupPage(groupId: string) {
 /**
  * An event's invitation, as a guest sees it: what the website's /e/<slug>
  * loads (src/lib/invitation-page.ts on the website). `token` is the guest's
- * own RSVP token from their link, or null for the plain event link.
+ * own RSVP token from their link, or null for the plain event link. Signed
+ * out, it's what the website shows a visitor with no account.
  */
 export function useInvitationPage(slug: string, token: string | null) {
-  return usePage<InvitationPageData>(eventKeys.invitation(slug, token), "invitationPage", slug, token);
+  const { session } = useSession();
+  const key = eventKeys.invitation(slug, token, session?.user.id ?? "");
+  return usePage<InvitationPageData>(key, "invitationPage", slug, token);
 }
 
 /**
@@ -87,7 +95,9 @@ export function useEventAction<R = unknown>() {
   const { demo } = useSession();
   return useMutation({
     mutationFn: async ({ action, args }: { action: string; args: unknown[] }) => {
-      if (demo) eventsInDemo();
+      // An RSVP is a guest's, on someone else's real event, so it goes
+      // through in the demo too, as it does signed out.
+      if (demo && !isGuestAction(action)) eventsInDemo();
       return runAction<R>(action, ...args);
     },
     onSettled: () =>

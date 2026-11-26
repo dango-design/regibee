@@ -7,7 +7,9 @@
 // A link to a website page for guests and followers, such as
 // regibee://r/<slug> or https://www.regibee.com/e/<slug>, opens inside the
 // app: on the app's own screen at the same path when it has one (nativePath
-// in src/lib/web.ts), and otherwise in the web view (src/app/web.tsx).
+// in src/lib/web.ts), and otherwise in the web view (src/app/web.tsx). That
+// holds signed out too: Android App Links reach a signed-out app, and the
+// native guest screens work without an account.
 
 import { nativePath, sitePathFromLink } from "@/lib/web";
 

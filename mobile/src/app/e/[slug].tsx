@@ -5,10 +5,11 @@
 //
 // It sits in the root stack, at the website's own path, so back returns to
 // whatever opened it. nativeRoute in src/lib/web.ts sends /e/<slug> here.
-// Signed out, it hands the page to the web view itself, since the app's
-// server routes need a signed-in account.
+// It works signed out and in the demo too, as the website's page does for a
+// visitor with no account: the loader and submitRsvp are guest calls
+// (src/lib/api.ts).
 
-import { Redirect, router, Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Platform, RefreshControl, Share, View } from "react-native";
 
 import { Icon } from "@/components/icon";
@@ -26,12 +27,11 @@ import {
 import { KeyboardScrollView } from "@/components/keyboard";
 import { Button, EmptyState, IconButton, LoadingState, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
-import { useSession } from "@/lib/auth";
 import { useInvitationPage } from "@/lib/events-data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { radius, spacing, useTheme } from "@/lib/theme";
-import { openWebView, sitePath } from "@/lib/web";
+import { openWebView } from "@/lib/web";
 
 export default function InvitationScreen() {
   const { slug, g } = useLocalSearchParams<{ slug: string; g?: string }>();
@@ -41,12 +41,7 @@ export default function InvitationScreen() {
   const pull = usePullToRefresh(page.refetch);
   const data = page.data;
   const colors = useInvitationColors(data?.event.theme_color, data?.event.event_type ?? "other");
-  const { session } = useSession();
   const webPath = `/e/${slug}${token ? `?g=${encodeURIComponent(token)}` : ""}`;
-
-  // Signed out (or looking around in the demo), the app's server routes
-  // won't answer, so the website's page shows instead.
-  if (!session) return <Redirect href={{ pathname: "/web", params: { path: sitePath(webPath) } }} />;
 
   if (!data) {
     if (!page.isError) return <LoadingState />;
