@@ -24,7 +24,7 @@ const extensionStores =
   storeNames.length > 1 ? `${storeNames.slice(0, -1).join(", ")} and ${storeNames[storeNames.length - 1]}` : storeNames.join("");
 
 const linkClass =
-  "rounded-sm font-medium text-brand-600 underline underline-offset-4 outline-focus-ring hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2";
+  "rounded-sm font-medium text-brand-tertiary underline underline-offset-4 outline-focus-ring hover:text-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const sections = [
   { id: "accounts", title: "If you have an account" },

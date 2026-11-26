@@ -160,7 +160,7 @@ export function DemoChecklist() {
                     onClick={() => setFilter(mode)}
                     className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                       filter === mode
-                        ? "bg-brand-solid text-white"
+                        ? "bg-brand-solid text-primary_on-brand"
                         : "hover:bg-active"
                     } ${mode === "all" ? "rounded-l-md" : ""} ${
                       mode === "not-added" ? "rounded-r-md" : ""
@@ -221,7 +221,7 @@ export function DemoChecklist() {
                     ) : (
                       <ChevronRight className="h-4 w-4 shrink-0" />
                     )}
-                    <Icon className="h-5 w-5 text-brand-600 shrink-0" />
+                    <Icon className="h-5 w-5 text-brand-tertiary shrink-0" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">

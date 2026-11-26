@@ -163,6 +163,19 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The public pages (`/r`, `/e`, `/u`) have none on purpose. With a loading screen, a list that doesn't exist would answer 200 instead of 404.
 - `NavigationProgress` (`src/components/navigation-progress.tsx`), in the root layout, shows a bar across the top of the window from a click on any link until the next page or its skeleton shows. It covers the pages with no loading screen.
 
+## Dark mode
+
+- The website follows the device's light or dark setting. It's CSS only: the `dark` variant in `src/app/globals.css` matches `prefers-color-scheme: dark`, so pages never flash light first. There's no switch on the site.
+- The dark colors are in the `@variant dark` block at the end of `src/styles/theme.css`. They follow the phone app's `darkTheme` (`mobile/src/lib/theme.ts`). Change both together.
+- Only the semantic tokens change in dark mode: `bg-primary`, `text-secondary`, `border-secondary`, `bg-brand-solid`, `text-brand-tertiary` and so on. Palette colors such as `text-brand-600`, `bg-mint-50` or `bg-sunshine-100` stay the same in both modes. So prefer a semantic token, and give a palette color its own `dark:` class, such as `bg-sunshine-50 dark:bg-sunshine-400/10`.
+- On a brand button (`bg-brand-solid`), use `text-primary_on-brand`, not `text-white`. In dark mode the button is light teal and its text is dark.
+- Text on a fill that stays light in both modes, like `bg-mint-500` or `bg-sunshine-400`, needs a palette color such as `text-gray-900`. `text-primary` would turn light.
+- A host's event color has a dark pair (`darkFill`, `darkInk` in `src/lib/event-colors.ts`). On the website, use `hostColorVars`, `HOST_FILL` and `HOST_INK` from `src/lib/host-colors.ts`.
+- Store photos keep a light tile in dark mode, since most have a white background.
+- The phone app's web view gets the phone's setting. iOS passes it through. On Android, WebView reports it from the app's theme, which Expo sets to follow the phone.
+- Storybook shows every story in light. A story with `parameters: { theme: "dark" }` shows in dark, and the toolbar's Theme menu shows any story in dark locally. A few page stories have a dark copy. Add one for a new page whose dark mode could break on its own, not for every story.
+- Emails stay light. Email apps handle dark mode in their own ways.
+
 ## Dropdowns
 
 - Never use a plain `<select>` on the website. The browser draws its menu itself, and it looks out of place. Use `SelectField` (`src/components/base/select/select-field.tsx`), which opens a styled list. In a price field, use `CurrencySelect`. For a small filter or sort pill, use `TightSelect`.

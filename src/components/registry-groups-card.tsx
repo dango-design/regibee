@@ -90,7 +90,7 @@ export function RegistryGroupsCard({
         ) : groups.length === 0 ? (
           <p className="text-sm text-tertiary">
             You don&apos;t have any groups yet. Make one on the{" "}
-            <Link href="/dashboard/events" className="font-medium text-brand-600 hover:underline">
+            <Link href="/dashboard/events" className="font-medium text-brand-tertiary hover:underline">
               Events tab
             </Link>
             , or save an event&apos;s guest list as a group.

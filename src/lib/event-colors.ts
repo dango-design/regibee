@@ -1,7 +1,8 @@
 // The colors a host picks for their event's invitation (events.theme_color).
 // A host can pick any color, so this turns it into two that always read well:
 // a fill, light enough for the site's text, and an ink, dark enough for icons
-// and labels on that fill or on white.
+// and labels on that fill or on white. Dark mode gets its own pair: a dark
+// fill for the site's light text, and a light ink.
 //
 // No imports, so the phone app can share it (@shared/event-colors) and its
 // test runs on plain Node.
@@ -21,6 +22,10 @@ export interface ThemeColors {
   fill: string;
   /** For icons and short labels, on the fill or on white: the host's color, darkened. */
   ink: string;
+  /** The fill in dark mode: the host's color mixed into the dark page color. */
+  darkFill: string;
+  /** The ink in dark mode, on the dark fill or the dark page: the host's color, lightened. */
+  darkInk: string;
 }
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -70,6 +75,15 @@ function mix(hex: string, toward: string, amount: number): string {
  */
 const MIN_FILL_LUMINANCE = 0.62;
 
+/** The page and panel color in dark mode (gray-950 in src/styles/theme.css). */
+const DARK_PAGE = "#110b0a";
+
+/**
+ * The lightest a dark-mode fill can be for the site's dark-mode tertiary
+ * text (gray-400) to sit on it at 4.5:1, with a little room.
+ */
+const MAX_DARK_FILL_LUMINANCE = 0.035;
+
 /**
  * A mark, like a checkmark, drawn on a swatch of the color itself: the site's
  * dark text color, or white on a dark color, whichever stands out more.
@@ -88,5 +102,17 @@ export function themeColors(color: string): ThemeColors {
   for (let step = 1; (contrast(ink, fill) < 4.5 || contrast(ink, "#ffffff") < 4.5) && step <= 20; step++) {
     ink = mix(color, "#000000", step / 20);
   }
-  return { fill, ink };
+  let darkFill = mix(DARK_PAGE, color, 0.3);
+  for (let step = 1; luminance(darkFill) > MAX_DARK_FILL_LUMINANCE && step <= 20; step++) {
+    darkFill = mix(DARK_PAGE, color, 0.3 * (1 - step / 20));
+  }
+  let darkInk = color;
+  for (
+    let step = 1;
+    (contrast(darkInk, darkFill) < 4.5 || contrast(darkInk, DARK_PAGE) < 4.5) && step <= 20;
+    step++
+  ) {
+    darkInk = mix(color, "#ffffff", step / 20);
+  }
+  return { fill, ink, darkFill, darkInk };
 }

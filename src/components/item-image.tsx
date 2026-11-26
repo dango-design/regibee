@@ -11,7 +11,7 @@ import {
   Gift,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 type CategoryTheme = {
   Icon: LucideIcon;
@@ -40,6 +40,16 @@ const CATEGORY_THEMES: ReadonlyArray<[RegExp, CategoryTheme]> = [
   [/maternity|postpartum|mama|mom/i, { Icon: Heart, bg: "#ffe9ef", fg: "#9d174d" }],
   [/gift|extra/i, { Icon: Gift, bg: "#e3f0ea", fg: "#004659" }],
 ];
+
+// In light mode a tile is its pastel with the darker icon. In dark mode the
+// pastel would glare, so the tile is the icon's color mixed into the page's
+// dark gray, and the icon is lightened.
+const TILE = "bg-(--tile-bg) dark:bg-[color-mix(in_srgb,var(--tile-fg)_24%,var(--color-gray-950))]";
+const TILE_ICON = "text-(--tile-fg) dark:text-[color-mix(in_srgb,var(--tile-fg)_45%,white)]";
+
+function tileColors(bg: string, fg: string) {
+  return { "--tile-bg": bg, "--tile-fg": fg } as CSSProperties;
+}
 
 function themeFor(categoryName?: string | null): CategoryTheme {
   if (!categoryName) return FALLBACK_THEME;
@@ -91,11 +101,11 @@ export function ItemImage({
   const { Icon, bg, fg } = themeFor(categoryName);
   return (
     <div
-      className={`relative flex ${sizeClass} shrink-0 items-center justify-center rounded-md ${className}`}
-      style={{ backgroundColor: bg }}
+      className={`relative flex ${sizeClass} shrink-0 items-center justify-center rounded-md ${TILE} ${className}`}
+      style={tileColors(bg, fg)}
       aria-hidden="true"
     >
-      <Icon className={iconClass} style={{ color: fg }} />
+      <Icon className={`${iconClass} ${TILE_ICON}`} />
     </div>
   );
 }
@@ -135,10 +145,11 @@ function FillImage({
 }: Pick<ItemImageProps, "imageUrl" | "title" | "categoryName" | "className">) {
   if (imageUrl) {
     return (
-      <div className={`flex w-full items-center justify-center overflow-hidden rounded-lg bg-secondary p-3 ${className}`}>
+      <div className={`flex w-full items-center justify-center overflow-hidden rounded-lg bg-secondary p-3 dark:bg-gray-50 ${className}`}>
         {/* Most store photos have a white background. Multiply blends that
             white into the box's colour, so the photo doesn't sit in a white
-            rectangle. */}
+            rectangle. On a dark box multiply would turn the photo almost
+            black, so in dark mode the box stays light, like a store's. */}
         <img
           src={imageUrl}
           alt={title}
@@ -153,11 +164,11 @@ function FillImage({
   const { Icon, bg, fg } = themeFor(categoryName);
   return (
     <div
-      className={`flex w-full items-center justify-center rounded-lg ${className}`}
-      style={{ backgroundColor: bg }}
+      className={`flex w-full items-center justify-center rounded-lg ${TILE} ${className}`}
+      style={tileColors(bg, fg)}
       aria-hidden="true"
     >
-      <Icon className="h-12 w-12" style={{ color: fg }} />
+      <Icon className={`h-12 w-12 ${TILE_ICON}`} />
     </div>
   );
 }

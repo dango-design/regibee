@@ -16,3 +16,8 @@ export const Default: Story = { args: { slug: "remi-and-max" } };
 
 // A personal registry: Max's birthday wishlist.
 export const BirthdayWishlist: Story = { args: { slug: "max-turns-30" } };
+
+// The baby registry in dark mode, which follows the device's setting. The
+// phone app shows this page in its web view, so it has to match the app's
+// dark screens.
+export const Dark: Story = { args: { slug: "remi-and-max" }, parameters: { theme: "dark" } };

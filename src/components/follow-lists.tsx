@@ -313,7 +313,7 @@ export function FollowLists({
           <SectionTitle sectionId="following">Following</SectionTitle>
           <CardDescription>
             People whose registries you follow. See them all on your{" "}
-            <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
+            <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-tertiary hover:underline">
               Following page
             </Link>
             .
@@ -323,7 +323,7 @@ export function FollowLists({
           {following.length === 0 ? (
             <p className="text-sm text-tertiary">
               You&apos;re not following anyone yet. Find people on your{" "}
-              <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
+              <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-tertiary hover:underline">
                 Following page
               </Link>
               , or open someone&apos;s profile link and tap Follow.

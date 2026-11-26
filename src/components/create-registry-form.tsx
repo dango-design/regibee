@@ -255,8 +255,8 @@ export function CreateRegistryForm({
         <input type="hidden" name="taxEnabled" value={hasZip ? "true" : "false"} />
 
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/10">
-            <Icon className="h-6 w-6 text-brand-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-solid/10">
+            <Icon className="h-6 w-6 text-brand-tertiary" />
           </div>
           <h1 className="text-2xl font-medium text-primary">New registry</h1>
           <p className="text-xs text-tertiary">{copy.tagline}</p>

@@ -96,11 +96,11 @@ function EveryoneGivesManager({
   const withList = taking.filter((g) => g.wishlist_url);
   const waiting = guests.filter((g) => g.rsvp_status === "pending").length;
   return (
-    <section aria-labelledby="exchange-manager-heading" className="flex flex-col gap-4 rounded-2xl bg-mint-50 p-4 sm:p-5">
+    <section aria-labelledby="exchange-manager-heading" className="flex flex-col gap-4 rounded-2xl bg-mint-50 dark:bg-mint-500/10 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-            <Users aria-hidden="true" className="size-4.5 text-mint-800" />
+            <Users aria-hidden="true" className="size-4.5 text-mint-800 dark:text-mint-300" />
           </span>
           <div>
             <h2 id="exchange-manager-heading" className="text-lg font-semibold text-primary">
@@ -111,7 +111,7 @@ function EveryoneGivesManager({
             </p>
           </div>
         </div>
-        <Link href={editHref} className="text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11">
+        <Link href={editHref} className="text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11">
           Change settings
         </Link>
       </div>
@@ -224,11 +224,11 @@ function DrawManager({
     .join(" · ");
 
   return (
-    <section aria-labelledby="exchange-manager-heading" className="flex flex-col gap-4 rounded-2xl bg-mint-50 p-4 sm:p-5">
+    <section aria-labelledby="exchange-manager-heading" className="flex flex-col gap-4 rounded-2xl bg-mint-50 dark:bg-mint-500/10 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-            <Shuffle aria-hidden="true" className="size-4.5 text-mint-800" />
+            <Shuffle aria-hidden="true" className="size-4.5 text-mint-800 dark:text-mint-300" />
           </span>
           <div>
             <h2 id="exchange-manager-heading" className="text-lg font-semibold text-primary">
@@ -237,7 +237,7 @@ function DrawManager({
             <p className="text-sm text-tertiary">{summary}</p>
           </div>
         </div>
-        <Link href={editHref} className="text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11">
+        <Link href={editHref} className="text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11">
           Change settings
         </Link>
       </div>
@@ -255,7 +255,7 @@ function DrawManager({
             </p>
           )}
           {status.stale && (
-            <p className="flex items-start gap-2 rounded-xl bg-sunshine-50 p-3 text-sm text-sunshine-900">
+            <p className="flex items-start gap-2 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-3 text-sm text-sunshine-900 dark:text-sunshine-200">
               <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               Someone joined or left after the draw, so not everyone has exactly one person. Draw again to fix it.
             </p>

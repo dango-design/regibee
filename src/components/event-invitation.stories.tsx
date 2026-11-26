@@ -523,3 +523,14 @@ export const EveryoneGivesEveryoneVisitor: Story = {
     await expect(within(lists).queryByText("Elphaba Thropp")).toBeNull();
   },
 };
+
+/**
+ * Dark mode, with a color the host picked. The host's light color would put
+ * the page's light text on a pale panel, so dark mode uses a dark fill of the
+ * same color (darkFill in src/lib/event-colors.ts).
+ */
+export const DarkWithHostColor: Story = {
+  ...NoPictureAlreadyReplied,
+  args: { event: { ...NoPictureAlreadyReplied.args!.event!, theme_color: "#a0e4d4" } },
+  parameters: { theme: "dark" },
+};

@@ -10,7 +10,7 @@ export function Logo({ size = "md", className }: { size?: "md" | "lg"; className
       <PandaMark className={cx("w-auto shrink-0", size === "lg" ? "h-11" : "h-9")} />
       <span
         className={cx(
-          "font-display font-bold tracking-tight text-brand-600",
+          "font-display font-bold tracking-tight text-brand-tertiary",
           size === "lg" ? "text-2xl" : "text-lg",
         )}
       >

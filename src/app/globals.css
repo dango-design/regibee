@@ -7,7 +7,19 @@
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-animate";
 
-@custom-variant dark (&:is(.dark-mode *));
+/* Dark mode follows the device's setting. The `light-mode` and `dark-mode`
+   classes on <html> force one mode; Storybook uses them. The dark colors are
+   in src/styles/theme.css. */
+@custom-variant dark {
+  &:where(.dark-mode, .dark-mode *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not(.light-mode), :root:not(.light-mode) *) {
+      @slot;
+    }
+  }
+}
 @custom-variant label (& [data-label]);
 @custom-variant focus-input-within (&:has(input:focus));
 /* While a finger or mouse button is down on a React Aria component. React Aria
@@ -21,9 +33,11 @@
   --font-mono: var(--font-geist-mono);
 
   /* Borders & inputs */
-  --color-border: var(--color-gray-200);
-  --color-input: var(--color-gray-300);
-  --color-ring: var(--color-brand-500);
+  /* Semantic tokens, so they change in dark mode. Same colors in light:
+     gray-200, gray-300 and brand-500. */
+  --color-border: var(--color-border-secondary);
+  --color-input: var(--color-border-primary);
+  --color-ring: var(--color-focus-ring);
 
   /* Chart colors */
   --color-chart-1: oklch(0.646 0.222 41.116);
