@@ -35,18 +35,23 @@ function activePurchases(registry: any): CardPurchase[] {
     .filter((p) => p.status !== "cancelled");
 }
 
-function toCard(registry: any, viewerId: string, hiddenItemIds: Set<string>, role: DashboardCard["role"]): DashboardCard {
+function toCard(
+  registry: any,
+  viewerId: string,
+  hiddenItemIds: Set<string>,
+  role: DashboardCard["role"],
+  weekAgo: number,
+): DashboardCard {
   // An owner who hides what's been reserved sees nothing reserved yet.
   const hidden = reservationsHiddenFrom(registry, viewerId);
   const allItems = (registry.registry_items as CardItem[] | null) || [];
   const items: CardItem[] = allItems.map((item) =>
     hidden || hiddenItemIds.has(item.id) ? itemAsUnreserved(item) : item
   );
-  const recentPurchases = (
-    hidden ? [] : activePurchases({ registry_items: allItems.filter((item) => !hiddenItemIds.has(item.id)) })
-  )
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .slice(0, 3);
+  const visiblePurchases = hidden
+    ? []
+    : activePurchases({ registry_items: allItems.filter((item) => !hiddenItemIds.has(item.id)) });
+  const recentPurchases = [...visiblePurchases].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 3);
 
   return {
     id: registry.id,
@@ -68,6 +73,7 @@ function toCard(registry: any, viewerId: string, hiddenItemIds: Set<string>, rol
     fulfilledItems: items.filter((item) => item.quantity_fulfilled >= item.quantity_needed).length,
     totalValue: items.reduce((sum, item) => sum + (item.price || 0), 0),
     recentActivity: recentPurchases.map((p) => ({ id: p.id, name: giverNameForOwner(p), action: giftActivityAction(p) })),
+    giftsThisWeek: visiblePurchases.filter((p) => Date.parse(p.created_at) >= weekAgo).length,
     reservationsHidden: hidden,
   };
 }
@@ -259,8 +265,8 @@ export async function loadDashboard(): Promise<DashboardData | null> {
   ).size;
 
   return {
-    owned: owned.map((registry) => toCard(registry, user.id, hiddenItemIds, "owner")),
-    shared: sharedRegistries.map((registry) => toCard(registry, user.id, hiddenItemIds, "manager")),
+    owned: owned.map((registry) => toCard(registry, user.id, hiddenItemIds, "owner", weekAgo)),
+    shared: sharedRegistries.map((registry) => toCard(registry, user.id, hiddenItemIds, "manager", weekAgo)),
     giftsThisWeek,
     followRequestCount,
     // Until one of their registries is on their profile, the profile link has

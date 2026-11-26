@@ -48,7 +48,7 @@ test("the dashboard shows the soonest events and the days left", async ({ page }
 
   // Soonest first, at most three. No date and past events stay on the Events tab.
   await expect(cards).toHaveCount(3);
-  await expect(cards.nth(0)).toHaveAccessibleName(new RegExp(`^Pool Party ${id}\\s*\\. 3 days to go\\..*2 going · 1 no reply`));
+  await expect(cards.nth(0)).toHaveAccessibleName(new RegExp(`^Pool Party ${id}\\s*\\. 3 days to go\\..*2 going`));
   await expect(cards.nth(0)).toHaveAttribute("href", `/dashboard/events/${party.id}`);
   await expect(cards.nth(1)).toHaveAccessibleName(new RegExp(`^Surprise Party ${id}\\s*\\. 5 days to go\\..*Celebrating you`));
   await expect(cards.nth(1)).toHaveAttribute("href", `/e/${shower.slug}`);

@@ -28,6 +28,8 @@ export interface DashboardCard {
   totalValue: number;
   /** The newest three gifts: "Ana reserved an item". Empty while reservations are hidden. */
   recentActivity: { id: string; name: string; action: string }[];
+  /** Gifts reserved on this list in the last 7 days. 0 while reservations are hidden. */
+  giftsThisWeek: number;
   /** The owner hides what's been reserved from themselves. */
   reservationsHidden: boolean;
 }

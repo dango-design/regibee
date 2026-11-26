@@ -12,13 +12,8 @@ const base: DashboardRegistryCardProps = {
   today: TODAY,
   totalItems: 32,
   fulfilledItems: 9,
-  totalValue: 3784,
-  recentActivity: [
-    { id: "1", name: "Auntie Glinda", action: "reserved an item" },
-    { id: "2", name: "Grandma Dorothy", action: "reserved an item" },
-  ],
+  giftsThisWeek: 2,
   manageHref: "/dashboard/registry/demo",
-  publicHref: "/r/demo",
 };
 
 const meta: Meta<typeof DashboardRegistryCard> = {
@@ -47,8 +42,7 @@ export const Birthday: Story = {
     eventDate: "2026-11-19",
     totalItems: 10,
     fulfilledItems: 4,
-    totalValue: 640,
-    recentActivity: [{ id: "1", name: "Jamie K.", action: "reserved an item" }],
+    giftsThisWeek: 0,
   },
 };
 
@@ -60,8 +54,7 @@ export const ChristmasTomorrow: Story = {
     eventDate: "2026-11-08",
     totalItems: 6,
     fulfilledItems: 1,
-    totalValue: 310,
-    recentActivity: [],
+    giftsThisWeek: 0,
   },
 };
 
@@ -73,8 +66,7 @@ export const WeddingAllDone: Story = {
     eventDate: "2026-09-06",
     totalItems: 18,
     fulfilledItems: 18,
-    totalValue: 2150,
-    recentActivity: [{ id: "1", name: "Cousin Toto", action: "reserved an item" }],
+    giftsThisWeek: 0,
   },
 };
 
@@ -87,9 +79,7 @@ export const SharedNoDate: Story = {
     eventDate: null,
     totalItems: 0,
     fulfilledItems: 0,
-    totalValue: 0,
-    recentActivity: [],
-    badge: "Manager",
+    giftsThisWeek: 0,
   },
 };
 
@@ -103,8 +93,22 @@ export const ReservationsHidden: Story = {
     eventDate: "2026-12-25",
     totalItems: 8,
     fulfilledItems: 0,
-    totalValue: 420,
-    recentActivity: [],
+    giftsThisWeek: 0,
     reservationsHidden: true,
+  },
+};
+
+// Only its owner and co-managers can open it.
+export const Private: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    title: "Our housewarming",
+    registryType: "personal",
+    eventType: "housewarming",
+    eventDate: null,
+    totalItems: 14,
+    fulfilledItems: 3,
+    giftsThisWeek: 1,
+    isPrivate: true,
   },
 };

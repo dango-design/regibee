@@ -43,7 +43,8 @@ const meta: Meta<typeof UpcomingEvents> = {
   component: UpcomingEvents,
   decorators: [
     (Story) => (
-      <div className="container mx-auto px-4 pb-8">
+      // About as wide as the column it sits in on a wide screen.
+      <div className="max-w-md p-6">
         <Story />
       </div>
     ),
@@ -53,7 +54,7 @@ const meta: Meta<typeof UpcomingEvents> = {
 export default meta;
 type Story = StoryObj<typeof UpcomingEvents>;
 
-// Soonest first. Tomorrow's stands out.
+// Soonest first. The next one stands out.
 export const ThreeComingUp: Story = {};
 
 // An event today, a party you're invited to and haven't answered, and a

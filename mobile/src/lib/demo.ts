@@ -189,6 +189,7 @@ function card(list: DemoList): DashboardCard {
     fulfilledItems: list.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length,
     totalValue: list.items.reduce((sum, i) => sum + (i.price ?? 0), 0),
     recentActivity: active.slice(0, 3).map((g) => ({ id: g.id, name: giverNameForOwner(g), action: giftActivityAction(g) })),
+    giftsThisWeek: active.filter((g) => Date.parse(g.created_at) >= Date.now() - 7 * 24 * 60 * 60 * 1000).length,
     reservationsHidden: false,
   };
 }

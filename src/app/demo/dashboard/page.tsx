@@ -1,17 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { Plus, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { DashboardRegistryCard } from "@/components/dashboard-registry-card";
-import { UpcomingEvents } from "@/components/upcoming-events";
-import { demoOwnRegistries, demoRegistryPath } from "@/lib/demo-registries";
+import { DashboardHome, type HomeList } from "@/components/dashboard-home";
+import { demoOwnRegistries } from "@/lib/demo-registries";
 import { DEMO_FOLLOWS } from "@/lib/demo-people";
 import { demoEvents, isDemoHost } from "@/lib/demo-events";
 import { formatEventTime, summarizeRsvps } from "@/lib/events";
 import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { addDays } from "@/lib/demo-data";
-import { giftActivityAction } from "@/lib/gifts";
 import { useDemoToday } from "../demo-today";
 import { DemoOwnerShell } from "../_components/demo-shell";
 import { DemoTour } from "../_components/demo-tour";
@@ -57,85 +52,39 @@ export default function DemoDashboardPage() {
     today,
   );
 
+  // Each list as the real page's loader shapes it (src/lib/dashboard-page.ts).
+  const owned: HomeList[] = registries.map((registry) => ({
+    id: registry.id,
+    title: registry.title,
+    registry_type: registry.registry_type,
+    event_type: registry.event_type,
+    event_date: registry.event_date,
+    photo_url: null,
+    is_private: false,
+    totalItems: registry.items.length,
+    fulfilledItems: registry.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length,
+    // Item gifts only, as the real loader counts them: chip-ins to a fund aren't items.
+    giftsThisWeek: registry.purchases.filter(
+      (p) => p.status !== "cancelled" && !p.cash_fund_id && p.created_at >= weekAgo,
+    ).length,
+    reservationsHidden: false,
+  }));
+
   return (
     <DemoOwnerShell tabs>
-      <div className="container mx-auto px-4 pt-6 pb-8">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="sr-only">My Registries</h1>
-            <p className="flex items-start gap-2 text-tertiary">
-              <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-mint-500" />
-              {giftsThisWeek === 1 ? "1 gift reserved this week" : `${giftsThisWeek} gifts reserved this week`}
-            </p>
-          </div>
-          {/* The demo can't make registries, so this is where you make your own. */}
-          <Button asChild>
-            <Link href="/signup">
-              <span className="inline-flex items-center gap-1.5">
-                <Plus className="h-4 w-4 shrink-0" />
-                New Registry
-              </span>
-            </Link>
-          </Button>
-        </div>
-
-        <div className="mt-6">
-          <DemoTour />
-        </div>
-
-        {requestCount > 0 && (
-          <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-blush-50 dark:bg-blush-300/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-                <UserPlus aria-hidden="true" className="h-4.5 w-4.5 text-blush-700 dark:text-blush-200" />
-              </span>
-              <div>
-                <p className="font-medium">
-                  {requestCount === 1 ? "1 person wants to follow you" : `${requestCount} people want to follow you`}
-                </p>
-                <p className="text-sm text-tertiary">
-                  People you approve see your birthday and the lists you show followers.
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="shrink-0" asChild>
-              <Link href="/demo/dashboard/account#follow-requests">Review requests</Link>
-            </Button>
-          </div>
-        )}
-
-        <UpcomingEvents events={upcomingEvents} today={today} basePath="/demo" />
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {registries.map((registry) => {
-            // Item gifts only, worded as the real dashboard and the app word them.
-            const recent = [...registry.purchases]
-              .filter((p) => p.status !== "cancelled" && !p.cash_fund_id)
-              .sort((a, b) => b.created_at.localeCompare(a.created_at))
-              .slice(0, 3);
-            return (
-              <DashboardRegistryCard
-                key={registry.id}
-                title={registry.title}
-                registryType={registry.registry_type}
-                eventType={registry.event_type}
-                eventDate={registry.event_date}
-                today={today}
-                totalItems={registry.items.length}
-                fulfilledItems={registry.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length}
-                totalValue={registry.items.reduce((sum, i) => sum + (i.price || 0), 0)}
-                recentActivity={recent.map((p) => ({
-                  id: p.id,
-                  name: p.buyer_name,
-                  action: giftActivityAction(p),
-                }))}
-                manageHref={`/demo/dashboard/registry/${registry.id}`}
-                publicHref={demoRegistryPath(registry)}
-              />
-            );
-          })}
-        </div>
-      </div>
+      <DashboardHome
+        owned={owned}
+        shared={[]}
+        giftsThisWeek={giftsThisWeek}
+        followRequestCount={requestCount}
+        showProfilePrompt={false}
+        upcomingEvents={upcomingEvents}
+        today={today}
+        basePath="/demo"
+        // The demo can't make registries, so this is where you make your own.
+        newButton={{ label: "New Registry", href: "/signup" }}
+        intro={<DemoTour />}
+      />
     </DemoOwnerShell>
   );
 }
