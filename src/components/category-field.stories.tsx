@@ -9,7 +9,7 @@ const CATEGORIES = [
 ];
 
 /** Keeps the categories and the chosen one, as the item dialogs do. */
-function Field({ start, chosen }: { start: { id: string; name: string }[]; chosen?: string }) {
+function Field({ start, chosen, hint }: { start: { id: string; name: string }[]; chosen?: string; hint?: string }) {
   const [categories, setCategories] = useState(start);
   const [value, setValue] = useState(chosen);
   return (
@@ -18,6 +18,7 @@ function Field({ start, chosen }: { start: { id: string; name: string }[]; chose
         categories={categories}
         value={value}
         onChange={setValue}
+        hint={hint}
         onCreate={async (name) => {
           const made = { id: `new-${name}`, name };
           setCategories((before) => [...before, made]);
@@ -62,5 +63,15 @@ export const AddingTheFirst: Story = {
     await userEvent.type(field, "Kitchen", { skipClick: true });
     await userEvent.click(await within(document.body).findByRole("option", { name: "Add “Kitchen”" }));
     await expect(field).toHaveValue("Kitchen");
+  },
+};
+
+// A guessed category the list doesn't have yet, as the add item dialog shows
+// it. It's added to the list when the item is saved.
+export const GuessedNewCategory: Story = {
+  args: {
+    start: [...CATEGORIES, { id: "__new_category__", name: "Food & Drink" }],
+    chosen: "__new_category__",
+    hint: "A new category. It's added to the list when you save.",
   },
 };

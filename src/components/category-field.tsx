@@ -35,6 +35,8 @@ interface CategoryFieldProps {
   onCreate: (name: string) => Promise<string | null>;
   /** Sends the chosen id with a form. */
   name?: string;
+  /** A line under the field, such as that the chosen category is new. */
+  hint?: string;
 }
 
 // Keys for the two rows that aren't categories.
@@ -46,7 +48,7 @@ const HINT_KEY = "__hint__";
  * isn't in the list and choose Add. It works with no categories yet, so the
  * field is never greyed out.
  */
-export function CategoryField({ label = "Category", categories, value, onChange, onCreate, name }: CategoryFieldProps) {
+export function CategoryField({ label = "Category", categories, value, onChange, onCreate, name, hint }: CategoryFieldProps) {
   const selected = categories.find((category) => category.id === value);
   const selectedName = selected?.name ?? "";
   const [text, setText] = useState(selectedName);
@@ -165,6 +167,7 @@ export function CategoryField({ label = "Category", categories, value, onChange,
           </AriaListBox>
         </Popover>
         {name && <input type="hidden" name={name} value={value ?? ""} />}
+        {hint && !creating && !error && <p className="text-xs text-tertiary">{hint}</p>}
         {creating && <p className="text-xs text-tertiary">Adding…</p>}
         {error && <p className="text-xs text-error-primary">{error}</p>}
       </AriaComboBox>

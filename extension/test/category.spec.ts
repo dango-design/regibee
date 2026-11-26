@@ -8,18 +8,21 @@ import type { BrowserContext } from "@playwright/test";
 import type { ExtensionRegistry } from "../../src/lib/extension";
 import { connect, expect, NEW_CATEGORY_ID, REGISTRY, tabIdFor, test } from "./extension";
 
-const PRODUCT_URL = "https://www.target.com/p/hooded-towel/-/A-23456789";
-const PRODUCT_PAGE = `<!doctype html>
+const PRODUCT_URL = "https://www.target.com/p/snuggle-bundle/-/A-23456789";
+// A name no category guess matches (src/lib/item-categories.ts), so the menu
+// starts on "No category".
+const PRODUCT_NAME = "Snuggle Bundle";
+const productPage = (name: string, breadcrumbs = "") => `<!doctype html>
 <html>
   <head>
-    <title>Hooded Towel : Target</title>
+    <title>${name} : Target</title>
     <script type="application/ld+json">
-      {"@context":"https://schema.org","@type":"Product","name":"Hooded Towel",
-       "image":["https://target.scene7.com/is/image/Target/hooded-towel"],
+      {"@context":"https://schema.org","@type":"Product","name":"${name}",
+       "image":["https://target.scene7.com/is/image/Target/product"],
        "offers":{"@type":"Offer","price":"14.99","priceCurrency":"USD"}}
-    </script>
+    </script>${breadcrumbs}
   </head>
-  <body><h1>Hooded Towel</h1></body>
+  <body><h1>${name}</h1></body>
 </html>`;
 
 const FEEDING = { id: "00000000-0000-4000-8000-0000000000f1", name: "Feeding" };
@@ -27,17 +30,23 @@ const WITH_CATEGORY: ExtensionRegistry = { ...REGISTRY, categories: [FEEDING] };
 
 test.describe.configure({ mode: "parallel" });
 
-async function openForm(context: BrowserContext, worker: import("@playwright/test").Worker, extensionId: string) {
+async function openForm(
+  context: BrowserContext,
+  worker: import("@playwright/test").Worker,
+  extensionId: string,
+  name = PRODUCT_NAME,
+  breadcrumbs = ""
+) {
   await context.route(
     (url) => url.href === PRODUCT_URL,
-    (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: PRODUCT_PAGE })
+    (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: productPage(name, breadcrumbs) })
   );
   const tab = await context.newPage();
   await tab.goto(PRODUCT_URL);
   const tabId = await tabIdFor(worker, PRODUCT_URL);
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html?tab=${tabId}`);
-  await expect(popup.locator("#title")).toHaveValue("Hooded Towel");
+  await expect(popup.locator("#title")).toHaveValue(name);
   return { popup, tabId };
 }
 
@@ -112,4 +121,36 @@ test("a name the registry already has picks that category", async ({ context, wo
   const category = popup.getByLabel("Category", { exact: true });
   await expect(category).toHaveValue(FEEDING.id);
   await expect(category.locator("option")).toHaveText(["No category", "Feeding"]);
+});
+
+test("a guessed category the registry doesn't have yet is made when the product is added", async ({ context, worker, extensionId }) => {
+  const calls = await connect(context, worker, { registries: [WITH_CATEGORY] });
+  const { popup } = await openForm(context, worker, extensionId, "Lindt Milk Chocolate Truffles");
+
+  const category = popup.getByLabel("Category", { exact: true });
+  await expect(category.locator("option")).toHaveText(["No category", "Feeding", "Food & Drink (new)"]);
+  await expect(category.locator("option:checked")).toHaveText("Food & Drink (new)");
+  // Nothing is made until the product is added.
+  expect(calls.filter((call) => call.path === "/api/extension/categories")).toHaveLength(0);
+
+  await popup.getByRole("button", { name: "Add to Regibee" }).click();
+  await expect(popup.getByRole("heading", { name: "Added to Regibee" })).toBeVisible();
+  const made = calls.filter((call) => call.path === "/api/extension/categories");
+  expect(made).toHaveLength(1);
+  expect(made[0].body).toEqual({ registryId: REGISTRY.id, name: "Food & Drink" });
+  const adds = calls.filter((call) => call.path === "/api/extension/product");
+  expect((adds[0].body as { item: { categoryId: string } }).item.categoryId).toBe(NEW_CATEGORY_ID);
+});
+
+test("the store's breadcrumbs pick a category the registry has", async ({ context, worker, extensionId }) => {
+  await connect(context, worker, { registries: [WITH_CATEGORY] });
+  const breadcrumbs = `
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+        {"@type":"ListItem","position":1,"name":"Target"},
+        {"@type":"ListItem","position":2,"name":"Baby"},
+        {"@type":"ListItem","position":3,"name":"Feeding"}]}
+    </script>`;
+  const { popup } = await openForm(context, worker, extensionId, PRODUCT_NAME, breadcrumbs);
+  await expect(popup.getByLabel("Category", { exact: true })).toHaveValue(FEEDING.id);
 });

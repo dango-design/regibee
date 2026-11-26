@@ -57,7 +57,7 @@ import {
   useUpdateItem,
 } from "@/lib/data";
 import { formatGiftDate, giftActivityTag } from "@shared/gifts";
-import { guessCategory } from "@shared/item-categories";
+import { suggestCategory } from "@shared/item-categories";
 import { formatPrice, parsePrice } from "@/lib/format";
 import { pickPhoto, uploadListPhoto } from "@/lib/photos";
 import { itemMatchKey, normalizeLink, parseSharedText, storeLabel, type ReadProduct } from "@/lib/product";
@@ -182,6 +182,9 @@ export function ItemEditor({
   const [error, setError] = useState<string | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
   const [categoryTouched, setCategoryTouched] = useState(mode === "edit");
+  // A guessed category the list doesn't have yet, such as "Food & Drink". It
+  // shows as chosen and is made when the item is saved, as on the website.
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
   // The price before estimated sales tax was added, as the website's add dialog shows it.
   const [taxInfo, setTaxInfo] = useState<{ original: string; rate: number } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -304,6 +307,7 @@ export function ItemEditor({
       // name from the words in the link if it has one, as the website does.
       const guess = mode === "add" && !title.trim() && source ? nameFromProductUrl(source) : undefined;
       if (guess) setTitle(guess);
+      if (mode === "add" && (guess || title.trim())) chooseGuessedCategory(guess || title);
       setGuessedName(Boolean(guess));
       setFailedWithName(Boolean(title.trim()));
       return;
@@ -324,11 +328,8 @@ export function ItemEditor({
     if (product.title && (!titleTouched || !title.trim())) {
       if (product.title !== title) filledAny = true;
       setTitle(product.title);
-      // The website's add dialog guesses a category from the name.
-      if (!categoryTouched) {
-        const guess = guessCategory(product.title, categories);
-        if (guess) setCategoryId(guess);
-      }
+      // The website's add dialog guesses a category the same way.
+      chooseGuessedCategory(product.title, product.storeCategory);
     }
     if (product.price != null && (!priceTouched || !priceText.trim())) {
       setPriceText(product.price.toFixed(2));
@@ -503,16 +504,7 @@ export function ItemEditor({
       return;
     }
     if (mode === "add") {
-      addItem.mutate(
-        { registryId, input: input() },
-        {
-          onSuccess: (added) => {
-            haptic("success");
-            onDone({ type: "added", registryId, title: added.title });
-          },
-          onError: (e) => setError(errorMessage(e)),
-        }
-      );
+      void addNew(registryId);
     } else if (item) {
       updateItem.mutate(
         { item, input: input() },
@@ -523,6 +515,29 @@ export function ItemEditor({
       haptic("success");
       onDone({ type: "saved", registryId });
     }
+  }
+
+  /** Adds the item, after making a guessed category the list doesn't have yet. */
+  async function addNew(registryId: string) {
+    let categoryForItem = categoryId;
+    if (suggestedCategory && categoryId === null) {
+      try {
+        const made = await createCategory.mutateAsync({ registryId, name: suggestedCategory });
+        categoryForItem = made.id;
+      } catch {
+        // The item matters more than its category: save it without one.
+      }
+    }
+    addItem.mutate(
+      { registryId, input: { ...input(), category_id: categoryForItem } },
+      {
+        onSuccess: (added) => {
+          haptic("success");
+          onDone({ type: "added", registryId, title: added.title });
+        },
+        onError: (e) => setError(errorMessage(e)),
+      }
+    );
   }
 
   function confirmDelete() {
@@ -544,6 +559,19 @@ export function ItemEditor({
     ]);
   }
 
+  /**
+   * Chooses the category that fits the item best (src/lib/item-categories.ts),
+   * unless the owner already chose one: one of the list's, or a new one made
+   * when the item is saved.
+   */
+  function chooseGuessedCategory(name: string, storeCategory?: string[]) {
+    if (categoryTouched) return;
+    const guess = suggestCategory({ title: name, storeCategory }, categories);
+    if (!guess) return;
+    setCategoryId(guess.id ?? null);
+    setSuggestedCategory(guess.id ? null : guess.name);
+  }
+
   function addCategory() {
     const name = newCategory?.trim();
     if (!name || !registryId) return;
@@ -552,6 +580,7 @@ export function ItemEditor({
       {
         onSuccess: (category) => {
           setCategoryId(category.id);
+          setSuggestedCategory(null);
           setCategoryTouched(true);
           setNewCategory(null);
         },
@@ -560,7 +589,8 @@ export function ItemEditor({
     );
   }
 
-  const saving = addItem.isPending;
+  // Saving can first make a guessed category (addNew).
+  const saving = addItem.isPending || (createCategory.isPending && newCategory === null);
   const store = storeLabel(link);
   const openUrl = normalizeLink(link);
   const saveTitle =
@@ -880,9 +910,10 @@ export function ItemEditor({
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
               <Chip
                 label="No category"
-                selected={categoryId === null}
+                selected={categoryId === null && suggestedCategory === null}
                 onPress={() => {
                   setCategoryId(null);
+                  setSuggestedCategory(null);
                   setCategoryTouched(true);
                 }}
               />
@@ -893,10 +924,14 @@ export function ItemEditor({
                   selected={c.id === categoryId}
                   onPress={() => {
                     setCategoryId(c.id);
+                    setSuggestedCategory(null);
                     setCategoryTouched(true);
                   }}
                 />
               ))}
+              {suggestedCategory !== null ? (
+                <Chip label={`${suggestedCategory} (new)`} selected={categoryId === null} onPress={() => setCategoryId(null)} />
+              ) : null}
               {newCategory === null ? (
                 <Chip label="+ New category" selected={false} onPress={() => setNewCategory("")} />
               ) : null}

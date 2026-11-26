@@ -377,8 +377,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <List>
               <li>
                 <strong className="font-semibold text-primary">Sharing and pasting products.</strong> When you share
-                a product to Regibee or paste a link, the app reads the product&apos;s name, price, pictures and
-                barcode number on your phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
+                a product to Regibee or paste a link, the app reads the product&apos;s name, price, pictures,
+                barcode number and the store&apos;s category for it on your phone. The category only helps suggest
+                one of yours and isn&apos;t saved. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
                 store sees a visit from your phone just as if you&apos;d opened the page yourself. Nothing goes to
                 Regibee until you save the item.
               </li>
@@ -457,7 +458,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">The page you&apos;re on, when you ask.</strong> It reads
                 a product page only when you click its toolbar button, use its &ldquo;Add to Regibee&rdquo; menu item
-                or press its shortcut. It reads the product&apos;s name, price, pictures and barcode number. You can add
+                or press its shortcut. It reads the product&apos;s name, price, pictures, barcode number and the
+                store&apos;s category for it. The category only helps suggest one of yours and isn&apos;t saved. You can add
                 the product to a registry or save it as a gift idea, which only you can see.
               </li>
               <li>

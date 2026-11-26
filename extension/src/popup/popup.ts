@@ -14,7 +14,7 @@ import {
   type ProductItem,
   type StoreItem,
 } from "@/lib/extension";
-import { categoryName, MAX_CATEGORY_NAME_LENGTH } from "@/lib/item-categories";
+import { categoryName, MAX_CATEGORY_NAME_LENGTH, suggestCategory } from "@/lib/item-categories";
 import { classifyStoreLink, EXTENSION_STORES, getStore, storeItemKey, type StoreId, type StoreInfo } from "@/lib/retailers";
 import { REGIBEE_URL, VERSION_NAME } from "../config";
 import { readProductPage, type ProductPage } from "../product-reader";
@@ -583,6 +583,8 @@ interface ProductContext {
   preferredImage?: string | null;
 }
 
+/** The category menu's value for a guessed category the registry doesn't have yet. */
+const NEW_CATEGORY_VALUE = "__new_category__";
 const PREV = '<path d="m15 18-6-6 6-6"/>';
 const NEXT = '<path d="m9 18 6-6-6-6"/>';
 const MINUS = '<path d="M5 12h14"/>';
@@ -664,13 +666,32 @@ function showProduct(ctx: ProductContext) {
   qty.addEventListener("change", () => setQuantity(Number(qty.value)));
 
   const category = h("select", { id: "category" }) as HTMLSelectElement;
+  // A guessed category the registry doesn't have yet, such as "Food & Drink".
+  // It's chosen in the menu and made when the item is added, as on the site's
+  // add-item dialog.
+  let newCategoryName: string | null = null;
   const fillCategories = () => {
+    const categories = registry()?.categories ?? [];
     category.replaceChildren(
       h("option", { value: "" }, "No category"),
-      ...(registry()?.categories ?? []).map((c) => h("option", { value: c.id }, c.name))
+      ...categories.map((c) => h("option", { value: c.id }, c.name))
     );
+    newCategoryName = null;
+  };
+  /** Chooses the category that fits the product best (src/lib/item-categories.ts). */
+  const guessCategory = () => {
+    const guess = suggestCategory({ title: title.value, storeCategory: product.storeCategory }, registry()?.categories ?? []);
+    if (!guess) return;
+    if (guess.id) {
+      category.value = guess.id;
+      return;
+    }
+    newCategoryName = guess.name;
+    category.append(h("option", { value: NEW_CATEGORY_VALUE }, `${guess.name} (new)`));
+    category.value = NEW_CATEGORY_VALUE;
   };
   fillCategories();
+  guessCategory();
 
   // "+ New category", as on the site's add-item dialog: it makes the
   // category on the registry and picks it.
@@ -899,6 +920,7 @@ function showProduct(ctx: ProductContext) {
     }
     registryId = value;
     fillCategories();
+    guessCategory();
     closeNewCategory();
     setMode("list");
     await ask({ type: "set-registry", registryId: value });
@@ -939,6 +961,15 @@ function showProduct(ctx: ProductContext) {
     if (priceValue === undefined) return;
     button.disabled = true;
     button.textContent = "Adding…";
+    // A guessed category the registry doesn't have yet: make it first.
+    if (category.value === NEW_CATEGORY_VALUE && newCategoryName && newCategoryForm.hidden) {
+      newCategory.value = newCategoryName;
+      if (!(await addCategory())) {
+        // Add the item anyway, without a category.
+        closeNewCategory();
+        category.value = "";
+      }
+    }
     // A new category typed but not added yet: make it first, so the item goes in it.
     if (!newCategoryForm.hidden && categoryName(newCategory.value) && !(await addCategory())) {
       button.disabled = false;

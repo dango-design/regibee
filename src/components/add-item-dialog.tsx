@@ -25,7 +25,7 @@ import { addRegistryItem, createCategory } from "@/lib/actions/registry";
 import { fetchProductDetails } from "@/lib/fetch-product";
 import { gtinForLink, type ReadGtin } from "@/lib/gtin";
 import { estimateTax } from "@/lib/actions/tax";
-import { guessCategory } from "@/lib/item-categories";
+import { suggestCategory } from "@/lib/item-categories";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 import { copyFor } from "@/lib/registry-copy";
 import { detectStore, type RetailerRegistry, type StoreId } from "@/lib/retailers";
@@ -109,6 +109,9 @@ export const readLinkMessages = {
       : `We couldn't read the details from ${store}. Your link is kept, so add the name and the rest by hand.`,
 };
 
+/** The category field's key for a guessed category the list doesn't have yet. */
+const NEW_CATEGORY_KEY = "__new_category__";
+
 const currencySymbols: Record<string, string> = {
   USD: "$",
   EUR: "€",
@@ -159,6 +162,12 @@ export function AddItemDialog({
   const [brokenCandidates, setBrokenCandidates] = useState<Set<string>>(new Set());
   const [categoryId, setCategoryId] = useState<string | undefined>(defaultValues?.categoryId);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
+  // A guessed category the list doesn't have yet, such as "Food & Drink". It
+  // shows in the field as chosen and is added to the list when the item is
+  // saved, so closing the dialog leaves no empty category behind.
+  const [newCategoryName, setNewCategoryName] = useState<string | null>(null);
+  const pendingChosen = newCategoryName !== null && categoryId === NEW_CATEGORY_KEY;
+  const fieldCategories = pendingChosen ? [...categories, { id: NEW_CATEGORY_KEY, name: newCategoryName }] : categories;
 
   const [externalUrl, setExternalUrl] = useState(openWithLink?.url || "");
 
@@ -178,6 +187,8 @@ export function AddItemDialog({
   // The product's barcode number and the link it was read from. It's saved
   // only if the item keeps that link (src/lib/gtin.ts).
   const readGtin = useRef<ReadGtin | null>(null);
+  // The item name a category was last guessed from.
+  const guessedFrom = useRef<string | null>(null);
 
   // Reading the clipboard needs a secure page and a browser that allows it.
   // Only the open dialog asks, so this never runs during server rendering.
@@ -222,8 +233,23 @@ export function AddItemDialog({
     }
   };
 
-  // The phone app guesses the same way (src/lib/item-categories.ts).
-  const inferCategory = (productTitle: string): string | undefined => guessCategory(productTitle, categories);
+  /**
+   * Chooses the category that fits the item best, when none is chosen yet: one
+   * of the list's, or a new one to add on saving. True when it chose one. The
+   * phone app and the extension guess the same way (src/lib/item-categories.ts).
+   */
+  const inferCategory = (productTitle: string, storeCategory?: string[]): boolean => {
+    if (categoryId) return false;
+    const guess = suggestCategory({ title: productTitle, storeCategory }, categories);
+    if (!guess) return false;
+    if (guess.id) {
+      setCategoryId(guess.id);
+    } else {
+      setNewCategoryName(guess.name);
+      setCategoryId(NEW_CATEGORY_KEY);
+    }
+    return true;
+  };
 
   /**
    * Reads the link and fills in what the owner hasn't. `knownTitle` is a name
@@ -279,6 +305,7 @@ export function AddItemDialog({
       const store = storeNameForLink(url);
       const guessedTitle = currentTitle ? undefined : nameFromProductUrl(url);
       if (guessedTitle) setTitle(guessedTitle);
+      if (currentTitle || guessedTitle) inferCategory(currentTitle || guessedTitle || "");
       setScrapeStatus(
         guessedTitle
           ? `We couldn't read the details from ${store}, so we took the name from the link. Check it and fill in the rest.`
@@ -318,12 +345,8 @@ export function AddItemDialog({
         }
       }
       const titleForCategory = result.title || currentTitle;
-      if (titleForCategory && !categoryId) {
-        const inferred = inferCategory(titleForCategory);
-        if (inferred) {
-          setCategoryId(inferred);
-          filledAny = true;
-        }
+      if ((titleForCategory || result.storeCategory) && inferCategory(titleForCategory ?? "", result.storeCategory)) {
+        filledAny = true;
       }
       const store = storeNameForLink(url);
       setScrapeStatus(filledAny ? readLinkMessages.filled(store) : readLinkMessages.nothingNew(store));
@@ -361,6 +384,7 @@ export function AddItemDialog({
     lastReadUrl.current = null;
     picturesFrom.current = null;
     readGtin.current = null;
+    guessedFrom.current = null;
     setScraping(false);
     setScrapeStatus("");
     setScrapeIsError(false);
@@ -374,6 +398,7 @@ export function AddItemDialog({
     setImageCandidates([]);
     setBrokenCandidates(new Set());
     setCategoryId(defaultValues?.categoryId);
+    setNewCategoryName(null);
     setExternalUrl("");
     setError("");
     if (saveTo) {
@@ -395,6 +420,7 @@ export function AddItemDialog({
     setChosenListId(id);
     setCategories(list.categories);
     setCategoryId(undefined);
+    setNewCategoryName(null);
   };
 
   const handleSubmit = async (formData: FormData) => {
@@ -408,6 +434,18 @@ export function AddItemDialog({
       }
     }
     formData.set("gtin", gtinForLink(readGtin.current, formData.get("externalUrl") as string | null));
+    // A guessed category the list doesn't have yet is added now.
+    if (formData.get("categoryId") === NEW_CATEGORY_KEY) {
+      const made = newCategoryName ? await createCategory(registryId, newCategoryName) : null;
+      if (made?.category) {
+        const category = made.category;
+        setCategories((before) => (before.some((c) => c.id === category.id) ? before : [...before, category]));
+        formData.set("categoryId", category.id);
+      } else {
+        // The item matters more than its category: save it without one.
+        formData.set("categoryId", "");
+      }
+    }
     const result = await addRegistryItem(registryId, formData);
     if (result?.error) {
       setError(result.error);
@@ -558,6 +596,13 @@ export function AddItemDialog({
             placeholder={isBaby ? "e.g., Convertible Crib" : "e.g., Wireless Headphones"}
             value={title}
             onChange={setTitle}
+            onBlur={() => {
+              // Only for a name that changed, so a category the owner took
+              // away doesn't come back each time they leave the field.
+              if (!title.trim() || guessedFrom.current === title) return;
+              guessedFrom.current = title;
+              inferCategory(title);
+            }}
             autoComplete="off"
             enterKeyHint="next"
             isRequired
@@ -573,9 +618,10 @@ export function AddItemDialog({
 
           <CategoryField
             name="categoryId"
-            categories={categories}
+            categories={fieldCategories}
             value={categoryId}
             onChange={setCategoryId}
+            hint={pendingChosen ? "A new category. It's added to the list when you save." : undefined}
             onCreate={async (name) => {
               const result = await createCategory(registryId, name);
               if (result?.error) return result.error;

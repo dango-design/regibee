@@ -483,6 +483,40 @@ export function useCreateRegistry() {
   });
 }
 
+/** What "Sort into categories" changed, so Undo can put it back (src/lib/actions/categories.ts). */
+export interface CategorySortUndo {
+  moved: { itemId: string; categoryId: string; placed: boolean }[];
+  added: string[];
+}
+
+/** Puts the list's items with no category into the ones that fit, as the website's button does. */
+export function useSortIntoCategories(registryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<{ sorted: number; added: number; undo: CategorySortUndo }> => {
+      if (isDemo()) return demo.sortIntoCategories(registryId);
+      const result = await act<{ sorted?: number; added?: number; undo?: CategorySortUndo }>(
+        "categories.sortIntoCategories",
+        registryId
+      );
+      return { sorted: result.sorted ?? 0, added: result.added ?? 0, undo: result.undo ?? { moved: [], added: [] } };
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.registry(registryId) }),
+  });
+}
+
+/** Puts back what useSortIntoCategories changed. */
+export function useUndoCategorySort(registryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (undo: CategorySortUndo) => {
+      if (isDemo()) return demo.undoCategorySort(registryId, undo);
+      await act("categories.undoCategorySort", registryId, undo);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.registry(registryId) }),
+  });
+}
+
 export function useCreateCategory() {
   const queryClient = useQueryClient();
   return useMutation({
