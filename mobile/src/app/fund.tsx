@@ -4,20 +4,21 @@
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, View } from "react-native";
+import { Alert, Linking, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { formatGiftDate, giftActivityTag } from "@shared/gifts";
 
+import { KeyboardFooter, KeyboardScrollView, useKeyboardFooter } from "@/components/keyboard";
 import { Button, Divider, EmptyState, Field, haptic, IconButton, Pill, Section, Text } from "@/components/ui";
 import { errorMessage, useDeleteFund, useRegistry, useSaveFund } from "@/lib/data";
 import { formatPrice, parsePrice } from "@/lib/format";
-import { spacing, useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/theme";
 
 export default function FundScreen() {
   const { registryId, fundId } = useLocalSearchParams<{ registryId: string; fundId?: string }>();
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardFooter = useKeyboardFooter();
   const registry = useRegistry(registryId);
   const fund = fundId ? registry.data?.funds.find((f) => f.id === fundId) : undefined;
   const gifts = fundId ? (registry.data?.gifts ?? []).filter((g) => g.cash_fund_id === fundId) : [];
@@ -68,7 +69,7 @@ export default function FundScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Stack.Screen
         options={{
           title: fund ? "Edit gift fund" : "Create gift fund",
@@ -78,7 +79,7 @@ export default function FundScreen() {
               : undefined,
         }}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
         <Field label="Fund Name" value={title} onChangeText={setTitle} placeholder="e.g., Diaper Fund" autoCapitalize="words" />
         <Field
           label="Description (optional)"
@@ -148,15 +149,15 @@ export default function FundScreen() {
         ) : null}
 
         {fund ? <Button title="Delete" variant="danger" icon="trash" onPress={confirmDelete} /> : null}
-      </ScrollView>
-      <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+      </KeyboardScrollView>
+      <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (
           <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
             {error}
           </Text>
         ) : null}
         <Button title={fund ? "Save changes" : "Create fund"} onPress={submit} loading={save.isPending} />
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardFooter>
+    </>
   );
 }

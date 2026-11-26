@@ -5,7 +5,7 @@
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NOTES_MAX, RECIPIENT_MAX, TITLE_MAX, recentRecipients, recipientKey } from "@shared/gift-ideas";
@@ -14,6 +14,7 @@ import { nameFromProductUrl } from "@shared/shared-link";
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
+import { KeyboardFooter, KeyboardScrollView, useKeyboardFooter } from "@/components/keyboard";
 import { PasteLinkButton } from "@/components/paste-link-button";
 import { ProductReader } from "@/components/product-reader";
 import { Button, Chip, Field, haptic, IconButton, Text } from "@/components/ui";
@@ -27,6 +28,7 @@ export default function IdeaScreen() {
   const params = useLocalSearchParams<{ id?: string; recipient?: string; url?: string; title?: string }>();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardFooter = useKeyboardFooter();
   const ideas = useGiftIdeas();
   const save = useSaveIdea();
   const remove = useDeleteIdea();
@@ -152,7 +154,7 @@ export default function IdeaScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Stack.Screen
         options={{
           title: idea ? "Edit gift idea" : "Save a gift idea",
@@ -163,7 +165,7 @@ export default function IdeaScreen() {
         }}
       />
       {reading ? <ProductReader key={reading} url={reading} onResult={onProduct} /> : null}
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}>
           <Icon name="lock" size={15} color={theme.textSecondary} />
           <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
@@ -269,15 +271,15 @@ export default function IdeaScreen() {
           multiline
         />
         {idea ? <Button title="Delete" variant="danger" icon="trash" onPress={confirmDelete} /> : null}
-      </ScrollView>
-      <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+      </KeyboardScrollView>
+      <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (
           <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
             {error}
           </Text>
         ) : null}
         <Button title={idea ? "Save" : "Save idea"} onPress={submit} loading={save.isPending} />
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardFooter>
+    </>
   );
 }

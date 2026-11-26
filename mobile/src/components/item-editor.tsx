@@ -6,7 +6,6 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -28,6 +27,7 @@ import { nameFromProductUrl } from "@shared/shared-link";
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
+import { KeyboardFooter, KeyboardScrollView, useKeyboardFooter } from "@/components/keyboard";
 import { PasteLinkButton } from "@/components/paste-link-button";
 import { ProductReader } from "@/components/product-reader";
 import {
@@ -138,6 +138,7 @@ export function ItemEditor({
 }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardFooter = useKeyboardFooter(Math.max(insets.bottom, spacing.md));
   const detail = useRegistry(registryId ?? undefined);
   const addItem = useAddItem();
   const updateItem = useUpdateItem();
@@ -597,9 +598,10 @@ export function ItemEditor({
     mode === "edit" ? "Save changes" : duplicate && confirmedDuplicate ? "Add it again" : "Add item";
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={64}>
+    <>
       {readingUrl ? <ProductReader key={readingUrl} url={readingUrl} onResult={onProduct} /> : null}
-      <ScrollView
+      <KeyboardScrollView
+        bottomOffset={keyboardFooter.bottomOffset}
         style={{ flex: 1, backgroundColor: theme.background }}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xl }}
         keyboardShouldPersistTaps="handled"
@@ -1062,9 +1064,10 @@ export function ItemEditor({
             onPress={confirmDelete}
           />
         ) : null}
-      </ScrollView>
+      </KeyboardScrollView>
 
-      <View
+      <KeyboardFooter
+        {...keyboardFooter.footerProps}
         style={[
           styles.footer,
           { backgroundColor: theme.background, borderTopColor: theme.border, paddingBottom: Math.max(insets.bottom, spacing.md) },
@@ -1076,8 +1079,8 @@ export function ItemEditor({
           </Text>
         ) : null}
         <Button title={saveTitle} onPress={save} loading={saving} disabled={!registryId} />
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardFooter>
+    </>
   );
 }
 

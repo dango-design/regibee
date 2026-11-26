@@ -8,7 +8,8 @@
 // A system alert can't do this: Alert.prompt only exists on iPhone.
 
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { matchesDeletePhrase } from "@shared/delete-confirmation";
 
@@ -64,7 +65,8 @@ export function ConfirmDelete({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.fill}>
+      {/* react-native-keyboard-controller's, which works on Android too. */}
+      <KeyboardAvoidingView behavior="padding" style={styles.fill}>
         <Pressable accessibilityLabel={cancelLabel} onPress={close} style={[styles.fill, styles.backdrop]}>
           {/* Taps on the card must not close the dialog. */}
           <Pressable accessible={false} onPress={() => {}} style={[styles.card, { backgroundColor: theme.surface }]}>

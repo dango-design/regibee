@@ -6,7 +6,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, RefreshControl, Share, StyleSheet, View } from "react-native";
 
 import { deletePhrase } from "@shared/delete-confirmation";
 import type { EditEventSection } from "@shared/edit-event-sections";
@@ -20,6 +20,7 @@ import { HostsPanel } from "@/components/event/hosts-panel";
 import { MessagesPanel } from "@/components/event/messages-panel";
 import { SignupPanel, SignupStarter } from "@/components/event/signup-panel";
 import { Icon } from "@/components/icon";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { Button, Card, ErrorState, haptic, IconButton, LoadingState, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useEventPage, useRunEventAction } from "@/lib/events-data";
@@ -159,7 +160,7 @@ export default function EventScreen() {
           ),
         }}
       />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: theme.background }}
@@ -294,7 +295,7 @@ export default function EventScreen() {
         <GuestsPanel data={data} />
         <MessagesPanel data={data} onChangeReminder={() => edit("rsvps")} />
         <HostsPanel data={data} onLeft={() => router.back()} />
-      </ScrollView>
+      </KeyboardScrollView>
       <ConfirmDelete
         visible={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}

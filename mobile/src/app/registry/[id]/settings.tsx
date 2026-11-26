@@ -6,7 +6,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
+import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 
 import {
   deletePhrase,
@@ -32,6 +32,7 @@ import { DateField } from "@/components/date-field";
 import { GiftProfileForm } from "@/components/gift-profile-form";
 import { HeaderMenu } from "@/components/header-menu";
 import { Icon } from "@/components/icon";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import {
   Button,
@@ -96,9 +97,9 @@ export default function ListSettingsScreen() {
   const privacy = readReservationPrivacy(r.settings);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={100}>
+    <>
       <Stack.Screen options={{ title: "Settings" }} />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: theme.background }}
@@ -122,8 +123,8 @@ export default function ListSettingsScreen() {
         {r.registry_type === "baby" ? <StoreRegistriesPanel registryId={r.id} settings={settings} /> : null}
         <ManagersPanel detail={detail} />
         {isOwner ? <DangerPanel registryId={r.id} /> : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardScrollView>
+    </>
   );
 }
 

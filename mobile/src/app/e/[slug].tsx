@@ -9,7 +9,7 @@
 // server routes need a signed-in account.
 
 import { Redirect, router, Stack, useLocalSearchParams } from "expo-router";
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, Share, View } from "react-native";
+import { Platform, RefreshControl, Share, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { useInvitationColors } from "@/components/invitation/colors";
@@ -23,6 +23,7 @@ import {
   SignupSection,
   WishListsSection,
 } from "@/components/invitation/sections";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { Button, EmptyState, IconButton, LoadingState, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useSession } from "@/lib/auth";
@@ -73,14 +74,14 @@ export default function InvitationScreen() {
   const everyone = data.exchange?.kind === "everyone";
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Stack.Screen
         options={{
           title: data.event.title,
           headerRight: () => <IconButton icon="share" accessibilityLabel="Share the event link" onPress={share} />,
         }}
       />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: theme.background }}
@@ -112,7 +113,7 @@ export default function InvitationScreen() {
         <SignupSection page={data} />
         <ExchangeSection page={data} />
         <GroupGiftsSection gifts={data.groupGifts} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardScrollView>
+    </>
   );
 }

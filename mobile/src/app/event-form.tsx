@@ -24,10 +24,8 @@ import { useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   View,
@@ -76,6 +74,7 @@ import {
 import { DateField } from "@/components/date-field";
 import { ThemeColorField } from "@/components/event/theme-color-field";
 import { Icon } from "@/components/icon";
+import { KeyboardFooter, KeyboardScrollView, useKeyboardFooter } from "@/components/keyboard";
 import { StepCard, StepFooter, useSteps } from "@/components/steps";
 import {
   Button,
@@ -112,7 +111,6 @@ interface FormRegistry {
 
 export default function EventFormScreen() {
   const { eventId, registryId, section } = useLocalSearchParams<{ eventId?: string; registryId?: string; section?: string }>();
-  const theme = useTheme();
   const { demo } = useSession();
   const query = useEventForm(eventId ?? null);
   const editing = Boolean(eventId);
@@ -129,7 +127,7 @@ export default function EventFormScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Stack.Screen
         options={{
           title: editing ? "Edit event" : "Plan an event",
@@ -140,7 +138,7 @@ export default function EventFormScreen() {
         }}
       />
       {body}
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -252,6 +250,7 @@ function EventForm({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardFooter = useKeyboardFooter();
   const { run } = useRunEventAction();
   const editing = Boolean(eventId);
   const { registries, exchange } = data;
@@ -873,7 +872,7 @@ function EventForm({
     const hidesAddress = hidesAddressUntilSignup(eventType);
     return (
       <>
-        <ScrollView {...scrollProps} contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+        <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} {...scrollProps} contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
           <StepCard {...stepCard("what")}>
             <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
               {EVENT_TYPE_OPTIONS.map((option) => (
@@ -1024,22 +1023,22 @@ function EventForm({
             <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
             <StepFooter label={footerLabel("rsvps")} onPress={() => finish("rsvps")} />
           </StepCard>
-        </ScrollView>
-        <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+        </KeyboardScrollView>
+        <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
           {error ? (
             <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
               {error}
             </Text>
           ) : null}
           <Button title="Create event" onPress={() => void submit()} loading={saving} />
-        </View>
+        </KeyboardFooter>
       </>
     );
   }
 
   return (
     <>
-      <ScrollView ref={editScroll} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xxl }} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} ref={editScroll} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xxl }} keyboardShouldPersistTaps="handled">
         <Group title="What are you celebrating?" onLayout={(event) => sectionLayout("details", event)}>
           <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {EVENT_TYPE_OPTIONS.map((option) => (
@@ -1223,15 +1222,15 @@ function EventForm({
             />
           </View>
         ) : null}
-      </ScrollView>
-      <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+      </KeyboardScrollView>
+      <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (
           <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
             {error}
           </Text>
         ) : null}
         <Button title={editing ? "Save changes" : "Create event"} onPress={() => void submit()} loading={saving} disabled={uploading} />
-      </View>
+      </KeyboardFooter>
     </>
   );
 }

@@ -4,7 +4,7 @@
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
 import { deletePhrase } from "@shared/delete-confirmation";
 import { formatShortEventDate, isEmail, parseGuestList } from "@shared/events";
@@ -14,6 +14,7 @@ import { memberCountLabel } from "@shared/groups";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { CAN_PICK_CONTACTS, useContactPicker } from "@/components/contact-picker";
 import { HeaderMenu } from "@/components/header-menu";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, ErrorState, Field, haptic, IconButton, LoadingState, Section, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -132,7 +133,7 @@ export default function GroupScreen() {
   return (
     <>
       <Stack.Screen options={{ title: group.name }} />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: theme.background }}
@@ -363,7 +364,7 @@ export default function GroupScreen() {
             setConfirmingDelete(true);
           }}
         />
-      </ScrollView>
+      </KeyboardScrollView>
       <ConfirmDelete
         visible={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}

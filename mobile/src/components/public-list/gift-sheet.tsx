@@ -11,7 +11,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from "react-native";
+import { Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GIFT_HOLD_DAYS, SECRET_GIVER_NAME, formatReservedUntil, type MyItemGift } from "@shared/gifts";
@@ -19,6 +19,7 @@ import type { PublicListItem, PublicListPageData } from "@shared/public-list-pag
 
 import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { Button, Field, haptic, IconButton, Stepper, Text } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
@@ -393,7 +394,7 @@ export function GiftSheet({
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <View
           style={{
             flexDirection: "row",
@@ -409,13 +410,13 @@ export function GiftSheet({
           </Text>
           <IconButton icon="close" accessibilityLabel="Close" onPress={onClose} />
         </View>
-        <ScrollView
+        <KeyboardScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.lg, paddingBottom: insets.bottom + spacing.xxl }}
         >
           {content}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScrollView>
+      </View>
     </Modal>
   );
 }
