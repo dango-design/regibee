@@ -29,6 +29,7 @@ import { EVENT_IMAGES_BUCKET } from "@/lib/event-images";
 import { PROFILE_PHOTOS_BUCKET } from "@/lib/profile-photos";
 import { REGISTRY_PHOTOS_BUCKET } from "@/lib/registry-photos";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { deleteAnalyticsPerson } from "@/lib/analytics-server";
 
 export interface AccountDeletionPlan {
   userId: string;
@@ -238,6 +239,8 @@ export async function deleteAccount(userId: string): Promise<void> {
     ...plan.deleted.map((r) => emptyFolder(REGISTRY_PHOTOS_BUCKET, r.id)),
     ...plan.eventIds.map((id) => emptyFolder(EVENT_IMAGES_BUCKET, id)),
     ...(profileFolder ? [emptyFolder(PROFILE_PHOTOS_BUCKET, profileFolder)] : []),
+    // The account's analytics: its person and events in PostHog.
+    deleteAnalyticsPerson(userId),
   ]);
   for (const result of cleanup) {
     if (result.status === "rejected") console.error(result.reason);

@@ -5,6 +5,7 @@ import { requireAccount } from "@/lib/require-account";
 import { isUuid } from "@/lib/extension";
 import { parseGiftIdea, type GiftIdeaInput } from "@/lib/gift-ideas";
 import { gtinChange, normalizeGtin } from "@/lib/gtin";
+import { track } from "@/lib/analytics-server";
 
 // Saving, changing and deleting gift ideas from the website. These run as the
 // signed-in account, so the table's access rules keep each account to its
@@ -63,6 +64,8 @@ export async function saveGiftIdea(input: GiftIdeaInput, id?: string): Promise<G
     console.error("[gift-ideas] Failed to save an idea:", insertError);
     return { error: "The idea wasn't saved. Try again in a moment." };
   }
+  // Only that an idea was saved: nothing about the idea itself.
+  track("gift_idea_saved", { userId: user.id }, {});
   revalidatePath(IDEAS_PATH);
   return { success: true, id: data.id as string };
 }

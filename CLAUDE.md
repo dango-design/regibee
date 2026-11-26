@@ -14,9 +14,10 @@ These notes are for anyone changing or running the live app, people and Claude a
 | Expo (EAS) | Builds the phone app, uploads Android builds to Google Play, and sends preview builds over-the-air updates | The project and its id are in `mobile/app.config.ts`. It also holds the Android signing keystore and the Google service account key. The **Android testing build** workflow starts a new testing build and uploads it to Play when a merge to main changes native code. iPhone builds are run by hand. See "Updates" and "Android testers" in [mobile/README.md](mobile/README.md). |
 | Google Play Console | The Android app's listing and testing tracks | Testers install from the internal testing track. `eas build --profile testing --auto-submit` uploads to it. |
 | Chrome Web Store | The browser extension's listing. Chrome installs and updates the extension from it | One listing, private to testers for now. `.github/workflows/extension-publish.yml` sends each merge to main that changes the extension for review, with the `CWS_*` secrets. Google reviews every version, which usually takes a few days. See "Publishing" in [extension/README.md](extension/README.md). |
+| PostHog (US Cloud) | Usage analytics: counts of what people do on the website, in the app and through the extension | Two projects: one for production, one for the app's preview and testing builds. Either Brian or Denise can manage it. See "Analytics" below. |
 | Chromatic | Visual tests of the Storybook stories | The project is in the `dango-design` Chromatic account, on the free plan. Its id is in `chromatic.config.json`. |
 
-Vercel holds these env vars for production, preview and development: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `NEXT_PUBLIC_SITE_URL`. Run `vercel env pull .env.local` to copy them to your machine.
+Vercel holds these env vars for production, preview and development: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `NEXT_PUBLIC_SITE_URL`. Production alone also has `NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` (see "Analytics"). Run `vercel env pull .env.local` to copy them to your machine.
 
 ## Database changes
 
@@ -116,7 +117,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 ## Gift ideas
 
 - A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it through the API.
-- Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email or to co-managers. Don't put gift ideas on a registry or give them a link. The support pages are the one exception (see "Support view").
+- Never show a gift idea, or that one exists, to anyone but its owner: not on a list, a profile, an event, in an email, to co-managers or in analytics. Don't put gift ideas on a registry or give them a link. The support pages are the one exception (see "Support view").
 - The table has access rules for the signed-in owner, so the website, the extension and the phone app can read and write it as that user. Prefer that over the service-role client. Checks and grouping are in `src/lib/gift-ideas.ts`, which has no imports.
 - Wherever someone picks a list to add a product to, offer Gift ideas too, after their registries: the extension's "Add to" picker, the phone app's "Add to" row (`onChooseGiftIdea` in `mobile/src/components/item-editor.tsx`, which opens `mobile/src/app/idea.tsx` with the link), and the website's share page. Someone with no registry can still save a gift idea.
 
@@ -236,6 +237,19 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Preview builds, and the testing builds Play's testers install, get over-the-air updates. When a merge to main changes the app, `.github/workflows/mobile-update.yml` publishes one to the `preview` channel, if the `EXPO_TOKEN` secret is set. Its `paths` name `mobile/` and each website file the app imports through `@shared/*`, directly or through another shared file. `mobile/scripts/check-update-paths.mjs` fails when one is missing, so add a newly shared file there in the same PR. `npm run check` in `mobile/` and the **App update paths** check on pull requests run it. The Account tab's "This version" says which pull request a preview build is running and has a Check for updates button. An update can't change native code: new native packages, an Expo upgrade, config plugins or the product reader need a new build. See "Updates" in [mobile/README.md](mobile/README.md).
 - The app gets push notifications for a follow request, an RSVP to your event and a gift on your list. `sendPush` (`src/lib/push-server.ts`) sends them through Expo to the tokens in `push_tokens`, next to the matching email in `src/lib/email.ts`. A new push must follow the same rules as its email: no gift ideas, and nothing about a gift to an owner who hides what's been reserved. See "Push notifications" in [mobile/README.md](mobile/README.md).
 - The root `tsconfig.json` leaves out `mobile/`. The app has its own checks.
+
+## Analytics
+
+- PostHog counts what people do, so we can see which features get used and where people stop. The plan and the choices behind it are in the "Plan: adding PostHog analytics to Regibee" doc.
+- Nothing that names a person or opens a list may reach PostHog: no names, emails, messages, item names or links, list slugs, invite tokens, or anything about a gift idea, not even that one exists. Anyone with a PostHog login can read what's there, and unlike the support pages, nothing records who looked.
+- The server sends most events. Server actions and API routes call `track` (`src/lib/analytics-server.ts`) after a save succeeds. The phone app runs the same server actions, so those count for both. `AnalyticsEvents` in that file lists every event and the only properties it may carry; add one there on purpose. Guests' events (`{ guest: true }`) go with a new random id and no person profile.
+- The website's browser sends page views and a few clicks (`trackClick`, `src/lib/analytics-client.ts`). `src/instrumentation-client.ts` starts PostHog without cookies, autocapture or session recording, and never identifies the account. It sends through `/ingest` on our domain (rewrites in `next.config.ts`).
+- The phone app sends screen views and app opens (`mobile/src/lib/analytics.ts`), and identifies the account by its user id only.
+- Every address goes through `src/lib/analytics-urls.ts` first. It turns `/r/<slug>` into `/r/:slug`, hides tokens and ids, drops query strings and page titles, and lists the pages that send nothing (gift ideas, support). Any new page with a secret in its address needs a line in `SECRET_SEGMENTS` there, with a test.
+- Deleting an account deletes its PostHog person and events (`deleteAnalyticsPerson`).
+- Nothing is sent without a key. On Vercel, set `NEXT_PUBLIC_POSTHOG_KEY` (the production project's token, `phc_…`) for production only, so previews and local runs send nothing. Account deletion needs `POSTHOG_PERSONAL_API_KEY` (a personal API key with the `person:write` scope) and `POSTHOG_PROJECT_ID`. The app reads `EXPO_PUBLIC_POSTHOG_KEY` from its EAS environment: the production project's token in `production`, the second project's in `preview`, and none in `development`.
+- Each PostHog project needs these settings, or the privacy policy is wrong: "Enable cookieless tracking" on (without it, PostHog drops the website's events), "Discard client IP data" on, and session recording, surveys and heatmaps off.
+- A new event or property is a change to what we collect, so it goes with a privacy policy change too.
 
 ## Privacy policy
 
