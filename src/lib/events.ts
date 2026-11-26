@@ -377,6 +377,35 @@ export function formatShortEventDate(date: string): string {
   });
 }
 
+// ── "Coming up" on the home screen ───────────────────────────
+// The website's My registries tab and the phone app's home screen both list
+// the next few events as an agenda, and both word each row with these.
+
+/** "DEC", "7" and "Sat" for a YYYY-MM-DD date, the same calendar day everywhere. */
+export function eventDateParts(date: string): { month: string; day: string; weekday: string } {
+  const value = new Date(`${date}T00:00:00Z`);
+  const part = (options: Intl.DateTimeFormatOptions) => value.toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
+  return { month: part({ month: "short" }).toUpperCase(), day: part({ day: "numeric" }), weekday: part({ weekday: "short" }) };
+}
+
+/** A row's short status: how many are coming to the user's own event, or the user's reply. */
+export function comingUpStatus(event: {
+  role: "host" | "guest" | "celebrating";
+  summary: Pick<RsvpSummary, "guests" | "attending"> | null;
+  rsvp?: RsvpStatus;
+}): string {
+  if (event.summary) return event.summary.guests === 0 ? "No guests yet" : `${event.summary.attending} going`;
+  if (event.role === "guest" && event.rsvp) return MY_RSVP_LABELS[event.rsvp];
+  return "Celebrating you";
+}
+
+/** "Today", "Tomorrow" or "12 days". */
+export function daysLeftText(days: number): string {
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  return `${days} days`;
+}
+
 function parseTime(time: string): { hours: number; minutes: number } | null {
   const match = time.match(/^(\d{1,2}):(\d{2})/);
   if (!match) return null;

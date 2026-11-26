@@ -1,27 +1,28 @@
 import { router, Stack } from "expo-router";
-import { FlatList, RefreshControl, View } from "react-native";
+import { RefreshControl, ScrollView, View } from "react-native";
 
-import { Notice } from "@/components/notice";
+import { ComingUp } from "@/components/home/coming-up";
+import { HomeNote } from "@/components/home/home-note";
+import { HomeSection } from "@/components/home/home-section";
+import { ListCoverCard } from "@/components/home/list-cover-card";
 import { PlayUpdateNotice } from "@/components/play-update-notice";
-import { RegistryCard } from "@/components/registry-card";
-import { UpcomingEvents } from "@/components/upcoming-events";
 import { Button, EmptyState, ErrorState, IconButton, LoadingState, Text } from "@/components/ui";
 import { errorMessage, useDashboard } from "@/lib/data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { spacing, useTheme } from "@/lib/theme";
 import type { RegistrySummary } from "@/lib/types";
 
-// The website's My registries tab (src/app/(protected)/dashboard/(tabs)/(overview)/page.tsx),
-// from the same loader.
-export default function RegistriesScreen() {
+// The home tab. It shows the website's My registries tab
+// (src/app/(protected)/dashboard/(tabs)/(overview)/page.tsx), from the same
+// loader, as a stack of sections (HomeSection): first what's waiting on the
+// person, then their events, then their lists. New kinds of updates can go
+// in as more sections.
+export default function HomeScreen() {
   const theme = useTheme();
   const dashboard = useDashboard();
   const pull = usePullToRefresh(dashboard.refetch);
   const data = dashboard.data;
-  // The owner's own lists, then the ones they help manage under "Shared with
-  // you", as on the website's dashboard.
-  const list: RegistrySummary[] = data ? [...data.owned, ...data.shared] : [];
-  const firstShared = data ? data.owned.length : -1;
+  const hasLists = data ? data.owned.length + data.shared.length > 0 : false;
 
   return (
     <>
@@ -32,99 +33,104 @@ export default function RegistriesScreen() {
           ),
         }}
       />
-      <FlatList
-        data={list}
-        keyExtractor={(r) => r.id}
+      <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={{ backgroundColor: theme.background }}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            {...pull}
-            tintColor={theme.tint}
-          />
-        }
-        ListHeaderComponent={
+        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.xs, gap: spacing.xl, flexGrow: 1 }}
+        refreshControl={<RefreshControl {...pull} tintColor={theme.tint} />}
+      >
+        {/* A newer build on Google Play. Android only. */}
+        <PlayUpdateNotice />
+
+        {!data ? (
+          dashboard.isPending ? (
+            <LoadingState />
+          ) : (
+            <ErrorState message={errorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
+          )
+        ) : (
           <>
-            {/* A newer build on Google Play. Android only. */}
-            <PlayUpdateNotice />
-            {/* The notices and "Coming up" show with no lists too, as on the
-                website: someone with no list can still have follow requests
-                and events. */}
-            {data ? (
-              <View style={{ gap: spacing.md, marginBottom: spacing.xs }}>
-                {list.length > 0 ? (
-                  <Text variant="subhead" tone="secondary">
-                    {data.giftsThisWeek > 0
-                      ? data.giftsThisWeek === 1
-                        ? "1 gift reserved this week"
-                        : `${data.giftsThisWeek} gifts reserved this week`
-                      : "Manage your registries and track gifts"}
-                  </Text>
+            {/* What's waiting on the person. These show with no lists too:
+                someone with no list can still have follow requests. */}
+            {data.giftsThisWeek > 0 || data.followRequestCount > 0 || data.showProfilePrompt ? (
+              <View style={{ gap: spacing.md }}>
+                {data.giftsThisWeek > 0 ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: spacing.xs }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.success }} />
+                    <Text variant="subhead" tone="secondary">
+                      {data.giftsThisWeek === 1 ? "1 gift reserved this week" : `${data.giftsThisWeek} gifts reserved this week`}
+                    </Text>
+                  </View>
                 ) : null}
                 {data.followRequestCount > 0 ? (
-                  <Notice
+                  <HomeNote
                     icon="personAdd"
-                    tone="accent"
-                    title={
+                    tint="blushSoft"
+                    text={
                       data.followRequestCount === 1
                         ? "1 person wants to follow you"
                         : `${data.followRequestCount} people want to follow you`
                     }
-                    message="People you approve can see the registries you show to followers on your profile."
-                    action={{ title: "Review requests", onPress: () => router.push("/account/follows") }}
+                    action="Review"
+                    onPress={() => router.push("/account/follows")}
                   />
                 ) : null}
                 {data.showProfilePrompt ? (
-                  <Notice
+                  <HomeNote
                     icon="link"
-                    tone="tint"
-                    title="Give friends one link to all your registries"
-                    message="Your profile shows only the registries you choose. Friends can follow it to see new ones."
-                    action={{ title: "Choose registries", onPress: () => router.push("/account/profile") }}
+                    tint="tealSoft"
+                    text="Give friends one link to all your registries"
+                    action="Choose"
+                    onPress={() => router.push("/account/profile")}
                   />
                 ) : null}
-                <UpcomingEvents events={data.upcomingEvents ?? []} today={data.today} />
               </View>
             ) : null}
-          </>
-        }
-        renderItem={({ item, index }) => (
-          <>
-            {index === firstShared ? (
-              <View style={{ marginTop: index > 0 ? spacing.lg : 0, marginBottom: spacing.sm, gap: 2 }}>
-                <Text variant="headline">Shared with you</Text>
-                <Text variant="footnote" tone="tertiary">
-                  Registries you&apos;ve been invited to manage
-                </Text>
-              </View>
+
+            <ComingUp events={data.upcomingEvents ?? []} today={data.today} />
+
+            {data.owned.length > 0 ? (
+              <HomeSection title="Your lists">
+                <ListCards lists={data.owned} today={data.today} />
+              </HomeSection>
             ) : null}
-            <RegistryCard
-              registry={item}
-              today={data?.today}
-              onPress={() => router.push({ pathname: "/registry/[id]", params: { id: item.id } })}
-            />
+
+            {data.shared.length > 0 ? (
+              <HomeSection title="Shared with you">
+                <ListCards lists={data.shared} today={data.today} />
+              </HomeSection>
+            ) : null}
+
+            {!hasLists ? (
+              <EmptyState
+                icon="gift"
+                title="No registries yet"
+                message="Create your first registry to start adding items."
+                action={
+                  <View style={{ width: "100%", maxWidth: 320 }}>
+                    <Button title="Start something new" icon="add" onPress={() => router.push("/new")} />
+                  </View>
+                }
+              />
+            ) : null}
           </>
         )}
-        ListEmptyComponent={
-          dashboard.isPending ? (
-            <LoadingState />
-          ) : dashboard.isError ? (
-            <ErrorState message={errorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
-          ) : (
-            <EmptyState
-              icon="gift"
-              title="No registries yet"
-              message="Create your first registry to start adding items."
-              action={
-                <View style={{ width: "100%", maxWidth: 320 }}>
-                  <Button title="Start something new" icon="add" onPress={() => router.push("/new")} />
-                </View>
-              }
-            />
-          )
-        }
-      />
+      </ScrollView>
     </>
+  );
+}
+
+function ListCards({ lists, today }: { lists: RegistrySummary[]; today: string }) {
+  return (
+    <View style={{ gap: spacing.md }}>
+      {lists.map((registry) => (
+        <ListCoverCard
+          key={registry.id}
+          registry={registry}
+          today={today}
+          onPress={() => router.push({ pathname: "/registry/[id]", params: { id: registry.id } })}
+        />
+      ))}
+    </View>
   );
 }

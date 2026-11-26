@@ -71,6 +71,8 @@ const ICONS = {
   arrowUp: { ios: "arrow.up", android: "arrow_upward" },
   arrowDown: { ios: "arrow.down", android: "arrow_downward" },
   baby: { ios: "stroller", android: "child_friendly" },
+  tree: { ios: "tree", android: "park" },
+  graduation: { ios: "graduationcap", android: "school" },
   contacts: { ios: "person.crop.rectangle.stack", android: "contacts" },
 } as const satisfies Record<string, { ios: string; android: string }>;
 

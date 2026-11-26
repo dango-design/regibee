@@ -1,22 +1,12 @@
 import Link from "next/link";
-import { ExternalLink, EyeOff, PartyPopper, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { EyeOff, Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RegistryIcon } from "@/components/registry-icon";
-import { initialsFor } from "@/lib/initials";
 import { countdownLabel, occasionTheme } from "@/lib/occasion-theme";
+import { occasionLabel } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
 import { cx } from "@/lib/utils/cx";
-import { formatDollars } from "@/lib/money";
-
-export interface RegistryActivity {
-  id: string;
-  name: string;
-  /** What they did, after their name: "reserved an item" or "gifted an item" (giftActivityAction). */
-  action: string;
-}
 
 export interface DashboardRegistryCardProps {
   title: string;
@@ -28,17 +18,18 @@ export interface DashboardRegistryCardProps {
   today: string;
   totalItems: number;
   fulfilledItems: number;
-  totalValue: number;
-  recentActivity: RegistryActivity[];
+  /** Gifts reserved in the last 7 days. */
+  giftsThisWeek: number;
   manageHref: string;
-  publicHref: string;
+  /** The list's photo fills the cover. Without one, the cover takes the occasion's color and icon. */
+  photoUrl?: string | null;
+  /** Only its owner and co-managers can open it. The cover says so. */
+  isPrivate?: boolean;
   /**
    * The owner hid what's been reserved from themselves. The card says so
-   * instead of showing progress. Pass zero fulfilled items and no activity.
+   * instead of showing progress. Pass zero fulfilled items and no gifts this week.
    */
   reservationsHidden?: boolean;
-  /** Shown next to the title, like "Manager" for shared registries. */
-  badge?: string;
   /**
    * The title's heading level. Cards right under the page's h1 use 2. Cards
    * under a section h2, like "Shared with you", use 3.
@@ -46,27 +37,14 @@ export interface DashboardRegistryCardProps {
   headingLevel?: 2 | 3;
 }
 
-// Initials circles take a tint picked from the name, so one person gets the
-// same color on every card.
-const AVATAR_TINTS = [
-  "bg-mint-100 dark:bg-mint-500/15 text-mint-800 dark:text-mint-300",
-  "bg-sunshine-100 dark:bg-sunshine-400/15 text-sunshine-900 dark:text-sunshine-200",
-  "bg-brand-secondary text-brand-secondary",
-  "bg-blush-100 dark:bg-blush-300/15 text-blush-700 dark:text-blush-200",
-];
-
-function avatarTint(name: string) {
-  let hash = 0;
-  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return AVATAR_TINTS[hash % AVATAR_TINTS.length];
-}
-
 /**
- * A registry on the owner's dashboard. The band across the top takes the
- * occasion's color and icon (src/lib/occasion-theme.ts) and counts down to the
- * event, so registries are easy to tell apart at a glance. A click anywhere on
- * the card opens the registry; the button for its public page still opens that
- * (see clickable-card in globals.css).
+ * A list on the My registries tab. The cover across the top is the list's
+ * photo, or its occasion's color and icon (src/lib/occasion-theme.ts), and
+ * counts down to its date. Under it are the title, a progress bar and one
+ * line about its gifts. Its total value, who gave what and the link to its
+ * public page are on the list's own page. A click anywhere on the card opens
+ * the list (see clickable-card in globals.css). The phone app's home screen
+ * draws the same card (mobile/src/components/home/list-cover-card.tsx).
  */
 export function DashboardRegistryCard({
   title,
@@ -76,64 +54,59 @@ export function DashboardRegistryCard({
   today,
   totalItems,
   fulfilledItems,
-  totalValue,
-  recentActivity,
+  giftsThisWeek,
   manageHref,
-  publicHref,
+  photoUrl,
+  isPrivate = false,
   reservationsHidden = false,
-  badge,
   headingLevel = 2,
 }: DashboardRegistryCardProps) {
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const theme = occasionTheme(registryType, eventType);
   const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
-  const allDone = totalItems > 0 && fulfilledItems >= totalItems;
+  // Only while the date is ahead: once it's gone by, there's nothing to count down to.
+  const countdown = eventDate && eventDate >= today ? countdownLabel(eventDate, today, registryType) : null;
 
   return (
     <Card className="group/card clickable-card gap-0 overflow-hidden py-0">
-      <div className={cx("flex h-16 items-center justify-between gap-3 px-5", theme.bg)}>
-        <span className="flex size-9 items-center justify-center rounded-full bg-primary">
+      <div className={cx("relative h-28 overflow-hidden", theme.bg)}>
+        {photoUrl ? (
+          // The title follows, so the photo needs no alt text of its own.
+          <img src={photoUrl} alt="" className="absolute inset-0 size-full object-cover" />
+        ) : (
           <RegistryIcon
             registryType={registryType}
             eventType={eventType}
-            className={cx("size-5 motion-safe:group-hover/card:animate-wiggle", theme.icon)}
-          />
-        </span>
-        {/* Only while the date is ahead: once it's gone by, the pill would
-            repeat the date shown under the title. */}
-        {eventDate && eventDate >= today && (
-          <span className={cx("rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium", theme.text)}>
-            {countdownLabel(eventDate, today, registryType)}
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col gap-4 p-5">
-        <div>
-          <div className="flex items-start justify-between gap-2">
-            {/* tracking-normal: the base h2 style tightens letter spacing, but card titles keep the h3 look. */}
-            <Heading className="font-display text-lg font-bold leading-snug tracking-normal">
-              <Link href={manageHref} className="card-link">
-                {title}
-              </Link>
-            </Heading>
-            {badge && (
-              <Badge variant="secondary" className="shrink-0">
-                <Users className="mr-1 h-3 w-3" />
-                {badge}
-              </Badge>
+            className={cx(
+              "absolute -top-3 -right-4 size-36 stroke-[1.25] opacity-25 motion-safe:group-hover/card:animate-wiggle",
+              theme.icon,
             )}
-          </div>
-          {eventDate && (
-            <p className="mt-0.5 text-sm text-tertiary">
-              {new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </p>
+          />
+        )}
+        <div className="relative flex items-center gap-2 p-3.5">
+          {countdown && (
+            <span className={cx("rounded-full bg-primary px-2.5 py-1 text-xs font-semibold", theme.text)}>
+              {countdown}
+            </span>
+          )}
+          {isPrivate && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-secondary">
+              <Lock aria-hidden="true" className="size-3" />
+              Private
+            </span>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2.5 px-5 pt-4 pb-5">
+        {/* tracking-normal: the base h2 style tightens letter spacing, but card titles keep the h3 look. */}
+        <Heading className="font-display text-xl leading-snug font-bold tracking-normal">
+          <Link href={manageHref} className="card-link line-clamp-2 break-words">
+            {title}
+          </Link>
+        </Heading>
+        {/* The cover's color and icon show the occasion, so its name is only read out. */}
+        <p className="sr-only">{occasionLabel(registryType, eventType)}</p>
 
         {reservationsHidden ? (
           <p className="flex items-center gap-2 text-sm text-tertiary">
@@ -141,63 +114,19 @@ export function DashboardRegistryCard({
             What&apos;s been reserved is hidden from you
           </p>
         ) : (
-          <div>
-            <div className="mb-1 flex justify-between text-sm">
-              <span>
-                {fulfilledItems} of {totalItems} items gifted
-              </span>
-              {allDone ? (
-                <span className="inline-flex items-center gap-1 font-medium text-mint-800 dark:text-mint-300">
-                  <PartyPopper aria-hidden="true" className="h-3.5 w-3.5 motion-safe:group-hover/card:animate-wiggle" />
-                  All done
-                </span>
-              ) : (
-                <span className="text-tertiary">{Math.round(progress)}%</span>
+          <>
+            {totalItems > 0 && <Progress value={progress} aria-label={`Items gifted for ${title}`} />}
+            <p className="text-sm text-secondary">
+              {totalItems > 0 ? `${fulfilledItems} of ${totalItems} gifted` : "No items yet"}
+              {giftsThisWeek > 0 && (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-mint-800 dark:text-mint-300">{giftsThisWeek} new this week</span>
+                </>
               )}
-            </div>
-            <Progress value={progress} aria-label={`Items gifted for ${title}`} />
-          </div>
+            </p>
+          </>
         )}
-
-        <div className="flex justify-between text-sm text-tertiary">
-          <span>{totalItems} items</span>
-          <span>{formatDollars(totalValue)} total value</span>
-        </div>
-
-        {recentActivity.length > 0 && (
-          <div className="text-sm">
-            <p className="mb-2 font-medium">Recent activity</p>
-            <ul className="space-y-2">
-              {recentActivity.map((activity) => (
-                <li key={activity.id} className="flex items-center gap-2 text-tertiary">
-                  <span
-                    aria-hidden="true"
-                    className={cx(
-                      "flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
-                      avatarTint(activity.name),
-                    )}
-                  >
-                    {initialsFor(activity.name)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="font-medium text-secondary">{activity.name}</span> {activity.action}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="mt-auto flex gap-2">
-          <Button variant="outline" size="sm" className="card-action flex-1" asChild>
-            <Link href={manageHref}>Manage</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="card-action h-auto" asChild>
-            <Link href={publicHref} target="_blank" aria-label="View public registry (opens in a new tab)">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
       </div>
     </Card>
   );
