@@ -40,7 +40,7 @@ test("a guest can't accept a co-manager invite, and an account that signs in fro
 
   // The invite page treats the guest as signed out.
   await page.goto(invitePath);
-  await expect(page.getByText("Sign in or create an account to accept this invitation.")).toBeVisible();
+  await expect(page.getByText("Sign in or create an account to accept.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Create account" })).toHaveAttribute(
     "href",
     `/signup?redirect=${encodeURIComponent(invitePath)}`,

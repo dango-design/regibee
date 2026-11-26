@@ -106,9 +106,7 @@ export function StoreRegistriesCard({
       <CardHeader>
         <SectionTitle sectionId="store-registries">Your store registries</SectionTitle>
         <CardDescription>
-          Made a registry at Amazon, Target or another store? Link it here. When a
-          guest buys through your registry link, the store counts the gift toward
-          your registry, so you keep its perks.
+          Link your registry at Amazon, Target or another store, so guests&apos; gifts count toward its perks.
         </CardDescription>
         <ul className="flex flex-wrap gap-2 pt-2" aria-label="Perks stores may offer">
           {PERKS.map(({ icon: Icon, label }) => (
@@ -212,7 +210,7 @@ export function StoreRegistriesCard({
 
         <p className="flex items-start gap-1.5 text-xs text-tertiary">
           <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          Guests don&apos;t see these links. They shop from your Regibee list.
+          Guests don&apos;t see these links.
         </p>
       </CardContent>
     </Card>

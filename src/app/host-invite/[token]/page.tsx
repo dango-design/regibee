@@ -34,7 +34,7 @@ export default async function HostInvitePage({ params }: { params: Promise<{ tok
         <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
           <AlertCircle aria-hidden="true" className="mb-2 size-12 text-error-primary" />
           <h1 className="text-xl font-semibold">This invitation has expired</h1>
-          <p className="text-tertiary">It may have been used already or taken back. Ask the host for a new one.</p>
+          <p className="text-tertiary">Ask the host for a new one.</p>
           <Button asChild className="mt-4">
             <Link href="/dashboard">Go to your dashboard</Link>
           </Button>
@@ -64,9 +64,6 @@ export default async function HostInvitePage({ params }: { params: Promise<{ tok
         <p className="text-secondary">
           <strong>{inviterName}</strong> asked you to co-host <strong>{eventTitle}</strong>
           {event?.event_date ? ` on ${formatEventDate(event.event_date)}` : ""}.
-        </p>
-        <p className="text-sm text-tertiary">
-          Co-hosts can edit the event, add guests, send invitations and reminders, see RSVPs and draw names.
         </p>
         {user && !user.is_anonymous ? (
           <AcceptHostInviteButton token={token} />

@@ -63,7 +63,7 @@ test("a list shown to friends is on the profile for friends only", async ({ page
   await page.getByRole("option", { name: "Friends", exact: true }).click();
   // The hint says the choice is only about the profile.
   await expect(
-    page.getByText("Friends see it on your profile: people you follow who follow you back. Anyone with the link can still open it.").locator("visible=true"),
+    page.getByText("Friends are people you follow who follow you back. Anyone with the link can still open it.").locator("visible=true"),
   ).toBeVisible();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("button", { name: "Saved!" })).toBeVisible();

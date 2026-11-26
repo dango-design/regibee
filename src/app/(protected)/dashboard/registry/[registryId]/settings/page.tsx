@@ -428,7 +428,6 @@ export default function RegistrySettingsPage() {
           <Card id="general" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="general">General</SectionTitle>
-              <CardDescription>Update your registry details</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-6 flex items-center gap-4">
@@ -447,12 +446,7 @@ export default function RegistrySettingsPage() {
                   </span>
                 )}
                 <div className="min-w-0 space-y-2">
-                  <div>
-                    <p className="text-sm font-medium text-secondary">Registry photo</p>
-                    <p className="text-xs text-tertiary">
-                      Shown at the top of your registry page. Without one, guests see your initials.
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium text-secondary">Registry photo</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <PhotoUploadButton
                       label={registry.photo_url ? "Change photo" : "Upload photo"}
@@ -502,7 +496,6 @@ export default function RegistrySettingsPage() {
                   name="honoreeNames"
                   placeholder={copyFor({ registryType: registry.registry_type, eventType: registry.event_type }).honoreePlaceholder}
                   defaultValue={registry.honoree_names || registry.parent_names || ""}
-                  hint="The name shown to gift givers and in email notifications."
                 />
 
                 <Input
@@ -528,8 +521,7 @@ export default function RegistrySettingsPage() {
 
                   {visibilityChoice === "private" && listVisibility(registry) !== "private" && (
                     <p role="status" className="rounded-lg bg-warning-primary px-3 py-2 text-sm text-warning-800 dark:text-warning-300">
-                      When you save, people you&apos;ve sent the link to won&apos;t be able to open it, and it&apos;ll
-                      come off any event or group you&apos;ve shared it with.
+                      Once you save, people with the link can&apos;t open it, and it comes off any events and groups.
                     </p>
                   )}
 
@@ -581,10 +573,7 @@ export default function RegistrySettingsPage() {
                 <Card id="gift-profile" className={SECTION_SCROLL_MARGIN}>
                   <CardHeader>
                     <SectionTitle sectionId="gift-profile">About {childName}</SectionTitle>
-                    <CardDescription>
-                      Help people pick gifts. Sizes, likes and the rest show on this list, so anyone with its
-                      link sees them.
-                    </CardDescription>
+                    <CardDescription>Anyone with this list&apos;s link sees these.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <GiftProfileForm
@@ -602,7 +591,6 @@ export default function RegistrySettingsPage() {
           <Card id="categories" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="categories">Categories</SectionTitle>
-              <CardDescription>Organize your registry items into categories</CardDescription>
             </CardHeader>
             <CardContent>
               <CategoryManager registryId={registryId} categories={categories} inline />
@@ -612,9 +600,7 @@ export default function RegistrySettingsPage() {
           <Card id="location" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="location">Location</SectionTitle>
-              <CardDescription>
-                Used to estimate sales tax on item prices when auto-filling from product URLs
-              </CardDescription>
+              <CardDescription>Used to estimate sales tax.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={handleSaveZip} className="space-y-4">
@@ -631,7 +617,7 @@ export default function RegistrySettingsPage() {
                   name="taxEnabled"
                   value="true"
                   defaultSelected={registry.settings?.tax_enabled !== false}
-                  label="Auto-add estimated sales tax to prices"
+                  label="Add estimated sales tax to prices"
                 />
 
                 {zipError && (
@@ -652,10 +638,7 @@ export default function RegistrySettingsPage() {
           <Card id="payment-methods" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="payment-methods">Payment methods</SectionTitle>
-              <CardDescription>
-                Add your payment info so gift givers can send you money for cash
-                funds and items you&apos;ve already purchased.
-              </CardDescription>
+              <CardDescription>Gift givers pay you directly. Regibee never handles money.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={handleSavePayment} className="space-y-4">
@@ -707,9 +690,6 @@ export default function RegistrySettingsPage() {
           <Card id="shipping-address" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="shipping-address">Shipping address</SectionTitle>
-              <CardDescription>
-                Share your shipping address with gift givers so they know where to send gifts.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <form action={handleSaveAddress} className="space-y-4">
@@ -751,9 +731,7 @@ export default function RegistrySettingsPage() {
                 <Users className="h-5 w-5" />
                 Managers
               </SectionTitle>
-              <CardDescription>
-                Invite others to help manage this registry. Managers can add/edit items, view gift activity, and manage categories.
-              </CardDescription>
+              <CardDescription>Managers can edit this list and see its gifts.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Current managers list */}

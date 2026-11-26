@@ -86,7 +86,7 @@ export const SkipGifts: Story = {
     await expect(registry).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(canvas.getByRole("button", { name: "Skip" }));
     await expect(canvas.getByRole("heading", { name: "Name your event" })).toBeVisible();
-    await expect(canvas.getByText("Nothing about gifts yet. You can set that up from the event any time.")).toBeVisible();
+    await expect(canvas.getByText("Nothing about gifts yet")).toBeVisible();
   },
 };
 
@@ -139,7 +139,7 @@ export const SecretSanta: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Gift exchange" }));
     await expect(
-      canvas.getByText("A Secret Santa draw. Guests add a wishlist when they join. Set the budget and draw date next."),
+      canvas.getByText("A Secret Santa draw. Set the budget and draw date next."),
     ).toBeVisible();
   },
 };

@@ -48,7 +48,7 @@ export async function sendEventMessage(
     .eq("kind", "message")
     .gte("created_at", since);
   if ((count ?? 0) >= MAX_MESSAGES_PER_DAY) {
-    return { error: `You can send up to ${MAX_MESSAGES_PER_DAY} messages a day to this event's guests. Try again tomorrow.` };
+    return { error: `You can send ${MAX_MESSAGES_PER_DAY} messages a day. Try again tomorrow.` };
   }
 
   const recipients = messageRecipients(await getEventGuests(eventId), input.audience);

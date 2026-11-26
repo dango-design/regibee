@@ -28,7 +28,6 @@ export default async function EditEventPage({ params }: { params: Promise<{ even
         {event.title}
       </Link>
       <h1 className="mt-4 text-3xl font-bold">Edit event</h1>
-      <p className="mt-1 text-tertiary">Guests see your changes on the event page right away.</p>
       <div className="mt-6">
         <EventForm
           eventId={event.id}

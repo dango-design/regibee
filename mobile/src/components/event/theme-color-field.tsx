@@ -43,8 +43,7 @@ export function ThemeColorField({ value, onChange }: { value: string; onChange: 
           Color
         </Text>
         <Text variant="footnote" tone="tertiary">
-          Fills the invitation's gift lists and wishlists, and its top when there's no picture. Pick one that goes with your
-          invitation.
+          For the invitation's gift lists, and its top when there's no picture.
         </Text>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm }}>

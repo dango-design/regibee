@@ -74,7 +74,7 @@ test("a wishlist added to a gift exchange hides reservations from its owner only
   await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();
   await page.goto(`/dashboard/registry/${registry.id}`);
   await expect(page.getByText("What's been reserved is hidden from you").first()).toBeVisible();
-  await expect(page.getByText("Regibee hid it when you added this list to a gift exchange")).toBeVisible();
+  await expect(page.getByText("Regibee turned this on for the gift exchange.")).toBeVisible();
   await expect(page.getByText("1 of 1 still needed")).toBeVisible();
   await expect(page.getByText("Glinda Guest")).toHaveCount(0);
   await page.goto(`/dashboard/registry/${registry.id}?tab=purchases`);

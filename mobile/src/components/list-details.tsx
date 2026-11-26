@@ -85,7 +85,7 @@ export function MissingDetailsNotice({ registryId, items }: { registryId: string
         </Text>
         <ProgressBar value={total > 0 ? index / total : 0} />
         <Text variant="footnote" tone="secondary">
-          Keep this screen open until it&apos;s done. Each item takes a few seconds.
+          Keep this screen open until it&apos;s done.
         </Text>
         <View style={{ flexDirection: "row" }}>
           <Button
@@ -111,13 +111,12 @@ export function MissingDetailsNotice({ registryId, items }: { registryId: string
       icon="image"
       tone="tint"
       title={one ? "1 item is missing a photo or price" : `${items.length} items are missing a photo or price`}
-      message={`Regibee can read ${one ? "it" : "them"} from the store and fill in the name, photo and price. You can check what changed afterward and put back anything you'd rather keep.`}
+      message={`Regibee can fill ${one ? "it" : "them"} in from the store. You can undo changes after.`}
       action={{ title: one ? "Fill it in" : "Fill them in", onPress: start }}
     >
       {notRead > 0 ? (
         <Text variant="footnote" tone="danger" style={{ paddingLeft: 46 }}>
-          {notRead === 1 ? "1 item couldn't be read." : `${notRead} items couldn't be read.`} The store may have asked for a
-          robot check, or the product page may be gone. Try again later.
+          {notRead === 1 ? "1 item couldn't be read." : `${notRead} items couldn't be read.`} Try again later.
         </Text>
       ) : null}
     </Notice>
@@ -184,10 +183,10 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
       title={total === 1 ? "Filled in details for 1 item" : `Filled in details for ${total} items`}
       message={
         replaced.length === 0
-          ? "Everything filled in was empty before."
+          ? undefined
           : replaced.length === 1
-            ? "One item already had something the store has differently. Its old value is kept below, so you can switch back."
-            : `${replaced.length} items already had something the store has differently. Their old values are kept below, so you can switch back.`
+            ? "Its old value is below, so you can switch back."
+            : "Their old values are below, so you can switch back."
       }
     >
       {/* A name change shows the name twice; otherwise say which item it is. */}
@@ -228,9 +227,6 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
             )
           }
         />
-        <Text variant="footnote" tone="tertiary" style={{ flexShrink: 1 }}>
-          Items keep what they show now.
-        </Text>
       </View>
     </Notice>
   );

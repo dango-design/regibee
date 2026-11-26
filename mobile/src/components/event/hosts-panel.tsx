@@ -73,7 +73,7 @@ export function HostsPanel({ data, onLeft }: { data: EventPageData; onLeft: () =
     <Card>
       <Text variant="headline">Hosts</Text>
       <Text variant="footnote" tone="secondary">
-        Co-hosts can edit the event, add guests, send invitations and reminders, see RSVPs and draw names.
+        Co-hosts can edit the event and manage guests.
       </Text>
       <View style={{ gap: spacing.sm }}>
         {hosts.map((host) => (
@@ -159,7 +159,7 @@ export function HostsPanel({ data, onLeft }: { data: EventPageData; onLeft: () =
         </View>
         <IconButton icon="send" accessibilityLabel="Send co-host invitation" onPress={invite} />
       </View>
-      <Button title="Copy a co-host link instead" icon="link" size="small" variant="ghost" disabled={busy} onPress={copyLink} />
+      <Button title="Copy co-host link" icon="link" size="small" variant="ghost" disabled={busy} onPress={copyLink} />
       {notice ? (
         <Text variant="footnote" tone={notice.error ? "danger" : "success"} accessibilityLiveRegion="polite">
           {notice.text}

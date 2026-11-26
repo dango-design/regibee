@@ -69,7 +69,7 @@ export default function FollowsScreen() {
     onPress: () =>
       confirm(
         `Block ${displayName(person)}?`,
-        "They'll be removed from your followers and the people you follow. They won't be able to ask to follow you or find you in search. You can unblock them later.",
+        "You'll stop following each other. They can't ask to follow you or find you in search.",
         "Block",
         () =>
           act(`block-${person.public_id}`, "follows.blockUser", person.public_id, () =>
@@ -85,7 +85,7 @@ export default function FollowsScreen() {
     onPress: () =>
       confirm(
         `Remove ${displayName(person)} from your followers?`,
-        "They'll stop seeing the registries you show to followers on your profile, and your birthday. They can ask to follow you again.",
+        "They'll stop seeing your birthday and the lists you show followers.",
         "Remove",
         () => act(`remove-${person.public_id}`, "follows.removeFollower", person.public_id)
       ),
@@ -112,7 +112,7 @@ export default function FollowsScreen() {
           onPress: () =>
             confirm(
               `Unfollow ${displayName(person)}?`,
-              "You'll stop seeing the registries they show to followers on their profile.",
+              "You'll stop seeing the lists they show followers.",
               "Unfollow",
               () => act(`unfollow-${person.public_id}`, "follows.cancelFollow", person.public_id)
             ),
@@ -169,11 +169,11 @@ export default function FollowsScreen() {
             Follow requests
           </Text>
           <Text variant="footnote" tone="secondary">
-            People you approve can see the registries you show to followers on your profile, and your birthday.
+            People you approve see your birthday and the lists you show followers.
           </Text>
           {requests.length + justApproved.length === 0 ? (
             <Text variant="footnote" tone="tertiary">
-              No follow requests right now. When someone asks to follow you, you can approve or decline them here.
+              No follow requests right now.
             </Text>
           ) : null}
           {justApproved.map((person) => (
@@ -212,12 +212,12 @@ export default function FollowsScreen() {
             Followers
           </Text>
           <Text variant="footnote" tone="secondary">
-            They can see the registries you show to followers on your profile, and your birthday. Follow them back to see
-            theirs. Friends are the ones you follow too: they also see the registries you show only to friends.
+            They see your birthday and the lists you show followers. Friends, the ones you follow back, also see lists you
+            show friends.
           </Text>
           {followers.length === 0 ? (
             <Text variant="footnote" tone="tertiary">
-              No followers yet. Share your profile link, or let people find you in search.
+              No followers yet.
             </Text>
           ) : (
             followers.map((person) => (
@@ -237,17 +237,13 @@ export default function FollowsScreen() {
           <Text variant="title" style={{ fontSize: 20 }}>
             Following
           </Text>
-          <Text variant="footnote" tone="secondary">
-            People whose registries you follow. See them all on your{" "}
-            <Text variant="footnote" tone="tint" onPress={() => router.navigate("/following")}>
-              Following page
-            </Text>
-            .
-          </Text>
           {following.length === 0 ? (
             <Text variant="footnote" tone="tertiary">
-              You&apos;re not following anyone yet. Find people on your Following page, or open someone&apos;s profile link and
-              tap Follow.
+              You&apos;re not following anyone yet. Find people on your{" "}
+              <Text variant="footnote" tone="tint" onPress={() => router.navigate("/following")}>
+                Following page
+              </Text>
+              .
             </Text>
           ) : (
             following.map((person) => (
@@ -268,8 +264,7 @@ export default function FollowsScreen() {
               Blocked
             </Text>
             <Text variant="footnote" tone="secondary">
-              They can&apos;t ask to follow you or find you in search, and your profile is hidden from them while they&apos;re
-              signed in.
+              They can&apos;t follow you, find you in search, or see your profile while signed in.
             </Text>
             {blocked.map((person) => (
               <PersonRow key={person.public_id} person={person}>

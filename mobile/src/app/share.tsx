@@ -100,7 +100,7 @@ export default function ShareScreen() {
         <EmptyState
           icon="link"
           title="There's no link to add"
-          message="What you shared didn't include a link to a product. Open the product in its store's app or your browser, then share it to Regibee again."
+          message="Share it again from the product's page."
           action={
             <Button
               title="Go to my registries"
@@ -117,7 +117,7 @@ export default function ShareScreen() {
         <EmptyState
           icon="gift"
           title="You don't have a registry yet"
-          message="Save it as a gift idea for someone else: only you can see it, and the person never does. To add it to a registry of your own, first create a registry, then share it to Regibee again."
+          message="Save it as a gift idea instead. Only you can see it. Or create a registry first, then share it again."
           action={
             <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
               <Button title="Save as a gift idea" icon="sparkles" onPress={saveAsGiftIdea} />

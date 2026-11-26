@@ -58,7 +58,6 @@ test("someone types a friend's exact email, asks to follow, and the friend appro
   await lookUp(page, `  ${fran.email.toUpperCase()} `);
   const result = searchResult(page, "Fran Findable");
   await expect(result).toBeVisible();
-  await expect(result).toContainText("Approves every follower");
   // The result shows the name, never the address.
   await expect(result).not.toContainText(fran.email, { ignoreCase: true });
 
@@ -108,7 +107,7 @@ test("an address that isn't findable offers an invite, the same whether or not i
 
   for (const address of [hal.email, nobody]) {
     await lookUp(page, address);
-    await expect(page.getByText(`No one has made their account findable with ${address}.`)).toBeVisible();
+    await expect(page.getByText(`No one found with ${address}.`)).toBeVisible();
     await expect(page.getByText("Hal Hidden")).toHaveCount(0);
     await page.getByRole("button", { name: "Send invite" }).click();
     await expect(page.getByText(`Invite sent to ${address}.`)).toBeVisible();

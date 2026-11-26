@@ -72,7 +72,7 @@ function TagField({
   onDraftChange,
 }: {
   label: string;
-  hint: string;
+  hint?: string;
   placeholder: string;
   tags: string[];
   draft: string;
@@ -282,7 +282,7 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
         {...audienceProps("birthday")}
         hint={
           child
-            ? `No year needed. Only you and followers you approve see ${whose} birthday, and only while this list is on your profile.`
+            ? `Only you and followers you approve see ${whose} birthday, while this list is on your profile.`
             : giftProfileAudienceHint("birthday", audiences.birthday)
         }
       >
@@ -346,7 +346,7 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
 
           <TagField
             label="Likes"
-            hint="Type one and press Enter, or separate them with commas."
+            hint="Press Enter after each one."
             placeholder="Tea, puzzles, hiking"
             tags={likes}
             draft={likeDraft}
@@ -356,11 +356,6 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
 
           <TagField
             label="Please skip"
-            hint={
-              child
-                ? `Things ${childName ?? "your child"} already has or shouldn't get.`
-                : "Things you already have or don't want."
-            }
             placeholder="Candles, mugs"
             tags={skip}
             draft={skipDraft}

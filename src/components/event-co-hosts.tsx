@@ -118,7 +118,7 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
       <CardContent className="flex flex-col gap-3 p-4">
         <div>
           <h2 className="font-medium text-primary">Hosts</h2>
-          <p className="text-sm text-tertiary">Co-hosts can edit the event, add guests, send invitations and reminders, see RSVPs and draw names.</p>
+          <p className="text-sm text-tertiary">Co-hosts can edit the event and manage guests.</p>
         </div>
         <ul className="flex flex-col gap-1.5">
           {hosts.map((host) => (
@@ -190,7 +190,7 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
           className="inline-flex cursor-pointer items-center gap-1.5 self-start text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
         >
           {copied ? <Check aria-hidden="true" className="size-4" /> : <Link2 aria-hidden="true" className="size-4" />}
-          {copied ? "Copied" : "Copy a co-host link instead"}
+          {copied ? "Copied" : "Copy co-host link"}
         </button>
         {error && (
           <p role="alert" className="text-sm text-error-primary">

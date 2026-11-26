@@ -205,7 +205,7 @@ test("a group gift started from an event's invitation shows to its other guests"
   const groupGift = ozPage.getByRole("button", { name: "Group gift" });
   await waitForReact(groupGift);
   await groupGift.click();
-  await expect(ozPage.getByRole("dialog").getByText(`Guests of ${event.title} will see it`)).toBeVisible();
+  await expect(ozPage.getByRole("dialog").getByText(`Guests of ${event.title} see it`)).toBeVisible();
   await ozPage.getByRole("dialog").getByRole("button", { name: "Start group gift" }).click();
   await ozPage.waitForURL(/\/group-gift\//);
   await expect(ozPage.getByRole("link", { name: event.title })).toBeVisible();

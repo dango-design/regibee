@@ -144,8 +144,7 @@ export function GuestMessages({
           <DialogHeader>
             <DialogTitle>Message guests</DialogTitle>
             <DialogDescription>
-              It goes by email, with each guest&apos;s own RSVP link, and replies come to you. It also shows on the
-              invitation, for anyone with its link, including guests you texted it to.
+              It&apos;s emailed to guests, and anyone with the invitation&apos;s link can see it there.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={send} className="flex flex-col gap-4">

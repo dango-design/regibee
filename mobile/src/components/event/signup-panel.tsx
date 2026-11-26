@@ -87,7 +87,7 @@ export function SignupStarter({ eventId }: { eventId: string }) {
         <View style={{ flex: 1, gap: 4 }}>
           <Text variant="headline">Sign-up sheet</Text>
           <Text variant="footnote" tone="tertiary">
-            Ask guests to bring a dish, pick a day to drop off a meal, or help set up. They sign up when they RSVP.
+            For potlucks, meal trains and volunteers.
           </Text>
           {open ? (
             <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>

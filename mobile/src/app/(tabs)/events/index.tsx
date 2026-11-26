@@ -32,7 +32,7 @@ export default function EventsScreen() {
       <EmptyState
         icon="party"
         title="Events are for accounts"
-        message="Make an account to send invitations, track RSVPs, run a gift exchange and keep groups of guests."
+        message="Make an account to send invitations and track RSVPs."
       />
     );
   }
@@ -61,10 +61,6 @@ export default function EventsScreen() {
           />
         }
       >
-        <Text variant="subhead" tone="secondary">
-          Send invitations and track RSVPs
-        </Text>
-
         {!data ? (
           tab.isError ? (
             <ErrorState message={errorMessage(tab.error)} onRetry={() => tab.refetch()} />
@@ -77,7 +73,7 @@ export default function EventsScreen() {
               <View style={{ gap: spacing.sm }}>
                 <Text variant="headline">Celebrating you</Text>
                 <Text variant="footnote" tone="tertiary">
-                  Events other people are hosting that link your registry.
+                  Events that link your registry.
                 </Text>
                 <Section>
                   {data.linked.map((event, index) => (
@@ -100,7 +96,7 @@ export default function EventsScreen() {
               <EmptyState
                 icon="party"
                 title="Plan your first event"
-                message="A baby shower, a birthday, a holiday party: upload your invitation, email it to guests, and see who's coming. Link your registry so guests know what to bring."
+                message="Send invitations and see who's coming."
                 action={<Button title="New" icon="add" onPress={() => router.push("/new")} />}
               />
             ) : null}
@@ -303,8 +299,7 @@ function GroupsSection({ groups }: { groups: { id: string; name: string; memberC
         {!adding ? <Button title="New group" icon="add" size="small" variant="ghost" onPress={() => setAdding(true)} /> : null}
       </View>
       <Text variant="footnote" tone="tertiary">
-        Guest lists you keep, like your family or book club. Invite a whole group, run its gift exchange each year, or share a
-        wishlist with it.
+        People you invite together, like your family or book club.
       </Text>
       {adding ? (
         <Card>
@@ -331,7 +326,7 @@ function GroupsSection({ groups }: { groups: { id: string; name: string; memberC
         </Section>
       ) : !adding ? (
         <Text variant="footnote" tone="tertiary">
-          No groups yet. Make one here, or save an event's guest list as a group from the event's page.
+          No groups yet.
         </Text>
       ) : null}
     </View>

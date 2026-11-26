@@ -161,8 +161,7 @@ export default function GroupScreen() {
           </View>
         )}
         <Text variant="subhead" tone="tertiary" style={{ marginTop: -spacing.md }}>
-          {memberCountLabel(members.length)}. Invite the whole group from an event's guest list, run a gift exchange with it, or share a
-          wishlist with it.
+          {memberCountLabel(members.length)}
         </Text>
 
         <Card>
@@ -171,7 +170,7 @@ export default function GroupScreen() {
             <Button title={pasting ? "Add one at a time" : "Paste a list"} size="small" variant="ghost" onPress={() => setPasting(!pasting)} />
           </View>
           <Text variant="footnote" tone="tertiary">
-            Anyone here with a Regibee account under this email sees the lists you share with the group.
+            Everyone here with a Regibee account sees the lists you share with this group.
           </Text>
           {pasting ? (
             <>
@@ -181,7 +180,7 @@ export default function GroupScreen() {
                 multiline
                 accessibilityLabel="People to add"
                 placeholder={"Glinda Upland, glinda@example.com\nElphaba Thropp <elphie@example.com>\nNessa Thropp"}
-                hint="One person per line: a name and an email address."
+                hint="One person per line."
               />
               {pasted.trim() ? (
                 <Text variant="footnote" tone="tertiary">
@@ -278,13 +277,11 @@ export default function GroupScreen() {
 
         <Card>
           <Text variant="headline">Gift exchange</Text>
-          <Text variant="footnote" tone="secondary">
-            {current
-              ? "This year's exchange is started. Add people from its guest list, and draw names when everyone's in."
-              : lastExchange
-                ? "Starts a new exchange with everyone in the group. It keeps last time's budget and pairs who shouldn't draw each other, and nobody draws the same person as last time."
-                : "Makes an event with everyone in the group as guests and a Secret Santa draw. Set the date and budget next."}
-          </Text>
+          {current || lastExchange ? (
+            <Text variant="footnote" tone="secondary">
+              {current ? "This year's exchange has started." : "Keeps last time's settings. Nobody draws the same person again."}
+            </Text>
+          ) : null}
           {!current && lastExchange ? (
             <Text variant="footnote" tone="tertiary">
               Last time:{" "}
@@ -351,7 +348,7 @@ export default function GroupScreen() {
           <View style={{ gap: spacing.xs }}>
             <Text variant="headline">Lists shared with this group</Text>
             <Text variant="footnote" tone="tertiary">
-              None yet. Share a wishlist from its Settings page, and people here see it on their Following page.
+              None yet. Share a wishlist from its Settings page.
             </Text>
           </View>
         )}

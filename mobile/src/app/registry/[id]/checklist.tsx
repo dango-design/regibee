@@ -92,9 +92,6 @@ export default function ChecklistScreen() {
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={
           <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
-            <Text variant="subhead" tone="secondary">
-              Browse recommended items and add them to your registry
-            </Text>
             <View style={{ gap: 6 }}>
               <Text variant="footnote" style={{ fontWeight: "600" }}>
                 {addedCount} of {TOTAL} items added

@@ -106,7 +106,7 @@ export function SignupSheetStarter({
           <div className="flex min-w-0 flex-col gap-1">
             <p className="font-medium text-primary">Sign-up sheet</p>
             <p className="text-sm text-tertiary">
-              Ask guests to bring a dish, pick a day to drop off a meal, or help set up. They sign up when they RSVP.
+              For potlucks, meal trains and volunteers.
             </p>
             {open ? (
               <div className="mt-2 flex flex-col gap-2">

@@ -309,7 +309,7 @@ export function PlanPicker({
           ? `${whose} ${occasion.list.noun}, “${listTitleFor(occasion, state.name)}”, linked to the invitation`
           : `${whose} ${occasion.list.noun}`,
       );
-      if (state.audience === "child") summary.push("You'll always see what's been reserved, since you keep it for your child");
+      if (state.audience === "child") summary.push("You'll see what's reserved, since it's for your child");
     }
     if (state.gifts === "link") {
       summary.push(
@@ -319,12 +319,12 @@ export function PlanPicker({
       );
     }
     if (state.gifts === "ask") summary.push(`An email to ${state.askEmail || "them"} asking for a ${occasion.list.noun}`);
-    if (state.gifts === "exchange") summary.push("A Secret Santa draw. Guests add a wishlist when they join. Set the budget and draw date next.");
+    if (state.gifts === "exchange") summary.push("A Secret Santa draw. Set the budget and draw date next.");
     if (state.gifts === "everyone") {
-      summary.push("Everyone gives everyone: guests link their wishlists when they RSVP, and see each other's");
+      summary.push("Guests link their wishlists when they RSVP and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
-    if (state.gifts === "later") summary.push("Nothing about gifts yet. You can set that up from the event any time.");
+    if (state.gifts === "later") summary.push("Nothing about gifts yet");
     // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
     const startsSheet = Boolean(occasion.defaults && "signup" in occasion.defaults);
     if (state.gifts === "signup" || startsSheet) {
@@ -377,9 +377,6 @@ export function PlanPicker({
             <h2 id="plan-list" className="text-xl font-semibold">
               Make a gift list
             </h2>
-            <p className="mt-1 text-sm text-tertiary">
-              Just the list, ready to share. You don&apos;t need an event, and you can plan one later.
-            </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             {LISTS_ON_THEIR_OWN.map(({ label, hint, href, icon: Icon }) => (
@@ -410,9 +407,6 @@ export function PlanPicker({
             <h2 id="plan-what" className="text-xl font-semibold">
               Or plan an event
             </h2>
-            <p className="mt-1 text-sm text-tertiary">
-              Invitations and RSVPs, with a gift list if you want one.
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {OCCASIONS.map((o) => {
@@ -471,9 +465,6 @@ export function PlanPicker({
             <h2 id="plan-gifts" className="text-xl font-semibold">
               How do gifts work?
             </h2>
-            <p className="mt-1 text-sm text-tertiary">
-              Optional. Skip it and set up gifts from the event later.
-            </p>
           </div>
           {/* Gift lists first, large. Everything else after them, smaller. */}
           <div className={cx("grid gap-2", giftRows.main.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
@@ -504,7 +495,7 @@ export function PlanPicker({
                 value={state.linkUrl}
                 onChange={(linkUrl) => update({ linkUrl, registryId: "" })}
                 placeholder="regibee.com/r/remi-and-max-1a2b"
-                hint="Linking someone's list shows it to guests. It gives you no rights over it, and its owners get an email."
+                hint="Guests will see the list, and its owners get an email."
               />
             </div>
           )}
@@ -514,7 +505,7 @@ export function PlanPicker({
               value={state.linkUrl}
               onChange={(linkUrl) => update({ linkUrl })}
               placeholder="regibee.com/r/remi-and-max-1a2b"
-              hint="Linking shows the list to guests. It gives you no rights over it, and its owners get an email."
+              hint="Guests will see the list, and its owners get an email."
               className="sm:max-w-lg"
             />
           )}
@@ -525,7 +516,7 @@ export function PlanPicker({
               value={state.askEmail}
               onChange={(askEmail) => update({ askEmail })}
               autoComplete="off"
-              hint={`We'll email them a link to make a ${occasion.list.noun}. It's linked to your invitation once they do.`}
+              hint={`We'll email them a link to make a ${occasion.list.noun}.`}
               className="sm:max-w-lg"
             />
           )}
@@ -534,7 +525,6 @@ export function PlanPicker({
               isSelected={state.invitation}
               onChange={(invitation) => update({ invitation })}
               label="Also make an invitation"
-              hint="Email guests an invitation with RSVPs, with your list on it. You can also add one later."
             />
           )}
           {giftRows.other.length > 0 && (
@@ -593,11 +583,6 @@ export function PlanPicker({
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-sm text-tertiary">
-                {withEvent
-                  ? "Next you'll add guests, a place and time, and your invitation picture."
-                  : "Next you'll add things from any store."}
-              </p>
             </div>
           )}
         </section>
@@ -631,9 +616,9 @@ export function PlanPicker({
       )}
 
       <p className="border-t border-secondary pt-4 text-sm text-tertiary">
-        Rather fill in every detail of an event yourself?{" "}
+        Or{" "}
         <Link href="/dashboard/events/new" className="font-medium text-brand-tertiary hover:underline">
-          Use the full event form
+          use the full event form
         </Link>
         .
       </p>
