@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen } from "storybook/test";
+import { expect, screen } from "storybook/test";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SavedItem, SavedList } from "@/lib/saved-items";
@@ -12,6 +12,7 @@ import { SavedItems } from "./saved-items";
 const mockAdd = async (itemIds: string[]) => ({ success: true as const, changed: itemIds.length, deleted: 0 });
 const mockRemove = async (itemIds: string[]) => ({ success: true as const, changed: itemIds.length, deleted: 0 });
 const mockStart = async () => ({ registryId: "my-wishlist" });
+const mockDismissPrompt = async () => ({ error: null });
 
 function list(overrides: Partial<SavedList> & Pick<SavedList, "id" | "title">): SavedList {
   return {
@@ -77,6 +78,7 @@ const meta: Meta<typeof SavedItems> = {
     addAction: mockAdd,
     removeAction: mockRemove,
     startWishlistAction: mockStart,
+    dismissWishlistPromptAction: mockDismissPrompt,
     renderSaveItem: () => (
       <Button>
         <span className="inline-flex items-center gap-1.5">
@@ -135,6 +137,20 @@ export const NoWishlistYet: Story = {
     items: items
       .map((i) => ({ ...i, listIds: i.listIds.filter((id) => id === "kids-list" || id === "baby-registry") }))
       .filter((i) => i.listIds.length > 0),
+  },
+};
+
+/**
+ * Sam keeps a birthday wishlist instead of one main wishlist, so they close
+ * the prompt. It stays closed on every device.
+ */
+export const WishlistPromptClosed: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  name: "Wishlist prompt closed",
+  args: NoWishlistYet.args,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Close" }));
+    await expect(canvas.queryByRole("heading", { name: "Start your wishlist" })).not.toBeInTheDocument();
   },
 };
 
