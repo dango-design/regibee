@@ -36,7 +36,7 @@ function TabLabel({ label, current, pending }: { label: string; current: boolean
           className={cx(
             // A list that scrolls clips anything below it, so on phones the
             // underline sits just above the border instead of over it.
-            "absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand-600 max-sm:bottom-0",
+            "absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand-solid max-sm:bottom-0",
             pending && "animate-pulse",
           )}
         />

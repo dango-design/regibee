@@ -92,8 +92,8 @@ export function SignupSheetStarter({
     <Card className="py-0">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sunshine-50">
-            <ClipboardList aria-hidden="true" className="size-4.5 text-sunshine-900" />
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sunshine-50 dark:bg-sunshine-400/10">
+            <ClipboardList aria-hidden="true" className="size-4.5 text-sunshine-900 dark:text-sunshine-200" />
           </span>
           <div className="flex min-w-0 flex-col gap-1">
             <p className="font-medium text-primary">Sign-up sheet</p>
@@ -122,7 +122,7 @@ export function SignupSheetStarter({
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="self-start text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11"
+                className="self-start text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
               >
                 Add a sign-up sheet
               </button>
@@ -205,11 +205,11 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
   };
 
   return (
-    <section aria-labelledby="signup-manager-heading" className="flex flex-col gap-4 rounded-2xl bg-sunshine-50 p-4 sm:p-5">
+    <section aria-labelledby="signup-manager-heading" className="flex flex-col gap-4 rounded-2xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-            <ClipboardList aria-hidden="true" className="size-4.5 text-sunshine-900" />
+            <ClipboardList aria-hidden="true" className="size-4.5 text-sunshine-900 dark:text-sunshine-200" />
           </span>
           <div className="min-w-0">
             <h2 id="signup-manager-heading" className="text-lg font-semibold text-primary">
@@ -293,7 +293,7 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium text-primary">{rowName(row)}</p>
-                    <p className={cx("text-sm", row.claims.length >= row.needed ? "text-mint-800" : "text-tertiary")}>
+                    <p className={cx("text-sm", row.claims.length >= row.needed ? "text-mint-800 dark:text-mint-300" : "text-tertiary")}>
                       {row.claims.length >= row.needed
                         ? "Full"
                         : `${row.claims.length} of ${row.needed} taken`}

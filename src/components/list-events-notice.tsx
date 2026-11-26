@@ -30,16 +30,16 @@ export function ListEventsNotice({
 }) {
   if (events.length === 0) return null;
   return (
-    <div className={cx("flex items-start gap-3 rounded-2xl bg-blush-50 p-4", className)}>
+    <div className={cx("flex items-start gap-3 rounded-2xl bg-blush-50 dark:bg-blush-300/10 p-4", className)}>
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-        <CalendarHeart aria-hidden="true" className="h-4.5 w-4.5 text-blush-700" />
+        <CalendarHeart aria-hidden="true" className="h-4.5 w-4.5 text-blush-700 dark:text-blush-200" />
       </span>
       <div className="min-w-0">
         <p className="font-medium text-primary">{events.length === 1 ? "Event with this list" : "Events with this list"}</p>
         <ul className="text-sm text-tertiary">
           {events.map((event) => (
             <li key={event.id}>
-              <Link href={`${basePath}${event.href}`} className="font-medium text-brand-600 hover:underline">
+              <Link href={`${basePath}${event.href}`} className="font-medium text-brand-tertiary hover:underline">
                 {event.title}
               </Link>
               {" · "}

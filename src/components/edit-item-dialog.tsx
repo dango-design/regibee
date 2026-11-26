@@ -184,7 +184,7 @@ function TogglePill({
         className={cn(
           "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold outline-brand transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 pressing:scale-[0.97] max-sm:min-h-11",
           pressed
-            ? "border-brand-500 bg-brand-50 text-brand-700 hover:bg-brand-100"
+            ? "border-brand bg-brand-primary text-brand-secondary hover:bg-brand-secondary"
             : "border-primary bg-primary text-secondary hover:bg-primary_hover pressing:bg-tertiary",
         )}
       >
@@ -791,7 +791,7 @@ export function EditItemDialog({
           <input type="hidden" name="isOpenToUsed" value={openToUsed ? "true" : ""} />
 
           {linkBig ? (
-            <div className="space-y-2.5 rounded-xl border border-brand-200 bg-brand-50 p-4">
+            <div className="space-y-2.5 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-primary p-4">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <Label className="!text-sm !font-semibold !text-primary">Paste a link from any store</Label>
                 {linkBefore !== null && (
@@ -874,7 +874,7 @@ export function EditItemDialog({
               )}
               <p
                 role="status"
-                className={cn("text-xs", scrapeIsError ? "text-warning-primary" : scrapeStatus ? "text-brand-600" : "text-tertiary")}
+                className={cn("text-xs", scrapeIsError ? "text-warning-primary" : scrapeStatus ? "text-brand-tertiary" : "text-tertiary")}
               >
                 {scrapeStatus || (scraping ? "Reading the page…" : "We'll fill in the name, price and photo from the page.")}
               </p>
@@ -888,7 +888,7 @@ export function EditItemDialog({
                   <Link01 className="h-4 w-4 shrink-0 text-fg-quaternary max-sm:hidden" aria-hidden="true" />
                   <span className="shrink-0 text-sm font-semibold text-primary">{storeName}</span>
                   {isRegistryLink && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-success-200 bg-success-50 px-2 py-0.5 text-xs font-semibold text-success-800">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-success-200 dark:border-success-800 bg-success-primary px-2 py-0.5 text-xs font-semibold text-success-800 dark:text-success-300">
                       <Check className="h-3 w-3" aria-hidden="true" />
                       Registry link
                     </span>
@@ -932,7 +932,7 @@ export function EditItemDialog({
                 </div>
               </div>
               {scrapeStatus && (
-                <p role="status" className="text-xs text-brand-600">
+                <p role="status" className="text-xs text-brand-tertiary">
                   {scrapeStatus}
                 </p>
               )}
@@ -1032,7 +1032,7 @@ export function EditItemDialog({
                           aria-pressed={selected}
                           className={cn(
                             "relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-md bg-tertiary ring-2 transition duration-100 active:scale-[0.97]",
-                            selected ? "ring-brand-600" : "ring-transparent hover:ring-border-primary",
+                            selected ? "ring-brand-solid" : "ring-transparent hover:ring-border-primary",
                           )}
                         >
                           <img
@@ -1048,7 +1048,7 @@ export function EditItemDialog({
                             }
                           />
                           {selected && (
-                            <span className="absolute right-0.5 bottom-0.5 flex size-4 items-center justify-center rounded-full bg-brand-600 text-white">
+                            <span className="absolute right-0.5 bottom-0.5 flex size-4 items-center justify-center rounded-full bg-brand-solid text-primary_on-brand">
                               <Check className="size-3" strokeWidth={3} aria-hidden="true" />
                             </span>
                           )}

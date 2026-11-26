@@ -489,9 +489,9 @@ export function AddItemDialog({
             </Select>
           )}
           {/* Step 1 — URL hero */}
-          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 space-y-2">
+          <div className="rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-primary p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-solid text-xs font-semibold text-primary_on-brand">
                 1
               </span>
               <Label className="!text-sm !font-semibold !text-primary">
@@ -572,7 +572,7 @@ export function AddItemDialog({
               />
             )}
             {scrapeStatus && (
-              <p role="status" className={`text-xs pl-8 max-sm:pl-0 ${scrapeIsError ? "text-warning-primary" : "text-brand-600"}`}>{scrapeStatus}</p>
+              <p role="status" className={`text-xs pl-8 max-sm:pl-0 ${scrapeIsError ? "text-warning-primary" : "text-brand-tertiary"}`}>{scrapeStatus}</p>
             )}
           </div>
 
@@ -661,7 +661,7 @@ export function AddItemDialog({
                           aria-pressed={selected}
                           className={`relative size-14 shrink-0 overflow-hidden rounded-md border-2 bg-tertiary transition ${
                             selected
-                              ? "border-brand-600 ring-2 ring-brand-600/30"
+                              ? "border-brand-solid ring-2 ring-brand-solid/30"
                               : "border-transparent hover:border-secondary"
                           }`}
                         >

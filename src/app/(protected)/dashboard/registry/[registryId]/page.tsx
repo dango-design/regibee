@@ -451,12 +451,12 @@ export default async function RegistryManagePage({
                                   tagType === "cancelled"
                                     ? "bg-error-primary/10 border-error-primary/20 text-error-primary"
                                     : tagType === "contribution"
-                                      ? "bg-mint-500 border-mint-500 text-primary"
+                                      ? "bg-mint-500 border-mint-500 text-gray-900"
                                       : tagType === "covered"
-                                        ? "bg-mint-200 border-mint-200 text-primary"
+                                        ? "bg-mint-200 dark:bg-mint-500/20 border-mint-200 dark:border-mint-800 text-primary"
                                         : tagType === "reserved"
-                                          ? "bg-sunshine-50 border-sunshine-200 text-primary"
-                                          : "bg-sunshine-100 border-sunshine-100 text-primary"
+                                          ? "bg-sunshine-50 dark:bg-sunshine-400/10 border-sunshine-200 dark:border-sunshine-900 text-primary"
+                                          : "bg-sunshine-100 dark:bg-sunshine-400/15 border-sunshine-100 dark:border-sunshine-900 text-primary"
                                 }`}
                               >
                                 {tag.label}

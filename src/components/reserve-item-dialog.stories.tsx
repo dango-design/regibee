@@ -204,3 +204,10 @@ export const Ended: Story = {
     await screen.findByRole("dialog");
   },
 };
+
+// The dialog in dark mode, over a dark page.
+export const DarkReserve: Story = {
+  args: { item: soundMachine },
+  parameters: { theme: "dark" },
+  play: openWith(/gift this/i),
+};

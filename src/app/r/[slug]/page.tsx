@@ -724,7 +724,7 @@ export default async function PublicRegistryPage({
             />
           )}
           {santaFor && (
-            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-sunshine-200 bg-sunshine-50 p-4">
+            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-sunshine-200 dark:border-sunshine-900 bg-sunshine-50 dark:bg-sunshine-400/10 p-4">
               <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="font-semibold text-primary">You&apos;re {santaFor}&apos;s Secret Santa.</p>

@@ -43,7 +43,7 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
       <section className="w-full max-w-lg rounded-2xl border border-secondary bg-primary p-7 shadow-xs">
         {status === "connected" ? (
           <div className="flex flex-col items-center gap-3 text-center" role="status">
-            <CheckCircle2 className="size-10 text-success-600" aria-hidden="true" />
+            <CheckCircle2 className="size-10 text-success-primary" aria-hidden="true" />
             <h1 className="font-display text-display-xs font-semibold text-primary">The extension is connected</h1>
             <p className="text-sm text-tertiary">
               Open one of your store registries and click the Regibee button in your browser&apos;s toolbar.
@@ -65,16 +65,16 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
               <div className="flex flex-col gap-2">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-secondary">It can</h2>
                 <p className="flex items-start gap-2 text-sm text-primary">
-                  <Check className="mt-0.5 size-4 shrink-0 text-success-600" aria-hidden="true" />
+                  <Check className="mt-0.5 size-4 shrink-0 text-success-primary" aria-hidden="true" />
                   Read the items on your {listStores()} registries
                 </p>
                 <p className="flex items-start gap-2 text-sm text-primary">
-                  <Check className="mt-0.5 size-4 shrink-0 text-success-600" aria-hidden="true" />
+                  <Check className="mt-0.5 size-4 shrink-0 text-success-primary" aria-hidden="true" />
                   Read a product page when you click its button, or when you paste a link from those stores
                   on Regibee, so you can add that item
                 </p>
                 <p className="flex items-start gap-2 text-sm text-primary">
-                  <Check className="mt-0.5 size-4 shrink-0 text-success-600" aria-hidden="true" />
+                  <Check className="mt-0.5 size-4 shrink-0 text-success-primary" aria-hidden="true" />
                   Add those items to your Regibee registries
                 </p>
               </div>
@@ -92,7 +92,7 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
             </div>
 
             {status === "missing" && (
-              <p className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-sm text-warning-800" role="alert">
+              <p className="rounded-lg border border-warning-200 dark:border-warning-800 bg-warning-primary px-3 py-2.5 text-sm text-warning-800 dark:text-warning-300" role="alert">
                 The Regibee extension isn&apos;t installed in this browser. Install it, then open this page
                 from the extension&apos;s button.
               </p>

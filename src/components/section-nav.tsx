@@ -248,7 +248,7 @@ export function SectionNav({
                 className={cx(
                   "flex min-h-9 items-center gap-2 rounded-full px-3 text-sm whitespace-nowrap transition-colors outline-focus-ring focus-visible:outline-2 focus-visible:-outline-offset-2",
                   "lg:min-h-10 lg:justify-between lg:rounded-md lg:whitespace-normal",
-                  isCurrent ? "bg-brand-50 font-medium text-brand-600" : "text-tertiary hover:bg-secondary hover:text-primary",
+                  isCurrent ? "bg-brand-primary font-medium text-brand-tertiary" : "text-tertiary hover:bg-secondary hover:text-primary",
                 )}
               >
                 {section.label}

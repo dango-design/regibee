@@ -144,10 +144,10 @@ export function EventCard({ summary, manageHref, publicHref, ...base }: EventCar
 
 const REPLY_ICONS = { yes: CircleCheck, maybe: CircleHelp, no: CircleX, pending: Mail } as const;
 const REPLY_COLORS: Record<RsvpStatus, string> = {
-  yes: "text-success-700",
-  maybe: "text-warning-700",
+  yes: "text-success-700 dark:text-success-300",
+  maybe: "text-warning-700 dark:text-warning-300",
   no: "text-tertiary",
-  pending: "text-brand-700",
+  pending: "text-brand-secondary",
 };
 
 /**

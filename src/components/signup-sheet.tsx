@@ -12,10 +12,10 @@ export type { InvitationSignup };
  */
 export function SignupSheetSection({ signup }: { signup: InvitationSignup }) {
   return (
-    <section aria-labelledby="signup-heading" className="flex flex-col gap-3 rounded-2xl bg-sunshine-50 p-4">
+    <section aria-labelledby="signup-heading" className="flex flex-col gap-3 rounded-2xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-          <ClipboardList aria-hidden="true" className="size-4.5 text-sunshine-900" />
+          <ClipboardList aria-hidden="true" className="size-4.5 text-sunshine-900 dark:text-sunshine-200" />
         </span>
         <div className="min-w-0 pt-1">
           <h2 id="signup-heading" className="font-medium text-primary">
@@ -39,10 +39,10 @@ export function SignupSheetSection({ signup }: { signup: InvitationSignup }) {
                     {row.slotDate && <span>{formatSlotDate(row.slotDate)} · </span>}
                     {row.label}
                     {row.mine && (
-                      <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">You</span>
+                      <span className="ml-2 rounded-full bg-brand-primary px-2 py-0.5 text-xs font-medium text-brand-secondary">You</span>
                     )}
                   </p>
-                  <span className={cx("shrink-0 text-sm", full ? "text-tertiary" : "font-medium text-mint-800")}>
+                  <span className={cx("shrink-0 text-sm", full ? "text-tertiary" : "font-medium text-mint-800 dark:text-mint-300")}>
                     {row.passed ? "Over" : spotsLabel(row)}
                   </span>
                 </div>
