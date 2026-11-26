@@ -54,6 +54,7 @@ on:
       - src/lib/my-gifts-cookie.ts
       - src/lib/occasion-theme.ts
       - src/lib/occasions.ts
+      - src/lib/payment-links.ts
       - src/lib/people-page-types.ts
       - src/lib/profile-link.ts
       - src/lib/profile-photos.ts
@@ -71,6 +72,7 @@ on:
       - src/lib/step-nav.ts
       - src/lib/store-perks.ts
       - src/lib/types.ts
+      - src/lib/web-url.ts
       - extension/src/product-reader.ts
       - .github/workflows/mobile-update.yml
   workflow_dispatch:

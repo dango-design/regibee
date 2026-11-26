@@ -36,10 +36,10 @@ function joinNames(names: string[]): string {
 export interface GuestItemActions {
   /** Opens the gift sheet at a step. */
   openGift: (item: PublicListItem, step: GiftStep) => void;
-  /** Covering an item the owners bought, which the web view still does. */
-  cover: () => void;
-  /** Starting a group gift, which the web view still does. */
-  startGroupGift: () => void;
+  /** Opens the cover sheet, for an item the owners bought. */
+  cover: (item: PublicListItem) => void;
+  /** Opens the sheet that starts a group gift. */
+  startGroupGift: (item: PublicListItem) => void;
   /** Opens one of the guest's own group gifts. */
   openGroupGift: (token: string) => void;
 }
@@ -79,15 +79,15 @@ export const GuestItemCard = memo(function GuestItemCard({
       buttons = <Button title="Open group gift" icon="people" variant="secondary" size="small" onPress={() => actions.openGroupGift(token)} />;
     } else if (item.is_parent_purchased) {
       buttons = gift ? (
-        <Button title="View your gift" variant="ghost" size="small" onPress={actions.cover} />
+        <Button title="View your gift" variant="ghost" size="small" onPress={() => actions.cover(item)} />
       ) : (
-        <Button title="Gift this" icon="gift" size="small" onPress={actions.cover} />
+        <Button title="Gift this" icon="gift" size="small" onPress={() => actions.cover(item)} />
       );
     } else if (!gift) {
       buttons = (
         <>
           {s.canStartGroupGift ? (
-            <Button title="Group gift" icon="people" variant="secondary" size="small" onPress={actions.startGroupGift} />
+            <Button title="Group gift" icon="people" variant="secondary" size="small" onPress={() => actions.startGroupGift(item)} />
           ) : null}
           {s.remaining > 0 ? <Button title="Gift this" icon="gift" size="small" onPress={() => actions.openGift(item, "reserve")} /> : null}
         </>

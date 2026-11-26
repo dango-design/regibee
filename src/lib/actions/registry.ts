@@ -67,6 +67,17 @@ async function addToMyGiftsCookie(
 }
 
 /**
+ * From the phone app, which has no event guest cookie: the invitation the
+ * guest came from, as the `eventSlug` and `guestToken` form fields. Null when
+ * either is missing, so the cookie is read instead (recordEventGuestOnGift).
+ */
+function eventLinkFromForm(formData: FormData): { eventSlug: string; token: string } | null {
+  const eventSlug = String(formData.get("eventSlug") ?? "").trim();
+  const token = String(formData.get("guestToken") ?? "").trim();
+  return eventSlug && token ? { eventSlug, token } : null;
+}
+
+/**
  * Records which event guest gave a gift, when the guest came from a gift link
  * on their invitation (the event guest cookie, src/lib/event-guest-cookie.ts).
  *
@@ -733,10 +744,7 @@ export async function reserveItem(formData: FormData): Promise<ReserveItemResult
   const buyerEmail = String(formData.get("buyerEmail") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const alreadyBought = formData.get("alreadyBought") === "1";
-  // From the phone app, which has no event guest cookie: the invitation the
-  // guest came from (recordEventGuestOnGift).
-  const eventSlug = String(formData.get("eventSlug") ?? "").trim();
-  const guestToken = String(formData.get("guestToken") ?? "").trim();
+  const eventLink = eventLinkFromForm(formData);
 
   if (!isUuid(itemId)) return { error: "This item isn't on the registry anymore." };
   if (!buyerName || !buyerEmail) return { error: "Add your name and email." };
@@ -775,7 +783,7 @@ export async function reserveItem(formData: FormData): Promise<ReserveItemResult
   }
 
   // Before the emails below, which read hide_giver to decide what owners see.
-  await recordEventGuestOnGift(purchaseId, { itemId }, eventSlug && guestToken ? { eventSlug, token: guestToken } : null);
+  await recordEventGuestOnGift(purchaseId, { itemId }, eventLink);
 
   if (alreadyBought) {
     const { error: confirmError } = await supabaseAdmin.rpc("confirm_registry_gift", {
@@ -1458,7 +1466,7 @@ export async function contributeToCashFund(formData: FormData) {
 
   // Before the owners' email below, which leaves out a Secret Santa's name.
   const { hideGiver } = data
-    ? await recordEventGuestOnGift(data as string, { fundId })
+    ? await recordEventGuestOnGift(data as string, { fundId }, eventLinkFromForm(formData))
     : { hideGiver: false };
 
   await addToMyGiftsCookie("funds", fundId, amount);
@@ -1642,7 +1650,7 @@ export async function coverParentPurchasedItem(formData: FormData): Promise<Cove
   }
 
   // Before the emails below, which read hide_giver to decide what owners see.
-  await recordEventGuestOnGift(purchaseId, { itemId });
+  await recordEventGuestOnGift(purchaseId, { itemId }, eventLinkFromForm(formData));
 
   // cover_parent_item saves the gift as 'reserved', which for a gift with no
   // end date already counts as given. Mark it purchased so its status says so.
