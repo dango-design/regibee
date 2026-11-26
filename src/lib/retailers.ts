@@ -69,11 +69,15 @@ export const STORES: StoreInfo[] = [
     // item on the owner's "Your registry" page (/baby-reg/your-registry/...)
     // links this way. sbo alone isn't a marker: item links on the registry
     // home page carry sbo without colid.
+    //
+    // /clp/<ASIN> is a second product page layout. Google Shopping links
+    // there. It's never a registry link, but it's the same product as
+    // /dp/<ASIN>.
     links: {
       registryParams: ["colid", "coliid"],
-      productPath: /\/(dp|gp\/product)\//i,
+      productPath: /\/(dp|gp\/product|clp)\//i,
       hosts: ["amazon.com"],
-      productId: /\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?=[/?#]|$)/i,
+      productId: /\/(?:dp|gp\/product|clp)\/([A-Z0-9]{10})(?=[/?#]|$)/i,
     },
     openRegistryStep:
       'Open the "Your registry" page on amazon.com, not the registry home page.',
