@@ -1,17 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  ExternalLink,
-  Settings,
-  ClipboardList,
-  Mail,
-  MessageSquare,
-} from "lucide-react";
+import { ExternalLink, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { AddItemDialog } from "@/components/add-item-dialog";
 import { ItemCard } from "@/components/item-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
@@ -29,11 +21,13 @@ import { ProgressCircle } from "@/components/ui/progress-circle";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { PandaMark } from "@/components/panda-mark";
-import { copyForRegistry } from "@/lib/registry-copy";
-import { formatDollars, formatPrice } from "@/lib/money";
+import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
+import { formatPrice } from "@/lib/money";
 import { formatGiftDate, giftActivityFor, giftActivityTag } from "@/lib/gifts";
 import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notice";
-import { PlanEventButton, RegistryEventsBanner } from "@/components/registry-events-banner";
+import { PlanEventButton } from "@/components/registry-events-banner";
+import { OwnerListTop } from "@/components/owner-list-top";
+import { LIST_ACCESS, PROFILE_AUDIENCE, listVisibility, profileAudience } from "@/lib/list-access";
 import { findSharedLink } from "@/lib/shared-link";
 import { getSessionUser } from "@/lib/viewer";
 import { loadListPage, type ListPageItem } from "@/lib/list-page";
@@ -75,7 +69,6 @@ export default async function RegistryManagePage({
     zipCode,
     canPlanEvents,
     eventPromptDismissed,
-    showPlanEventButton,
     pendingSuggestionCount,
     missingDetails = [],
     detailReview = [],
@@ -109,8 +102,6 @@ export default async function RegistryManagePage({
   const fulfilledItems = allItems.filter(
     (i) => i.quantity_fulfilled >= i.quantity_needed
   ).length;
-  const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
-  const totalValue = allItems.reduce((sum, i) => sum + (i.price || 0), 0);
 
   // Group items by category
   const itemsByCategory = new Map<string | null, ListPageItem[]>();
@@ -151,96 +142,83 @@ export default async function RegistryManagePage({
   }
 
   const registryUrl = `/r/${registry.slug}`;
+  const accessColumns = {
+    is_public: Boolean(registry.is_public),
+    is_private: registry.is_private as boolean | null,
+    listed_on_profile: registry.listed_on_profile as boolean | null,
+    profile_audience: registry.profile_audience as string | null,
+  };
+  const visibility = listVisibility(accessColumns);
+  const audience = profileAudience(accessColumns);
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{registry.title}</h1>
-          {registry.event_date && (
-            <p className="text-tertiary">
-              {copy.eventDateLabel}:{" "}
-              {new Date(registry.event_date + "T00:00:00").toLocaleDateString("en-US", {
+    <>
+      {/* The top looks like the page guests see. Notices that used to stack
+          here each take one part of the card under the title. */}
+      <OwnerListTop
+        registryId={registryId}
+        title={registry.title}
+        photoUrl={registry.photo_url}
+        occasion={occasionLabel(registry.registry_type, registry.event_type)}
+        itemCount={totalItems}
+        dateLabel={
+          registry.event_date
+            ? `${copy.eventDateLabel}: ${new Date(registry.event_date + "T00:00:00").toLocaleDateString("en-US", {
                 month: "long",
                 day: "numeric",
                 year: "numeric",
-              })}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <CopyLinkButton path={`/r/${registry.slug}`} />
-          <Button variant="outline" asChild>
-            <a href={registryUrl} target="_blank" rel="noopener noreferrer">
-              <span className="inline-flex items-center gap-1.5">
-                <ExternalLink className="h-4 w-4 shrink-0" />
-                Preview
-              </span>
-            </a>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/dashboard/registry/${registryId}/settings`}>
-              <span className="inline-flex items-center gap-1.5">
-                <Settings className="h-4 w-4 shrink-0" />
-                Settings
-              </span>
-            </Link>
-          </Button>
-          {showPlanEventButton && <PlanEventButton registryId={registryId} />}
-        </div>
-      </div>
+              })}`
+            : null
+        }
+        access={{
+          visibility,
+          label:
+            visibility === "private"
+              ? LIST_ACCESS.private.label
+              : `${LIST_ACCESS[visibility].short} · ${PROFILE_AUDIENCE[audience].short}`,
+          href: registrySettingsHref(registryId, "sharing"),
+        }}
+        manager={!data.isOwner}
+        actions={
+          <>
+            <CopyLinkButton path={`/r/${registry.slug}`} />
+            <Button variant="outline" asChild>
+              <a href={registryUrl} target="_blank" rel="noopener noreferrer">
+                <span className="inline-flex items-center gap-1.5">
+                  <ExternalLink className="h-4 w-4 shrink-0" />
+                  Preview
+                </span>
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/registry/${registryId}/settings`}>
+                <span className="inline-flex items-center gap-1.5">
+                  <Settings className="h-4 w-4 shrink-0" />
+                  Settings
+                </span>
+              </Link>
+            </Button>
+            {/* Once the card's "Planning a party?" is dismissed, or the list
+                has an event, planning one is still a click away here. */}
+            {canPlanEvents && (eventPromptDismissed || linkedEvents.length > 0) && (
+              <PlanEventButton registryId={registryId} />
+            )}
+          </>
+        }
+        progress={hideReservations ? null : { gifted: fulfilledItems, total: totalItems }}
+        hidden={
+          hideReservations
+            ? { revealed: revealInfo?.revealedCount ?? 0, href: `/dashboard/registry/${registryId}?tab=purchases` }
+            : null
+        }
+        events={linkedEvents}
+        planPrompt={canPlanEvents && !eventPromptDismissed}
+        checklist={
+          showChecklist ? { ...checklistProgress, href: `/dashboard/registry/${registryId}/checklist` } : null
+        }
+      />
 
-      {hideReservations && (
-        <ReservationsHiddenNotice
-          className="mt-6"
-          settingsHref={settingsHref}
-          turnedOnByExchange={turnedOnByExchange}
-          reveal={revealInfo}
-        />
-      )}
-
-      {/* Events that link to this registry, or a small prompt to plan one. */}
-      {(canPlanEvents || linkedEvents.length > 0) && (
-        <RegistryEventsBanner
-          className="mt-6"
-          registryId={registryId}
-          events={linkedEvents}
-          promptDismissed={eventPromptDismissed}
-        />
-      )}
-
-      {/* Stats */}
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Total items</p>
-            <p className="text-2xl font-bold">{totalItems}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Gifted</p>
-            <p className="text-2xl font-bold">{fulfilledItems}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Completion</p>
-            <div className="flex items-center gap-2">
-              <p className="text-2xl font-bold">{Math.round(progress)}%</p>
-              <Progress value={progress} aria-label="Registry completion" className="flex-1" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-tertiary">Total value</p>
-            <p className="text-2xl font-bold">{formatDollars(totalValue)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Separator className="my-8" />
+    <div className="container mx-auto px-4 py-8">
 
       <RegistryTabs
         totalItems={totalItems + allFunds.length}
@@ -511,5 +489,6 @@ export default async function RegistryManagePage({
 
       <ScrollToTop />
     </div>
+    </>
   );
 }
