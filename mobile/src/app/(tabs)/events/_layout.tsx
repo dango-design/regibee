@@ -17,8 +17,6 @@ export default function EventsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Events", ...largeTitleOptions }} />
-      <Stack.Screen name="[eventId]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="group/[groupId]" options={{ title: "Group", headerBackButtonDisplayMode: "minimal" }} />
     </Stack>
   );
 }
