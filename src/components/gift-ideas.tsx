@@ -190,7 +190,7 @@ function PersonSection({
       </div>
       <ul
         aria-label={group.key ? `Gift ideas for ${group.name}` : "Gift ideas not for anyone yet"}
-        className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         {children}
       </ul>
