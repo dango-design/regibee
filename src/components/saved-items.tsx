@@ -135,8 +135,11 @@ function StartWishlistCallout({ action }: { action: typeof startMyWishlist }) {
     setBusy(true);
     setError("");
     let message: string | null;
+    let registryId: string | null = null;
     try {
-      message = errorOf(await action());
+      const result = await action();
+      message = errorOf(result);
+      if (!message && "registryId" in result) registryId = result.registryId;
     } catch {
       message = "Your wishlist wasn't made. Try again in a moment.";
     }
@@ -145,7 +148,9 @@ function StartWishlistCallout({ action }: { action: typeof startMyWishlist }) {
       setError(message);
       return;
     }
-    startRefresh(() => router.refresh());
+    // Open the new wishlist. It has no items yet, so on this page the only
+    // sign it was made would be this callout going away.
+    startRefresh(() => (registryId ? router.push(`/dashboard/registry/${registryId}`) : router.refresh()));
   };
 
   const working = busy || refreshing;

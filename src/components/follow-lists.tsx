@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Ban, UserMinus, UserX } from "lucide-react";
 import { SECTION_SCROLL_MARGIN, SectionTitle } from "@/components/section-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { FollowBackButton, MutualBadge } from "@/components/follow-button";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { RowActionsMenu, type RowAction } from "@/components/row-actions-menu";
 import {
   approveFollower,
   blockUser,
@@ -43,18 +46,24 @@ function PersonRow({
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* At least 8rem, so on a narrow screen the buttons wrap under the name
-          instead of squeezing it. */}
+          instead of squeezing it. Rare actions, like Remove and Block, are in
+          the row's "…" menu, not buttons, so they can't be clicked by accident. */}
       <div className="flex min-w-0 grow basis-32 flex-wrap items-center gap-x-2 gap-y-1">
         <PersonLabel person={person} basePath={basePath} />
         {mutual && <MutualBadge />}
       </div>
-      <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
     </div>
   );
 }
 
 /** The cards, so an error shows in the one whose button caused it. */
 type CardName = "requests" | "followers" | "following" | "blocked";
+
+/** An action from a row's "…" menu, waiting for the person to confirm it. */
+type Asking = { kind: "block" | "remove" | "unfollow" | "withdraw"; person: PersonSummary };
+
+const blockChoice: RowAction = { id: "block", label: "Block", icon: Ban, destructive: true };
 
 /**
  * The Account page's follow requests, followers, people followed and blocked
@@ -133,22 +142,87 @@ export function FollowLists({
   const without = <T extends PersonSummary>(list: T[], person: PersonSummary) =>
     list.filter((p) => p.public_id !== person.public_id);
 
-  const block = (person: PersonSummary, card: CardName) => {
-    if (
-      !confirm(
-        `Block ${displayName(person)}? You'll stop following each other, and they can't ask to follow you.`,
-      )
-    ) {
+  // The menu action waiting for confirmation, and its error. Its dialog shows
+  // the error, since the dialog stays open until the action is done.
+  const [asking, setAsking] = useState<Asking | null>(null);
+  const [working, setWorking] = useState(false);
+  const [askError, setAskError] = useState("");
+
+  const ask = (kind: Asking["kind"], person: PersonSummary) => {
+    setError(null);
+    setAskError("");
+    setAsking({ kind, person });
+  };
+
+  const confirmAsked = async () => {
+    if (!asking) return;
+    const { kind, person } = asking;
+    setWorking(true);
+    setAskError("");
+    const result =
+      kind === "block"
+        ? await blockAction(person.public_id)
+        : kind === "remove"
+          ? await removeAction(person.public_id)
+          : await cancelAction(person.public_id);
+    setWorking(false);
+    if (result?.error) {
+      setAskError(result.error);
       return;
     }
-    act(`block-${person.public_id}`, card, () => blockAction(person.public_id), () => {
+    setAsking(null);
+    if (kind === "block") {
       setRequests((list) => without(list, person));
       setJustApproved((list) => without(list, person));
       setFollowers((list) => without(list, person));
       setFollowing((list) => without(list, person));
       setBlocked((list) => [{ public_id: person.public_id, full_name: person.full_name }, ...without(list, person)]);
-    });
+    } else if (kind === "remove") {
+      setFollowers((list) => without(list, person));
+      setJustApproved((list) => without(list, person));
+    } else {
+      setFollowing((list) => without(list, person));
+    }
   };
+
+  const askedName = asking ? displayName(asking.person) : "";
+  const dialog = !asking
+    ? null
+    : asking.kind === "block"
+      ? {
+          title: `Block ${askedName}?`,
+          description:
+            "You'll stop following each other. They can't ask to follow you or find you in search.",
+          confirmLabel: "Block",
+        }
+      : asking.kind === "remove"
+        ? {
+            title: `Remove ${askedName} from your followers?`,
+            description:
+              "They'll stop seeing your birthday and the lists you show followers.",
+            confirmLabel: "Remove",
+          }
+        : asking.kind === "withdraw"
+          ? {
+              title: `Withdraw your request to follow ${askedName}?`,
+              description: "You can ask again later from their profile.",
+              confirmLabel: "Withdraw",
+            }
+          : {
+              title: `Unfollow ${askedName}?`,
+              description: "You'll stop seeing the lists they show followers.",
+              confirmLabel: "Unfollow",
+            };
+
+  // The "…" menu at the end of a row.
+  const rowMenu = (person: PersonSummary, actions: RowAction[]) => (
+    <RowActionsMenu
+      label={`More actions for ${displayName(person)}`}
+      actions={actions}
+      disabled={busy !== null}
+      onAction={(id) => ask(id as Asking["kind"], person)}
+    />
+  );
 
   // How the account follows this person: null when it doesn't.
   const followingStatus = (person: PersonSummary) =>
@@ -174,12 +248,6 @@ export function FollowLists({
         ])
       }
     />
-  );
-
-  const blockButton = (person: PersonSummary, card: CardName) => (
-    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => block(person, card)}>
-      Block
-    </Button>
   );
 
   return (
@@ -245,7 +313,7 @@ export function FollowLists({
                   >
                     Decline
                   </Button>
-                  {blockButton(person, "requests")}
+                  {rowMenu(person, [blockChoice])}
                 </>
               }
             />
@@ -277,27 +345,10 @@ export function FollowLists({
                 actions={
                   <>
                     {!isMutual(person) && followBack(person)}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        if (
-                          !confirm(
-                            `Remove ${displayName(person)}? They'll stop seeing your private registries and your birthday.`,
-                          )
-                        ) {
-                          return;
-                        }
-                        act(`remove-${person.public_id}`, "followers", () => removeAction(person.public_id), () => {
-                          setFollowers(without(followers, person));
-                          setJustApproved((list) => without(list, person));
-                        });
-                      }}
-                    >
-                      Remove
-                    </Button>
-                    {blockButton(person, "followers")}
+                    {rowMenu(person, [
+                      { id: "remove", label: "Remove follower", icon: UserMinus, destructive: true },
+                      blockChoice,
+                    ])}
                   </>
                 }
               />
@@ -332,23 +383,11 @@ export function FollowLists({
                     {person.status === "pending" && (
                       <span className="self-center text-sm text-tertiary">Requested</span>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        const question =
-                          person.status === "pending"
-                            ? `Withdraw your request to follow ${displayName(person)}?`
-                            : `Unfollow ${displayName(person)}? You'll stop seeing their private registries.`;
-                        if (!confirm(question)) return;
-                        act(`cancel-${person.public_id}`, "following", () => cancelAction(person.public_id), () =>
-                          setFollowing(without(following, person)),
-                        );
-                      }}
-                    >
-                      {person.status === "pending" ? "Withdraw" : "Unfollow"}
-                    </Button>
+                    {rowMenu(person, [
+                      person.status === "pending"
+                        ? { id: "withdraw", label: "Withdraw request", icon: UserX }
+                        : { id: "unfollow", label: "Unfollow", icon: UserX, destructive: true },
+                    ])}
                   </>
                 }
               />
@@ -391,6 +430,20 @@ export function FollowLists({
             {errorIn("blocked")}
           </CardContent>
         </Card>
+      )}
+
+      {dialog && (
+        <ConfirmActionDialog
+          open
+          onOpenChange={(open) => !open && setAsking(null)}
+          title={dialog.title}
+          description={dialog.description}
+          confirmLabel={dialog.confirmLabel}
+          destructive={asking?.kind !== "withdraw"}
+          working={working}
+          error={askError}
+          onConfirm={confirmAsked}
+        />
       )}
     </>
   );

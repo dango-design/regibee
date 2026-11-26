@@ -30,6 +30,7 @@ import { isLinkForStore, isStoreId, MAX_RETAILER_REGISTRIES, parseRetailerRegist
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { DateField } from "@/components/date-field";
 import { GiftProfileForm } from "@/components/gift-profile-form";
+import { HeaderMenu } from "@/components/header-menu";
 import { Icon } from "@/components/icon";
 import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import {
@@ -520,20 +521,28 @@ function CategoriesPanel({ detail }: { detail: RegistryDetail }) {
               <Text variant="callout" style={{ flex: 1 }}>
                 {category.name}
               </Text>
-              <IconButton icon="edit" accessibilityLabel={`Rename ${category.name}`} onPress={() => setEditing({ id: category.id, name: category.name })} />
-              <IconButton
-                icon="trash"
-                accessibilityLabel={`Delete ${category.name}`}
-                onPress={() =>
-                  Alert.alert(`Delete category “${category.name}”?`, "Items will become uncategorized.", [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: () => remove.mutate(category.id, { onError: (e) => setError(errorMessage(e)) }),
-                    },
-                  ])
-                }
+              {/* Rename and Delete share one "…" menu, as on the website. */}
+              <HeaderMenu
+                size="small"
+                accessibilityLabel={`More actions for ${category.name}`}
+                title={category.name}
+                choices={[
+                  { label: "Rename", icon: "edit", onPress: () => setEditing({ id: category.id, name: category.name }) },
+                  {
+                    label: "Delete",
+                    icon: "trash",
+                    destructive: true,
+                    onPress: () =>
+                      Alert.alert(`Delete the ${category.name} category?`, "Its items stay on the list, with no category.", [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: () => remove.mutate(category.id, { onError: (e) => setError(errorMessage(e)) }),
+                        },
+                      ]),
+                  },
+                ]}
               />
             </View>
           )
@@ -696,16 +705,35 @@ function StoreRegistriesPanel({ registryId, settings }: { registryId: string; se
                 {l.url}
               </Text>
             </View>
-            <Button
-              title="Remove"
+            {/* Removing is rare, so it's in a "…" menu and asks first, as on the website. */}
+            <HeaderMenu
               size="small"
-              variant="ghost"
-              onPress={() =>
-                save.mutate(
-                  linked.filter((x) => x.store !== l.store),
-                  { onError: (e) => setError(errorMessage(e)) }
-                )
-              }
+              accessibilityLabel={`More actions for ${name} registry`}
+              title={name}
+              choices={[
+                {
+                  label: "Remove",
+                  icon: "unlink",
+                  destructive: true,
+                  onPress: () =>
+                    Alert.alert(
+                      `Remove your ${name} registry?`,
+                      "Its link comes off this list. Your registry at the store stays as it is, and you can link it again later.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Remove",
+                          style: "destructive",
+                          onPress: () =>
+                            save.mutate(
+                              linked.filter((x) => x.store !== l.store),
+                              { onError: (e) => setError(errorMessage(e)) }
+                            ),
+                        },
+                      ]
+                    ),
+                },
+              ]}
             />
           </View>
         );

@@ -24,8 +24,8 @@ const meta: Meta<typeof ItemCard> = {
 export default meta;
 type Story = StoryObj<typeof ItemCard>;
 
-// Still needed: product photo, "Most wanted" tag, and the Shop and
-// "Mark as bought by parent" buttons.
+// Still needed: product photo, "Most wanted" tag, and the "…" menu with
+// Shop and "Mark as bought by parent".
 export const WithImage: Story = {
   args: {
     item: {

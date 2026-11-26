@@ -1,6 +1,7 @@
 // Follow requests, followers, who you follow, and who you blocked: the
 // website's FollowLists on the Account page (src/components/follow-lists.tsx),
-// with the same actions and confirmations.
+// with the same actions and confirmations. Rare actions, like Remove and
+// Block, are in each row's "…" menu, so they can't be tapped by accident.
 
 import { router, Stack } from "expo-router";
 import { useState, type ReactNode } from "react";
@@ -9,6 +10,7 @@ import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import type { FollowPerson, PersonSummary } from "@shared/people-page-types";
 import { displayName, profilePath } from "@shared/profile-link";
 
+import { HeaderMenu, type HeaderMenuChoice } from "@/components/header-menu";
 import { Button, Card, Divider, ErrorState, haptic, LoadingState, Pill, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useAccountPage, useRunPeopleAction } from "@/lib/people-data";
@@ -53,21 +55,78 @@ export default function FollowsScreen() {
     }
   }
 
-  const confirm = (title: string, button: string, onPress: () => void) =>
-    Alert.alert(title, undefined, [
+  const confirm = (title: string, message: string, button: string, onPress: () => void, destructive = true) =>
+    Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
-      { text: button, style: "destructive", onPress },
+      { text: button, style: destructive ? "destructive" : "default", onPress },
     ]);
 
-  const block = (person: PersonSummary) =>
-    confirm(
-      `Block ${displayName(person)}? You'll stop following each other, and they can't ask to follow you.`,
-      "Block",
-      () =>
-        act(`block-${person.public_id}`, "follows.blockUser", person.public_id, () =>
-          setJustApproved((list) => list.filter((p) => p.public_id !== person.public_id))
-        )
-    );
+  // The same words as the website's dialogs (src/components/follow-lists.tsx).
+  const blockChoice = (person: PersonSummary): HeaderMenuChoice => ({
+    label: "Block",
+    icon: "block",
+    destructive: true,
+    onPress: () =>
+      confirm(
+        `Block ${displayName(person)}?`,
+        "You'll stop following each other. They can't ask to follow you or find you in search.",
+        "Block",
+        () =>
+          act(`block-${person.public_id}`, "follows.blockUser", person.public_id, () =>
+            setJustApproved((list) => list.filter((p) => p.public_id !== person.public_id))
+          )
+      ),
+  });
+
+  const removeChoice = (person: PersonSummary): HeaderMenuChoice => ({
+    label: "Remove follower",
+    icon: "personRemove",
+    destructive: true,
+    onPress: () =>
+      confirm(
+        `Remove ${displayName(person)} from your followers?`,
+        "They'll stop seeing your birthday and the lists you show followers.",
+        "Remove",
+        () => act(`remove-${person.public_id}`, "follows.removeFollower", person.public_id)
+      ),
+  });
+
+  const unfollowChoice = (person: FollowPerson): HeaderMenuChoice =>
+    person.status === "pending"
+      ? {
+          label: "Withdraw request",
+          icon: "personRemove",
+          onPress: () =>
+            confirm(
+              `Withdraw your request to follow ${displayName(person)}?`,
+              "You can ask again later from their profile.",
+              "Withdraw",
+              () => act(`unfollow-${person.public_id}`, "follows.cancelFollow", person.public_id),
+              false
+            ),
+        }
+      : {
+          label: "Unfollow",
+          icon: "personRemove",
+          destructive: true,
+          onPress: () =>
+            confirm(
+              `Unfollow ${displayName(person)}?`,
+              "You'll stop seeing the lists they show followers.",
+              "Unfollow",
+              () => act(`unfollow-${person.public_id}`, "follows.cancelFollow", person.public_id)
+            ),
+        };
+
+  // The "…" at the end of a row.
+  const rowMenu = (person: PersonSummary, choices: HeaderMenuChoice[]) => (
+    <HeaderMenu
+      size="small"
+      accessibilityLabel={`More actions for ${displayName(person)}`}
+      title={displayName(person)}
+      choices={choices}
+    />
+  );
 
   // Following back is a request like any other. While it waits it says
   // "Requested", as on the website.
@@ -83,10 +142,6 @@ export default function FollowsScreen() {
         onPress={() => act(`follow-${person.public_id}`, "follows.requestFollow", person.public_id)}
       />
     );
-
-  const blockButton = (person: PersonSummary) => (
-    <Button title="Block" size="small" variant="ghost" disabled={busy !== null} onPress={() => block(person)} />
-  );
 
   return (
     <>
@@ -130,7 +185,7 @@ export default function FollowsScreen() {
           {requests
             .filter((p) => !justApproved.some((a) => a.public_id === p.public_id))
             .map((person) => (
-              <PersonRow key={person.public_id} person={person}>
+              <PersonRow key={person.public_id} person={person} menu={rowMenu(person, [blockChoice(person)])}>
                 <Button
                   title="Approve"
                   size="small"
@@ -148,7 +203,6 @@ export default function FollowsScreen() {
                   disabled={busy !== null}
                   onPress={() => act(`decline-${person.public_id}`, "follows.removeFollower", person.public_id)}
                 />
-                {blockButton(person)}
               </PersonRow>
             ))}
         </Card>
@@ -167,22 +221,13 @@ export default function FollowsScreen() {
             </Text>
           ) : (
             followers.map((person) => (
-              <PersonRow key={person.public_id} person={person} mutual={isMutual(person)}>
+              <PersonRow
+                key={person.public_id}
+                person={person}
+                mutual={isMutual(person)}
+                menu={rowMenu(person, [removeChoice(person), blockChoice(person)])}
+              >
                 {isMutual(person) ? null : followBack(person)}
-                <Button
-                  title="Remove"
-                  size="small"
-                  variant="ghost"
-                  disabled={busy !== null}
-                  onPress={() =>
-                    confirm(
-                      `Remove ${displayName(person)}? They'll stop seeing your private registries and your birthday.`,
-                      "Remove",
-                      () => act(`remove-${person.public_id}`, "follows.removeFollower", person.public_id)
-                    )
-                  }
-                />
-                {blockButton(person)}
               </PersonRow>
             ))
           )}
@@ -207,23 +252,8 @@ export default function FollowsScreen() {
                 person={person}
                 mutual={isMutual(person)}
                 detail={person.status === "pending" ? "Requested" : undefined}
-              >
-                <Button
-                  title={person.status === "pending" ? "Withdraw" : "Unfollow"}
-                  size="small"
-                  variant="ghost"
-                  disabled={busy !== null}
-                  onPress={() =>
-                    confirm(
-                      person.status === "pending"
-                        ? `Withdraw your request to follow ${displayName(person)}?`
-                        : `Unfollow ${displayName(person)}? You'll stop seeing their private registries.`,
-                      person.status === "pending" ? "Withdraw" : "Unfollow",
-                      () => act(`unfollow-${person.public_id}`, "follows.cancelFollow", person.public_id)
-                    )
-                  }
-                />
-              </PersonRow>
+                menu={rowMenu(person, [unfollowChoice(person)])}
+              />
             ))
           )}
         </Card>
@@ -267,11 +297,14 @@ function PersonRow({
   person,
   mutual,
   detail,
+  menu,
   children,
 }: {
   person: PersonSummary;
   mutual?: boolean;
   detail?: string;
+  /** The "…" menu with the row's rare actions, at the end of the name's line. */
+  menu?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -292,6 +325,7 @@ function PersonRow({
             · {detail}
           </Text>
         ) : null}
+        {menu ? <View style={{ marginLeft: "auto" }}>{menu}</View> : null}
       </View>
       {children ? <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>{children}</View> : null}
     </View>

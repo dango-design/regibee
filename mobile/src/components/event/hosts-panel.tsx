@@ -1,6 +1,8 @@
 // "Hosts" on an event's page: the owner and co-hosts, inviting another, and
 // taking back invitations. The website's EventCoHosts
-// (src/components/event-co-hosts.tsx), with the same actions.
+// (src/components/event-co-hosts.tsx), with the same actions. Removing,
+// leaving and taking back an invitation are in each row's "…" menu, so they
+// can't be tapped by accident.
 
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
@@ -9,14 +11,14 @@ import { Alert, Share, View } from "react-native";
 import type { EventPageData } from "@shared/events-page-types";
 import { isEmail } from "@shared/events";
 
+import { HeaderMenu } from "@/components/header-menu";
 import { Button, Card, Field, haptic, IconButton, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useRunEventAction } from "@/lib/events-data";
 import { SITE_URL } from "@/lib/supabase";
-import { spacing, useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/theme";
 
 export function HostsPanel({ data, onLeft }: { data: EventPageData; onLeft: () => void }) {
-  const theme = useTheme();
   const { run } = useRunEventAction();
   const { event, hosts, invites, viewerId, isOwner } = data;
   const [email, setEmail] = useState("");
@@ -86,24 +88,36 @@ export function HostsPanel({ data, onLeft }: { data: EventPageData; onLeft: () =
               ) : null}
             </Text>
             {!host.isOwner && (isOwner || host.userId === viewerId) ? (
-              <Button
-                title={host.userId === viewerId ? "Leave" : "Remove"}
+              <HeaderMenu
                 size="small"
-                variant="ghost"
-                disabled={busy}
-                onPress={() =>
-                  Alert.alert(host.userId === viewerId ? "Leave this event?" : `Remove ${host.name}?`, undefined, [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: host.userId === viewerId ? "Leave" : "Remove",
-                      style: "destructive",
-                      onPress: async () => {
-                        const done = await attempt(() => run("events.removeCoHost", event.id, host.userId));
-                        if (done && host.userId === viewerId) onLeft();
-                      },
-                    },
-                  ])
-                }
+                accessibilityLabel={`More actions for ${host.userId === viewerId ? "you" : host.name}`}
+                title={host.name}
+                choices={[
+                  {
+                    label: host.userId === viewerId ? "Leave this event" : "Remove co-host",
+                    icon: "personRemove",
+                    destructive: true,
+                    // The same words as the website's dialog.
+                    onPress: () =>
+                      Alert.alert(
+                        host.userId === viewerId ? "Leave this event?" : `Remove ${host.name} as a co-host?`,
+                        host.userId === viewerId
+                          ? "You'll stop seeing the event's guest list and RSVPs, and can't edit it. The owner can invite you again."
+                          : "They'll stop seeing the event's guest list and RSVPs, and can't edit it. You can invite them again.",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: host.userId === viewerId ? "Leave" : "Remove",
+                            style: "destructive",
+                            onPress: async () => {
+                              const done = await attempt(() => run("events.removeCoHost", event.id, host.userId));
+                              if (done && host.userId === viewerId) onLeft();
+                            },
+                          },
+                        ]
+                      ),
+                  },
+                ]}
               />
             ) : null}
           </View>
@@ -113,11 +127,18 @@ export function HostsPanel({ data, onLeft }: { data: EventPageData; onLeft: () =
             <Text variant="subhead" tone="secondary" style={{ flex: 1 }} numberOfLines={1}>
               {pending.email ?? "Shared link"} · invited
             </Text>
-            <IconButton
-              icon="close"
-              color={theme.textTertiary}
-              accessibilityLabel={`Take back the invitation${pending.email ? ` to ${pending.email}` : ""}`}
-              onPress={() => attempt(() => run("events.revokeCoHostInvite", event.id, pending.id))}
+            <HeaderMenu
+              size="small"
+              accessibilityLabel={`More actions for the invitation${pending.email ? ` to ${pending.email}` : ""}`}
+              title={pending.email ?? "Shared link"}
+              choices={[
+                {
+                  label: "Cancel invitation",
+                  icon: "close",
+                  destructive: true,
+                  onPress: () => attempt(() => run("events.revokeCoHostInvite", event.id, pending.id)),
+                },
+              ]}
             />
           </View>
         ))}

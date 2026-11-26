@@ -24,6 +24,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { Link01 } from "@untitledui/icons";
+import { RowActionsMenu, type RowAction } from "@/components/row-actions-menu";
 import { ItemImage } from "@/components/item-image";
 import { ItemImageField } from "@/components/item-image-field";
 import { Button } from "@/components/ui/button";
@@ -648,6 +649,14 @@ function DemoItemCard({
   const isFulfilled = item.quantity_fulfilled >= item.quantity_needed;
   // The same words as the real item card and the app (src/lib/gifts.ts).
   const status = ownerItemStatus(item, purchases);
+  const ownerActions: RowAction[] = [
+    ...(item.external_url ? [{ id: "shop", label: "Shop", icon: ExternalLink }] : []),
+    ...(item.is_parent_purchased
+      ? [{ id: "unbought", label: "Mark as unpurchased", icon: Undo2 }]
+      : !isFulfilled
+        ? [{ id: "bought", label: selfPurchaseButton, icon: ShoppingBag }]
+        : []),
+  ];
 
   return (
     <Card
@@ -714,41 +723,20 @@ function DemoItemCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-          {item.external_url && (
-            <Button
-              variant="outline"
-              onClick={() => window.open(item.external_url!, '_blank', 'noopener,noreferrer')}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <ExternalLink className="h-4 w-4 shrink-0" />
-                Shop
-              </span>
-            </Button>
-          )}
-          {!isFulfilled && !item.is_parent_purchased && (
-            <Button
-              variant="outline"
-              onClick={() => onToggleParentPurchased(item.id)}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <ShoppingBag className="h-4 w-4 shrink-0" />
-                {selfPurchaseButton}
-              </span>
-            </Button>
-          )}
-          {item.is_parent_purchased && (
-            <Button
-              variant="outline"
-              onClick={() => onToggleParentPurchased(item.id)}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <Undo2 className="h-4 w-4 shrink-0" />
-                Mark as unpurchased
-              </span>
-            </Button>
-          )}
-        </div>
+        {/* As on the real item card: the store link and "bought it myself"
+            are in a "…" menu. */}
+        {ownerActions.length > 0 && (
+          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+            <RowActionsMenu
+              label={`More actions for ${item.title}`}
+              actions={ownerActions}
+              onAction={(id) => {
+                if (id === "shop") window.open(item.external_url!, "_blank", "noopener,noreferrer");
+                else onToggleParentPurchased(item.id);
+              }}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
