@@ -80,6 +80,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
 - Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
 
+## Gift profiles
+
+- A person's gift profile (birthday, sizes, colors, likes, things to skip, notes) is in `profiles.gift_profile`. The rules are in `src/lib/gift-profile.ts`.
+- The person chooses who sees each of three parts: the birthday, the sizes, and likes and dislikes (colors, likes, things to skip and notes). Each is only them, friends, followers or everyone, saved in `gift_profile.audience`. A part they haven't chosen uses the old rule: the birthday shows to followers, the rest to friends.
+- Pass a gift profile through `visibleGiftProfile` on the server before it reaches a page, so the hidden parts never leave the server. The birthday's choice also decides who gets it on the Following page and in reminder emails (`src/lib/birthdays-server.ts`).
+- Older phone app builds save a gift profile without `audience`. `saveGiftProfile` keeps the saved choices then.
+- A child's list keeps its own gift profile in its settings, with no choices: it shows to anyone who opens the list, and its birthday only to approved followers while the list is on the owner's profile.
+
 ## Deleting things
 
 - Deleting a registry, an event, a group or an account that holds something asks the person to type a sentence first, such as "I want to delete this registry". A brand-new one, with nothing in it, only asks with two buttons. The sentences and what counts as holding something are in `src/lib/delete-confirmation.ts`: a registry with an item or a gift fund, an event with a guest, a group with a member, an account with a registry or an event.

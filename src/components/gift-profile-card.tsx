@@ -8,10 +8,8 @@ export interface GiftProfileCardProps {
   /** Whose profile it is, as in "About Dorothy". */
   name: string;
   /**
-   * Shows the birthday. Only for the person themselves and the followers they
-   * approved, never for everyone with a link. The rest of the card is only
-   * for the person and the people they follow who follow them back, so pass
-   * a profile that holds no more than the viewer may see (visibleGiftProfile).
+   * Shows the birthday. Pass a profile that holds no more than the viewer may
+   * see (visibleGiftProfile), since its owner chooses who sees each part.
    */
   showBirthday?: boolean;
   /** Goes next to the heading, like an Edit link on your own profile. */

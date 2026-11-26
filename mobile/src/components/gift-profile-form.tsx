@@ -7,8 +7,11 @@ import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import {
-  BIRTHDAY_REMINDER_DAYS,
   daysInMonth,
+  GIFT_PROFILE_AUDIENCE_LABELS,
+  GIFT_PROFILE_AUDIENCES,
+  giftProfileAudienceHint,
+  giftProfileAudiences,
   MAX_SIZE_LENGTH,
   MAX_TAG_LENGTH,
   MAX_TAGS,
@@ -17,6 +20,9 @@ import {
   parseGiftProfile,
   SIZE_LABELS,
   type GiftProfile,
+  type GiftProfileAudience,
+  type GiftProfileAudiences,
+  type GiftProfileSection,
   type GiftProfileSizes,
 } from "@shared/gift-profile";
 
@@ -99,6 +105,43 @@ function TagField({
   );
 }
 
+/** Who sees one part of your own profile, under its heading. */
+function AudienceChips({
+  section,
+  value,
+  onChange,
+}: {
+  section: GiftProfileSection;
+  value: GiftProfileAudience;
+  onChange: (value: GiftProfileAudience) => void;
+}) {
+  return (
+    <View style={{ gap: spacing.xs }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        {GIFT_PROFILE_AUDIENCES.map((choice) => (
+          <Chip
+            key={choice}
+            label={GIFT_PROFILE_AUDIENCE_LABELS[choice]}
+            selected={value === choice}
+            onPress={() => onChange(choice)}
+          />
+        ))}
+      </View>
+      <Text variant="footnote" tone="tertiary">
+        {giftProfileAudienceHint(section, value)}
+      </Text>
+    </View>
+  );
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+      {children}
+    </Text>
+  );
+}
+
 export function GiftProfileForm({
   initial,
   onSave,
@@ -118,6 +161,7 @@ export function GiftProfileForm({
   const [skip, setSkip] = useState<string[]>(initial.skip ?? []);
   const [skipDraft, setSkipDraft] = useState("");
   const [notes, setNotes] = useState(initial.notes ?? "");
+  const [audiences, setAudiences] = useState<GiftProfileAudiences>(giftProfileAudiences(initial));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -129,6 +173,18 @@ export function GiftProfileForm({
     child ? `${childName ? `${childName}'s` : "Your child's"} ${label.toLowerCase()}` : label;
   const whose = childName ? `${childName}'s` : "your child's";
   const days = month ? daysInMonth(month) : 31;
+  // The audience chips for a part, on your own profile only.
+  const audienceChips = (section: GiftProfileSection) =>
+    child ? null : (
+      <AudienceChips
+        section={section}
+        value={audiences[section]}
+        onChange={(value) => {
+          setAudiences((current) => ({ ...current, [section]: value }));
+          setSaved(false);
+        }}
+      />
+    );
 
   async function save() {
     setError("");
@@ -151,6 +207,8 @@ export function GiftProfileForm({
       likes: allLikes,
       skip: allSkip,
       notes,
+      // A child's list has no audience choices.
+      ...(child ? {} : { audience: audiences }),
     });
     setSaving(true);
     try {
@@ -169,9 +227,7 @@ export function GiftProfileForm({
   return (
     <View style={{ gap: spacing.lg }}>
       <View style={{ gap: spacing.sm }}>
-        <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-          {title("Birthday")}
-        </Text>
+        <SectionTitle>{title("Birthday")}</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
           {MONTH_OPTIONS.map((m) => (
             <Chip
@@ -194,17 +250,17 @@ export function GiftProfileForm({
             ))}
           </ScrollView>
         ) : null}
-        <Text variant="footnote" tone="tertiary">
-          {child
-            ? `No year needed. Only you and followers you approve see ${whose} birthday, and only while this list is on your profile.`
-            : `No year needed. Only you and followers you approve see it, and they get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`}
-        </Text>
+        {child ? (
+          <Text variant="footnote" tone="tertiary">
+            {`No year needed. Only you and followers you approve see ${whose} birthday, and only while this list is on your profile.`}
+          </Text>
+        ) : (
+          audienceChips("birthday")
+        )}
       </View>
 
       <View style={{ gap: spacing.sm }}>
-        <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-          {title("Sizes")}
-        </Text>
+        <SectionTitle>{title("Sizes")}</SectionTitle>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>
           {SIZE_FIELDS.map(({ key, placeholder }) => (
             <View key={key} style={{ width: "47%" }}>
@@ -218,8 +274,13 @@ export function GiftProfileForm({
             </View>
           ))}
         </View>
+        {audienceChips("sizes")}
       </View>
 
+      <View style={{ gap: spacing.sm }}>
+        <SectionTitle>{title("Likes and dislikes")}</SectionTitle>
+        {audienceChips("likes")}
+      </View>
       <Field label="Favorite colors" value={colors} onChangeText={setColors} placeholder="Green, gold, anything sparkly" maxLength={MAX_TEXT_LENGTH} />
       <TagField
         label="Likes"

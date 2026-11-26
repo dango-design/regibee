@@ -165,7 +165,7 @@ function AccountSections() {
       ) : null}
       <Section
         title="Birthday emails"
-        footer={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they approved you and added their birthday.`}
+        footer={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they approved you and show you their birthday.`}
       >
         <SwitchRow
           icon="bell"

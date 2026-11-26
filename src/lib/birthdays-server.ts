@@ -3,8 +3,10 @@
 // src/lib/gift-profile.ts): a person's own in profiles.gift_profile, and a
 // child's in the settings of a list kept for them.
 //
-// A birthday goes only to followers the person approved, the same people who
-// see it on their profile. A child's birthday goes to the approved followers
+// A person's birthday goes to the followers they approved who see it on their
+// profile: all of them, only their friends, or nobody when they keep it to
+// themselves (the birthday's audience in src/lib/gift-profile.ts). "Everyone"
+// reaches the same followers here, since nobody else follows them. A child's birthday goes to the approved followers
 // of the parent who keeps the list, and only while that list is on the
 // parent's profile, since that's where followers see it.
 //
@@ -26,6 +28,7 @@ import {
   BIRTHDAYS_AHEAD_DAYS,
   BIRTHDAY_REMINDER_DAYS,
   addDays,
+  giftProfileAudiences,
   nextAnnualDate,
   parseGiftProfile,
   pickBirthdayList,
@@ -39,6 +42,8 @@ interface Person {
   public_id: string;
   full_name: string | null;
   birthday: unknown;
+  /** Who the person shows their birthday to. Null until they choose. */
+  birthday_audience?: unknown;
 }
 
 // Only what the birthday code needs from a list's settings. The rest of
@@ -99,18 +104,24 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
   const inRange = (date: string) => date <= until;
 
   for (const person of people) {
-    const birthday = parseGiftProfile({ birthday: person.birthday }).birthday;
-    if (!birthday) continue;
-    const date = nextAnnualDate(birthday, today);
+    const profile = parseGiftProfile({ birthday: person.birthday, audience: { birthday: person.birthday_audience } });
+    if (!profile.birthday) continue;
+    const audience = giftProfileAudiences(profile).birthday;
+    if (audience === "private") continue;
+    const date = nextAnnualDate(profile.birthday, today);
     if (!inRange(date)) continue;
     const theirs = lists.filter((l) => l.owner_id === person.id);
     // Every follower gets the best list they can all see. Friends get the
-    // best of all the lists, when that's a different one.
-    const list = pickBirthdayList(
-      theirs.filter((l) => !friendsOnly(l)),
-      today,
-    );
+    // best of all the lists, when that's a different one. A birthday only
+    // for friends links to the best of all the lists.
     const friendsList = pickBirthdayList(theirs, today);
+    const forFriendsOnly = audience === "friends";
+    const list = forFriendsOnly
+      ? friendsList
+      : pickBirthdayList(
+          theirs.filter((l) => !friendsOnly(l)),
+          today,
+        );
     subjects.push({
       key: `${person.id}:${date}`,
       ownerId: person.id,
@@ -118,6 +129,7 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
       date,
       href: list ? `/r/${list.slug}` : profilePath(person),
       linkTo: list ? "list" : "profile",
+      ...(forFriendsOnly ? { friendsOnly: true } : {}),
       ...(friendsList && friendsList.slug !== list?.slug
         ? { forFriends: { href: `/r/${friendsList.slug}`, linkTo: "list" as const } }
         : {}),
@@ -153,7 +165,7 @@ async function birthdaysOf(people: Person[], today: string, until: string): Prom
 export async function listUpcomingBirthdays(userId: string, today: string): Promise<UpcomingBirthday[]> {
   const { data, error } = await supabaseAdmin
     .from("follows")
-    .select("person:profiles!follows_followee_id_fkey(id, public_id, full_name, birthday:gift_profile->birthday)")
+    .select("person:profiles!follows_followee_id_fkey(id, public_id, full_name, birthday:gift_profile->birthday, birthday_audience:gift_profile->audience->birthday)")
     .eq("follower_id", userId)
     .eq("status", "approved");
   // Errors until 20261112062844_gift_profiles_and_birthday_reminders.sql has
@@ -223,7 +235,7 @@ export async function processBirthdayReminders(now = new Date()) {
   const [{ data: people, error: peopleError }, { data: childLists, error: childError }] = await Promise.all([
     supabaseAdmin
       .from("profiles")
-      .select("id, public_id, full_name, birthday:gift_profile->birthday")
+      .select("id, public_id, full_name, birthday:gift_profile->birthday, birthday_audience:gift_profile->audience->birthday")
       .eq("gift_profile->birthday->>month", month),
     supabaseAdmin
       .from("registries")
