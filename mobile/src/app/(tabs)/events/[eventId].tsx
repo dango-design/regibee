@@ -12,7 +12,7 @@ import { deletePhrase } from "@shared/delete-confirmation";
 import type { EditEventSection } from "@shared/edit-event-sections";
 import { eventLocationText, formatEventDate, mapsUrl } from "@shared/events";
 
-import { ChoiceSheet } from "@/components/choice-sheet";
+import { HeaderMenu, type HeaderMenuChoice } from "@/components/header-menu";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { ExchangePanel } from "@/components/event/exchange-panel";
 import { GuestsPanel } from "@/components/event/guests-panel";
@@ -36,7 +36,6 @@ export default function EventScreen() {
   const pull = usePullToRefresh(page.refetch);
   const { run } = useRunEventAction();
   const [uploading, setUploading] = useState(false);
-  const [choosingAction, setChoosingAction] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -90,20 +89,22 @@ export default function EventScreen() {
 
   // The "More actions" menu. It's a sheet, not a system alert: Android's
   // alert shows at most three buttons.
-  const moreActions = [
+  const moreActions: HeaderMenuChoice[] = [
     {
       label: "Copy link",
+      icon: "copy",
       onPress: async () => {
         await Clipboard.setStringAsync(publicUrl);
         haptic("success");
       },
     },
-    { label: "Preview", onPress: () => openSite(publicUrl) },
-    { label: "Plan it again", onPress: planAgain },
+    { label: "Preview", icon: "eye", onPress: () => openSite(publicUrl) },
+    { label: "Plan it again", icon: "refresh", onPress: planAgain },
     ...(data.isOwner
       ? [
           {
             label: "Delete event",
+            icon: "trash" as const,
             destructive: true,
             onPress: () => {
               setDeleteError(null);
@@ -153,7 +154,7 @@ export default function EventScreen() {
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share the event link" onPress={share} />
               <IconButton icon="edit" accessibilityLabel="Edit" onPress={() => edit()} />
-              <IconButton icon="more" accessibilityLabel="More actions" onPress={() => setChoosingAction(true)} />
+              <HeaderMenu accessibilityLabel="More actions" title={event.title} choices={moreActions} />
             </View>
           ),
         }}
@@ -298,7 +299,6 @@ export default function EventScreen() {
         <MessagesPanel data={data} onChangeReminder={() => edit("rsvps")} />
         <HostsPanel data={data} onLeft={() => router.back()} />
       </ScrollView>
-      <ChoiceSheet visible={choosingAction} onClose={() => setChoosingAction(false)} title={event.title} choices={moreActions} />
       <ConfirmDelete
         visible={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}
