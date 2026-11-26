@@ -4,8 +4,10 @@
 // The top looks like the page guests see (src/components/wish-list-hero.tsx):
 // a tinted, dotted band with the title, and a card hanging off its edge. The
 // card holds how much has been gifted and one short row for each thing that
-// needs the owner, such as hidden gifts, a linked event or suggestions. Each
-// row opens its own screen, so the items start within the first screen.
+// needs the owner, such as a linked event or suggestions. Each row opens its
+// own screen, so the items start within the first screen. Hidden gifts are a
+// setting people rarely change, so they get a small icon next to the access
+// pill instead of a row.
 
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -30,6 +32,7 @@ import { LIST_ACCESS, PROFILE_AUDIENCE, listAccess, listVisibility, profileAudie
 import { headerChoice, listHeader, type ListHeader as BandHeader } from "@shared/list-headers";
 import { copyForRegistry } from "@shared/registry-copy";
 import { getStore } from "@shared/retailers";
+import { reservationsHiddenText } from "@shared/gifts";
 
 import { Icon, type IconName } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
@@ -457,24 +460,27 @@ function ListHeader({
             ) : null}
             {detail.role === "manager" ? <Pill label="Manager" icon="people" /> : null}
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${access}. Opens Settings`}
-            onPress={onSettings}
-            style={({ pressed }) => [
-              styles.access,
-              { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <Icon
-              name={visibility === "private" ? "lock" : visibility === "public" ? "public" : "link"}
-              size={12}
-              color={theme.textSecondary}
-            />
-            <Text variant="caption" tone="secondary" numberOfLines={1} style={{ flexShrink: 1, fontWeight: "500" }}>
-              {access}
-            </Text>
-          </Pressable>
+          <View style={styles.accessRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${access}. Opens Settings`}
+              onPress={onSettings}
+              style={({ pressed }) => [
+                styles.access,
+                { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <Icon
+                name={visibility === "private" ? "lock" : visibility === "public" ? "public" : "link"}
+                size={12}
+                color={theme.textSecondary}
+              />
+              <Text variant="caption" tone="secondary" numberOfLines={1} style={{ flexShrink: 1, fontWeight: "500" }}>
+                {access}
+              </Text>
+            </Pressable>
+            {detail.reservationsHidden ? <HiddenGiftsButton detail={detail} onSettings={onSettings} /> : null}
+          </View>
         </View>
       </DottedBand>
 
@@ -555,6 +561,47 @@ function DottedBand({ bleed, header, children }: { bleed: number; header: BandHe
 }
 
 /**
+ * A small eye icon beside the access pill, shown when the owner hides what's
+ * been reserved from themselves. A tap explains it in the gifts screen's
+ * words and offers Gift activity and Settings.
+ */
+function HiddenGiftsButton({ detail, onSettings }: { detail: RegistryDetail; onSettings: () => void }) {
+  const theme = useTheme();
+  const text = reservationsHiddenText({
+    revealedCount: detail.revealedCount,
+    next: detail.nextReveal,
+    turnedOnByExchange: detail.turnedOnByExchange,
+  });
+  const explain = () =>
+    Alert.alert(text.title, [text.revealed, text.next, text.why].filter(Boolean).join("\n\n"), [
+      {
+        text: "Gift activity",
+        onPress: () => router.push({ pathname: "/registry/[id]/gifts", params: { id: detail.registry.id } }),
+      },
+      { text: "Settings", onPress: onSettings },
+      { text: "OK", style: "cancel" },
+    ]);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Gifts hidden from you"
+      accessibilityHint="Explains what's hidden"
+      hitSlop={8}
+      onPress={() => {
+        haptic();
+        explain();
+      }}
+      style={({ pressed }) => [
+        styles.hiddenButton,
+        { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <Icon name="eyeSlash" size={13} color={theme.textSecondary} />
+    </Pressable>
+  );
+}
+
+/**
  * The card under the band: how much has been gifted, then one row for each
  * thing that needs the owner. A row shows only when it has something to say.
  */
@@ -577,13 +624,11 @@ function SummaryCard({ detail }: { detail: RegistryDetail }) {
   const openGifts = () => router.push({ pathname: "/registry/[id]/gifts", params: { id } });
 
   if (detail.reservationsHidden) {
-    rows.push({
-      key: "hidden",
-      icon: "eyeSlash",
-      label: "Gifts hidden from you",
-      detail: detail.revealedCount ? `${detail.revealedCount} revealed` : undefined,
-      onPress: openGifts,
-    });
+    // The band's eye icon says gifts are hidden. A row only shows when an
+    // event has passed and its gifts are shown, for thank-you notes.
+    if (detail.revealedCount) {
+      rows.push({ key: "gifts", icon: "gift", label: "Gift activity", detail: `${detail.revealedCount} revealed`, onPress: openGifts });
+    }
   } else if (detail.gifts.length > 0) {
     rows.push({ key: "gifts", icon: "gift", label: "Gift activity", detail: plural(detail.gifts.length, "gift"), onPress: openGifts });
   }
@@ -828,6 +873,15 @@ const styles = StyleSheet.create({
   photo: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, marginBottom: 2 },
   eyebrow: { fontWeight: "600", letterSpacing: 0.9, fontSize: 11 },
   pills: { flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "center" },
+  accessRow: { flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%" },
+  hiddenButton: {
+    width: 27,
+    height: 27,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   access: {
     flexDirection: "row",
     alignItems: "center",
@@ -836,7 +890,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
-    maxWidth: "100%",
+    flexShrink: 1,
   },
   card: {
     marginTop: -CARD_OVERLAP,
