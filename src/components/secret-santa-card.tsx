@@ -30,7 +30,7 @@ export function SecretSantaCard({
             You&apos;re getting a gift for {giftee.name}
           </h2>
           <p className="mt-1 text-sm text-secondary">
-            {budget ? `The budget is ${budget}. ` : ""}Keep it a secret: nobody else knows who drew whom.
+            {budget ? `Budget: ${budget}. ` : ""}Only you know who you drew.
           </p>
         </div>
       </div>
@@ -75,7 +75,7 @@ export function SecretSantaCard({
 
       {!wishlistHref && !giftee.giftIdeas && (
         <p className="text-sm text-secondary">
-          {giftee.name} hasn&apos;t added a wishlist or gift ideas yet. This page shows them as soon as they do.
+          {giftee.name} hasn&apos;t added a wishlist or gift ideas yet.
         </p>
       )}
 

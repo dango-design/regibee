@@ -21,7 +21,7 @@ export function PaymentMethodsDisplay({
   if (!hasPaymentMethod(paymentMethods)) {
     return (
       <p className="text-sm text-tertiary">
-        Contact the registry owner directly to arrange payment.
+        Ask the owner how to pay them.
       </p>
     );
   }
@@ -139,7 +139,7 @@ export function PaymentOptions({ paymentMethods, amount, note, parentName, demo 
   if (!hasPaymentMethod(paymentMethods)) {
     return (
       <p className="text-sm text-secondary">
-        This registry has no Venmo, PayPal or Zelle yet. Ask {parentName} how they&apos;d like you to send it.
+        No Venmo, PayPal or Zelle yet. Ask {parentName} how to send it.
       </p>
     );
   }

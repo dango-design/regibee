@@ -357,7 +357,7 @@ export function ReserveItemDialog({
   ) : null;
   const newTabNote = shopName ? (
     <p className={noteText}>
-      {shopName} opens in a new tab. Come back to this tab when you&apos;ve checked out.
+      {shopName} opens in a new tab. Come back here after checkout.
     </p>
   ) : null;
 
@@ -406,7 +406,7 @@ export function ReserveItemDialog({
               <DialogDescription>
                 {registryStoreName
                   ? `It's on ${parentName}'s ${registryStoreName} registry, so the store has their address.`
-                  : "Reserve it so nobody else buys it, and you'll get the address to ship it to."}{" "}
+                  : "Reserve it so nobody else buys it."}{" "}
                 No account required.
               </DialogDescription>
             </DialogHeader>
@@ -438,7 +438,7 @@ export function ReserveItemDialog({
             <DialogHeader className="pr-8">
               <DialogTitle>Tell {parentName} you bought it</DialogTitle>
               <DialogDescription>
-                They&apos;ll see it&apos;s from {fromWhom}, and nobody else will buy it. No account required.
+                They&apos;ll see it&apos;s from {fromWhom}. No account required.
               </DialogDescription>
             </DialogHeader>
             <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />
@@ -497,7 +497,7 @@ export function ReserveItemDialog({
             (oneTap ? (
               newTabNote
             ) : (
-              <p className={noteText}>We&apos;ll hold it for you for {GIFT_HOLD_DAYS} days while you buy it.</p>
+              <p className={noteText}>We&apos;ll hold it for you for {GIFT_HOLD_DAYS} days.</p>
             ))}
         </div>
         <div className="flex justify-center">
@@ -543,8 +543,8 @@ export function ReserveItemDialog({
           ) : !address ? (
             <DialogDescription>
               {prefill?.secretGiver
-                ? "This registry has no shipping address yet. Bring it to the gift exchange, or ask the host where to send it."
-                : `This registry has no shipping address yet. Ask ${parentName} where to send it.`}
+                ? "No shipping address yet. Bring it to the gift exchange, or ask the host."
+                : `No shipping address yet. Ask ${parentName} where to send it.`}
             </DialogDescription>
           ) : null}
         </DialogHeader>
@@ -603,7 +603,7 @@ export function ReserveItemDialog({
         <DialogHeader className="pr-8">
           <DialogTitle>Did you buy the {item.title}?</DialogTitle>
           <DialogDescription>
-            Tell us so nobody else buys it. {parentName} will see it&apos;s from {fromWhom}.
+            {parentName} will see it&apos;s from {fromWhom}.
           </DialogDescription>
         </DialogHeader>
         {errorLine}
@@ -631,8 +631,7 @@ export function ReserveItemDialog({
         <DialogTitle className="text-xl font-bold">It&apos;s still yours</DialogTitle>
         <p className="text-sm text-secondary">
           We&apos;ll hold the {item.title}
-          {until ? <> until {until}</> : null} and remind you the day before. Finish it from the banner
-          at the top of the registry, or the link in your email.
+          {until ? <> until {until}</> : null} and email you the day before.
         </p>
         <Button onClick={close}>Done</Button>
         <button type="button" className={dangerTextButton} onClick={goToRelease}>
@@ -663,7 +662,7 @@ export function ReserveItemDialog({
           <DialogTitle>
             {gift?.status === "purchased" ? `Undo your gift of the ${item.title}?` : `Release the ${item.title}?`}
           </DialogTitle>
-          <DialogDescription>It goes back on the list so another guest can give it.</DialogDescription>
+          <DialogDescription>It goes back on the list.</DialogDescription>
         </DialogHeader>
         {errorLine}
         <DialogFooter sticky>
@@ -706,8 +705,8 @@ export function ReserveItemDialog({
         <DialogHeader className="pr-8">
           <DialogTitle>Your reservation ended</DialogTitle>
           <DialogDescription>
-            The {item.title} went back on the list for other guests.{" "}
-            {remaining > 0 ? "It's still available, so you can reserve it again." : "Another guest has it now."}
+            The {item.title} went back on the list.{" "}
+            {remaining > 0 ? "It's still available." : "Another guest has it now."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter sticky>

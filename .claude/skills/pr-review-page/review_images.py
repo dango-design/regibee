@@ -11,7 +11,8 @@ it branched from without downloading anything.
       count of the identical ones.
 
   render NAME BEFORE_URL AFTER_URL OUT_DIR [--box x0,y0,x1,y1]
-      Downloads both snapshots, finds the changed pixels, and writes
+      Downloads both snapshots (or reads them, when BEFORE and AFTER are local
+      .png paths), finds the changed pixels, and writes
       NAME-before.png, NAME-after.png and NAME-changes.png (changed pixels
       tinted) into OUT_DIR, cropped to --box or to the changed region, at most
       1200px wide. Prints the size and the changed bands so a tall page can be
@@ -67,6 +68,11 @@ def compare(head_path, base_path):
 
 
 def fetch(url):
+    # A local PNG, such as a Story screenshots baseline or a picture from the
+    # check's new-baselines artifact.
+    if url.lower().endswith(".png") and "://" not in url:
+        with open(url, "rb") as f:
+            return f.read()
     if not url.startswith(ALLOWED_HOST):
         sys.exit(f"refusing to download from outside {ALLOWED_HOST}: {url}")
     with urllib.request.urlopen(url, timeout=30) as r:

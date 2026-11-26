@@ -197,7 +197,6 @@ export function DashboardHome({
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <PandaMark className="h-20 w-auto" />
                 <h2 className="mt-4 text-xl font-semibold">No registries yet</h2>
-                <p className="mt-2 text-tertiary">Create your first registry to start adding items.</p>
                 <Button className="mt-6" asChild>
                   <Link href={newButton.href}>
                     <span className="inline-flex items-center gap-1.5">

@@ -6,6 +6,8 @@ import { CalendarPlus, ClipboardList, Loader2, Pencil, Plus, Trash2, X } from "l
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import {
@@ -33,6 +35,12 @@ import {
 import { cx } from "@/lib/utils/cx";
 
 type ActionResult = { error: string | null };
+
+/** A removal waiting for the host to confirm it. */
+type Asking =
+  | { kind: "sheet" }
+  | { kind: "row"; row: HostSignupRow }
+  | { kind: "claim"; row: HostSignupRow; guestId: string; name: string };
 
 export interface SignupActions {
   start: (eventId: string, preset: SignupPreset) => Promise<ActionResult>;
@@ -98,7 +106,7 @@ export function SignupSheetStarter({
           <div className="flex min-w-0 flex-col gap-1">
             <p className="font-medium text-primary">Sign-up sheet</p>
             <p className="text-sm text-tertiary">
-              Ask guests to bring a dish, pick a day to drop off a meal, or help set up. They sign up when they RSVP.
+              For potlucks, meal trains and volunteers.
             </p>
             {open ? (
               <div className="mt-2 flex flex-col gap-2">
@@ -160,6 +168,12 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
   const [adding, setAdding] = useState<"row" | "days" | null>(rows.length === 0 ? (mealTrain ? "days" : "row") : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // A removal waiting for the host to confirm it in a dialog.
+  const [asking, setAsking] = useState<Asking | null>(null);
+  const ask = (next: Asking) => {
+    setError("");
+    setAsking(next);
+  };
 
   const spots = rows.reduce((sum, row) => sum + row.needed, 0);
   const taken = rows.reduce((sum, row) => sum + Math.min(row.claims.length, row.needed), 0);
@@ -182,26 +196,47 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
     if (await run(() => actions.updateSheet(eventId, { title, note }))) setEditingSheet(false);
   };
 
-  const removeSheet = async () => {
-    const claimed = rows.reduce((sum, row) => sum + row.claims.length, 0);
-    const warning = claimed
-      ? `Remove the sign-up sheet? ${claimed === 1 ? "1 person has" : `${claimed} people have`} signed up. Their sign-ups go too, and they aren't told.`
-      : "Remove the sign-up sheet?";
-    if (!window.confirm(warning)) return;
-    await run(() => actions.deleteSheet(eventId), "Sign-up sheet removed");
-  };
-
+  // A row with nobody signed up goes on one click. Anything else asks first.
   const removeRow = async (row: HostSignupRow) => {
     if (row.claims.length > 0) {
-      const names = row.claims.map((c) => c.name).join(", ");
-      if (!window.confirm(`Remove "${rowName(row)}"? ${names} signed up for it. They aren't told.`)) return;
+      ask({ kind: "row", row });
+      return;
     }
     await run(() => actions.removeRow(eventId, row.id));
   };
 
-  const removeClaim = async (row: HostSignupRow, guestId: string, name: string) => {
-    if (!window.confirm(`Take ${name} off "${rowName(row)}"? They aren't told.`)) return;
-    await run(() => actions.removeClaim(eventId, row.id, guestId));
+  const claimed = rows.reduce((sum, row) => sum + row.claims.length, 0);
+  const dialog = !asking
+    ? null
+    : asking.kind === "sheet"
+      ? {
+          title: "Remove the sign-up sheet?",
+          description: claimed
+            ? `${claimed === 1 ? "1 person has" : `${claimed} people have`} signed up. Their sign-ups go too, and they aren't told.`
+            : "The rows on it go too.",
+          confirmLabel: "Remove sheet",
+          work: () => actions.deleteSheet(eventId),
+          success: "Sign-up sheet removed",
+        }
+      : asking.kind === "row"
+        ? {
+            title: `Remove "${rowName(asking.row)}"?`,
+            description: `${asking.row.claims.map((c) => c.name).join(", ")} signed up for it. They aren't told.`,
+            confirmLabel: "Remove row",
+            work: () => actions.removeRow(eventId, asking.row.id),
+            success: undefined,
+          }
+        : {
+            title: `Take ${asking.name} off "${rowName(asking.row)}"?`,
+            description: "They aren't told.",
+            confirmLabel: "Take them off",
+            work: () => actions.removeClaim(eventId, asking.row.id, asking.guestId),
+            success: undefined,
+          };
+
+  const confirmAsked = async () => {
+    if (!dialog) return;
+    if (await run(dialog.work, dialog.success)) setAsking(null);
   };
 
   return (
@@ -261,7 +296,7 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
             >
               Cancel
             </Button>
-            <Button variant="ghost" className="ml-auto text-error-primary" onClick={removeSheet} disabled={busy}>
+            <Button variant="ghost" className="ml-auto text-error-primary" onClick={() => ask({ kind: "sheet" })} disabled={busy}>
               <span className="inline-flex items-center gap-1.5">
                 <Trash2 className="size-4" />
                 Remove sheet
@@ -299,26 +334,17 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
                         : `${row.claims.length} of ${row.needed} taken`}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Edit ${rowName(row)}`}
-                      onClick={() => setEditingRow(row.id)}
-                      disabled={busy}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Remove ${rowName(row)}`}
-                      onClick={() => removeRow(row)}
-                      disabled={busy}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
+                  {/* Edit and Remove are in one "…" menu, so a row isn't
+                      crowded with buttons and Remove isn't one stray click away. */}
+                  <RowActionsMenu
+                    label={`More actions for ${rowName(row)}`}
+                    disabled={busy}
+                    actions={[
+                      { id: "edit", label: "Edit row", icon: Pencil },
+                      { id: "remove", label: "Remove row", icon: Trash2, destructive: true },
+                    ]}
+                    onAction={(id) => (id === "edit" ? setEditingRow(row.id) : removeRow(row))}
+                  />
                 </div>
                 {row.claims.length > 0 && (
                   <ul className="flex flex-col gap-1">
@@ -331,7 +357,7 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
                         <button
                           type="button"
                           aria-label={`Take ${claim.name} off ${rowName(row)}`}
-                          onClick={() => removeClaim(row, claim.guestId, claim.name)}
+                          onClick={() => ask({ kind: "claim", row, guestId: claim.guestId, name: claim.name })}
                           disabled={busy}
                           className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-quaternary hover:bg-secondary hover:text-primary"
                         >
@@ -395,6 +421,19 @@ export function SignupSheetManager({ eventId, sheet, rows, mealTrain = false, ac
           </Button>
         )}
       </div>
+
+      {dialog && (
+        <ConfirmActionDialog
+          open
+          onOpenChange={(open) => !open && setAsking(null)}
+          title={dialog.title}
+          description={dialog.description}
+          confirmLabel={dialog.confirmLabel}
+          working={busy}
+          error={error}
+          onConfirm={confirmAsked}
+        />
+      )}
     </section>
   );
 }

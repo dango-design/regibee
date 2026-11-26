@@ -28,9 +28,7 @@ export default function GiftProfileScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120 }}
       >
         <Text variant="subhead" tone="secondary">
-          Help people pick gifts you&apos;ll love. It shows on your profile and your wishlists. Choose who sees your
-          birthday, your sizes, and your likes and dislikes. To tell everyone something, use the public note in Your
-          profile.
+          Choose who sees each part. To tell everyone something, use the public note in Your profile.
         </Text>
         <GiftProfileForm initial={data.giftProfile} onSave={(profile) => run("giftProfile.saveGiftProfile", profile)} />
       </ScrollView>

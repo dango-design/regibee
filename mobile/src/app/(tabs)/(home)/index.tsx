@@ -105,7 +105,6 @@ export default function HomeScreen() {
               <EmptyState
                 icon="gift"
                 title="No registries yet"
-                message="Create your first registry to start adding items."
                 action={
                   <View style={{ width: "100%", maxWidth: 320 }}>
                     <Button title="Start something new" icon="add" onPress={() => router.push("/new")} />

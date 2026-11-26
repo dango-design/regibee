@@ -217,7 +217,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
       kind === "invite"
         ? `Email the invitation to ${count === 1 ? "1 guest" : `${count} guests`} now?`
         : `Remind ${count === 1 ? "1 guest who hasn't" : `${count} guests who haven't`} replied?`,
-      data.replyToEmail ? `If they reply to the email, it goes to ${data.replyToEmail}.` : "Each guest gets their own RSVP link.",
+      data.replyToEmail ? `Replies go to ${data.replyToEmail}.` : undefined,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -320,11 +320,11 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
               ? `${uninvited.length === 1 ? "1 guest hasn't" : `${uninvited.length} guests haven't`} been sent the invitation`
               : `${remindable.length === 1 ? "1 guest hasn't" : `${remindable.length} guests haven't`} replied yet`}
           </Text>
-          <Text variant="footnote" tone="secondary">
-            {uninvited.length > 0
-              ? "Each guest gets the invitation by email with their own RSVP link."
-              : "Send a friendly reminder. Each guest gets at most one a day."}
-          </Text>
+          {uninvited.length === 0 ? (
+            <Text variant="footnote" tone="secondary">
+              Each guest gets at most one a day.
+            </Text>
+          ) : null}
           <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
             {uninvited.length > 0 ? (
               <Button title="Send invitations" icon="send" size="small" loading={busy === "invite"} onPress={() => send("invite")} />
@@ -344,8 +344,8 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
       ) : null}
       {withoutEmail > 0 ? (
         <Text variant="footnote" tone="tertiary">
-          {withoutEmail === 1 ? "1 guest has" : `${withoutEmail} guests have`} no email address. Copy their RSVP link from the
-          guest&apos;s Edit button and text it to them.
+          {withoutEmail === 1 ? "1 guest has" : `${withoutEmail} guests have`} no email address. To invite them, copy their RSVP
+          link from Edit.
         </Text>
       ) : null}
 
@@ -369,7 +369,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
               onChangeText={setPasted}
               multiline
               placeholder={"Glinda Upland, glinda@example.com\nElphaba Thropp <elphie@example.com>\nNessa Thropp"}
-              hint="One guest per line: a name and an email address. Copy them from a spreadsheet or your contacts."
+              hint="One guest per line: name and email."
               autoCapitalize="words"
               accessibilityLabel="Guest list"
             />
@@ -526,8 +526,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
           <Card>
             <Text variant="headline">Save as a group</Text>
             <Text variant="footnote" tone="secondary">
-              Keep these {guests.length === 1 ? "1 guest" : `${guests.length} guests`} as a group, like “The Chens” or “Book
-              club”. Invite the whole group to your next event, run a gift exchange with it, or share a wishlist with it.
+              Invite these {guests.length === 1 ? "1 guest" : `${guests.length} guests`} together next time.
             </Text>
             <Field label="Group name" value={groupDraft} onChangeText={setGroupDraft} maxLength={80} autoFocus />
             <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end" }}>
@@ -554,7 +553,7 @@ export function GuestsPanel({ data }: { data: EventPageData }) {
               No guests yet
             </Text>
             <Text variant="footnote" tone="tertiary">
-              Add your guests above, then send the invitation. Or share the event link, and guests who RSVP are added here.
+              Add guests above, or share the event link.
             </Text>
           </View>
         ) : shown.length === 0 ? (
@@ -825,8 +824,8 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
           </Text>
           <Text variant="footnote" tone="tertiary">
             {guest.email_hidden
-              ? "From their Regibee account. It stays private, and invitations still reach it."
-              : "From their Regibee account. Only they can change it."}
+              ? "Private to them. Invitations still reach it."
+              : "Only they can change it."}
           </Text>
         </View>
       ) : (
@@ -871,7 +870,7 @@ function GuestEditor({ data, guest, onClose }: { data: EventPageData; guest: Eve
             onPress={async () => {
               await Clipboard.setStringAsync(link);
               haptic("success");
-              Alert.alert("Copied", "Text it to them, or send it however you like.");
+              Alert.alert("Copied");
             }}
           />
           <Button title="Share" icon="share" size="small" variant="secondary" onPress={() => Share.share({ message: link })} />

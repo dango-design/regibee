@@ -111,9 +111,6 @@ export default function NewRegistryScreen() {
         }}
       />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
-        <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
-          {copy.tagline}
-        </Text>
         <View style={{ gap: spacing.sm }}>
           <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
             What's it for?
@@ -138,11 +135,7 @@ export default function NewRegistryScreen() {
                 ))}
               </View>
             </View>
-          ) : (
-            <Text variant="footnote" tone="tertiary">
-              Baby registries start with 10 categories, like Nursery & Sleep and Feeding.
-            </Text>
-          )}
+          ) : null}
         </View>
 
         <Field
@@ -158,7 +151,7 @@ export default function NewRegistryScreen() {
           <SwitchRow
             icon="calendar"
             label={`${copy.eventDateLabel} (optional)`}
-            description={date ? formatEventDate(toYmd(date))! : copy.eventDatePlaceholderHint}
+            description={date ? formatEventDate(toYmd(date))! : undefined}
             value={Boolean(date) || showPicker}
             onValueChange={(on) => {
               if (on) {
@@ -213,7 +206,6 @@ export default function NewRegistryScreen() {
           value={description}
           onChangeText={setDescription}
           placeholder="Say hello to the people visiting your registry"
-          hint="Shown at the top of your registry page."
           multiline
         />
 
@@ -221,6 +213,9 @@ export default function NewRegistryScreen() {
           <View style={{ gap: spacing.lg }}>
             <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
               Payments and sales tax (optional)
+            </Text>
+            <Text variant="footnote" tone="tertiary">
+              Gift givers pay you directly. Regibee never handles money.
             </Text>
             <Field label="Venmo" value={venmo} onChangeText={setVenmo} placeholder="@your-venmo" autoCapitalize="none" autoCorrect={false} />
             <Field
@@ -245,7 +240,7 @@ export default function NewRegistryScreen() {
               onChangeText={setZipCode}
               placeholder="12345"
               keyboardType="number-pad"
-              hint="When you add something you've already bought, we'll add estimated sales tax to its price. You can turn this off later in settings."
+              hint="Used to estimate sales tax."
             />
           </View>
         ) : (
@@ -265,9 +260,6 @@ export default function NewRegistryScreen() {
           </Text>
         ) : null}
         <Button title="Create registry" onPress={submit} loading={create.isPending} />
-        <Text variant="caption" tone="tertiary" style={{ textAlign: "center" }}>
-          Only the name is required. You can change all of this later in settings.
-        </Text>
       </View>
     </KeyboardAvoidingView>
   );

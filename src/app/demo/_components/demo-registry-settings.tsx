@@ -141,7 +141,6 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
             <Card id="general" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="general">General</SectionTitle>
-                <CardDescription>Update your registry details</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-6 flex items-center gap-4">
@@ -160,12 +159,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                     </span>
                   )}
                   <div className="min-w-0 space-y-2">
-                    <div>
-                      <p className="text-sm font-medium text-secondary">Registry photo</p>
-                      <p className="text-xs text-tertiary">
-                        Shown at the top of your registry page. Without one, guests see your initials.
-                      </p>
-                    </div>
+                    <p className="text-sm font-medium text-secondary">Registry photo</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <PhotoUploadButton
                         label={photoUrl ? "Change photo" : "Upload photo"}
@@ -190,7 +184,6 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                     name="honoreeNames"
                     placeholder={copy.honoreePlaceholder}
                     defaultValue={registry.honoree_names}
-                    hint="The name shown to gift givers and in email notifications."
                   />
                   <Input
                     label={copy.eventDateLabel}
@@ -221,7 +214,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                           await new Promise((r) => setTimeout(r, 500));
                           return { path: sharePath };
                         }}
-                        replacedMessage="In the demo, the link stays the same. On your own list, the old link stops working right away."
+                        replacedMessage="The demo keeps the same link. On your own list, the old link stops working."
                       />
                     )}
                   </div>
@@ -236,7 +229,6 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
             <Card id="categories" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="categories">Categories</SectionTitle>
-                <CardDescription>Organize your registry items into categories</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-tertiary">
@@ -256,7 +248,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
             <Card id="location" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="location">Location</SectionTitle>
-                <CardDescription>Used to estimate sales tax on item prices when auto-filling from product URLs</CardDescription>
+                <CardDescription>Used to estimate sales tax.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={submitWith(zip.save)} className="space-y-4">
@@ -270,7 +262,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                     name="taxEnabled"
                     value="true"
                     defaultSelected
-                    label="Auto-add estimated sales tax to prices"
+                    label="Add estimated sales tax to prices"
                   />
                   <Button type="submit" disabled={zip.saving}>
                     {zip.label("Save location")}
@@ -282,10 +274,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
             <Card id="payment-methods" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="payment-methods">Payment methods</SectionTitle>
-                <CardDescription>
-                  Add your payment info so gift givers can send you money for cash funds and items you&apos;ve already
-                  purchased.
-                </CardDescription>
+                <CardDescription>Gift givers pay you directly. Regibee never handles money.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={submitWith(payment.save)} className="space-y-4">
@@ -312,9 +301,6 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
             <Card id="shipping-address" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="shipping-address">Shipping address</SectionTitle>
-                <CardDescription>
-                  Share your shipping address with gift givers so they know where to send gifts.
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={submitWith(address.save)} className="space-y-4">
@@ -349,10 +335,7 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                   <Users className="h-5 w-5" />
                   Managers
                 </SectionTitle>
-                <CardDescription>
-                  Invite others to help manage this registry. Managers can add/edit items, view gift activity, and manage
-                  categories.
-                </CardDescription>
+                <CardDescription>Managers can edit this list and see its gifts.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -492,7 +475,6 @@ export function DemoRegistrySettings({ registryId }: { registryId: string }) {
                 >
                   Delete registry
                 </SectionTitle>
-                <CardDescription>Permanently delete this registry and all its items</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button

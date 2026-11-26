@@ -74,9 +74,6 @@ export default function SuggestionsScreen() {
         }
         ListHeaderComponent={
           <View style={{ gap: spacing.md }}>
-            <Text variant="subhead" tone="secondary">
-              Items suggested by your guests
-            </Text>
             {suggestions.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
                 {FILTERS.map((f) => (
@@ -152,7 +149,7 @@ export default function SuggestionsScreen() {
           ) : registry.isError ? (
             <ErrorState message={errorMessage(registry.error)} onRetry={() => registry.refetch()} />
           ) : suggestions.length === 0 ? (
-            <EmptyState icon="inbox" title="No suggestions yet" message="Guests can suggest items from your registry page." />
+            <EmptyState icon="inbox" title="No suggestions yet" />
           ) : (
             <EmptyState icon="inbox" title={`No ${filter} suggestions.`} />
           )

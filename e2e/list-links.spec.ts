@@ -76,7 +76,7 @@ test("the owner gets a new link: the old one stops working, guests' gift emails 
   await expect(page.getByRole("button", { name: "Saved!" })).toBeVisible();
   await expect(page.getByText(`/r/${oldSlug}`)).toBeVisible();
   await page.getByRole("button", { name: "Get a new link" }).click();
-  await page.getByRole("button", { name: "Turn off this link and get a new one" }).click();
+  await page.getByRole("button", { name: "Replace link" }).click();
   await expect(page.getByRole("status")).toContainText("The old link no longer works");
 
   const { data: changed } = await db.from("registries").select("slug, is_public").eq("id", registry.id).single();
@@ -137,7 +137,7 @@ test("a gift exchange guest's wishlist link follows the list's new link", async 
   const newLink = page.getByRole("button", { name: "Get a new link" });
   await waitForReact(newLink);
   await newLink.click();
-  await page.getByRole("button", { name: "Turn off this link and get a new one" }).click();
+  await page.getByRole("button", { name: "Replace link" }).click();
   await expect(page.getByRole("status")).toContainText("The old link no longer works");
 
   const { data: changed } = await db.from("registries").select("slug").eq("id", registry.id).single();

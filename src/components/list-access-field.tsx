@@ -53,10 +53,7 @@ export function ListAccessField({
                 aria-hidden="true"
                 className={cx("mt-0.5 h-4 w-4 shrink-0 sm:mt-0", selected ? "text-brand-secondary" : "text-tertiary")}
               />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-primary">{option.label}</span>
-                <span className="block text-xs text-tertiary">{option.who}</span>
-              </span>
+              <span className="min-w-0 text-sm font-medium text-primary">{option.label}</span>
             </label>
           );
         })}

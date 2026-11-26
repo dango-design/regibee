@@ -137,13 +137,11 @@ export function PublicProfile({
       ) : (
         isOwnProfile && (
           <p className="mt-8 rounded-2xl border border-dashed border-secondary px-4 py-3 text-center text-sm text-tertiary">
-            Add your sizes, likes and birthday so the people you follow who follow you back know what to get
-            you.{" "}
             <Link
               href={`${basePath}/dashboard/account#gift-profile`}
               className="font-medium text-brand-tertiary hover:underline"
             >
-              Add a gift profile
+              Add your sizes, likes and birthday
             </Link>
           </p>
         )
@@ -182,7 +180,7 @@ export function PublicProfile({
         <div className="mt-10">
           <h2 className="text-lg font-semibold">Events together</h2>
           <p className="mt-1 text-sm text-tertiary">
-            Events you and {displayName} both went to or are going to. Only you see this.
+            Only you see this.
           </p>
           <div className="mt-3 flex flex-col gap-3">
             {sharedEvents.map((event) => (

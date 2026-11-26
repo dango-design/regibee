@@ -44,8 +44,7 @@ export default function ProfileScreen() {
             Registries on your profile
           </Text>
           <Text variant="footnote" tone="secondary">
-            Choose who sees each one on your profile: nobody, your friends, your followers or everyone. Friends are people
-            you follow who follow you back. Registries you help manage for someone else aren&apos;t included.
+            Choose who sees each one on your profile. Friends are people you follow who follow you back.
           </Text>
           {data.registries.length === 0 ? (
             <Text variant="footnote" tone="tertiary">
@@ -164,19 +163,14 @@ function ProfileCard({
         Your profile
       </Text>
       <Text variant="footnote" tone="secondary">
-        One link to all the registries you choose below. Anyone with the link can see your name, your public note and those registries.
+        Anyone with your profile link sees your name and public note.
       </Text>
       <View style={{ flexDirection: "row", gap: spacing.lg, alignItems: "center" }}>
         <ProfileAvatar name={displayName({ full_name: profile.full_name })} photoUrl={photoUrl} size={80} />
         <View style={{ flex: 1, gap: spacing.sm }}>
-          <View style={{ gap: 2 }}>
-            <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-              Profile photo
-            </Text>
-            <Text variant="caption" tone="tertiary">
-              Shown on your profile. Without one, people see your initials.
-            </Text>
-          </View>
+          <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+            Profile photo
+          </Text>
           <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
             <Button
               title={photoUrl ? "Change photo" : "Upload photo"}
@@ -208,7 +202,6 @@ function ProfileCard({
         label="Name"
         value={name}
         onChangeText={setName}
-        hint="Shown on your profile, and to people you ask to follow"
         autoCapitalize="words"
         textContentType="name"
       />
@@ -216,7 +209,7 @@ function ProfileCard({
         label="Public note"
         value={note}
         onChangeText={setNote}
-        hint="Optional. Anyone who opens your profile sees this, under your name."
+        hint="Anyone who opens your profile sees this."
         placeholder="Anything you'd like everyone to know"
         maxLength={MAX_PUBLIC_NOTE_LENGTH}
         multiline
@@ -224,19 +217,17 @@ function ProfileCard({
       <View style={{ marginHorizontal: -spacing.lg }}>
         <SwitchRow
           label="Show me in people search"
-          description="People signed in to Regibee can find you by name."
           value={discoverable}
           onValueChange={setDiscoverable}
         />
         <SwitchRow
           label="Let people find me by my email address"
-          description="Only someone who types your whole email address finds you this way. Your email is never shown."
+          description="Only by your whole address. Your email is never shown."
           value={findable}
           onValueChange={setFindable}
         />
         <SwitchRow
           label="Email me when someone asks to follow me"
-          description="Includes invites sent to your email address. At most one email per person per day."
           value={emails}
           onValueChange={setEmails}
         />

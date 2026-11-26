@@ -328,17 +328,17 @@ export function listTitleFor(occasion: Occasion, name: string): string {
 export type GiftPlan = "new_list" | "link" | "ask" | "everyone" | "exchange" | "signup" | "no_gifts" | "later";
 
 export const GIFT_PLAN_LABELS: Record<GiftPlan, { label: string; hint: string }> = {
-  new_list: { label: "Make a gift list", hint: "Add things from any store, and guests reserve them." },
-  link: { label: "Link a list", hint: "Paste the share link of a Regibee registry or wishlist." },
-  ask: { label: "Ask them to make one", hint: "We email them an invitation, and their list is linked as soon as it exists." },
+  new_list: { label: "Make a gift list", hint: "Add things from any store." },
+  link: { label: "Link a list", hint: "A Regibee registry or wishlist." },
+  ask: { label: "Ask them to make one", hint: "We email them to make one." },
   everyone: {
     label: "Everyone gives everyone",
-    hint: "Each person links a wishlist when they RSVP, and everyone shops from everyone's lists.",
+    hint: "Each guest links a wishlist when they RSVP.",
   },
-  exchange: { label: "Draw names", hint: "Everyone adds a wishlist when they join, then gives one gift to the person they draw." },
-  signup: { label: "A sign-up sheet", hint: "Guests pick what they'll bring, or a day to help." },
+  exchange: { label: "Draw names", hint: "Each person gives one gift to the name they draw." },
+  signup: { label: "A sign-up sheet", hint: "Guests pick what to bring, or a day to help." },
   no_gifts: { label: "No gifts", hint: "The invitation says \"No gifts, please.\"" },
-  later: { label: "Decide later", hint: "Add a list or a gift note any time from the event." },
+  later: { label: "Decide later", hint: "Set up gifts from the event later." },
 };
 
 /**
@@ -356,17 +356,17 @@ export function giftPlanLabel(
   }
   if (plan === "link") {
     if (audience === "someone") {
-      return { label: "Link their list", hint: "Paste the share link of their Regibee registry or wishlist." };
+      return { label: "Link their list", hint: "Their Regibee registry or wishlist." };
     }
     if (audience === "no_one") {
       return {
         label: "Link a wishlist",
         hint: hasLists
-          ? "Yours, your kids', or anyone's by its link. Add more from the event later."
-          : "Paste the share link of any Regibee registry or wishlist. Add more from the event later.",
+          ? "Yours, or anyone's by its link."
+          : "Any Regibee registry or wishlist.",
       };
     }
-    if (hasLists) return { label: "Use a list you already have", hint: "One of your lists, or any Regibee list by its link." };
+    if (hasLists) return { label: "Use a list you already have", hint: "One of yours, or any Regibee list by its link." };
   }
   return GIFT_PLAN_LABELS[plan];
 }

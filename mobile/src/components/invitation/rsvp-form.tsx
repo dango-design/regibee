@@ -257,7 +257,7 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
       return;
     }
     if (exchange?.mailed && inExchange && !address.trim()) {
-      setError("Add a shipping address, so your Secret Santa can mail your gift.");
+      setError("Add a shipping address.");
       return;
     }
     if (mealTrain && answer === "yes" && picks.size === 0) {
@@ -413,8 +413,8 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
             </Text>
             <Text variant="footnote" tone="tertiary">
               {mealTrain
-                ? "Choose one or more. You'll see the drop-off address once you send."
-                : "Optional. Choose anything you'd like to bring or help with."}
+                ? "You'll see the drop-off address once you send."
+                : "Optional."}
             </Text>
           </View>
           {rows.length === 0 ? (
@@ -470,7 +470,7 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
       {everyone && attending && !guest?.wishlistUrl && !guest?.giftIdeas ? (
         <View style={[styles.tinted, { backgroundColor: theme.surfaceAlt }]}>
           <Text variant="footnote" tone="secondary">
-            Everyone gives everyone. Once you send your RSVP, you&apos;ll add your wishlist, so the others know what you&apos;d like.
+            Everyone gives everyone. You&apos;ll add your wishlist after you RSVP.
           </Text>
         </View>
       ) : null}
@@ -480,13 +480,12 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
           {canChooseJoin ? (
             <SwitchRow
               label="Join the gift exchange"
-              description="You'll draw one name and give that person a gift."
               value={join}
               onValueChange={setJoin}
             />
           ) : exchange.drawn && !alreadyIn ? (
             <Text variant="footnote" tone="secondary">
-              Names for the gift exchange have been drawn, so it&apos;s closed. Ask the host if you&apos;d like to join.
+              Names have been drawn. Ask the host if you&apos;d like to join.
             </Text>
           ) : (
             <Text variant="callout" style={{ fontWeight: "600" }}>
@@ -503,7 +502,7 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
-                hint="Paste a link to your Regibee wishlist or a list at any store. Only the person who draws you sees it."
+                hint="Only the person who draws you sees it."
               />
               <Field
                 label="Gift ideas (optional)"

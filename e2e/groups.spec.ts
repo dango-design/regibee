@@ -63,7 +63,7 @@ test("a guest list saved as a group fills an event and runs next year's exchange
   await page.waitForURL(/\/dashboard\/groups\//);
   const groupId = page.url().split("/dashboard/groups/")[1];
   await expect(page.getByRole("heading", { name: "The Chens" })).toBeVisible();
-  await expect(page.getByText("4 people.")).toBeVisible();
+  await expect(page.getByText("4 people", { exact: true })).toBeVisible();
   const { data: event } = await db.from("events").select("group_id").eq("id", lastYear.id).single();
   expect(event?.group_id).toBe(groupId);
 

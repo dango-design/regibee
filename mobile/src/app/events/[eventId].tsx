@@ -66,7 +66,7 @@ export default function EventScreen() {
   function planAgain() {
     Alert.alert(
       "Plan this event again?",
-      "This makes a new event a year later, with the same guests, co-hosts and gift settings. Guests' replies start over, and no one is emailed. A gift exchange avoids this year's pairs.",
+      "A new event a year later, with the same guests and settings. Replies start over. No one is emailed.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -225,15 +225,11 @@ export default function EventScreen() {
             >
               <Icon name="image" size={30} color={theme.onAccentSoft} />
               <Text variant="headline">Add your invitation</Text>
-              <Text variant="footnote" tone="secondary">
-                Upload a picture guests see first
-              </Text>
             </Pressable>
           )}
           <View style={{ padding: spacing.lg, gap: spacing.sm }}>
             <Text variant="footnote" tone="tertiary">
-              Guests see this, the details and an RSVP form at the event link.
-              {event.open_rsvp ? " Anyone with the link can RSVP." : " Only invited guests can RSVP."}
+              {event.open_rsvp ? "Anyone with the link can RSVP." : "Only invited guests can RSVP."}
             </Text>
             <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
               <Button

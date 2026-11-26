@@ -91,7 +91,7 @@ test("a holiday party starts with each guest linking their own wishlist", async 
   await expect(page.getByRole("button", { name: /Everyone gives everyone/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByLabel("Event name")).toHaveValue("Holiday Party");
-  await expect(page.getByText(/guests link their wishlists when they RSVP/)).toBeVisible();
+  await expect(page.getByText(/guests link their wishlists when they RSVP/i)).toBeVisible();
   await page.getByRole("button", { name: "Make the event" }).click();
 
   const eventId = await eventIdFrom(page);

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react";
 import { ExternalLink, ShoppingBag, Undo2 } from "lucide-react";
 import { ItemImage } from "@/components/item-image";
-import { Button } from "@/components/ui/button";
+import { RowActionsMenu, type RowAction } from "@/components/row-actions-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tag } from "@/components/ui/tag";
 import { UsedConditionTag } from "@/components/ui/used-condition-tag";
@@ -79,6 +79,16 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
       await toggleParentPurchased(item.id, registryId, !item.is_parent_purchased);
     });
   };
+
+  // What the card's "…" menu offers the owner.
+  const ownerActions: RowAction[] = [
+    ...(item.external_url ? [{ id: "shop", label: "Shop", icon: ExternalLink }] : []),
+    ...(item.is_parent_purchased
+      ? [{ id: "unbought", label: "Mark as unpurchased", icon: Undo2 }]
+      : !isFulfilled
+        ? [{ id: "bought", label: selfPurchaseButtonLabel, icon: ShoppingBag }]
+        : []),
+  ];
 
   // For the owner, a click anywhere on the card opens the item to edit. The
   // title is the button that does it, so keyboards can too (see
@@ -200,46 +210,22 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
           </div>
         </div>
 
-        {isOwner && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {item.external_url && (
-              <Button
-                variant="outline"
-                className="card-action"
-                onClick={() => window.open(item.external_url!, '_blank', 'noopener,noreferrer')}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <ExternalLink className="h-4 w-4 shrink-0" />
-                  Shop
-                </span>
-              </Button>
-            )}
-            {!isFulfilled && !item.is_parent_purchased && (
-              <Button
-                variant="outline"
-                className="card-action"
-                onClick={handleToggleParentPurchased}
-                disabled={toggling}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <ShoppingBag className="h-4 w-4 shrink-0" />
-                  {toggling ? "Saving..." : selfPurchaseButtonLabel}
-                </span>
-              </Button>
-            )}
-            {item.is_parent_purchased && (
-              <Button
-                variant="outline"
-                className="card-action"
-                onClick={handleToggleParentPurchased}
-                disabled={toggling}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Undo2 className="h-4 w-4 shrink-0" />
-                  Mark as unpurchased
-                </span>
-              </Button>
-            )}
+        {/* The store link and "bought it myself" are in a "…" menu, not
+            buttons, so a list of items doesn't show the same two buttons on
+            every card. The app has them in each item's long-press menu. */}
+        {isOwner && ownerActions.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
+            {toggling && <span className="text-xs text-tertiary">Saving…</span>}
+            <RowActionsMenu
+              label={`More actions for ${item.title}`}
+              actions={ownerActions}
+              disabled={toggling}
+              className="card-action"
+              onAction={(id) => {
+                if (id === "shop") window.open(item.external_url!, "_blank", "noopener,noreferrer");
+                else handleToggleParentPurchased();
+              }}
+            />
           </div>
         )}
       </CardContent>

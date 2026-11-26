@@ -63,7 +63,7 @@ export default function AccountScreen() {
       run();
       return;
     }
-    Alert.alert("Sign out?", "Your registries stay on Regibee. Sign in again to see them here.", [
+    Alert.alert("Sign out?", undefined, [
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: run },
     ]);
@@ -93,18 +93,18 @@ export default function AccountScreen() {
         <AccountSections />
       )}
 
-      <Section title="On regibee.com" footer="These open the website. Sign in there with the same account if it asks.">
+      <Section title="On regibee.com">
         <Row icon="lock" label="Privacy policy" onPress={() => open("/privacy")} />
       </Section>
 
       {demo ? (
-        <Section footer="This is a sample registry. Changes you make here aren't saved.">
+        <Section footer="Changes here aren't saved.">
           <Row icon="signOut" label="Leave the demo" destructive onPress={endDemo} />
           <Divider inset={52} />
           {deleteRow}
         </Section>
       ) : (
-        <Section footer="Delete account deletes your account, your registries and events, and your profile. Registries other people help manage stay with them. This can't be undone.">
+        <Section footer="Delete account deletes your account, lists, events and profile. This can't be undone.">
           <Row icon="signOut" label="Sign out" destructive onPress={confirmSignOut} />
           <Divider inset={52} />
           {deleteRow}
@@ -152,7 +152,7 @@ function AccountSections() {
       {PUSH_SUPPORTED ? (
         <Section
           title="Notifications"
-          footer="When someone asks to follow you, replies to your event's invitation, or gives a gift on your list. Gifts you hid from yourself stay hidden."
+          footer="Follow requests, RSVPs and gifts on your lists. Gifts you hid from yourself stay hidden."
         >
           <SwitchRow
             icon="bell"
@@ -165,7 +165,7 @@ function AccountSections() {
       ) : null}
       <Section
         title="Birthday emails"
-        footer={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they approved you and show you their birthday.`}
+        footer={`${BIRTHDAY_REMINDER_DAYS} days before the birthday of someone you follow, if they show it to you.`}
       >
         <SwitchRow
           icon="bell"

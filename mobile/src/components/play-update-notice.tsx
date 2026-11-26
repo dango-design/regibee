@@ -16,7 +16,7 @@ export function PlayUpdateNotice() {
         icon="update"
         tone="tint"
         title="A new version of Regibee is ready"
-        message="Update from Google Play to get the latest changes. The app restarts when it's done."
+        message="The app restarts when it's done."
         action={{ title: "Update", icon: "update", onPress: () => void installPlayUpdate(), loading: update.installing }}
         secondary={{ title: "Not now", onPress: dismissPlayUpdate }}
       />

@@ -74,9 +74,6 @@ export function SuggestionInbox({
     <>
       <div className="mb-6">
         <h2 className="text-xl font-semibold">Suggestion Inbox</h2>
-        <p className="text-sm text-tertiary">
-          Items suggested by your guests
-        </p>
       </div>
 
       {suggestions.length === 0 ? (
@@ -84,7 +81,7 @@ export function SuggestionInbox({
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Lightbulb className="h-8 w-8 text-tertiary mb-2" />
             <p className="text-tertiary">
-              No suggestions yet. Guests can suggest items from your registry page.
+              No suggestions yet.
             </p>
           </CardContent>
         </Card>

@@ -10,6 +10,7 @@ import { Alert, Pressable, SectionList, StyleSheet, View } from "react-native";
 import { DEFAULT_CHECKLIST, type ChecklistItem } from "@shared/checklist-data";
 import { matchedChecklistItems } from "@shared/checklist-matching";
 
+import { HeaderMenu } from "@/components/header-menu";
 import { Icon } from "@/components/icon";
 import { Button, Chip, Divider, ErrorState, haptic, LoadingState, Pill, ProgressBar, Text } from "@/components/ui";
 import { errorMessage, useAddChecklistItem, useRegistry, useToggleChecklistDismissed } from "@/lib/data";
@@ -91,9 +92,6 @@ export default function ChecklistScreen() {
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={
           <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
-            <Text variant="subhead" tone="secondary">
-              Browse recommended items and add them to your registry
-            </Text>
             <View style={{ gap: 6 }}>
               <Text variant="footnote" style={{ fontWeight: "600" }}>
                 {addedCount} of {TOTAL} items added
@@ -194,12 +192,12 @@ export default function ChecklistScreen() {
                   </Text>
                 ) : null}
               </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingBottom: spacing.md }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm, paddingBottom: spacing.md }}>
                 {isAdded ? (
                   <Pill label="Added" tone="success" icon="check" />
                 ) : isDismissed ? (
                   <>
-                    <Pill label="Manually mark as registered" tone="neutral" icon="check" />
+                    <Pill label="Marked as registered" tone="neutral" icon="check" />
                     <Button title="Undo" size="small" variant="ghost" onPress={() => toggle.mutate({ name: item.name, dismissed: false })} />
                   </>
                 ) : (
@@ -211,16 +209,23 @@ export default function ChecklistScreen() {
                       loading={adding === item.name}
                       onPress={() => addItem(section.category.name, item)}
                     />
-                    <Button
-                      title="Manually mark as registered"
+                    {/* For something registered elsewhere, like at a store. Few
+                        rows need it, so it's in a "…" menu, as on the website. */}
+                    <HeaderMenu
                       size="small"
-                      variant="ghost"
-                      onPress={() =>
-                        toggle.mutate(
-                          { name: item.name, dismissed: true },
-                          { onError: (e) => Alert.alert("Couldn't save that", errorMessage(e)) }
-                        )
-                      }
+                      accessibilityLabel={`More actions for ${item.name}`}
+                      title={item.name}
+                      choices={[
+                        {
+                          label: "Mark as registered",
+                          icon: "check",
+                          onPress: () =>
+                            toggle.mutate(
+                              { name: item.name, dismissed: true },
+                              { onError: (e) => Alert.alert("Couldn't save that", errorMessage(e)) }
+                            ),
+                        },
+                      ]}
                     />
                   </>
                 )}

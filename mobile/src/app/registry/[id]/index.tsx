@@ -148,8 +148,7 @@ export default function RegistryScreen() {
       onSuccess: ({ sorted, added, undo }) => {
         if (sorted === 0) {
           Alert.alert(
-            count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit.",
-            "Choose one on each item instead."
+            count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit."
           );
           return;
         }
@@ -291,11 +290,6 @@ export default function RegistryScreen() {
               <EmptyState
                 icon="bag"
                 title="No items yet"
-                message={
-                  data.showChecklist
-                    ? "Add items manually or browse the checklist."
-                    : "Add items from any store to get started."
-                }
                 action={
                   <View style={{ width: "100%", maxWidth: 320, gap: spacing.sm }}>
                     <Button title="Add item" icon="add" onPress={addItem} />
@@ -348,8 +342,7 @@ export default function RegistryScreen() {
             data.reservationsHidden ? undefined : (
               <EmptyState
                 icon="gift"
-                title="No gifts reserved yet"
-                message="Share your registry link to get started!"
+                title="No gifts yet"
                 action={
                   <View style={{ width: "100%", maxWidth: 320 }}>
                     <Button title="Share your registry" icon="share" variant="secondary" onPress={shareRegistry} />
@@ -462,7 +455,7 @@ function RegistryHeader({
           </ScrollView>
         ) : (
           <Text variant="footnote" tone="tertiary" style={{ paddingHorizontal: spacing.lg }}>
-            Let guests give money toward something bigger, like a stroller or a honeymoon.
+            No gift funds yet.
           </Text>
         )}
       </View>
@@ -523,7 +516,6 @@ function ListTools({ detail }: { detail: RegistryDetail }) {
   rows.push({
     icon: "inbox",
     label: "Suggestions Inbox",
-    detail: detail.suggestions.length === 0 ? "Ideas guests send you" : undefined,
     badge: detail.pendingSuggestions,
     onPress: () => router.push({ pathname: "/registry/[id]/suggestions", params: { id } }),
   });
@@ -569,7 +561,6 @@ function EventsBanner({ detail }: { detail: RegistryDetail }) {
       <Notice
         icon="party"
         title="Planning a party?"
-        message="Send invitations and track RSVPs, with guests linked to this registry."
         action={{ title: "Plan an event", onPress: plan }}
         secondary={{
           title: "Dismiss",
@@ -653,8 +644,8 @@ function PlainLinksNotices({ detail }: { detail: RegistryDetail }) {
             title={one ? `1 item has a plain ${store.name} link` : `${count} items have plain ${store.name} links`}
             message={
               one
-                ? `Gifts bought through it won't count toward your ${store.name} registry. Add it to your ${store.name} registry, then edit the item and paste its registry link.`
-                : `Gifts bought through them won't count toward your ${store.name} registry. Add them to your ${store.name} registry, then edit each item and paste its registry link.`
+                ? `Gifts bought through it won't count toward your ${store.name} registry. Add it there, then paste its registry link into the item.`
+                : `Gifts bought through them won't count toward your ${store.name} registry. Add them there, then paste each registry link into its item.`
             }
             action={{ title: `Open my ${store.name} registry`, icon: "external", onPress: () => WebBrowser.openBrowserAsync(openUrl) }}
             secondary={{

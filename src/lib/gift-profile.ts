@@ -268,12 +268,12 @@ export function visibleChildGiftProfile(profile: GiftProfile, sees: { birthday: 
 /** What the form says under a part, for the audience chosen. */
 export function giftProfileAudienceHint(section: GiftProfileSection, audience: GiftProfileAudience): string {
   if (section === "birthday") {
-    if (audience === "private") return "No year needed. Only you see it.";
-    if (audience === "friends") return `No year needed. Friends see it and get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
+    if (audience === "private") return "Only you see it.";
+    if (audience === "friends") return `Friends see it and get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
     if (audience === "followers") {
-      return `No year needed. Followers you approve see it and get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
+      return `Followers you approve see it and get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
     }
-    return `No year needed. Anyone who opens your profile or wishlists sees it. Followers get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
+    return `Anyone who opens your profile or wishlists sees it. Followers get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`;
   }
   if (audience === "private") return "Only you see these.";
   if (audience === "friends") return "Friends see these: people you follow who follow you back.";

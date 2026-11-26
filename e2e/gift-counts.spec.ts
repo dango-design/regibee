@@ -111,16 +111,29 @@ test("unmarking already bought keeps guests' gifts counted (#119)", async ({ pag
   // The owner marks it bought on the website, then changes their mind.
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}`);
-  // The list has one item, so these are its buttons.
-  const markBought = page.getByRole("button", { name: /Mark as (bought by parent|already bought)/ }).first();
-  const unmark = page.getByRole("button", { name: "Mark as unpurchased" }).first();
-  await waitForReact(markBought);
+  // The list has one item, so this is its menu. Marking it bought is in the
+  // card's "…" menu.
+  const menu = page.getByRole("button", { name: /^More actions for / }).first();
+  const markBought = page.getByRole("menuitem", { name: /Mark as (bought by parent|already bought)/ });
+  const unmark = page.getByRole("menuitem", { name: "Mark as unpurchased" });
+  await waitForReact(menu);
+  await menu.click();
   await markBought.click();
-  await expect(unmark).toBeVisible();
+  // The menu offers the opposite once the save is on screen.
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await menu.click();
+    await expect(unmark).toBeVisible({ timeout: 1000 });
+  }).toPass();
   expect(await countOf(item.id)).toBe(2);
 
   await unmark.click();
-  await expect(markBought).toBeVisible();
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await menu.click();
+    await expect(markBought).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await page.keyboard.press("Escape");
   // Before the fix this was 0, and another guest could reserve the same gift.
   expect(await countOf(item.id)).toBe(1);
 

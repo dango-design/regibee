@@ -172,12 +172,12 @@ export const EXCHANGE_KINDS: { value: ExchangeKind; label: string; hint: string 
   {
     value: "everyone",
     label: "Everyone gives everyone",
-    hint: "Each guest links a wishlist. Guests see each other's lists and what's been reserved, so nobody doubles up.",
+    hint: "Guests see each other's wishlists and what's been reserved.",
   },
   {
     value: "draw",
     label: "Draw names (Secret Santa)",
-    hint: "Each person draws one name and gives that person a gift. Nobody knows who drew them.",
+    hint: "Nobody knows who drew them.",
   },
 ];
 

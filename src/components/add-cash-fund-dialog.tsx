@@ -11,7 +11,6 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -49,9 +48,7 @@ export function AddCashFundDialog({ registryId, action = addCashFund }: AddCashF
     } else {
       setOpen(false);
       const title = String(formData.get("title") ?? "").trim();
-      toast.success(title ? `"${title}" created` : "Gift fund created", {
-        description: "It's listed under Gift Funds. Click it to edit.",
-      });
+      toast.success(title ? `"${title}" created` : "Gift fund created");
     }
     setLoading(false);
   };
@@ -69,9 +66,6 @@ export function AddCashFundDialog({ registryId, action = addCashFund }: AddCashF
       <DialogContent className="sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Create gift fund</DialogTitle>
-          <DialogDescription>
-            Let guests contribute cash toward a specific goal.
-          </DialogDescription>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
           <Input

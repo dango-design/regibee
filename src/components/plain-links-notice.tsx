@@ -75,8 +75,8 @@ export function PlainLinksNotice({
                 </p>
                 <p className="text-sm text-warning-800 dark:text-warning-300">
                   {one
-                    ? `Gifts bought through it won't count toward your ${store.name} registry. Add it to your ${store.name} registry, then open your registry with the Regibee browser extension, and we'll swap in its registry link. You can also edit the item and paste its registry link.`
-                    : `Gifts bought through them won't count toward your ${store.name} registry. Add them to your ${store.name} registry, then open your registry with the Regibee browser extension, and we'll swap in their registry links. You can also edit each item and paste its registry link.`}
+                    ? `Gifts bought through it won't count toward your ${store.name} registry. Add it there, then open that registry with the Regibee extension to swap in its registry link.`
+                    : `Gifts bought through them won't count toward your ${store.name} registry. Add them there, then open that registry with the Regibee extension to swap in their registry links.`}
                 </p>
               </div>
             </div>
