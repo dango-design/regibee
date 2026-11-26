@@ -106,6 +106,16 @@ export function useTheme(): Theme {
   return useColorScheme() === "dark" ? darkTheme : lightTheme;
 }
 
+// The website has no dark mode, so its pages inside the app are always light,
+// on white. The web view's header uses these colours so it matches the page
+// under it, whatever mode the phone is in (mobile/src/app/web.tsx).
+export const sitePageColors = {
+  background: palette.white,
+  text: palette.gray900,
+  tint: palette.brand600,
+  border: palette.gray200,
+} as const;
+
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 export const radius = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 } as const;
 
