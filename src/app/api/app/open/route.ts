@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { authenticateApp } from "@/lib/app-request";
+import { clearAppGiftsCookie, syncAppGiftsCookie } from "@/lib/app-gifts-server";
+import { APP_GIFTS_HEADER, parseAppGifts } from "@/lib/my-gifts-cookie";
 import { IN_APP_COOKIE, IN_APP_HEADER, safeAppPath } from "@/lib/in-app";
 import { createClient } from "@/utils/supabase/server";
 
@@ -23,6 +25,16 @@ export const dynamic = "force-dynamic";
 //
 // Without a token, it signs the web view out instead, so a page opened while
 // the app is signed out never shows the last account.
+//
+// The app also sends the gifts this account gave from its own list screen, in
+// the x-regibee-gifts header (APP_GIFTS_HEADER): purchase ids by item id. The
+// route adds each one that matches a live gift on its item to the website's
+// gifts cookie, so the page shows them as "Reserved for you" and the guest can
+// finish or release them there. The cookie is marked with the account, so
+// another account signing in on the same phone doesn't get them, and opening
+// the web view signed out takes them out. Builds from before the header send
+// none, and the cookie stays as it was. The rules are in
+// src/lib/my-gifts-cookie.ts.
 //
 // It acts only on a request that carries the app's header (IN_APP_HEADER) or
 // a token. A link to this route from any other page arrives as a plain browser
@@ -51,8 +63,16 @@ export async function GET(request: Request) {
       console.error("[app] couldn't sign the web view in:", error.message);
       return NextResponse.json({ error: "Sign in first." }, { status: 401 });
     }
+    const fromApp = parseAppGifts(request.headers.get(APP_GIFTS_HEADER));
+    if (fromApp) {
+      // The page still opens without them.
+      await syncAppGiftsCookie(cookieStore, fromApp, auth.user.id).catch((err) =>
+        console.error("[app] couldn't add the app's gifts to the web view:", err)
+      );
+    }
   } else {
     await supabase.auth.signOut({ scope: "local" });
+    clearAppGiftsCookie(cookieStore);
   }
 
   // The website's top bar hides itself while this is set (src/components/nav.tsx).

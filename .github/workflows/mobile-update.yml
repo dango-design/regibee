@@ -51,6 +51,7 @@ on:
       - src/lib/list-access.ts
       - src/lib/list-page-types.ts
       - src/lib/money.ts
+      - src/lib/my-gifts-cookie.ts
       - src/lib/occasion-theme.ts
       - src/lib/occasions.ts
       - src/lib/people-page-types.ts
