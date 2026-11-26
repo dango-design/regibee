@@ -11,10 +11,14 @@ import {
   cleanPublicNote,
   daysBetween,
   formatBirthdayDate,
+  giftProfileAudienceSummary,
+  giftProfileAudiences,
   hasGiftDetails,
   nextAnnualDate,
   pickBirthdayList,
   parseGiftProfile,
+  seesGiftProfileSection,
+  visibleChildGiftProfile,
   visibleGiftProfile,
   withoutBirthday,
 } from "./gift-profile.ts";
@@ -121,7 +125,7 @@ test("pickBirthdayList links one current wishlist, or the one birthday list", ()
   assert.equal(pickBirthdayList([], today), null);
 });
 
-test("visibleGiftProfile gives each viewer only their part", () => {
+test("visibleGiftProfile follows the default choices when there are none", () => {
   const profile = parseGiftProfile({
     birthday: { month: 6, day: 1 },
     sizes: { tops: "M" },
@@ -130,18 +134,61 @@ test("visibleGiftProfile gives each viewer only their part", () => {
     skip: ["Candles"],
     notes: "No wool",
   });
-  // The person, and people they follow who follow them back.
-  assert.deepEqual(visibleGiftProfile(profile, { details: true, birthday: true }), profile);
-  // A follower they approved but don't follow back.
-  assert.deepEqual(visibleGiftProfile(profile, { details: false, birthday: true }), {
+  assert.deepEqual(visibleGiftProfile(profile, "owner"), profile);
+  // Friends see everything.
+  assert.deepEqual(visibleGiftProfile(profile, "friend"), profile);
+  // Followers who aren't friends see the birthday.
+  assert.deepEqual(visibleGiftProfile(profile, "follower"), { birthday: { month: 6, day: 1 } });
+  // Anyone else with the link sees nothing.
+  assert.deepEqual(visibleGiftProfile(profile, "other"), {});
+});
+
+test("visibleGiftProfile shows each part to the audience chosen for it", () => {
+  const profile = parseGiftProfile({
     birthday: { month: 6, day: 1 },
+    sizes: { tops: "M" },
+    colors: "Green",
+    likes: ["Tea"],
+    skip: ["Candles"],
+    notes: "No wool",
+    audience: { birthday: "private", sizes: "everyone", likes: "followers" },
   });
-  // Anyone else with the link.
-  assert.deepEqual(visibleGiftProfile(profile, { details: false, birthday: false }), {});
-  // A child's list: everything but the birthday.
-  const onChildList = visibleGiftProfile(profile, { details: true, birthday: false });
-  assert.equal(onChildList.birthday, undefined);
-  assert.deepEqual(onChildList.sizes, { tops: "M" });
+  const likesPart = { colors: "Green", likes: ["Tea"], skip: ["Candles"], notes: "No wool" };
+  assert.deepEqual(visibleGiftProfile(profile, "other"), { sizes: { tops: "M" } });
+  assert.deepEqual(visibleGiftProfile(profile, "follower"), { sizes: { tops: "M" }, ...likesPart });
+  assert.deepEqual(visibleGiftProfile(profile, "friend"), { sizes: { tops: "M" }, ...likesPart });
+  // Only the owner sees a private birthday, and only the owner gets the choices.
+  assert.deepEqual(visibleGiftProfile(profile, "owner"), profile);
+});
+
+test("seesGiftProfileSection: friends see what followers see, and only the owner sees a private part", () => {
+  assert.equal(seesGiftProfileSection("followers", "friend"), true);
+  assert.equal(seesGiftProfileSection("friends", "follower"), false);
+  assert.equal(seesGiftProfileSection("everyone", "other"), true);
+  assert.equal(seesGiftProfileSection("private", "friend"), false);
+  assert.equal(seesGiftProfileSection("private", "owner"), true);
+});
+
+test("parseGiftProfile keeps only real audience choices, and the rest use the defaults", () => {
+  const profile = parseGiftProfile({ audience: { birthday: "everyone", sizes: "strangers", hats: "friends" } });
+  assert.deepEqual(profile, { audience: { birthday: "everyone" } });
+  assert.deepEqual(giftProfileAudiences(profile), { birthday: "everyone", sizes: "friends", likes: "friends" });
+  assert.deepEqual(parseGiftProfile({ audience: "everyone" }), {});
+});
+
+test("giftProfileAudienceSummary names who sees each part", () => {
+  assert.equal(
+    giftProfileAudienceSummary({ audience: { likes: "private" } }),
+    "Birthday: followers · Sizes: friends · Likes and dislikes: only you",
+  );
+});
+
+test("visibleChildGiftProfile shows everything, and the birthday only when allowed", () => {
+  const profile = parseGiftProfile({ birthday: { month: 6, day: 1 }, sizes: { tops: "4T" } });
+  assert.deepEqual(visibleChildGiftProfile(profile, { birthday: false }), { sizes: { tops: "4T" } });
+  assert.deepEqual(visibleChildGiftProfile(profile, { birthday: true }), profile);
+  // A child's profile has no choices, so none are passed on.
+  assert.deepEqual(visibleChildGiftProfile({ ...profile, audience: { sizes: "private" } }, { birthday: true }), profile);
 });
 
 test("cleanPublicNote trims, keeps line breaks and cuts at the limit", () => {

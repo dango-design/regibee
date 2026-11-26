@@ -168,10 +168,12 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <H3>Your gift profile</H3>
             <P>
               If you fill it in on your Account page, we keep your birthday (the month and day, no year), your
-              sizes, favorite colors, likes, things to skip and notes. Everything but the birthday shows on your
-              personal wishlists and your profile, only to you and the people you follow who follow you back. Your
-              birthday shows only to you and the followers you&apos;ve approved: on your profile, on their
-              Following page, and in an email we send them 10 days before.
+              sizes, favorite colors, likes, things to skip and notes. It shows on your personal wishlists and your
+              profile. You choose who sees your birthday, your sizes, and your likes and dislikes: only you, your
+              friends (people you follow who follow you back), the followers you&apos;ve approved, or everyone who
+              opens your profile or wishlists. Unless you change it, your birthday shows to your approved
+              followers and the rest to your friends. Followers or friends who see your birthday also get it on
+              their Following page, and in an email we send them 10 days before.
             </P>
             <P>
               You can also write a public note on your Account page. We keep it, and anyone who opens your profile

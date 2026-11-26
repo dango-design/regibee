@@ -387,8 +387,8 @@ export function AccountSettings({
               <CardHeader>
                 <SectionTitle sectionId="gift-profile">Gift profile</SectionTitle>
                 <CardDescription>
-                  Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wishlists
-                  and your profile, only to the people you follow who follow you back. To tell everyone
+                  Help people pick gifts you&apos;ll love. It shows on your profile and your wishlists.
+                  Choose who sees your birthday, your sizes, and your likes and dislikes. To tell everyone
                   something, use the public note in Your profile.
                 </CardDescription>
               </CardHeader>
