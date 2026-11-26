@@ -72,7 +72,7 @@ export default async function InvitePage({
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center py-12">
-            <CheckCircle2 className="h-12 w-12 text-success-600 mb-4" aria-hidden="true" />
+            <CheckCircle2 className="h-12 w-12 text-success-primary mb-4" aria-hidden="true" />
             <h2 className="text-xl font-semibold mb-2">
               {membership.role === "owner" ? "This Is Your Registry" : "You Already Help Manage This"}
             </h2>

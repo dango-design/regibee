@@ -91,7 +91,7 @@ export function MissingDetailsNotice({
   if (phase === "reading") {
     const { done, total } = progress;
     return (
-      <div className={cn("space-y-3 rounded-xl border border-brand-200 bg-primary p-3.5", className)} role="status">
+      <div className={cn("space-y-3 rounded-xl border border-brand-200 dark:border-brand-800 bg-primary p-3.5", className)} role="status">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-primary">
             Reading {Math.min(done + 1, total)} of {total} from the store…
@@ -134,9 +134,9 @@ export function MissingDetailsNotice({
   }
 
   return (
-    <div className={cn("space-y-2.5 rounded-xl border border-brand-200 bg-primary p-3.5", className)}>
+    <div className={cn("space-y-2.5 rounded-xl border border-brand-200 dark:border-brand-800 bg-primary p-3.5", className)}>
       <div className="flex items-start gap-2.5">
-        <ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+        <ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-brand-tertiary" aria-hidden="true" />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-semibold text-primary">{heading}</p>
           <p className="text-sm text-secondary">

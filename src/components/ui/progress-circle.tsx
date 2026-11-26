@@ -27,7 +27,7 @@ export function ProgressCircle({
         cy={size / 2}
         r={radius}
         fill="none"
-        className="stroke-gray-200"
+        className="stroke-border-secondary"
         strokeWidth={strokeWidth}
       />
       <circle
@@ -47,7 +47,7 @@ export function ProgressCircle({
         y="50%"
         textAnchor="middle"
         dominantBaseline="central"
-        className="fill-gray-900 text-[6px] font-semibold"
+        className="fill-fg-primary text-[6px] font-semibold"
       >
         {Math.round(value)}%
       </text>

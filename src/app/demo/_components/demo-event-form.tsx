@@ -26,7 +26,7 @@ function demoLookup(today: string) {
 
 function DemoNotice() {
   return (
-    <p className="mt-4 flex items-start gap-2 rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
+    <p className="mt-4 flex items-start gap-2 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4 text-sm text-sunshine-900 dark:text-sunshine-200">
       <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
       Fill it in to see how it works. The demo doesn&apos;t save events, so Save stops with a note.
     </p>

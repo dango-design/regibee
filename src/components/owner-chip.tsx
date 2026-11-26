@@ -57,17 +57,17 @@ export function OwnerChip({
     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
       <Link
         href={path}
-        className="inline-flex h-9 max-w-full items-center gap-2 rounded-full border border-brand-200 bg-primary py-0 pr-3.5 pl-1 text-sm font-semibold text-primary transition-colors hover:border-brand-300"
+        className="inline-flex h-9 max-w-full items-center gap-2 rounded-full border border-brand-200 dark:border-brand-800 bg-primary py-0 pr-3.5 pl-1 text-sm font-semibold text-primary transition-colors hover:border-brand-300 dark:hover:border-brand-700"
       >
         <span
           aria-hidden="true"
-          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-secondary text-[11px] font-bold text-brand-secondary"
         >
           {initialsFor(name)}
         </span>
         <span className="truncate">{name}</span>
         {current === "approved" && (
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-500">
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-fg-brand-secondary">
             <Check className="size-3.5" aria-hidden="true" />
             Following
           </span>
@@ -118,6 +118,7 @@ export function OwnerChip({
         </span>
       )}
       {follow.error && <p className="basis-full text-xs text-error-primary">{follow.error}</p>}
+      {follow.dialog}
     </div>
   );
 }

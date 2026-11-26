@@ -304,7 +304,7 @@ export function PublicRegistryGrid({
                 aria-label="Search items"
                 enterKeyHint="search"
                 // 16px on phones, so iOS doesn't zoom in on focus.
-                className="w-full rounded-md border border-primary bg-primary py-2 pl-9 pr-3 text-sm placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 max-sm:py-2.5 max-sm:text-md"
+                className="w-full rounded-md border border-primary bg-primary py-2 pl-9 pr-3 text-sm placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand max-sm:py-2.5 max-sm:text-md"
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -354,7 +354,7 @@ export function PublicRegistryGrid({
                 setSort("default");
                 setStoreFilter("any");
               }}
-              className="font-medium text-brand-600 hover:underline"
+              className="font-medium text-brand-tertiary hover:underline"
             >
               Clear filters
             </button>
@@ -584,7 +584,7 @@ function PublicItemCard({
         looksDone
           ? "border-tertiary"
           : item.is_parent_purchased
-            ? "bg-mint-200/20 border-primary"
+            ? "bg-mint-200/20 dark:bg-mint-500/10 border-primary"
             : "border-primary"
       }`}
     >

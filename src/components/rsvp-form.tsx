@@ -9,7 +9,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { SelectField } from "@/components/base/select/select-field";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { submitRsvp, type RsvpInput } from "@/lib/actions/events";
-import type { ExchangeKind, RsvpStatus } from "@/lib/events";
+import type { ExchangeKind } from "@/lib/events";
 import {
   MAX_CLAIM_NOTE_LENGTH,
   describeClaim,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/rsvp-questions";
 import { cx } from "@/lib/utils/cx";
 import { RsvpWishlistStep, type RsvpWishlist } from "@/components/rsvp-wishlist-step";
+import type { RsvpGuest } from "@/lib/invitation-page-types";
 
 type Answer = "yes" | "maybe" | "no";
 
@@ -55,19 +56,7 @@ const SUMMARY: Record<Answer, string> = {
   no: "You can't make it",
 };
 
-export interface RsvpGuest {
-  name: string;
-  status: RsvpStatus;
-  partySize: number;
-  note: string | null;
-  kidsCount?: number;
-  inExchange?: boolean;
-  wishlistUrl?: string | null;
-  giftIdeas?: string | null;
-  shippingAddress?: string | null;
-  /** Their answers to the host's questions. */
-  answers?: RsvpAnswers;
-}
+export type { RsvpGuest };
 
 export interface RsvpFormProps {
   slug: string;
@@ -382,9 +371,9 @@ export function RsvpForm({
                 setError("");
               }}
               className={cx(
-                "flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:flex-row sm:gap-1.5",
+                "flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid sm:flex-row sm:gap-1.5",
                 answer === value
-                  ? "border-brand-600 bg-brand-600 text-white"
+                  ? "border-brand-solid bg-brand-solid text-primary_on-brand"
                   : "border-secondary text-primary hover:border-primary",
               )}
             >
@@ -454,7 +443,7 @@ export function RsvpForm({
         )}
 
         {showSignup && signup && (
-          <fieldset className="flex flex-col gap-3 rounded-xl bg-sunshine-50 p-4">
+          <fieldset className="flex flex-col gap-3 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-4">
             <legend className="sr-only">{signup.title}</legend>
             <div>
               <p className="font-medium text-primary">{mealTrain ? "Pick a day" : "I'll bring…"}</p>
@@ -510,7 +499,7 @@ export function RsvpForm({
         )}
 
         {exchange && !everyone && (attending || exchangeOnly) && answer !== "no" && (
-          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 p-4">
+          <fieldset className="flex flex-col gap-4 rounded-xl bg-mint-50 dark:bg-mint-500/10 p-4">
             <legend className="sr-only">Gift exchange</legend>
             {canChooseJoin ? (
               <Checkbox

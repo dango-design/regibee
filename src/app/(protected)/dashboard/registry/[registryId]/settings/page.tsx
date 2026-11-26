@@ -28,6 +28,7 @@ import {
   listInvites,
 } from "@/lib/actions/registry";
 import { CategoryManager } from "@/components/category-manager";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import { DeleteRegistryCard } from "@/components/delete-registry-card";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { ListAccessField } from "@/components/list-access-field";
@@ -145,6 +146,12 @@ export default function RegistrySettingsPage() {
   const [generatedLink, setGeneratedLink] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [maxUses, setMaxUses] = useState<string>("1");
+  // What the confirm dialog asks about. It's kept after the dialog closes, so
+  // the dialog's words don't change while it fades out.
+  const [asking, setAsking] = useState<{ kind: "manager" | "invite"; id: string } | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askWorking, setAskWorking] = useState(false);
+  const [askError, setAskError] = useState("");
 
   const isOwner = currentUserId !== null && registry?.owner_id === currentUserId;
 
@@ -334,24 +341,35 @@ export default function RegistrySettingsPage() {
     setGeneratingLink(false);
   };
 
-  const handleRemoveManager = async (managerId: string) => {
-    if (!confirm("Remove this manager? They will lose access to the registry.")) return;
-    const result = await removeManager(registryId, managerId);
-    if (result.error) {
-      alert(result.error);
-    } else {
-      fetchManagerData();
-    }
+  // Removing a manager or revoking an invite asks first. The dialog stays
+  // open while the action runs, and shows its error if it fails.
+  const askToRemoveManager = (managerId: string) => {
+    setAskError("");
+    setAsking({ kind: "manager", id: managerId });
+    setAskOpen(true);
   };
 
-  const handleRevokeInvite = async (inviteId: string) => {
-    if (!confirm("Revoke this invite? The link will stop working.")) return;
-    const result = await revokeInvite(inviteId, registryId);
+  const askToRevokeInvite = (inviteId: string) => {
+    setAskError("");
+    setAsking({ kind: "invite", id: inviteId });
+    setAskOpen(true);
+  };
+
+  const confirmAsked = async () => {
+    if (!asking) return;
+    setAskWorking(true);
+    setAskError("");
+    const result =
+      asking.kind === "manager"
+        ? await removeManager(registryId, asking.id)
+        : await revokeInvite(asking.id, registryId);
+    setAskWorking(false);
     if (result.error) {
-      alert(result.error);
-    } else {
-      fetchManagerData();
+      setAskError(result.error);
+      return;
     }
+    setAskOpen(false);
+    fetchManagerData();
   };
 
   if (loading || !registry) {
@@ -509,7 +527,7 @@ export default function RegistrySettingsPage() {
                   <ListAccessField visibility={visibilityChoice} onChange={setVisibilityChoice} />
 
                   {visibilityChoice === "private" && listVisibility(registry) !== "private" && (
-                    <p role="status" className="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-800">
+                    <p role="status" className="rounded-lg bg-warning-primary px-3 py-2 text-sm text-warning-800 dark:text-warning-300">
                       When you save, people you&apos;ve sent the link to won&apos;t be able to open it, and it&apos;ll
                       come off any event or group you&apos;ve shared it with.
                     </p>
@@ -758,7 +776,7 @@ export default function RegistrySettingsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveManager(m.id)}
+                          onClick={() => askToRemoveManager(m.id)}
                           aria-label={`Remove ${m.name}`}
                           className="text-error-primary hover:text-error-primary shrink-0 max-sm:min-w-11"
                         >
@@ -883,7 +901,7 @@ export default function RegistrySettingsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRevokeInvite(inv.id)}
+                                onClick={() => askToRevokeInvite(inv.id)}
                                 className="text-error-primary hover:text-error-primary shrink-0"
                               >
                                 Revoke
@@ -903,6 +921,19 @@ export default function RegistrySettingsPage() {
           {isOwner && <DeleteRegistryCard registryId={registryId} />}
         </div>
       </div>
+
+      <ConfirmActionDialog
+        open={askOpen}
+        onOpenChange={setAskOpen}
+        title={asking?.kind === "invite" ? "Revoke this invite?" : "Remove this manager?"}
+        description={
+          asking?.kind === "invite" ? "The link will stop working." : "They will lose access to the registry."
+        }
+        confirmLabel={asking?.kind === "invite" ? "Revoke invite" : "Remove manager"}
+        working={askWorking}
+        error={askError}
+        onConfirm={confirmAsked}
+      />
     </div>
   );
 }

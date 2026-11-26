@@ -24,7 +24,7 @@ export const TextAreaBase = ({ className, ...props }: TextAreaBaseProps) => {
             style={
                 {
                     "--resize-handle-bg": getResizeHandleBg("#DCD5CF"),
-                    "--resize-handle-bg-dark": getResizeHandleBg("#373A41"),
+                    "--resize-handle-bg-dark": getResizeHandleBg("#4D4440"),
                 } as React.CSSProperties
             }
             className={(state) =>

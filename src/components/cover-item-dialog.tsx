@@ -71,7 +71,7 @@ interface CoverItemDialogProps {
 
 // Text buttons get a 44px tap target on phones.
 const textButton =
-  "inline-flex items-center justify-center text-sm font-medium text-brand-600 underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
+  "inline-flex items-center justify-center text-sm font-medium text-brand-tertiary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 const dangerTextButton =
   "inline-flex items-center justify-center text-sm font-medium text-error-primary underline-offset-2 hover:underline disabled:opacity-50 max-sm:min-h-11 max-sm:px-2";
 

@@ -21,3 +21,6 @@ export const AsAGuest: Story = { args: { as: "visitor" } };
 // The same group gift as Oz, who started it: everyone's amounts and emails,
 // Paid ticks, his own share, and the buttons to finish it.
 export const AsTheOrganizer: Story = { args: { as: "organizer" } };
+
+// The guest's view in dark mode.
+export const DarkAsAGuest: Story = { args: { as: "visitor" }, parameters: { theme: "dark" } };

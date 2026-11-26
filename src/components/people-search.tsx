@@ -43,7 +43,7 @@ function PersonCard({
     <li className={`flex items-center gap-4 ${CARD}`}>
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10 text-sm font-semibold text-brand-600"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-solid/10 text-sm font-semibold text-brand-tertiary"
       >
         {initialsFor(name)}
       </span>
@@ -77,7 +77,7 @@ function FollowablePerson({
   followActions?: FollowActions;
 }) {
   const name = displayName(person);
-  const { state, busy, error, toggle } = useFollow({
+  const { state, busy, error, toggle, dialog } = useFollow({
     publicId: person.public_id,
     name,
     state: initialState,
@@ -97,7 +97,12 @@ function FollowablePerson({
         )
       }
       error={error}
-      action={<FollowToggle state={state} busy={busy} onClick={toggle} />}
+      action={
+        <>
+          <FollowToggle state={state} busy={busy} onClick={toggle} />
+          {dialog}
+        </>
+      }
     />
   );
 }

@@ -187,7 +187,7 @@ export function EventCoHosts({ eventId, hosts, invites, viewerId, actions: overr
           type="button"
           onClick={copyLink}
           disabled={busy}
-          className="inline-flex cursor-pointer items-center gap-1.5 self-start text-sm font-medium text-brand-600 hover:underline max-sm:min-h-11"
+          className="inline-flex cursor-pointer items-center gap-1.5 self-start text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
         >
           {copied ? <Check aria-hidden="true" className="size-4" /> : <Link2 aria-hidden="true" className="size-4" />}
           {copied ? "Copied" : "Copy a co-host link instead"}

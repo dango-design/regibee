@@ -13,3 +13,6 @@ type Story = StoryObj<typeof DemoProfile>;
 
 // Someone Remi & Max follow, so her followers-only registry shows.
 export const Followed: Story = { args: { segment: "glinda-upland-g4n8r2wd6h" } };
+
+// The same profile in dark mode.
+export const Dark: Story = { args: { segment: "glinda-upland-g4n8r2wd6h" }, parameters: { theme: "dark" } };

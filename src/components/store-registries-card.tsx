@@ -114,7 +114,7 @@ export function StoreRegistriesCard({
           {PERKS.map(({ icon: Icon, label }) => (
             <li
               key={label}
-              className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700"
+              className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 dark:border-brand-800 bg-brand-primary px-2.5 py-1 text-xs font-medium text-brand-secondary"
             >
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {label}
