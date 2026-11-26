@@ -5,6 +5,8 @@ import { ClampedText } from "@/components/clamped-text";
 import { GiftProfileChips } from "@/components/gift-profile-card";
 import { RegistryAvatar } from "@/components/registry-avatar";
 import { formatBirthday, sizeSummary, type GiftProfile } from "@/lib/gift-profile";
+import { listHeader, type ListHeader } from "@/lib/list-headers";
+import { HEADER_BAND, HEADER_INK, listHeaderVars } from "@/lib/list-header-style";
 import { cx } from "@/lib/utils/cx";
 
 export interface WishListHeroProps {
@@ -24,6 +26,8 @@ export interface WishListHeroProps {
   giftProfileName?: string;
   /** Shows the birthday: only for the person and the followers they approved. */
   showBirthday?: boolean;
+  /** The band's color and pattern, as the owner chose. Defaults to the light teal with dots. */
+  header?: ListHeader;
 }
 
 // One summary card part per thing there is to show. On narrow screens the
@@ -45,7 +49,8 @@ const ONE_COLUMN_FROM: Record<number, string> = {
 const PART = "flex min-w-0 flex-col bg-primary px-5 py-4 sm:px-6 sm:py-5";
 
 /**
- * The top of a wishlist's page. A tinted band holds the title and who
+ * The top of a wishlist's page. A band in the color and pattern the owner
+ * chose (src/lib/list-headers.ts) holds the title and who
  * shared it. Under it, a card overlapping the band's edge sums the list up:
  * the owner's note, how much has been gifted, and the person's sizes and
  * likes. A wishlist usually serves many occasions, so it shows no date.
@@ -62,6 +67,7 @@ export function WishListHero({
   giftProfile,
   giftProfileName = "this list's owner",
   showBirthday = false,
+  header = listHeader(),
 }: WishListHeroProps) {
   const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
 
@@ -93,16 +99,10 @@ export function WishListHero({
 
   return (
     <>
-      <section
-        className="bg-brand-primary px-4 pt-8 pb-20 sm:pt-10 sm:pb-24"
-        style={{
-          backgroundImage: "radial-gradient(var(--color-brand-200) 1.4px, transparent 1.4px)",
-          backgroundSize: "20px 20px",
-        }}
-      >
+      <section className={cx(HEADER_BAND, "px-4 pt-8 pb-20 sm:pt-10 sm:pb-24")} style={listHeaderVars(header)}>
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center">
           {photoUrl && <RegistryAvatar photoUrl={photoUrl} names={null} className="mb-1 size-20" />}
-          <p className="text-xs font-semibold tracking-[0.08em] text-fg-brand-secondary uppercase">
+          <p className={cx(HEADER_INK, "text-xs font-semibold tracking-[0.08em] uppercase")}>
             Wishlist · {totalItems} {totalItems === 1 ? "item" : "items"}
           </p>
           <h1 className="break-words text-3xl font-bold tracking-tight text-primary sm:text-4xl lg:text-5xl">{title}</h1>

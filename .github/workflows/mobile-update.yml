@@ -50,6 +50,7 @@ on:
       - src/lib/item-categories.ts
       - src/lib/item-details.ts
       - src/lib/list-access.ts
+      - src/lib/list-headers.ts
       - src/lib/list-page-types.ts
       - src/lib/money.ts
       - src/lib/my-gifts-cookie.ts

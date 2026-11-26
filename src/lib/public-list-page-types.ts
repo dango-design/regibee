@@ -77,6 +77,11 @@ export interface PublicListPageData {
     parent_names: string | null;
     registry_type: RegistryType;
   };
+  /**
+   * The band's color and pattern the owner chose, or null when they never
+   * chose. Read it with listHeader (src/lib/list-headers.ts).
+   */
+  header?: { color: string; pattern: string } | null;
   /** Who shared the list, when it's on their profile and they haven't blocked the viewer. */
   owner: { publicId: string; path: string; name: string } | null;
   /** How the viewer relates to the owner. Set whenever `owner` is. */

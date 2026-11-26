@@ -27,6 +27,8 @@ import { formatGiftDate, giftActivityFor, giftActivityTag } from "@/lib/gifts";
 import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notice";
 import { PlanEventButton } from "@/components/registry-events-banner";
 import { OwnerListTop } from "@/components/owner-list-top";
+import { ListHeaderPicker } from "@/components/list-header-picker";
+import { headerChoice, headerOccasion, listHeader } from "@/lib/list-headers";
 import { LIST_ACCESS, PROFILE_AUDIENCE, listVisibility, profileAudience } from "@/lib/list-access";
 import { findSharedLink } from "@/lib/shared-link";
 import { getSessionUser } from "@/lib/viewer";
@@ -179,6 +181,15 @@ export default async function RegistryManagePage({
           href: registrySettingsHref(registryId, "sharing"),
         }}
         manager={!data.isOwner}
+        header={listHeader(headerChoice(registry.settings))}
+        customize={
+          <ListHeaderPicker
+            registryId={registryId}
+            title={registry.title}
+            header={listHeader(headerChoice(registry.settings))}
+            occasion={headerOccasion(registry.registry_type, registry.event_type)}
+          />
+        }
         actions={
           <>
             <CopyLinkButton path={`/r/${registry.slug}`} />

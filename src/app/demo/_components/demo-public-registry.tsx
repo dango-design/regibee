@@ -6,6 +6,7 @@ import { FollowButton } from "@/components/follow-button";
 import { PublicRegistryGrid, type GiftActions } from "@/components/public-registry-grid";
 import { PublicRegistryHero } from "@/components/public-registry-hero";
 import { WishListHero } from "@/components/wish-list-hero";
+import { headerChoice, listHeader } from "@/lib/list-headers";
 import { OwnerChip } from "@/components/owner-chip";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { SuggestItemDialog } from "@/components/suggest-item-dialog";
@@ -157,6 +158,7 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
           fulfilledItems={fulfilledCount}
           totalItems={items.length}
           owner={owner}
+          header={headerChoice(registry.settings) ? listHeader(headerChoice(registry.settings)) : null}
           followButton={
             followState !== "self" && (
               <FollowButton
@@ -173,6 +175,7 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
         />
       ) : (
         <WishListHero
+          header={listHeader(headerChoice(registry.settings))}
           title={registry.title}
           description={registry.description}
           fulfilledItems={fulfilledCount}

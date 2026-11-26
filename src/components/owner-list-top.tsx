@@ -22,6 +22,8 @@ import type { BannerEvent } from "@/components/registry-events-banner";
 import { dismissEventPrompt } from "@/lib/actions/registry";
 import { eventTypeLabel, formatShortEventDate } from "@/lib/events";
 import type { ListVisibility } from "@/lib/list-access";
+import { listHeader, type ListHeader } from "@/lib/list-headers";
+import { HEADER_BAND, HEADER_INK, listHeaderVars } from "@/lib/list-header-style";
 import { cx } from "@/lib/utils/cx";
 
 export interface OwnerListTopProps {
@@ -49,6 +51,10 @@ export interface OwnerListTopProps {
   planPrompt?: boolean;
   /** Baby registries' checklist. */
   checklist?: { matched: number; total: number; href: string } | null;
+  /** The band's color and pattern. Defaults to the light teal with dots. */
+  header?: ListHeader;
+  /** The Header button (ListHeaderPicker), in the band's top corner. */
+  customize?: ReactNode;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
   /** Stories and the demo pass stand-ins. */
@@ -60,7 +66,8 @@ const ACCESS_ICON: Record<ListVisibility, LucideIcon> = { private: Lock, link: L
 
 /**
  * The top of a list's page for its owner. It looks like the page guests see
- * (WishListHero): a tinted, dotted band with the title, and a card hanging
+ * (WishListHero): a band in the color and pattern the owner chose
+ * (src/lib/list-headers.ts) with the title, and a card hanging
  * off its edge. The card holds how much has been gifted and one part for each
  * thing that needs the owner: hidden gifts, linked events, the checklist. A
  * part shows only when it has something to say, so the items start soon
@@ -82,6 +89,8 @@ export function OwnerListTop({
   events,
   planPrompt = false,
   checklist,
+  header = listHeader(),
+  customize,
   basePath = "",
   unlinkAction,
   dismissAction = dismissEventPrompt,
@@ -203,15 +212,13 @@ export function OwnerListTop({
   return (
     <>
       <section
-        className="bg-brand-primary px-4 pt-8 pb-20 sm:pt-10 sm:pb-24"
-        style={{
-          backgroundImage: "radial-gradient(var(--color-brand-200) 1.4px, transparent 1.4px)",
-          backgroundSize: "20px 20px",
-        }}
+        className={cx(HEADER_BAND, "relative px-4 pb-20 sm:pt-10 sm:pb-24", customize ? "pt-16" : "pt-8")}
+        style={listHeaderVars(header)}
       >
+        {customize && <div className="absolute top-3 right-3 sm:top-4 sm:right-4">{customize}</div>}
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center">
           {photoUrl && <RegistryAvatar photoUrl={photoUrl} names={null} className="mb-1 size-20" />}
-          <p className="text-xs font-semibold tracking-[0.08em] text-fg-brand-secondary uppercase">
+          <p className={cx(HEADER_INK, "text-xs font-semibold tracking-[0.08em] uppercase")}>
             {occasion} · {itemCount} {itemCount === 1 ? "item" : "items"}
           </p>
           <h1 className="break-words text-3xl font-bold tracking-tight text-primary sm:text-4xl lg:text-5xl">{title}</h1>
