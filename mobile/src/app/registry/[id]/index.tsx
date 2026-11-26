@@ -56,7 +56,9 @@ import {
   useDismissEventPrompt,
   useHidePlainLinks,
   useRegistry,
+  useSortIntoCategories,
   useToggleItem,
+  useUndoCategorySort,
   useUnlinkEvent,
 } from "@/lib/data";
 import { formatDollars, formatEventDate, formatPrice, initials, plural } from "@/lib/format";
@@ -65,7 +67,7 @@ import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { registryShareUrl } from "@/lib/supabase";
 import { fonts, radius, spacing, useTheme } from "@/lib/theme";
 import { openSite } from "@/lib/web";
-import { ChoiceSheet } from "@/components/choice-sheet";
+import { HeaderMenu, type HeaderMenuChoice } from "@/components/header-menu";
 import type { CashFund, Gift, Item, RegistryDetail } from "@/lib/types";
 
 type Tab = "items" | "gifts";
@@ -76,8 +78,9 @@ export default function RegistryScreen() {
   const registry = useRegistry(id);
   const pull = usePullToRefresh(registry.refetch);
   const [tab, setTab] = useState<Tab>("items");
-  const [moreOpen, setMoreOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
+  const sortItems = useSortIntoCategories(id);
+  const undoSort = useUndoCategorySort(id);
 
   const { mutate: toggleItem } = useToggleItem();
   const { mutate: removeItem } = useDeleteItem();
@@ -137,6 +140,39 @@ export default function RegistryScreen() {
   const addFund = () => router.push({ pathname: "/fund", params: { registryId: r.id } });
   const openSettings = () => router.push({ pathname: "/registry/[id]/settings", params: { id: r.id } });
 
+  /** Puts the items with no category into the ones that fit, as the website's button does. */
+  function sortIntoCategories() {
+    const count = itemSections(data!, "all").find((s) => s.key === "other")?.data.length ?? 0;
+    sortItems.mutate(undefined, {
+      onError: (e) => Alert.alert("Couldn't sort the items", errorMessage(e)),
+      onSuccess: ({ sorted, added, undo }) => {
+        if (sorted === 0) {
+          Alert.alert(
+            count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit.",
+            "Choose one on each item instead."
+          );
+          return;
+        }
+        haptic("success");
+        const left = count - sorted;
+        const message = [
+          added === 0 ? null : added === 1 ? "Added 1 new category." : `Added ${added} new categories.`,
+          left <= 0 ? null : left === 1 ? "1 item didn't fit one." : `${left} items didn't fit one.`,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        Alert.alert(sorted === 1 ? "Sorted 1 item into a category" : `Sorted ${sorted} items into categories`, message || undefined, [
+          {
+            text: "Undo",
+            style: "destructive",
+            onPress: () => undoSort.mutate(undo, { onError: (e) => Alert.alert("Couldn't undo the sort", errorMessage(e)) }),
+          },
+          { text: "OK", style: "cancel" },
+        ]);
+      },
+    });
+  }
+
   function shareRegistry() {
     if (visibility === "private") {
       Alert.alert("This list is private", `${LIST_ACCESS.private.description} To share it, change who can open it in Settings.`, [
@@ -150,14 +186,19 @@ export default function RegistryScreen() {
     );
   }
 
-  // A sheet, since Android's alert shows at most three buttons.
-  const moreChoices = [
-    { label: "Preview", onPress: () => openSite(`/r/${r.slug}`) },
-    { label: "Add a gift fund", onPress: addFund },
+  const moreChoices: HeaderMenuChoice[] = [
+    { label: "Preview", icon: "eye", onPress: () => openSite(`/r/${r.slug}`) },
+    { label: "Add a gift fund", icon: "fund", onPress: addFund },
     ...(data!.showPlanEventButton
-      ? [{ label: "Plan an event", onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }) }]
+      ? [
+          {
+            label: "Plan an event",
+            icon: "calendar" as const,
+            onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }),
+          },
+        ]
       : []),
-    { label: "Settings", onPress: openSettings },
+    { label: "Settings", icon: "settings", onPress: openSettings },
   ];
 
   const header = (
@@ -190,7 +231,7 @@ export default function RegistryScreen() {
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
-              <IconButton icon="more" accessibilityLabel="More" onPress={() => setMoreOpen(true)} />
+              <HeaderMenu accessibilityLabel="More" title={r.title} choices={moreChoices} />
               <IconButton icon="add" accessibilityLabel="Add an item" onPress={addItem} />
             </View>
           ),
@@ -207,13 +248,29 @@ export default function RegistryScreen() {
           ListHeaderComponent={header}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
-            <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+            <View
+              style={[
+                styles.sectionHeader,
+                { backgroundColor: theme.background },
+                section.key === "other" && { alignItems: "center" },
+              ]}
+            >
               <Text variant="headline" style={{ fontFamily: fonts.displayMedium }}>
                 {section.title}
               </Text>
-              <Text variant="footnote" tone="tertiary">
-                {section.data.length}
-              </Text>
+              {section.key === "other" ? (
+                <Button
+                  title="Sort into categories"
+                  size="small"
+                  variant="secondary"
+                  loading={sortItems.isPending}
+                  onPress={sortIntoCategories}
+                />
+              ) : (
+                <Text variant="footnote" tone="tertiary">
+                  {section.data.length}
+                </Text>
+              )}
             </View>
           )}
           renderItem={({ item, index, section }) => (
@@ -303,7 +360,6 @@ export default function RegistryScreen() {
           }
         />
       )}
-      <ChoiceSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title={r.title} choices={moreChoices} />
     </>
   );
 }

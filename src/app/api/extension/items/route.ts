@@ -12,6 +12,7 @@ import {
 } from "@/lib/extension";
 import { storeItemKey } from "@/lib/retailers";
 import { LINK_COLUMNS, loadListItems, type LinkRow } from "@/lib/list-items";
+import { storeDomain, track } from "@/lib/analytics-server";
 
 // Undo only removes items the extension could just have added: no gifts
 // against them yet, and added in the last day.
@@ -82,6 +83,21 @@ export async function POST(request: Request) {
     )
     .select("id, title, external_url");
   if (error) return jsonError("Couldn't add the items.", 500);
+
+  if (inserted && inserted.length > 0) {
+    // One event for the batch: the items come from one store page.
+    track(
+      "item_added",
+      { userId: user.id },
+      {
+        store: storeDomain(toAdd[0].url),
+        has_photo: toAdd.some((item) => Boolean(item.imageUrl)),
+        has_price: toAdd.some((item) => item.price !== null && item.price !== undefined),
+        count: inserted.length,
+      },
+      { platform: "extension" },
+    );
+  }
 
   revalidatePath(`/dashboard/registry/${registryId}`);
   const response: AddResponse = {

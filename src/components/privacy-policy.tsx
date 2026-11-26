@@ -100,11 +100,15 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
           <div className="mt-8 rounded-2xl border bg-secondary p-6">
             <h2 className="font-display text-lg font-semibold text-primary">The short version</h2>
             <List>
-              <li>We collect what you give us and what Regibee needs to work. That&apos;s all.</li>
               <li>
-                There are no ads, and no analytics or tracking cookies on the website, in the app or in the
-                extension. Our emails do record whether they&apos;re opened and clicked. We don&apos;t sell your
-                information or share it for advertising.
+                We collect what you give us, what Regibee needs to work, and counts of how Regibee is used, so we
+                can make it better.
+              </li>
+              <li>
+                There are no ads and no tracking cookies. We count things like how many lists are made and which
+                pages are opened, with PostHog, without your name, your email or anything about your gift ideas.
+                Our emails record whether they&apos;re opened and clicked. We don&apos;t sell your information or
+                share it for advertising.
               </li>
               <li>Regibee never handles money. Guests pay owners directly, with Venmo, PayPal, Zelle or however the owner asks.</li>
               <li>
@@ -373,8 +377,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <List>
               <li>
                 <strong className="font-semibold text-primary">Sharing and pasting products.</strong> When you share
-                a product to Regibee or paste a link, the app reads the product&apos;s name, price, pictures and
-                barcode number on your phone. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
+                a product to Regibee or paste a link, the app reads the product&apos;s name, price, pictures,
+                barcode number and the store&apos;s category for it on your phone. The category only helps suggest
+                one of yours and isn&apos;t saved. A link from another app, or a pasted one, opens in a hidden browser view on your phone, so the
                 store sees a visit from your phone just as if you&apos;d opened the page yourself. Nothing goes to
                 Regibee until you save the item.
               </li>
@@ -426,6 +431,13 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 screen unless you change that in your phone&apos;s settings. Turn them off on the Account tab or in
                 your phone&apos;s settings. Signing out or turning them off deletes the token.
               </li>
+              <li>
+                <strong className="font-semibold text-primary">Usage counts.</strong> The app tells PostHog which
+                screens you open and when it opens or closes, with your phone&apos;s model, system version and
+                language and the app&apos;s version, and, once you sign in, your account&apos;s ID. Screen names
+                never say which registry, item or event, and the gift idea screen isn&apos;t counted. The app keeps a
+                random ID for your phone and any counts it hasn&apos;t sent yet. Signing out starts a new ID.
+              </li>
               <li>The app doesn&apos;t ask for your location or microphone.</li>
             </List>
           </Section>
@@ -446,7 +458,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 <strong className="font-semibold text-primary">The page you&apos;re on, when you ask.</strong> It reads
                 a product page only when you click its toolbar button, use its &ldquo;Add to Regibee&rdquo; menu item
-                or press its shortcut. It reads the product&apos;s name, price, pictures and barcode number. You can add
+                or press its shortcut. It reads the product&apos;s name, price, pictures, barcode number and the
+                store&apos;s category for it. The category only helps suggest one of yours and isn&apos;t saved. You can add
                 the product to a registry or save it as a gift idea, which only you can see.
               </li>
               <li>
@@ -534,15 +547,20 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 page leaves out the website&apos;s top bar.
               </li>
               <li>
-                There are no analytics, advertising or tracking cookies, and no tracking scripts. Our fonts load from
-                regibee.com itself.
+                There are no advertising or tracking cookies. The website runs PostHog&apos;s script to count which
+                pages are opened (see{" "}
+                <a href="#sharing" className={linkClass}>
+                  who else handles it
+                </a>
+                ). It stores nothing in your browser: PostHog tells visits apart with a code made from your IP
+                address and browser, which changes every day. Our fonts load from regibee.com itself.
               </li>
             </List>
             <P>The app and the extension keep the things listed in their sections above.</P>
             <P>
-              Regibee doesn&apos;t follow you across other sites, and doesn&apos;t let advertising or analytics companies
-              collect information about you on Regibee. So a browser&apos;s &ldquo;Do Not Track&rdquo; setting has
-              nothing to turn off here.
+              Regibee doesn&apos;t follow you across other sites, and doesn&apos;t let advertising companies collect
+              information about you on Regibee. If your browser sends &ldquo;Do Not Track&rdquo;, the website&apos;s
+              PostHog script doesn&apos;t count your page visits.
             </P>
           </Section>
 
@@ -552,7 +570,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>to show your registries, events and profile to the people you share them with;</li>
               <li>to record gifts and RSVPs, and tell the right people about them;</li>
               <li>to send the emails above;</li>
-              <li>to keep accounts secure, stop abuse such as mass searches for people, and fix problems.</li>
+              <li>to keep accounts secure, stop abuse such as mass searches for people, and fix problems;</li>
+              <li>to see which parts of Regibee people use and where they get stuck, so we can improve it.</li>
             </List>
             <P>We don&apos;t use it to build advertising profiles, and we don&apos;t sell it.</P>
           </Section>
@@ -576,6 +595,16 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 <strong className="font-semibold text-primary">Expo</strong> builds the app, delivers its updates,
                 and sends its notifications through Apple and Google. Each notification goes with your phone&apos;s
                 token, and holds the words you see.
+              </li>
+              <li>
+                <strong className="font-semibold text-primary">PostHog</strong> counts how Regibee is used, and
+                stores the counts in the United States. It gets events such as &ldquo;made a registry&rdquo;,
+                &ldquo;added an item&rdquo;, &ldquo;gave a gift&rdquo; or &ldquo;opened a page&rdquo;, with your
+                account&apos;s ID if you&apos;re signed in, the kind of device and browser, which website or app it
+                came from, and which store a product came from. It never gets your name, your email, messages, what
+                a registry holds, the private part of a registry&apos;s or invitation&apos;s link, or anything about
+                your gift ideas. Guests&apos; gifts and RSVPs are counted without any ID that ties them to each other
+                or to a person. PostHog doesn&apos;t keep IP addresses.
               </li>
             </List>
             <P>
@@ -619,7 +648,7 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                   Account page
                 </Link>
                 , or on the Account tab in the app. That deletes your sign-in and profile, your follows, follow
-                requests and blocks, your groups, your gift ideas, your phones&apos; notification tokens, and the events you made with their guest lists and RSVPs. It signs you out of
+                requests and blocks, your groups, your gift ideas, your phones&apos; notification tokens, the events you made with their guest lists and RSVPs, and what PostHog counted under your account&apos;s ID. It signs you out of
                 the website, the app and the extension.
               </li>
               <li>
@@ -657,7 +686,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               each birthday email we send for 60 days, so the same one is never sent twice. Deleted information can
               stay in our
               providers&apos; backups, and records of emails already sent can stay in our email service&apos;s logs,
-              until they expire on those providers&apos; own schedules.
+              until they expire on those providers&apos; own schedules. Usage counts stay in PostHog until its
+              plan&apos;s retention period removes them, and those under your account&apos;s ID are deleted with
+              your account.
             </P>
           </Section>
 

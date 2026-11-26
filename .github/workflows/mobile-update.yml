@@ -21,6 +21,7 @@ on:
     paths:
       - mobile/**
       - src/lib/account-deletion-summary.ts
+      - src/lib/analytics-urls.ts
       - src/lib/delete-confirmation.ts
       - src/lib/checklist-data.ts
       - src/lib/checklist-matching.ts

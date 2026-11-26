@@ -12,6 +12,8 @@ export interface ReadProduct {
   isProduct: boolean;
   /** The product's barcode number. The website's server action checks it (src/lib/gtin.ts). */
   gtin: string | null;
+  /** The store's category path from the page's breadcrumbs, most general first. Helps guess the item's category. */
+  storeCategory: string[];
 }
 
 const MAX_TITLE_LENGTH = 300;
@@ -43,7 +45,12 @@ export function parseReadProduct(raw: unknown): ReadProduct | null {
   const url = typeof value.url === "string" ? value.url : "";
   if (!title && images.length === 0) return null;
   const gtin = typeof value.gtin === "string" && /^\d{14}$/.test(value.gtin) ? value.gtin : null;
-  return { url, title, price, images, isProduct: value.isProduct === true, gtin };
+  const storeCategory = Array.isArray(value.storeCategory)
+    ? value.storeCategory
+        .filter((step): step is string => typeof step === "string" && step.trim() !== "" && step.length <= 60)
+        .slice(0, 6)
+    : [];
+  return { url, title, price, images, isProduct: value.isProduct === true, gtin, storeCategory };
 }
 
 const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi;

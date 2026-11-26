@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as categories from "@/lib/actions/categories";
 import * as eventMessages from "@/lib/actions/event-messages";
 import * as events from "@/lib/actions/events";
 import * as followInvites from "@/lib/actions/follow-invites";
@@ -30,6 +31,7 @@ export const dynamic = "force-dynamic";
 // An argument written { "$form": { name: value } } arrives as FormData, for
 // the actions that read forms.
 const MODULES: Record<string, Record<string, unknown>> = {
+  categories,
   eventMessages,
   events,
   followInvites,

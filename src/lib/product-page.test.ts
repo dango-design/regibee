@@ -279,3 +279,32 @@ test("of a product's offers for each variant, takes the one the link picks", () 
   assert.equal(readProductPage(html, "https://shop.example/products/bassinet?variant=1").gtin, "00819956002729");
   assert.equal(readProductPage(html, "https://shop.example/products/bassinet").gtin, undefined);
 });
+
+test("the store's category comes from the page's breadcrumbs", () => {
+  const product = jsonLd({ "@context": "https://schema.org", "@type": "Product", name: "Hatch Rest Sound Machine", image: "https://cdn.shop.example/rest.jpg" });
+  const fromLd = page(
+    `<meta property="og:title" content="Hatch Rest Sound Machine">${product}
+     ${jsonLd({
+       "@context": "https://schema.org",
+       "@type": "BreadcrumbList",
+       itemListElement: [
+         { "@type": "ListItem", position: 2, name: "Nursery" },
+         { "@type": "ListItem", position: 1, name: "Home" },
+         { "@type": "ListItem", position: 3, item: { name: "Sound Machines" } },
+         { "@type": "ListItem", position: 4, name: "Hatch Rest Sound Machine" },
+       ],
+     })}`,
+  );
+  assert.deepEqual(readProductPage(fromLd, PAGE_URL).storeCategory, ["Nursery", "Sound Machines"]);
+
+  const amazon = page(
+    `<meta property="og:title" content="Hatch Rest Sound Machine">`,
+    `<div id="wayfinding-breadcrumbs_feature_div"><ul>
+       <li><a>Baby Products</a></li><li>›</li><li><a> Nursery </a></li><li><a>Sound Machines</a></li>
+     </ul></div><img src="https://cdn.shop.example/rest.jpg">`,
+  );
+  assert.deepEqual(readProductPage(amazon, PAGE_URL).storeCategory, ["Baby Products", "Nursery", "Sound Machines"]);
+
+  const none = page(`<meta property="og:title" content="Hatch Rest Sound Machine">${product}`);
+  assert.equal(readProductPage(none, PAGE_URL).storeCategory, undefined);
+});

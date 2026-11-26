@@ -54,6 +54,7 @@ import {
   sendReservationEndedEmails,
 } from "@/lib/gift-reservations-server";
 import crypto from "crypto";
+import { storeDomain, track } from "@/lib/analytics-server";
 
 async function addToMyGiftsCookie(
   key: "items" | "funds",
@@ -260,6 +261,7 @@ export async function createRegistry(formData: FormData) {
     return { error: registry.error };
   }
 
+  track("list_created", { userId: user.id }, { occasion: eventType ?? registryType, access: visibility });
   redirect(`/dashboard/registry/${registry.id}`);
 }
 
@@ -469,6 +471,11 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
     return { error: error.message };
   }
 
+  track(
+    "item_added",
+    { userId: user.id },
+    { store: storeDomain(externalUrl), has_photo: Boolean(imageUrl), has_price: Boolean(price), count: 1 },
+  );
   revalidatePath(`/dashboard/registry/${registryId}`);
   revalidatePath("/dashboard/saved");
   // The phone app opens the new item from its id.
@@ -631,6 +638,7 @@ export async function addCashFund(registryId: string, formData: FormData) {
     return { error: error.message };
   }
 
+  track("fund_added", { userId: user.id }, {});
   revalidatePath(`/dashboard/registry/${registryId}`);
   return { success: true };
 }
@@ -791,6 +799,8 @@ export async function reserveItem(formData: FormData): Promise<ReserveItemResult
   });
 
   if (registryInfo) revalidatePath(`/r/${registryInfo.slug}`);
+
+  track("gift_reserved", { guest: true }, { guest_signed_in: Boolean(user && !user.is_anonymous) });
 
   const open = saved ? isOpenReservation(saved) : !alreadyBought;
   return {
@@ -1490,6 +1500,7 @@ export async function contributeToCashFund(formData: FormData) {
     }
   });
 
+  track("fund_contribution", { guest: true }, {});
   return { success: true, purchaseId: data };
 }
 

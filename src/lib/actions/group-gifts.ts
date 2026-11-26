@@ -22,6 +22,7 @@ import {
   parseGroupGiftAmount,
 } from "@/lib/group-gifts";
 import { listsForItems } from "@/lib/list-items";
+import { track } from "@/lib/analytics-server";
 import {
   findGroupGift,
   managesGroupGiftList,
@@ -174,6 +175,7 @@ export async function startGroupGift(input: {
   }
 
   after(() => sendGroupGiftStartedEmail(token));
+  track("group_gift_started", { userId: user.id }, {});
   revalidateGift(token, await slugOf(registryId));
   return { success: true, token };
 }
@@ -290,6 +292,7 @@ export async function pledgeToGroupGift(input: {
 
   await rememberPledge(gift.token, pledgeToken);
   after(() => sendPledgeEmails(gift.token, saved.id as string));
+  track("group_gift_pledge", { guest: true }, {});
   revalidateGift(gift.token);
   return { success: true, pledgeToken };
 }
