@@ -25,7 +25,7 @@ import { ErrorState, IconButton, LoadingState } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { SITE_URL } from "@/lib/supabase";
 import { fonts, sitePageColors } from "@/lib/theme";
-import { freshAccessToken, nativeRoute, signedInAddress, sitePath } from "@/lib/web";
+import { freshAccessToken, nativeRoute, nativeScreenKey, signedInAddress, sitePath } from "@/lib/web";
 
 /** The path of an address on the website, or null for another site. */
 function pathOnSite(url: string): string | null {
@@ -135,9 +135,13 @@ export default function WebScreen() {
    */
   const openInApp = useCallback((sitePathname: string): boolean => {
     // A page the app has its own screen for, such as an invitation, opens
-    // there, on top of this one. Not the page this web view was opened for:
-    // the native screen sends a page here when it can't show it itself.
-    const native = signedIn && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0] ? nativeRoute(sitePathname) : null;
+    // there, on top of this one. Not the screen this web view was opened
+    // for: the native screen sends a page here when it can't show it itself.
+    // A gift link (/e/<event>/gifts?to=<list>) redirects to its list, which
+    // is the same screen, so it stays here too.
+    const ownScreen = nativeScreenKey(path) ?? path.split(/[?#]/)[0];
+    const native =
+      signedIn && (nativeScreenKey(sitePathname) ?? sitePathname.split(/[?#]/)[0]) !== ownScreen ? nativeRoute(sitePathname) : null;
     const target = native ? null : appScreenForPath(sitePathname);
     if (!native && !target) return false;
     const now = Date.now();

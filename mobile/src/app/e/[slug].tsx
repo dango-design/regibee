@@ -4,9 +4,9 @@
 // RSVP token from their link.
 //
 // It sits in the root stack, at the website's own path, so back returns to
-// whatever opened it. Signed out, invitations still open in the web view
-// (nativeScreenFor in src/lib/web.ts), since the app's server routes need a
-// signed-in account.
+// whatever opened it. nativeRoute in src/lib/web.ts sends /e/<slug> here.
+// Signed out, it hands the page to the web view itself, since the app's
+// server routes need a signed-in account.
 
 import { Redirect, router, Stack, useLocalSearchParams } from "expo-router";
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, Share, View } from "react-native";

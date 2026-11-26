@@ -8,6 +8,7 @@ import { loadEventForm, loadEventPage, loadEventsTab, loadGroupPage, loadPlanPic
 import { loadInvitationPage } from "@/lib/invitation-page";
 import { loadListPage } from "@/lib/list-page";
 import { loadAccountPage, loadFollowingTab } from "@/lib/people-page";
+import { loadPublicList } from "@/lib/public-list-page";
 import { loadSavedItems } from "@/lib/saved-items";
 import { getViewer } from "@/lib/viewer";
 
@@ -32,4 +33,30 @@ export const APP_LOADERS = {
   // guest's own RSVP token from their link, or null.
   invitationPage: (slug: unknown, token: unknown) =>
     typeof slug === "string" ? loadInvitationPage(slug, typeof token === "string" && token ? token : null) : null,
+  // Someone else's list, as a guest sees it (/r/<slug>).
+  // - `items`: the purchase ids the app keeps on the phone, by item id, in
+  //   place of the website's gifts cookie. Each counts only when it matches a
+  //   live gift on that item.
+  // - `eventLink`: { event, token } when the list was opened from a gift link
+  //   on the guest's invitation, in place of the website's event guest
+  //   cookie. The token is checked against the event's guest list.
+  publicList: (slug: unknown, items: unknown, eventLink: unknown) =>
+    typeof slug === "string" ? loadPublicList(slug, { gifts: { items: purchaseIds(items) }, eventLink: eventLinkFrom(eventLink) }) : null,
 };
+
+/** Purchase ids by item id, keeping only string pairs. */
+function purchaseIds(value: unknown): Record<string, string> {
+  const ids: Record<string, string> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return ids;
+  for (const [itemId, purchaseId] of Object.entries(value)) {
+    if (typeof purchaseId === "string") ids[itemId] = purchaseId;
+  }
+  return ids;
+}
+
+/** An event's slug and a guest's RSVP token, when both are strings. */
+function eventLinkFrom(value: unknown): { event: string; token: string } | null {
+  if (!value || typeof value !== "object") return null;
+  const { event, token } = value as { event?: unknown; token?: unknown };
+  return typeof event === "string" && event && typeof token === "string" && token ? { event, token } : null;
+}

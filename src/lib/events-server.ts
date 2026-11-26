@@ -13,6 +13,7 @@ import {
 } from "@/lib/events";
 import type { SignupClaim, SignupItem, SignupSheet, SignupSheetWithRows } from "@/lib/signups";
 import { invitationUpdates, type EventMessage, type InvitationUpdate } from "@/lib/event-updates";
+import type { EventGuestContext } from "@/lib/event-guest-cookie";
 
 // Reads for the event pages. The event tables have no access rules for the
 // API roles (see 015_events.sql), so everything goes through the service-role
@@ -605,6 +606,63 @@ export async function eventIncludesRegistry(eventId: string, registryIds: string
   ]);
   if ((links?.length ?? 0) > 0) return true;
   return exchangeKind(exchange) === "everyone" && (wishlists?.length ?? 0) + (more?.length ?? 0) > 0;
+}
+
+/**
+ * The guest behind a gift link on their invitation
+ * (/e/<event>/gifts?g=<token>&to=<list>), checked by their RSVP token. Null
+ * when the event has no guest with that token.
+ *
+ * `registryIds` are the lists the gift is for. When one of them is the
+ * wishlist of the person the guest drew in a gift exchange, the result says
+ * whose Secret Santa they are. Otherwise the caller must check that the event
+ * includes the list (eventIncludesRegistry) before treating the gift as part
+ * of the event.
+ *
+ * The gift link route keeps the result in a signed cookie for the website
+ * (src/lib/event-guest-cookie.ts). The phone app has no cookie, so it sends
+ * the event and token with each request instead.
+ */
+export async function eventGuestFromToken(
+  eventSlug: string,
+  token: string,
+  registryIds: string[],
+): Promise<EventGuestContext | null> {
+  if (!eventSlug || !token) return null;
+  const { data: event } = await supabaseAdmin.from("events").select("id").eq("slug", eventSlug).maybeSingle();
+  if (!event) return null;
+  const { data: guest } = await supabaseAdmin
+    .from("event_guests")
+    .select("id, name, email, giftee_id")
+    .eq("event_id", event.id)
+    .eq("token", token)
+    .maybeSingle();
+  if (!guest) return null;
+
+  // The guest's Secret Santa person, when their wishlist is one of these lists.
+  let santa: EventGuestContext["santa"] = null;
+  if (guest.giftee_id && registryIds.length > 0) {
+    const { data: giftee } = await supabaseAdmin
+      .from("event_guests")
+      .select("name, wishlist_url")
+      .eq("id", guest.giftee_id)
+      .eq("event_id", event.id)
+      .maybeSingle();
+    const wishlistSlug = giftee?.wishlist_url ? registrySlugFromLink(giftee.wishlist_url) : null;
+    if (giftee && wishlistSlug) {
+      const { data: wishlist } = await supabaseAdmin.from("registries").select("id").eq("slug", wishlistSlug).maybeSingle();
+      if (wishlist && registryIds.includes(wishlist.id as string)) {
+        santa = { registryId: wishlist.id as string, gifteeName: giftee.name as string };
+      }
+    }
+  }
+  return {
+    eventId: event.id as string,
+    guestId: guest.id as string,
+    name: guest.name as string,
+    email: (guest.email as string | null) ?? null,
+    santa,
+  };
 }
 
 /** The ids of a guest's other lists on their event, besides their wishlist, oldest first. */
