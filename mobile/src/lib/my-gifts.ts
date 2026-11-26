@@ -11,6 +11,11 @@
 //
 // Kept per account, so someone else signing in on the same phone doesn't see
 // them. Signing out leaves them, like the website's cookie.
+//
+// The website's pages in the web view (src/app/web.tsx) share the item gifts
+// both ways: the web view hands them to the website when it opens, and the
+// gifts given on a page there come back here. The rules are in the website's
+// src/lib/my-gifts-cookie.ts. Fund amounts don't cross yet.
 
 import { kvStorage } from "@/lib/kv-storage";
 
@@ -37,8 +42,17 @@ export async function readMyGifts(userId: string): Promise<Record<string, string
 
 /** Remembers a new gift on an item. A later gift on the same item replaces the earlier one, as the cookie does. */
 export async function rememberGift(userId: string, itemId: string, purchaseId: string) {
+  await rememberGifts(userId, { [itemId]: purchaseId });
+}
+
+/** Remembers new gifts, by item id. They go last, as the newest. */
+export async function rememberGifts(userId: string, newGifts: Record<string, string>) {
+  if (!userId || Object.keys(newGifts).length === 0) return;
   const gifts = await readMyGifts(userId);
-  gifts[itemId] = purchaseId;
+  for (const [itemId, purchaseId] of Object.entries(newGifts)) {
+    delete gifts[itemId];
+    gifts[itemId] = purchaseId;
+  }
   await kvStorage.setItem(key(userId), JSON.stringify(gifts));
 }
 
