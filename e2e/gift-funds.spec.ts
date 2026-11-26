@@ -38,7 +38,11 @@ test("an owner adds a gift fund, a guest contributes, and both get an email", as
   await give.getByLabel("Your Email").fill(guestEmail);
   await give.getByLabel("Message (optional)").fill("For the first textbook!");
   await give.getByRole("button", { name: "Contribute" }).click();
-  await expect(guestPage.getByRole("button", { name: "Contributed" })).toBeVisible();
+  // A thank-you opens. Behind it, the fund says what this guest gave, and
+  // offers to give again instead of looking done.
+  await guestPage.getByRole("button", { name: "Done" }).click();
+  await expect(guestPage.getByText("You gave $50.00")).toBeVisible();
+  await expect(guestPage.getByRole("button", { name: "Give again" })).toBeVisible();
 
   const { data: after } = await db.from("cash_funds").select("current_amount").eq("id", fund!.id).single();
   expect(after?.current_amount).toBe(50);
@@ -61,5 +65,20 @@ test("an owner adds a gift fund, a guest contributes, and both get an email", as
   // The guest gets a receipt that links back to the registry.
   const toGuest = await waitForEmail(guestEmail, `Your contribution is confirmed — "College Fund"`);
   expect(toGuest.links.some((link) => link.startsWith(`${SITE_URL}/r/${registry.slug}`))).toBe(true);
+
+  // The guest gives again. The fund adds it to what they gave before, and so
+  // does the page, after a reload too.
+  await guestPage.getByRole("button", { name: "Give again" }).click();
+  const again = guestPage.getByRole("dialog");
+  await again.getByRole("spinbutton", { name: /^Amount/ }).fill("25");
+  await again.getByLabel("Your Name").fill("Glinda Guest");
+  await again.getByLabel("Your Email").fill(guestEmail);
+  await again.getByRole("button", { name: "Contribute" }).click();
+  await guestPage.getByRole("button", { name: "Done" }).click();
+  await expect(guestPage.getByText("You gave $75.00")).toBeVisible();
+  const { data: twice } = await db.from("cash_funds").select("current_amount").eq("id", fund!.id).single();
+  expect(twice?.current_amount).toBe(75);
+  await guestPage.reload();
+  await expect(guestPage.getByText("You gave $75.00")).toBeVisible();
   await guest.close();
 });
