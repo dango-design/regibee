@@ -398,11 +398,11 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
     const eventId = idFromPath(href, "/dashboard/events/");
     const listId = idFromPath(href, "/dashboard/registry/");
     if (eventId) {
-      // Close this form, then open the new event on the Events tab.
+      // Close this form, then open the new event.
       router.back();
       router.push({ pathname: "/events/[eventId]", params: { eventId: eventId } });
     } else if (listId) {
-      // Lists open in the Home tab, like a list made on the new list form.
+      // Close this form, then open the new list.
       router.back();
       router.push({ pathname: "/registry/[id]", params: { id: listId } });
     } else {
