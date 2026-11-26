@@ -6,7 +6,7 @@ import { ProfileRegistryCard } from "@/components/profile-registry-card";
 import { PandaMark } from "@/components/panda-mark";
 import { GiftProfileCard } from "@/components/gift-profile-card";
 import { ProfileAvatar } from "@/components/profile-avatar";
-import { hasGiftDetails, type GiftProfile } from "@/lib/gift-profile";
+import { giftProfileAudienceSummary, hasGiftDetails, type GiftProfile } from "@/lib/gift-profile";
 import { displayName as nameToShow } from "@/lib/profile-link";
 import { eventHasPassed, eventTypeLabel } from "@/lib/events";
 import type { SharedEvent } from "@/lib/shared-events";
@@ -53,9 +53,6 @@ function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today
   );
 }
 
-/** Who sees the About card. Shown to the owner on their own profile. */
-const GIFT_PROFILE_AUDIENCE =
-  "Only you and your friends see this. Approved followers see your birthday.";
 
 export function PublicProfile({
   fullName,
@@ -86,12 +83,12 @@ export function PublicProfile({
   /** What the person wrote for everyone who opens their profile. */
   publicNote?: string | null;
   /**
-   * Sizes, likes and the rest. Only the person and the people they follow who
-   * follow them back get these, so for anyone else the page passes a profile
-   * without them.
+   * The parts of the gift profile this viewer may see, by the person's
+   * choices (visibleGiftProfile). On their own profile, it holds the choices
+   * too, for the line that says who sees each part.
    */
   giftProfile?: GiftProfile;
-  /** Shows the birthday too. Only for the person and the followers they approved. */
+  /** Shows the birthday too, when the viewer may see it. */
   showBirthday?: boolean;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
@@ -125,7 +122,7 @@ export function PublicProfile({
           profile={giftProfile}
           name={displayName}
           showBirthday={showBirthday}
-          caption={isOwnProfile && GIFT_PROFILE_AUDIENCE}
+          caption={isOwnProfile && giftProfileAudienceSummary(giftProfile)}
           action={
             isOwnProfile && (
               <Link

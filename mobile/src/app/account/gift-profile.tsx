@@ -28,7 +28,7 @@ export default function GiftProfileScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120 }}
       >
         <Text variant="subhead" tone="secondary">
-          Only you and your friends see this.
+          Choose who sees each part. To tell everyone something, use the public note in Your profile.
         </Text>
         <GiftProfileForm initial={data.giftProfile} onSave={(profile) => run("giftProfile.saveGiftProfile", profile)} />
       </ScrollView>

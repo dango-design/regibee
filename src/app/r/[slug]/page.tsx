@@ -21,7 +21,7 @@ import { OwnerChip } from "@/components/owner-chip";
 import { copyForRegistry, honoreeDisplayName } from "@/lib/registry-copy";
 import { FollowButton } from "@/components/follow-button";
 import { displayName, profilePath } from "@/lib/profile-link";
-import { getViewer, getViewerRelation, seesGiftDetails } from "@/lib/viewer";
+import { getViewer, getViewerRelation, giftProfileViewer } from "@/lib/viewer";
 import type { RegistryType } from "@/lib/types";
 import { Nav } from "@/components/nav";
 import { parseRetailerRegistries, type StoreId } from "@/lib/retailers";
@@ -41,7 +41,12 @@ import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notic
 import { FellowGuestsNotice } from "@/components/fellow-guests-notice";
 import type { OpenGift } from "@/components/reserve-item-dialog";
 import { GuestPrefillProvider, type GuestPrefill } from "@/components/guest-prefill-context";
-import { parseGiftProfile, visibleGiftProfile, type GiftProfile } from "@/lib/gift-profile";
+import {
+  parseGiftProfile,
+  visibleChildGiftProfile,
+  visibleGiftProfile,
+  type GiftProfile,
+} from "@/lib/gift-profile";
 import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
 import { canManageRegistry } from "@/lib/events-server";
 import { myGroupGiftsOnItems } from "@/lib/group-gifts-server";
@@ -152,8 +157,8 @@ async function loadOwner(listedOnProfile: boolean, ownerId: string) {
 
 // The gift profile shown above a personal wishlist's items. A list kept for
 // a child has its own, in its settings. Other wishlists show their owner's.
-// Baby registries show none. `ownersOwn` says which it is, since the owner's
-// own sizes and likes show only to the people they follow who follow back.
+// Baby registries show none. `ownersOwn` says which it is, since the owner
+// chooses who sees each part of their own.
 async function loadGiftProfile(registry: {
   registry_type: string | null;
   owner_id: string;
@@ -409,20 +414,27 @@ export default async function PublicRegistryPage({
     loadListEvents(registry, viewer),
   ]);
 
-  // The birthday shows only to the owner and the followers they approved.
-  // An unlisted list doesn't say whose it is, so only its owner sees it there.
-  const showBirthday =
-    (viewer !== null && viewer.id === registry.owner_id) ||
-    (Boolean(owner) && ownerRelation?.state === "approved");
-  // The owner's own sizes, likes and the rest show only to the owner and to
-  // the people they follow who follow them back, listed on their profile or
-  // not. A child's list shows the child's to everyone who opens it.
-  const showGiftDetails =
-    fullGiftProfile !== null &&
-    (!fullGiftProfile.ownersOwn || seesGiftDetails(await getViewerRelation(registry.owner_id)));
-  const giftProfile =
-    fullGiftProfile &&
-    visibleGiftProfile(fullGiftProfile.profile, { details: showGiftDetails, birthday: showBirthday });
+  // The owner's own gift profile shows each part to the people they chose
+  // (src/lib/gift-profile.ts), whether or not the list is on their profile.
+  // Someone the owner blocked sees none of it. A child's list shows the
+  // child's to everyone who opens it, apart from the birthday, which shows
+  // only to the owner and the followers they approved, and only while the
+  // list is on the owner's profile.
+  const giftRelation = fullGiftProfile?.ownersOwn
+    ? (ownerRelation ?? (await getViewerRelation(registry.owner_id)))
+    : null;
+  const giftProfile = !fullGiftProfile
+    ? null
+    : giftRelation
+      ? giftRelation.hidden
+        ? {}
+        : visibleGiftProfile(fullGiftProfile.profile, giftProfileViewer(giftRelation))
+      : visibleChildGiftProfile(fullGiftProfile.profile, {
+          birthday:
+            (viewer !== null && viewer.id === registry.owner_id) ||
+            (Boolean(owner) && ownerRelation?.state === "approved"),
+        });
+  const showBirthday = Boolean(giftProfile?.birthday);
 
   // The owner can hide what's been reserved from themselves (src/lib/gifts.ts).
   // When they open their own list's page, it shows nothing reserved, the same

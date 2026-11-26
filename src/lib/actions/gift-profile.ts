@@ -17,10 +17,16 @@ export async function saveGiftProfile(input: unknown) {
   const { user, error: authError } = await requireAccount();
   if (!user) return { error: authError };
 
-  const { error } = await supabaseAdmin
-    .from("profiles")
-    .update({ gift_profile: parseGiftProfile(input) })
-    .eq("id", user.id);
+  const profile = parseGiftProfile(input);
+  // Phone app builds from before the audience choices send none. Keep the
+  // saved ones then, so saving there doesn't put them back to the defaults.
+  if (!profile.audience) {
+    const { data: saved } = await supabaseAdmin.from("profiles").select("gift_profile").eq("id", user.id).maybeSingle();
+    const audience = parseGiftProfile(saved?.gift_profile).audience;
+    if (audience) profile.audience = audience;
+  }
+
+  const { error } = await supabaseAdmin.from("profiles").update({ gift_profile: profile }).eq("id", user.id);
   if (error) {
     console.error("[gift profile] Failed to save:", error);
     return { error: SAVE_FAILED };
@@ -94,7 +100,9 @@ export async function saveListGiftProfile(registryId: string, input: unknown) {
   }
 
   const settings = { ...((registry.settings as Record<string, unknown> | null) ?? {}) };
-  settings.gift_profile = parseGiftProfile(input);
+  // A child's list shows its profile to anyone who opens it, so it has no audience choices.
+  const { audience: _audience, ...childProfile } = parseGiftProfile(input);
+  settings.gift_profile = childProfile;
 
   const { error } = await supabaseAdmin.from("registries").update({ settings }).eq("id", registryId);
   if (error) {

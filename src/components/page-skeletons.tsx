@@ -148,7 +148,6 @@ export function FollowingSkeleton() {
       <div className="max-w-2xl">
         <LoadingMessage>Loading the registries you follow</LoadingMessage>
         <h1 className="sr-only">Following</h1>
-        <p className="text-tertiary">Registries from people who&apos;ve approved your follow.</p>
 
         {/* The people search box */}
         <div className="mt-6 space-y-1.5">

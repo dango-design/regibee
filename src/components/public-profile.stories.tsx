@@ -131,6 +131,22 @@ export const VisitorNotFollowing: Story = {
   },
 };
 
+// The owner's own gift profile, with a line under its heading that says who
+// sees each part.
+export const OwnGiftProfile: Story = {
+  args: {
+    isOwnProfile: true,
+    giftProfile: {
+      birthday: { month: 3, day: 3 },
+      sizes: { tops: "M", shoes: "8.5" },
+      likes: ["Bubbles", "Tea", "Gardening"],
+      skip: ["Candles"],
+      audience: { birthday: "everyone", sizes: "private" },
+    },
+    showBirthday: true,
+  },
+};
+
 // The owner's own page: "Edit profile" in place of the follow button, and a
 // link to choose registries in the empty state.
 export const OwnProfileNothingListed: Story = {

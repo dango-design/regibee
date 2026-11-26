@@ -378,7 +378,9 @@ export function AccountSettings({
             <Card id="gift-profile" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="gift-profile">Gift profile</SectionTitle>
-                <CardDescription>Only you and your friends see this.</CardDescription>
+                <CardDescription>
+                  Choose who sees each part. To tell everyone something, use the public note in Your profile.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <GiftProfileForm initial={giftProfile} onSave={giftProfileAction} />

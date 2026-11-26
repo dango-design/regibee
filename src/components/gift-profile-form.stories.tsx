@@ -27,10 +27,12 @@ export const Empty: Story = {
   args: { initial: {} },
 };
 
-// Glinda's profile, with every field filled in.
+// Glinda's profile, with every field filled in. She shows her birthday to
+// everyone and keeps her sizes to herself.
 export const Filled: Story = {
   args: {
     initial: {
+      audience: { birthday: "everyone", sizes: "private" },
       birthday: { month: 3, day: 3 },
       sizes: { tops: "M", bottoms: "30 x 32", shoes: "8.5", other: "Ring 6" },
       colors: "Soft pink, silver, anything sparkly",
