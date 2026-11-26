@@ -7,6 +7,7 @@ A Chrome extension that brings the items on an owner's store registries into Reg
 - **Reads store registry pages.** When the owner opens their registry on Amazon, Target, Walmart or Pottery Barn Kids, the extension reads the items on that page: name, price, picture, how many are wanted, and the registry link guests should use.
 - **Skips what's already on Regibee.** It matches items on the store's product ID inside each link, so an item already on Regibee with a plain link counts as the same item.
 - **Ask first, or automatic.** By default, the toolbar button shows how many new items a registry page has, and the popup lists them with checkboxes. In automatic mode it adds new items on its own and shows a notice with Undo. Automatic mode never re-adds an item the owner already saw, left out, removed or undid.
+- **Brings in an Elfster wishlist.** On a wishlist on elfster.com, the toolbar button lists its items, with the ones that aren't on Regibee yet ticked. Each comes with its name, price, picture, how many are wanted, the owner's note, "most wanted", and the link to the shop's own page, never Elfster's tracking link. An item with no link is still added, and matches on its name. Items the owner marked as received on Elfster are left out. It always asks first: automatic mode is only for store registries, since the page could be someone else's wishlist. See "Elfster" below.
 - **Adds one item from any product page.** On a product page at any shop, the popup opens an "Add to Regibee" form filled in from the page: name, price, pictures to choose from, quantity, registry, category, most wanted, open to used with a minimum condition, and a note. "+ New category" makes a category on the registry and picks it, as the site's add-item dialog does (`POST /api/extension/categories`, which shares `src/lib/list-categories.ts` with the site). A name the registry already has picks that category instead of making a second one, and a name typed but not yet added is made when the owner adds the item. It keeps the page's address exactly, so a product opened from a store registry keeps its registry link, and it says so. On a page that doesn't look like a product, the home screen offers "Add this page to Regibee".
 - **Saves a gift idea for someone else.** The product form's "Add to" picker lists the owner's registries, then Gift ideas, like one more list. Picking Gift ideas saves the product as a private gift idea instead: who it's for (optional, with the names already used one click away), the name, price, picture and a note. Only the owner can see gift ideas (`POST /api/extension/ideas`). The popup remembers the last choice. Someone with no registry gets the form with only Gift ideas.
 - **Reads a pasted store link for the site.** Amazon blocks the server's fetch of its product pages, so pasting an Amazon link into the add or edit item dialog on regibee.com used to fail. Now, at the stores the extension reads (Amazon, Target, Walmart and Pottery Barn Kids, short links like a.co included), the dialog asks the extension first. The extension opens the link in a background tab next to the owner's, reads the product with the same reader as the popup, closes the tab and sends back the name, price and pictures. Only regibee.com pages can ask, through the content script that runs there (`src/content/connect.ts`), and it opens only those stores' links, never a store registry page. A store page opened this way doesn't count as a visit, so automatic mode doesn't import from it. When the extension isn't installed, is older than 0.2.0 or can't read the page, the server fetches the link as before. The site side is `src/lib/fetch-product.ts`.
@@ -52,6 +53,7 @@ This builds `extension/dist` and runs it in Playwright's Chromium, headless, on 
 
 - **Registry pages.** The reader finds every item the page links with a registry link, and each item's link, name, price, picture and quantity match what was recorded from that page. The toolbar button counts the items that aren't on Regibee yet.
 - **Product pages.** The product reader reads the name, price and pictures, and keeps the address exactly, so a page opened from a store registry keeps its registry link. The popup's "Add to Regibee" form shows what it read.
+- **Elfster.** `elfster.spec.ts` reads a made-up wishlist from made-up answers in the shape of Elfster's API, and adds the picked items from the popup. It runs on any computer.
 - **Gift ideas.** `gift-idea.spec.ts` saves a product as a gift idea from the popup, with and without a registry. It uses a small made-up product page, not a saved one, so it runs on any computer.
 - **Reading a link for the website.** `read-link.spec.ts` asks the extension to read a store link the way a Regibee page does. It checks that two Regibee tabs asking at once are both read, one after the other, and that a read whose tab closed while it waited opens nothing. It uses made-up pages too.
 
@@ -83,6 +85,19 @@ Everything store-specific is in `src/lib/retailers.ts`: link rules, product IDs,
 | Babylist | Nothing yet | We don't know its registry link format |
 
 The reader (`src/reader.ts`) works the same way for every store: it finds the registry item links by the store's rules, then reads each item from the smallest part of the page around its links that holds no other item. It doesn't depend on a store's class names, but a redesign can still break it. When it finds nothing, the popup says so and points to the copy-link steps.
+
+## Elfster
+
+Elfster's wishlist page (`/profile/<user id>/wish-lists/<wishlist id>`) shows each wish's name, price and picture, but the page has no link to the shop. Elfster's own API has it, so the reader (`src/elfster-reader.ts`) asks the API the page uses, from the page, as whoever is signed in there:
+
+- `GET /v1/wishlists/<id>` for the wishlist's name.
+- `GET /v1/wishlists/<id>/wishes?limit=100&offset=0` for the wishes, a page at a time.
+
+Checked on a real wishlist of 26 wishes on 2026-11-25. Each wish has `sourceUrl`, the shop's page, and `url`, Elfster's tracking link to it. The reader uses only `sourceUrl`. It also reads `title`, `description`, `imageUrl` (skipped when `imageUrlIsDefault`), `quantity`, `price.amount` (only when `price.currency` is USD or missing, since Regibee's prices are in dollars), `isMostWanted` and `quantityReceived`. It never reads `quantityPurchased`, so the import can't tell an owner what's been bought for them.
+
+The extension has no access to elfster.com in its manifest, on purpose: a new site there would make Chrome turn the extension off for everyone until they accept the new permission. The popup runs the reader with `activeTab`, the same way it reads a product page, so it works only after the owner clicks the button on that tab.
+
+The server side is `POST /api/extension/import/check` and `POST /api/extension/import`. The checks are in `src/lib/wishlist-import.ts`. If Elfster changes its API, the popup says it couldn't read the wishlist, and the reader and its test need the new shape.
 
 ## Publishing
 

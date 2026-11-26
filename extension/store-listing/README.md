@@ -14,6 +14,9 @@ Regibee keeps your gift lists in one place. This extension connects Chrome to yo
 BRING IN YOUR STORE REGISTRIES
 Open your registry on Amazon, Walmart, Target or Pottery Barn Kids, and Regibee shows the items that aren't on your Regibee list yet. Add them with one click, or let it add new ones for you. Each item keeps its store registry link, so gifts bought through Regibee still count toward your store registry.
 
+BRING IN AN ELFSTER WISHLIST
+Open a wishlist on elfster.com and click the Regibee button. Regibee lists the items that aren't on your Regibee list yet, each with its name, price, picture, note and the link to its shop. Pick the ones to add.
+
 ADD ANYTHING FROM ANY SHOP
 On a product page, click the Regibee button, choose "Add to Regibee" in the right-click menu, or press Alt+Shift+R. The name, price and pictures are filled in for you.
 
@@ -56,7 +59,7 @@ Adds products and store registry items to the user's Regibee gift lists while th
   ```
 - **activeTab:**
   ```
-  When the user clicks the toolbar button, the "Add to Regibee" menu item or the keyboard shortcut, the extension reads the product on the current tab (name, price, pictures, barcode number) to fill in the add-item form. It doesn't read the tab at any other time.
+  When the user clicks the toolbar button, the "Add to Regibee" menu item or the keyboard shortcut, the extension reads the product on the current tab (name, price, pictures, barcode number) to fill in the add-item form. On a wishlist on elfster.com, it reads that wishlist's items instead (name, price, picture, quantity, note and the link to each item's shop), so the user can pick which to add to their Regibee list. It doesn't read the tab at any other time.
   ```
 - **scripting:**
   ```

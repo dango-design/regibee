@@ -470,6 +470,12 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 the product to a registry or save it as a gift idea, which only you can see.
               </li>
               <li>
+                <strong className="font-semibold text-primary">An Elfster wishlist, when you ask.</strong> When you
+                click its toolbar button on a wishlist on elfster.com, it reads that wishlist&apos;s items from
+                Elfster: their names, prices, pictures, quantities, notes and the links to their shops. It compares
+                them with your Regibee registry and adds the ones you pick.
+              </li>
+              <li>
                 <strong className="font-semibold text-primary">Store links on regibee.com, when you ask.</strong> When
                 you paste a link from one of those stores while adding an item, or click &ldquo;Fill them in&rdquo; on
                 a list whose items are missing a photo or price, the extension may open each link in a background tab,

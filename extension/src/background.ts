@@ -13,7 +13,11 @@ import {
   type ExtensionRegistry,
   type ExtensionSession,
   type IdeaResponse,
+  type ImportCheckResponse,
+  type ImportItem,
+  type ImportResponse,
   type LinkResponse,
+  MAX_ITEMS_PER_REQUEST,
   type MeResponse,
   type ReadProduct,
   type StoreItem,
@@ -38,7 +42,7 @@ import { clearAccount, load, markSeen, save, seenKeys } from "./storage";
 const REGISTRIES_MAX_AGE_MS = 10 * 60 * 1000;
 const BADGE_COLOR = "#004659";
 
-function keysOf(items: StoreItem[]): string[] {
+function keysOf(items: { url: string }[]): string[] {
   return items.map((item) => storeItemKey(item.url)).filter((key): key is string => Boolean(key));
 }
 
@@ -142,6 +146,46 @@ async function add(registryId: string, items: StoreItem[], listed: string[]): Pr
   // automatic mode won't add an item they chose to leave out.
   await markSeen(registryId, [...listed, ...keysOf(items)]);
   return result;
+}
+
+// ── Importing a wishlist from another site ──────────────────────────────
+// The popup reads an Elfster wishlist and sends its items here. A long
+// wishlist goes to Regibee a few requests at a time.
+
+function chunks<T>(items: T[]): T[][] {
+  const result: T[][] = [];
+  for (let at = 0; at < items.length; at += MAX_ITEMS_PER_REQUEST) result.push(items.slice(at, at + MAX_ITEMS_PER_REQUEST));
+  return result;
+}
+
+/** Which of a wishlist's items are already on the registry. */
+async function importCheck(registryId: string, items: ImportItem[]): Promise<ImportCheckResponse> {
+  const existing = new Set<string>();
+  for (const part of chunks(items)) {
+    const result = await api<ImportCheckResponse>("/api/extension/import/check", {
+      method: "POST",
+      body: { registryId, items: part },
+    });
+    for (const key of result.existing) existing.add(key);
+  }
+  return { existing: [...existing] };
+}
+
+async function importItems(registryId: string, items: ImportItem[]): Promise<ImportResponse> {
+  const total: ImportResponse = { added: [], skipped: 0 };
+  for (const part of chunks(items)) {
+    const result = await api<ImportResponse>("/api/extension/import", {
+      method: "POST",
+      body: { registryId, items: part },
+    });
+    total.added.push(...result.added);
+    total.skipped += result.skipped;
+  }
+  // Automatic mode shouldn't add these again from a store's registry page.
+  await markSeen(registryId, keysOf(items.flatMap((item) => (item.url ? [{ url: item.url }] : []))));
+  // The home screen counts plain store links, so read the registries again next time.
+  if (total.added.length > 0) await save({ registriesFetchedAt: 0 });
+  return total;
 }
 
 async function recordChecked(store: StoreId, count: number) {
@@ -385,6 +429,10 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
       });
       return { exists: existing.includes(key), plain: plain.includes(key) };
     }
+    case "import-check":
+      return importCheck(request.registryId, request.items);
+    case "import":
+      return importItems(request.registryId, request.items);
     case "link":
       return { linked: await link(request.registryId, request.items) } satisfies LinkResponse;
     case "menu-click": {
