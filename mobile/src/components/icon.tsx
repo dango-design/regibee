@@ -76,6 +76,11 @@ const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
+/** The SF Symbol for an icon, for native iPhone views that take a symbol name. */
+export function sfSymbol(name: IconName): string {
+  return ICONS[name].ios;
+}
+
 export function Icon({
   name,
   size = 20,

@@ -6,19 +6,25 @@
 // Links to things the app has its own screen for, such as a list this account
 // manages or an invitation, open that screen. Links to other sites, such as a
 // store, open in the browser.
+//
+// The header matches the page: white, since the website has no dark mode,
+// and with no title while the page's own title shows. Once the page's title
+// scrolls up under the header, the header fills in: that title fades into
+// it and a line appears under it, as in Spotify or Apple Music.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Platform, Share, View } from "react-native";
-import { WebView, type WebViewNavigation } from "react-native-webview";
+import { Animated, BackHandler, Platform, Share, StyleSheet, View } from "react-native";
+import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 
 import { appScreenForPath, IN_APP_HEADER } from "@shared/in-app";
 
 import { ErrorState, IconButton, LoadingState } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { SITE_URL } from "@/lib/supabase";
-import { useTheme } from "@/lib/theme";
+import { fonts, sitePageColors } from "@/lib/theme";
 import { freshAccessToken, nativeRoute, signedInAddress, sitePath } from "@/lib/web";
 
 /** The path of an address on the website, or null for another site. */
@@ -28,10 +34,56 @@ function pathOnSite(url: string): string | null {
   return rest === "" || /^[/?#]/.test(rest) ? rest || "/" : null;
 }
 
+// Runs in each page. It tells the screen whether the page's title (its first
+// h1) has scrolled up past the top of the web view, under the header, and
+// what the title says. A page with no h1 counts as scrolled once it moves at
+// all. It checks again when the page changes without loading a new one, as
+// the website does between its own pages.
+const HEADER_SCRIPT = `(function () {
+  if (window.__regibeeHeader) return;
+  window.__regibeeHeader = true;
+  var last = null;
+  var queued = false;
+  function check() {
+    queued = false;
+    var title = document.querySelector("main h1") || document.querySelector("h1");
+    var shown = title && title.getClientRects().length > 0;
+    var filled = shown ? title.getBoundingClientRect().bottom <= 0 : window.scrollY > 0;
+    var heading = shown ? title.textContent.replace(/\\s+/g, " ").trim() : "";
+    var key = filled + "|" + heading;
+    if (key === last) return;
+    last = key;
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: "header", filled: filled, heading: heading }));
+  }
+  function queue() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(check);
+  }
+  window.addEventListener("scroll", queue, { passive: true });
+  window.addEventListener("resize", queue);
+  new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
+  check();
+})();
+true;`;
+
+/** The header's title, which fades in once the page's own title has scrolled under it. */
+function HeaderTitle({ title, shown, opacity }: { title: string; shown: boolean; opacity: Animated.Value }) {
+  return (
+    <Animated.Text
+      numberOfLines={1}
+      accessibilityElementsHidden={!shown}
+      importantForAccessibility={shown ? "auto" : "no-hide-descendants"}
+      style={{ opacity, fontFamily: fonts.displayMedium, fontSize: 17, color: sitePageColors.text }}
+    >
+      {title}
+    </Animated.Text>
+  );
+}
+
 export default function WebScreen() {
   const { path: pathParam } = useLocalSearchParams<{ path: string }>();
   const path = sitePath(pathParam ?? "/");
-  const theme = useTheme();
   const { session } = useSession();
   const web = useRef<WebView<object>>(null);
   // undefined while the token is being read, null when signed out.
@@ -41,6 +93,14 @@ export default function WebScreen() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // The page's title has scrolled up under the header, and what it says.
+  const [filled, setFilled] = useState(false);
+  const [heading, setHeading] = useState("");
+  // Fades the header's title and the line under it in and out together.
+  const [fill] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    Animated.timing(fill, { toValue: filled ? 1 : 0, duration: 180, useNativeDriver: true }).start();
+  }, [filled, fill]);
 
   useEffect(() => {
     let live = true;
@@ -65,26 +125,32 @@ export default function WebScreen() {
     return () => subscription.remove();
   }, [canGoBack]);
 
-  /** Opens the app's own screen for a website path. True when it has one. */
+  // The last app screen opened from this page, so one tap doesn't open it twice.
+  const lastOpened = useRef({ path: "", at: 0 });
   const signedIn = Boolean(session);
-  // The page last handed to a native screen. Navigation events can repeat
-  // for one page, which would open the screen twice.
-  const handedOff = useRef<string | null>(null);
+
+  /**
+   * Opens the app's own screen for a website path. True when it has one. The
+   * screen opens on top of this page, so back from it comes back here.
+   */
   const openInApp = useCallback((sitePathname: string): boolean => {
     // A page the app has its own screen for, such as an invitation, opens
     // there, on top of this one. Not the page this web view was opened for:
     // the native screen sends a page here when it can't show it itself.
-    const native = signedIn ? nativeRoute(sitePathname) : null;
-    if (native && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0]) {
-      if (handedOff.current !== sitePathname) router.push(native);
-      handedOff.current = sitePathname;
+    const native = signedIn && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0] ? nativeRoute(sitePathname) : null;
+    const target = native ? null : appScreenForPath(sitePathname);
+    if (!native && !target) return false;
+    const now = Date.now();
+    if (lastOpened.current.path === sitePathname && now - lastOpened.current.at < 1000) return true;
+    lastOpened.current = { path: sitePathname, at: now };
+    if (native) {
+      router.push(native);
       return true;
     }
-    const target = appScreenForPath(sitePathname);
     if (!target) return false;
-    if (target.screen === "registry") router.replace({ pathname: "/registry/[id]", params: { id: target.id } });
-    else if (target.screen === "event") router.replace({ pathname: "/events/[eventId]", params: { eventId: target.id } });
-    else if (target.screen === "group") router.replace({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
+    if (target.screen === "registry") router.push({ pathname: "/registry/[id]", params: { id: target.id } });
+    else if (target.screen === "event") router.push({ pathname: "/events/[eventId]", params: { eventId: target.id } });
+    else if (target.screen === "group") router.push({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
     else router.back();
     return true;
   }, [signedIn, path]);
@@ -93,34 +159,69 @@ export default function WebScreen() {
     setCanGoBack(state.canGoBack);
     const sitePathname = pathOnSite(state.url);
     // The website moves between its own pages without loading a new one, which
-    // onShouldStartLoadWithRequest doesn't see. Catch those here.
+    // onShouldStartLoadWithRequest doesn't see. Catch those here. By now the
+    // page has already moved on, so step it back to where it was: that's the
+    // page someone expects to see when they come back from the app's screen.
     if (sitePathname && openInApp(sitePathname)) {
       web.current?.stopLoading();
+      if (state.canGoBack) web.current?.goBack();
       return;
     }
     if (sitePathname && !sitePathname.startsWith("/api/app/open")) setCurrent(state.url);
     if (state.title && !state.title.startsWith("http")) setTitle(state.title.replace(/\s*\|\s*Regibee$/, ""));
   }
 
+  function onMessage(event: WebViewMessageEvent) {
+    try {
+      const message = JSON.parse(event.nativeEvent.data) as { type?: string; filled?: unknown; heading?: unknown };
+      if (message.type !== "header") return;
+      setFilled(message.filled === true);
+      setHeading(typeof message.heading === "string" ? message.heading : "");
+    } catch {
+      // Not one of ours.
+    }
+  }
+
   if (token === undefined) return <LoadingState />;
+
+  // While a page shows, the header takes the page's colours. With no page,
+  // such as when it can't load, it keeps the app's.
+  const onPage = !failed;
 
   return (
     <>
       <Stack.Screen
         options={{
           title,
+          ...(onPage
+            ? {
+                headerStyle: { backgroundColor: sitePageColors.background },
+                headerTintColor: sitePageColors.tint,
+                // The page's own title, which just scrolled up under the
+                // header, or the page's name when it has none.
+                headerTitle: () => <HeaderTitle title={heading || title} shown={filled} opacity={fill} />,
+              }
+            : {}),
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton
                 icon="share"
                 accessibilityLabel="Share this page's link"
+                color={onPage ? sitePageColors.tint : undefined}
                 onPress={() => Share.share(Platform.OS === "ios" ? { url: current } : { message: current })}
               />
-              <IconButton icon="external" accessibilityLabel="Open in your browser" onPress={() => WebBrowser.openBrowserAsync(current)} />
+              <IconButton
+                icon="external"
+                accessibilityLabel="Open in your browser"
+                color={onPage ? sitePageColors.tint : undefined}
+                onPress={() => WebBrowser.openBrowserAsync(current)}
+              />
             </View>
           ),
         }}
       />
+      {/* Dark clock and battery over the white header, even in dark mode. */}
+      {onPage && <StatusBar style="dark" />}
       {failed ? (
         <ErrorState
           message="You're offline, or Regibee can't be reached. Try again."
@@ -135,14 +236,16 @@ export default function WebScreen() {
           key={attempt}
           ref={web}
           source={{ uri: signedInAddress(path), headers: token ? { [IN_APP_HEADER]: "1", Authorization: `Bearer ${token}` } : { [IN_APP_HEADER]: "1" } }}
-          style={{ flex: 1, backgroundColor: theme.background }}
+          style={{ flex: 1, backgroundColor: sitePageColors.background }}
           startInLoadingState
           renderLoading={() => (
-            <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: theme.background }}>
+            <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: sitePageColors.background }}>
               <LoadingState />
             </View>
           )}
           onNavigationStateChange={onNavigation}
+          injectedJavaScript={HEADER_SCRIPT}
+          onMessage={onMessage}
           onError={() => setFailed(true)}
           onShouldStartLoadWithRequest={(request) => {
             // Frames inside the page, such as an embedded map, load as they are.
@@ -160,6 +263,22 @@ export default function WebScreen() {
           allowsBackForwardNavigationGestures
           sharedCookiesEnabled
           pullToRefreshEnabled
+        />
+      )}
+      {/* The line under the filled header. It's drawn here, not with
+          headerShadowVisible, which iOS 26 doesn't draw. */}
+      {onPage && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: sitePageColors.border,
+            opacity: fill,
+          }}
         />
       )}
     </>

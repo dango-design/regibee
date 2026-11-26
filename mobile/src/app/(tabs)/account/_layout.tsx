@@ -17,9 +17,6 @@ export default function AccountLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Account", ...largeTitleOptions }} />
-      <Stack.Screen name="profile" options={{ title: "Your profile", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="gift-profile" options={{ title: "Gift profile", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="follows" options={{ title: "Follows", headerBackButtonDisplayMode: "minimal" }} />
     </Stack>
   );
 }

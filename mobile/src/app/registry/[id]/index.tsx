@@ -67,7 +67,7 @@ import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { registryShareUrl } from "@/lib/supabase";
 import { fonts, radius, spacing, useTheme } from "@/lib/theme";
 import { openSite } from "@/lib/web";
-import { ChoiceSheet } from "@/components/choice-sheet";
+import { HeaderMenu, type HeaderMenuChoice } from "@/components/header-menu";
 import type { CashFund, Gift, Item, RegistryDetail } from "@/lib/types";
 
 type Tab = "items" | "gifts";
@@ -78,7 +78,6 @@ export default function RegistryScreen() {
   const registry = useRegistry(id);
   const pull = usePullToRefresh(registry.refetch);
   const [tab, setTab] = useState<Tab>("items");
-  const [moreOpen, setMoreOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
   const sortItems = useSortIntoCategories(id);
   const undoSort = useUndoCategorySort(id);
@@ -187,14 +186,19 @@ export default function RegistryScreen() {
     );
   }
 
-  // A sheet, since Android's alert shows at most three buttons.
-  const moreChoices = [
-    { label: "Preview", onPress: () => openSite(`/r/${r.slug}`) },
-    { label: "Add a gift fund", onPress: addFund },
+  const moreChoices: HeaderMenuChoice[] = [
+    { label: "Preview", icon: "eye", onPress: () => openSite(`/r/${r.slug}`) },
+    { label: "Add a gift fund", icon: "fund", onPress: addFund },
     ...(data!.showPlanEventButton
-      ? [{ label: "Plan an event", onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }) }]
+      ? [
+          {
+            label: "Plan an event",
+            icon: "calendar" as const,
+            onPress: () => router.push({ pathname: "/event-form", params: { registryId: r.id } }),
+          },
+        ]
       : []),
-    { label: "Settings", onPress: openSettings },
+    { label: "Settings", icon: "settings", onPress: openSettings },
   ];
 
   const header = (
@@ -227,7 +231,7 @@ export default function RegistryScreen() {
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
-              <IconButton icon="more" accessibilityLabel="More" onPress={() => setMoreOpen(true)} />
+              <HeaderMenu accessibilityLabel="More" title={r.title} choices={moreChoices} />
               <IconButton icon="add" accessibilityLabel="Add an item" onPress={addItem} />
             </View>
           ),
@@ -356,7 +360,6 @@ export default function RegistryScreen() {
           }
         />
       )}
-      <ChoiceSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title={r.title} choices={moreChoices} />
     </>
   );
 }
