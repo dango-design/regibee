@@ -20,6 +20,13 @@ export interface ProductPage {
    * Missing from versions before it was added.
    */
   gtin?: string | null;
+  /**
+   * The store's category path from the page's breadcrumbs, most general
+   * first, as in ["Clothing, Shoes & Jewelry", "Men", "Shirts"]. Empty when the
+   * page has none. It helps guess the item's category
+   * (src/lib/item-categories.ts). Missing from versions before it was added.
+   */
+  storeCategory?: string[];
 }
 
 export function readProductPage(): ProductPage {
@@ -316,5 +323,72 @@ export function readProductPage(): ProductPage {
     // A barcode is a bonus. Never lose the rest of the product over it.
   }
 
-  return { url: location.href, title: title.slice(0, 300), price, images, isProduct, gtin };
+  // The store's category path, from its breadcrumbs. The cleanup rules are
+  // storeCategoryPath in src/lib/item-categories.ts, which has the tests, and
+  // src/lib/product-page.ts reads the same places on the server.
+  const categoryPath = (steps: unknown[]): string[] => {
+    const lowerTitle = title.toLowerCase();
+    const empty = /^(home|homepage|shop|shop all|all|all products|products|store|back|back to results|search|results|categories|departments|see all)$/i;
+    const out: string[] = [];
+    for (const raw of steps) {
+      if (typeof raw !== "string") continue;
+      const step = clean(raw);
+      if (!step || step.length > 60 || empty.test(step)) continue;
+      if (lowerTitle && (step.toLowerCase() === lowerTitle || (lowerTitle.startsWith(step.toLowerCase()) && step.length > 25))) continue;
+      if (out[out.length - 1] === step) continue;
+      out.push(step);
+    }
+    return out.slice(-6);
+  };
+  const readStoreCategory = (): string[] => {
+    const texts = (selector: string) => [...document.querySelectorAll(selector)].map((el) => clean(el.textContent));
+    const amazon = texts("#wayfinding-breadcrumbs_feature_div li a");
+    if (amazon.length > 0) return categoryPath(amazon);
+    const lists: unknown[][] = [];
+    let productCategory: string | null = null;
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== "object") return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      const value = node as Json;
+      const types = ([] as unknown[]).concat(value["@type"]);
+      if (types.includes("BreadcrumbList") && Array.isArray(value.itemListElement)) {
+        lists.push(
+          (value.itemListElement as Json[])
+            .slice()
+            .sort((a, b) => Number(a?.position ?? 0) - Number(b?.position ?? 0))
+            .map((step) => step?.name ?? (step?.item as Json | undefined)?.name)
+        );
+      }
+      if (!productCategory && types.some((t) => typeof t === "string" && /^(Product|ProductGroup|IndividualProduct)$/i.test(t))) {
+        if (typeof value.category === "string" && !/^https?:/i.test(value.category)) productCategory = value.category;
+      }
+      walk(value["@graph"]);
+    };
+    for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        walk(JSON.parse(script.textContent ?? ""));
+      } catch {
+        // Broken JSON. Skip it.
+      }
+    }
+    for (const steps of lists) {
+      const path = categoryPath(steps);
+      if (path.length > 0) return path;
+    }
+    if (productCategory) {
+      const path = categoryPath((productCategory as string).split(/\s*[>›/|]\s*/));
+      if (path.length > 0) return path;
+    }
+    const marked = texts('[itemtype*="schema.org/BreadcrumbList"] [itemprop="name"]');
+    if (marked.length > 0) return categoryPath(marked);
+    return categoryPath(texts('nav[aria-label*="breadcrumb" i] a, ol.breadcrumb a, ul.breadcrumb a, .breadcrumbs a'));
+  };
+  let storeCategory: string[] = [];
+  try {
+    storeCategory = readStoreCategory();
+  } catch {
+    // A category is a bonus too.
+  }
+
+  return { url: location.href, title: title.slice(0, 300), price, images, isProduct, gtin, storeCategory };
 }

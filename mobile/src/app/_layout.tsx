@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { Alert, Platform } from "react-native";
 
+import { useAnalyticsAccount, useScreenViews } from "@/lib/analytics";
 import { AuthProvider, useSession } from "@/lib/auth";
 import { useOpenTappedNotification } from "@/lib/notifications";
 import { usePlayUpdateChecks } from "@/lib/play-update";
@@ -41,6 +42,8 @@ function RootNavigator({ ready }: { ready: boolean }) {
   const { session, demo, isReady } = useSession();
   const theme = useTheme();
   const signedIn = Boolean(session) || demo;
+  useScreenViews();
+  useAnalyticsAccount(session?.user.id ?? null);
   // Waits for the navigator below to be on screen.
   useOpenTappedNotification(Boolean(session) && ready && isReady);
   // Asks Google Play whether a newer build is out (Android only).

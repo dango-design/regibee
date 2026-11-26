@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackClick } from "@/lib/analytics-client";
 
 type ReplaceResult = { path: string } | { error: string };
 
@@ -39,6 +40,7 @@ export function ShareLinkField({
 
   const copy = async () => {
     await navigator.clipboard.writeText(`${siteUrl || window.location.origin}${currentPath}`);
+    trackClick("link_copied", { page: "list" });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

@@ -4,6 +4,7 @@ import { authenticateExtension, jsonError, readJson } from "@/lib/extension-serv
 import { parseGiftIdea } from "@/lib/gift-ideas";
 import { normalizeGtin } from "@/lib/gtin";
 import type { IdeaResponse } from "@/lib/extension";
+import { track } from "@/lib/analytics-server";
 
 // POST { idea } → saves a gift idea for someone else, from the popup's form on
 // a product page. It runs as the signed-in user, so the table's access rules
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
     return jsonError("The idea wasn't saved. Try again in a moment.", 500);
   }
 
+  // Only that an idea was saved: nothing about the idea itself.
+  track("gift_idea_saved", { userId: user.id }, {}, { platform: "extension" });
   revalidatePath("/dashboard/saved/ideas");
   const response: IdeaResponse = {
     added: { id: data.id as string, title: data.title as string, recipient: data.recipient as string },

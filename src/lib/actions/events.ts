@@ -23,6 +23,7 @@ import {
   resolveRegistryLink,
 } from "@/lib/events-server";
 import { copySignupSheet, insertSignupSheet } from "@/lib/signups-server";
+import { track } from "@/lib/analytics-server";
 import {
   MAX_CLAIM_NOTE_LENGTH,
   claimsByGuest,
@@ -503,6 +504,7 @@ export async function createEvent(formData: FormData): Promise<Result<{ id: stri
   const signupPreset = occasionSignupPreset(form.fields.event_type);
   if (signupPreset) await insertSignupSheet(data.id, signupPreset);
 
+  track("event_created", { userId: user.id }, { occasion: form.fields.event_type ?? "other" });
   revalidateEvent(data);
   return { error: null, id: data.id };
 }
@@ -890,6 +892,7 @@ export async function sendEventInvites(eventId: string, guestIds?: string[]): Pr
   await settleEmails(reservation, sentTokens.length);
 
   if (sentTokens.length > 0) {
+    track("event_invites_sent", { userId: access.user.id }, { count: sentTokens.length });
     await supabaseAdmin
       .from("event_guests")
       .update({ invited_at: new Date().toISOString() })
@@ -1356,6 +1359,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
     await Promise.all(tasks);
   });
 
+  track("rsvp_submitted", { guest: true }, { answer: input.status });
   revalidateEvent(event);
   return { error: null, token: guest.token };
 }

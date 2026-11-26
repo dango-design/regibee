@@ -3,6 +3,7 @@
 // database, and closing the app resets it.
 
 import { getChecklistProgress } from "@shared/checklist-matching";
+import { PLANNED_CATEGORY_PREFIX, sortPlan } from "@shared/item-categories";
 import type { DashboardCard, DashboardData } from "@shared/dashboard-page-types";
 import {
   DEMO_CASH_FUNDS,
@@ -455,6 +456,31 @@ export const demo = {
     const category: Category = { id: newId("cat"), registry_id: registryId, name, sort_order: list.categories.length };
     setList(registryId, (l) => ({ ...l, categories: [...l.categories, category] }));
     return category;
+  },
+  /** "Sort into categories", as src/lib/actions/categories.ts does it. */
+  sortIntoCategories(registryId: string) {
+    const list = listFor(registryId);
+    const loose = list.items.filter((i) => !i.category_id || !list.categories.some((c) => c.id === i.category_id));
+    const plan = sortPlan(loose, list.categories);
+    const ids = new Map<string, string>();
+    const added: string[] = [];
+    for (const name of plan.newNames) {
+      const category = demo.createCategory(registryId, name);
+      ids.set(`${PLANNED_CATEGORY_PREFIX}${name}`, category.id);
+      added.push(category.id);
+    }
+    const moved = plan.assignments.map((a) => ({ itemId: a.itemId, categoryId: ids.get(a.categoryId) ?? a.categoryId, placed: false }));
+    const to = new Map(moved.map((m) => [m.itemId, m.categoryId]));
+    setItems(registryId, (items) => items.map((i) => (to.has(i.id) ? { ...i, category_id: to.get(i.id)! } : i)));
+    return { sorted: moved.length, added: added.length, undo: { moved, added } };
+  },
+  undoCategorySort(registryId: string, undo: { moved: { itemId: string; categoryId: string }[]; added: string[] }) {
+    const from = new Map(undo.moved.map((m) => [m.itemId, m.categoryId]));
+    setItems(registryId, (items) => items.map((i) => (from.get(i.id) === i.category_id ? { ...i, category_id: null } : i)));
+    setList(registryId, (l) => ({
+      ...l,
+      categories: l.categories.filter((c) => !undo.added.includes(c.id) || l.items.some((i) => i.category_id === c.id)),
+    }));
   },
   renameCategory(registryId: string, categoryId: string, name: string) {
     setList(registryId, (l) => ({
