@@ -34,6 +34,7 @@ import { getViewer, getViewerRelation, giftProfileViewer } from "@/lib/viewer";
 import { parseRetailerRegistries, type StoreId } from "@/lib/retailers";
 import {
   fundAsUnpledged,
+  fundsPosition,
   isExpiredReservation,
   isOpenReservation,
   itemAsUnreserved,
@@ -651,6 +652,7 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
     categories: allCategories,
     items: shownItems,
     cashFunds: allFunds,
+    fundsPosition: fundsPosition(registry.settings),
     paymentMethods,
     shippingAddress,
     linkedStores,

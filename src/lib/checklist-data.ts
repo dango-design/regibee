@@ -4,6 +4,8 @@ export interface ChecklistItem {
   suggestedPrice: string;
   suggestedQuantity: number;
   description?: string;
+  /** Money toward something, not a thing to buy. Adding it makes a gift fund, not an item. */
+  fund?: boolean;
 }
 
 export interface ChecklistCategory {
@@ -880,6 +882,7 @@ export const DEFAULT_CHECKLIST: ChecklistCategory[] = [
       },
       {
         name: "Diaper Fund",
+        fund: true,
         isEssential: false,
         suggestedPrice: "Variable",
         suggestedQuantity: 1,
@@ -888,6 +891,7 @@ export const DEFAULT_CHECKLIST: ChecklistCategory[] = [
       },
       {
         name: "College Fund",
+        fund: true,
         isEssential: false,
         suggestedPrice: "Variable",
         suggestedQuantity: 1,

@@ -43,10 +43,10 @@ import { summarizeRegistryDeletion } from "@/lib/registry-deletion-server";
 import { addListCategory } from "@/lib/list-categories";
 import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
 import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
-import { MY_GIFTS_COOKIE, MY_GIFTS_COOKIE_OPTIONS, withGift } from "@/lib/my-gifts-cookie";
+import { MY_GIFTS_COOKIE, MY_GIFTS_COOKIE_OPTIONS, withFundGift, withGift } from "@/lib/my-gifts-cookie";
 import { readEventGuestCookie } from "@/lib/event-guest-cookie";
 import { eventGuestFromToken, eventIncludesRegistry } from "@/lib/events-server";
-import { GIFT_HOLD_DAYS, isOpenReservation, SECRET_GIVER_NAME } from "@/lib/gifts";
+import { FUNDS_POSITION_SETTING, GIFT_HOLD_DAYS, isOpenReservation, SECRET_GIVER_NAME, type FundsPosition } from "@/lib/gifts";
 import {
   releaseExpiredOnItem,
   sendCoverGiftEmails,
@@ -647,6 +647,16 @@ export async function addCashFund(registryId: string, formData: FormData) {
   const description = formData.get("description") as string;
   const goalAmount = formData.get("goalAmount") as string;
 
+  // The create dialog can set the list's payment methods too, so the owner
+  // doesn't have to go to settings first. It sends them only when it showed
+  // the fields. Older phone app builds never send them.
+  if (formData.get("savePaymentMethods") === "1") {
+    const { error: managerError } = await requireManager(registryId);
+    if (managerError) return { error: managerError };
+    const { error: paymentError } = await savePaymentMethods(registryId, formData);
+    if (paymentError) return { error: paymentError };
+  }
+
   const { error } = await supabase.from("cash_funds").insert({
     registry_id: registryId,
     title,
@@ -994,6 +1004,18 @@ export async function updatePaymentMethods(
   const { user, error: authError } = await requireManager(registryId);
   if (authError || !user) return { error: authError || "Not authenticated" };
 
+  const { error } = await savePaymentMethods(registryId, formData);
+  if (error) return { error };
+
+  revalidatePath(`/dashboard/registry/${registryId}`);
+  return { success: true };
+}
+
+/**
+ * Saves the venmo, paypal and zelle fields as the list's payment methods,
+ * replacing all three. The caller checks that the user manages the list.
+ */
+async function savePaymentMethods(registryId: string, formData: FormData): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const venmo = (formData.get("venmo") as string)?.trim() || undefined;
   const paypal = (formData.get("paypal") as string)?.trim() || undefined;
@@ -1017,12 +1039,27 @@ export async function updatePaymentMethods(
     .update({ settings })
     .eq("id", registryId);
 
-  if (error) {
-    return { error: error.message };
-  }
+  return { error: error?.message ?? null };
+}
+
+/** Puts a list's gift funds above its items or after them, on its page and the guests'. */
+export async function setFundsPosition(registryId: string, position: FundsPosition): Promise<{ error: string | null }> {
+  if (position !== "top" && position !== "bottom") return { error: "Choose top or bottom." };
+
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const supabase = await createClient();
+  const { data: registry } = await supabase.from("registries").select("settings, slug").eq("id", registryId).single();
+  if (!registry) return { error: "Registry not found" };
+
+  const settings = { ...((registry.settings as Record<string, unknown>) || {}), [FUNDS_POSITION_SETTING]: position };
+  const { error } = await supabase.from("registries").update({ settings }).eq("id", registryId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/dashboard/registry/${registryId}`);
-  return { success: true };
+  revalidatePath(`/r/${registry.slug}`);
+  return { error: null };
 }
 
 /**
@@ -1495,7 +1532,9 @@ export async function contributeToCashFund(formData: FormData) {
     ? await recordEventGuestOnGift(data as string, { fundId }, eventLinkFromForm(formData))
     : { hideGiver: false };
 
-  await addToMyGiftsCookie("funds", fundId, amount);
+  // Added to what this guest gave to the fund before, since they can give again.
+  const cookieStore = await cookies();
+  cookieStore.set(MY_GIFTS_COOKIE, withFundGift(cookieStore.get(MY_GIFTS_COOKIE)?.value, fundId, amount), MY_GIFTS_COOKIE_OPTIONS);
 
   // Send email notifications after the response
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";

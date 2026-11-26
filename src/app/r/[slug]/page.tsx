@@ -224,6 +224,7 @@ export default async function PublicRegistryPage({
               items={page.items}
               categories={allCategories}
               cashFunds={page.cashFunds}
+              fundsPosition={page.fundsPosition}
               parentName={parentName}
               paymentMethods={page.paymentMethods ?? undefined}
               shippingAddress={page.shippingAddress ?? undefined}

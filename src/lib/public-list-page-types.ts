@@ -6,7 +6,7 @@
 // files, with relative paths, and nothing that runs on a server.
 
 import type { GiftProfile } from "./gift-profile";
-import type { MyItemGift } from "./gifts";
+import type { FundsPosition, MyItemGift } from "./gifts";
 import type { StoreId } from "./retailers";
 import type { ListEventForViewer } from "./shared-events";
 import type { PaymentMethods, RegistryType } from "./types";
@@ -108,6 +108,8 @@ export interface PublicListPageData {
   categories: PublicListCategory[];
   items: PublicListItem[];
   cashFunds: PublicListFund[];
+  /** Whether the funds go above the items or after them. Older loaders sent none: read it as "top". */
+  fundsPosition?: FundsPosition;
   paymentMethods: PaymentMethods | null;
   /** Only for a guest with a live reservation on this list. */
   shippingAddress: string | null;

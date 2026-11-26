@@ -29,6 +29,8 @@ import { DEFAULT_CHECKLIST, type ChecklistCategory, type ChecklistItem } from "@
 import { createClient } from "@/utils/supabase/client";
 import { addRegistryItem, toggleChecklistDismissed } from "@/lib/actions/registry";
 import { matchedChecklistItems } from "@/lib/checklist-matching";
+import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
+import type { PaymentMethods } from "@/lib/types";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   moon: Moon,
@@ -60,18 +62,27 @@ export default function ChecklistPage() {
   const [dismissingItem, setDismissingItem] = useState<string | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [filter, setFilter] = useState<FilterMode>("all");
+  // A checklist entry that's a fund, such as Diaper Fund, opens the create
+  // gift fund dialog filled in, instead of adding an item.
+  const [fundEntry, setFundEntry] = useState<ChecklistItem | null>(null);
+  // Undefined until the registry loads, so the fund dialog doesn't offer blank fields over saved ones.
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null | undefined>(undefined);
 
-  // Fetch existing items, categories, and dismissed checklist items
+  // Fetch existing items and funds, categories, and dismissed checklist items
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
-      const [{ data: cats }, { data: items }, { data: registry }] = await Promise.all([
+      const [{ data: cats }, { data: items }, { data: funds }, { data: registry }] = await Promise.all([
         supabase
           .from("categories")
           .select("id, name")
           .eq("registry_id", registryId),
         supabase
           .from("registry_items")
+          .select("title")
+          .eq("registry_id", registryId),
+        supabase
+          .from("cash_funds")
           .select("title")
           .eq("registry_id", registryId),
         supabase
@@ -92,10 +103,11 @@ export default function ChecklistPage() {
           c.items.map((i) => i.name)
         );
         setAddedItems(
-          buildMatchedChecklistItems(allChecklistNames, items.map((i) => i.title))
+          buildMatchedChecklistItems(allChecklistNames, [...items, ...(funds ?? [])].map((i) => i.title))
         );
       }
       const settings = registry?.settings as Record<string, unknown> | null;
+      setPaymentMethods((settings?.payment_methods as PaymentMethods | undefined) ?? null);
       const dismissed = (settings?.checklist_dismissed as string[]) || [];
       setDismissedItems(new Set(dismissed.map((i) => i.toLowerCase())));
     };
@@ -126,6 +138,10 @@ export default function ChecklistPage() {
     categoryName: string,
     item: ChecklistItem
   ) => {
+    if (item.fund) {
+      setFundEntry(item);
+      return;
+    }
     setAddingItem(item.name);
     const category = categories.find((c) => c.name === categoryName);
 
@@ -143,6 +159,14 @@ export default function ChecklistPage() {
       setAddedItems((prev) => new Set(prev).add(item.name.toLowerCase()));
     }
     setAddingItem(null);
+  };
+
+  const handleFundCreated = async () => {
+    if (fundEntry) setAddedItems((prev) => new Set(prev).add(fundEntry.name.toLowerCase()));
+    // The dialog may have saved new payment methods. Read them again for the next fund.
+    const { data: registry } = await createClient().from("registries").select("settings").eq("id", registryId).single();
+    const settings = registry?.settings as Record<string, unknown> | null;
+    setPaymentMethods((settings?.payment_methods as PaymentMethods | undefined) ?? null);
   };
 
   const handleToggleDismissed = async (item: ChecklistItem) => {
@@ -247,6 +271,18 @@ export default function ChecklistPage() {
           </Button>
         </div>
       </div>
+
+      <AddCashFundDialog
+        key={fundEntry?.name ?? "none"}
+        registryId={registryId}
+        paymentMethods={paymentMethods}
+        defaults={fundEntry ? { title: fundEntry.name, description: fundEntry.description } : undefined}
+        open={fundEntry !== null}
+        onOpenChange={(open) => {
+          if (!open) setFundEntry(null);
+        }}
+        onCreated={handleFundCreated}
+      />
 
       {/* Categories */}
       <div className="space-y-3">

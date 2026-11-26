@@ -40,7 +40,7 @@ import { GuestItemCard, type GuestItemActions } from "@/components/public-list/i
 import { SuggestSheet } from "@/components/public-list/suggest-sheet";
 import { Button, Card, EmptyState, Field, IconButton, LoadingState, ProgressBar, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
-import { formatDollars } from "@/lib/format";
+import { formatDollars, formatPrice } from "@/lib/format";
 import { useConfirmGift, usePublicList, type EventLink } from "@/lib/public-list-data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
@@ -48,7 +48,7 @@ import { radius, spacing, useTheme } from "@/lib/theme";
 import { openSite, openWebView } from "@/lib/web";
 
 /** The sheets besides the gift sheet: a gift fund, covering an item the owners bought, a new group gift, a suggestion. */
-type OtherSheet = { kind: "fund"; fundId: string } | { kind: "cover" | "groupGift"; itemId: string } | { kind: "suggest" };
+type OtherSheet = { kind: "fund"; fundId: string; again?: boolean } | { kind: "cover" | "groupGift"; itemId: string } | { kind: "suggest" };
 
 const PART_LABEL = { host: "You're hosting", yes: "You're going", maybe: "You said maybe", pending: "You haven't replied" } as const;
 
@@ -152,6 +152,24 @@ export default function PublicListScreen() {
 
   const sheetItem = sheet ? data.items.find((i) => i.id === sheet.itemId) : undefined;
   const empty = data.items.length === 0 && data.cashFunds.length === 0;
+  // Gift funds go above the items or after them, as the owner chose. An older
+  // website sends no position: that's the top, where they always were.
+  const fundsAt = data.fundsPosition ?? "top";
+  const funds =
+    data.cashFunds.length > 0 ? (
+      <View style={{ gap: spacing.md }}>
+        <Text variant="title">Gift Funds</Text>
+        {data.cashFunds.map((fund) => (
+          <FundCard
+            key={fund.id}
+            fund={fund}
+            given={data.myGifts.funds?.[fund.id]}
+            onOpen={() => setOther({ kind: "fund", fundId: fund.id })}
+            onGiveAgain={() => setOther({ kind: "fund", fundId: fund.id, again: true })}
+          />
+        ))}
+      </View>
+    ) : null;
 
   return (
     <>
@@ -232,14 +250,7 @@ export default function PublicListScreen() {
           </Text>
         ) : null}
 
-        {data.cashFunds.length > 0 ? (
-          <View style={{ gap: spacing.md }}>
-            <Text variant="title">Gift Funds</Text>
-            {data.cashFunds.map((fund) => (
-              <FundCard key={fund.id} fund={fund} given={data.myGifts.funds?.[fund.id]} onOpen={() => setOther({ kind: "fund", fundId: fund.id })} />
-            ))}
-          </View>
-        ) : null}
+        {fundsAt === "top" ? funds : null}
 
         {data.items.length > 8 ? (
           <Field
@@ -287,6 +298,8 @@ export default function PublicListScreen() {
           </View>
         ))}
 
+        {fundsAt === "bottom" ? funds : null}
+
         <View style={{ alignItems: "center", gap: spacing.sm }}>
           <Button title="Suggest an item" icon="add" variant="secondary" size="medium" onPress={() => setOther({ kind: "suggest" })} />
         </View>
@@ -320,7 +333,9 @@ function otherSheet(
   if (other.kind === "suggest") return <SuggestSheet registryId={data.registry.id} onClose={onClose} />;
   if (other.kind === "fund") {
     const fund = data.cashFunds.find((f) => f.id === other.fundId);
-    return fund ? <FundSheet fund={fund} page={data} given={data.myGifts.funds?.[fund.id]} link={link} onClose={onClose} /> : null;
+    return fund ? (
+      <FundSheet fund={fund} page={data} given={other.again ? undefined : data.myGifts.funds?.[fund.id]} link={link} onClose={onClose} />
+    ) : null;
   }
   const item = data.items.find((i) => i.id === other.itemId);
   if (!item) return null;
@@ -395,12 +410,18 @@ function FundCard({
   fund,
   given,
   onOpen,
+  onGiveAgain,
 }: {
   fund: PublicListPageData["cashFunds"][number];
+  /** Everything this guest gave to the fund. */
   given?: number;
   onOpen: () => void;
+  onGiveAgain: () => void;
 }) {
   const goal = fund.goal_amount && fund.goal_amount > 0 ? fund.goal_amount : null;
+  // A fund is never done, as on the website: after giving, the guest can give
+  // again, until a goal is reached, since the database refuses a gift past it.
+  const canGive = goal == null || goal - fund.current_amount > 0;
   return (
     <Card style={{ gap: spacing.md }}>
       <Text variant="headline">{fund.title}</Text>
@@ -423,9 +444,12 @@ function FundCard({
       ) : null}
       <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
         {given ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+              You gave {formatPrice(given)}
+            </Text>
             <Button title="View details" variant="ghost" size="small" onPress={onOpen} />
-            <Button title="Contributed" icon="check" variant="secondary" size="small" disabled />
+            {canGive ? <Button title="Give again" icon="fund" variant="secondary" size="small" onPress={onGiveAgain} /> : null}
           </View>
         ) : (
           <Button title="Contribute" icon="fund" size="small" onPress={onOpen} />

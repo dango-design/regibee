@@ -54,3 +54,23 @@ export const NoGoal: Story = {
     },
   },
 };
+
+// This guest gave before. The card says how much and offers to give again,
+// instead of looking done.
+export const AlreadyGiven: Story = {
+  args: {
+    fund: {
+      id: "4",
+      title: "College Fund",
+      description: "For a 529 plan.",
+      goal_amount: null,
+      current_amount: 300,
+    },
+    alreadyPurchased: true,
+    previousAmount: 50,
+    paymentMethods: { venmo: "@remi-and-max" },
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByRole("button", { name: /give again/i });
+  },
+};

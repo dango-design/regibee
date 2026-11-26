@@ -20,6 +20,9 @@ import { ScrollToTop } from "@/components/scroll-to-top";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
+import { FundsPositionMenu } from "@/components/funds-position-menu";
+import { fundsPosition } from "@/lib/gifts";
+import type { PaymentMethods } from "@/lib/types";
 import { PandaMark } from "@/components/panda-mark";
 import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
 import { formatPrice } from "@/lib/money";
@@ -135,13 +138,32 @@ export default async function RegistryManagePage({
       count: uncategorizedItems.length,
     });
   }
+  // Gift funds go above the items or after them, as the list's managers chose.
+  const fundsAt = fundsPosition(registry.settings);
   if (allFunds.length > 0) {
-    navItems.unshift({
-      id: "gift-funds",
-      name: "Gift Funds",
-      count: allFunds.length,
-    });
+    const fundsNav = { id: "gift-funds", name: "Gift Funds", count: allFunds.length };
+    if (fundsAt === "top") navItems.unshift(fundsNav);
+    else navItems.push(fundsNav);
   }
+  const paymentMethods = (registry.settings?.payment_methods as PaymentMethods | undefined) ?? null;
+
+  const fundsSection =
+    allFunds.length > 0 ? (
+      <div id="gift-funds" className="scroll-mt-20">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+            Gift Funds
+            <Badge variant="secondary">{allFunds.length}</Badge>
+          </h3>
+          <FundsPositionMenu registryId={registryId} position={fundsAt} />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {allFunds.map((fund) => (
+            <CashFundCard key={fund.id} fund={fund} registryId={registryId} highlightId={highlight} purchases={purchasesByFundId.get(fund.id)} />
+          ))}
+        </div>
+      </div>
+    ) : null;
 
   const registryUrl = `/r/${registry.slug}`;
   const accessColumns = {
@@ -254,7 +276,7 @@ export default async function RegistryManagePage({
                     </Link>
                   </Button>
                 )}
-                <AddCashFundDialog registryId={registryId} />
+                <AddCashFundDialog registryId={registryId} paymentMethods={paymentMethods} />
                 <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} openWithLink={sharedLink ?? undefined} />
               </div>
             </div>
@@ -293,20 +315,7 @@ export default async function RegistryManagePage({
                     registry with a single category still gets the sidebar. */}
                 {navItems.length >= 1 && <CategoryNav categories={navItems} />}
                 <div className="flex-1 min-w-0 space-y-8">
-                  {/* Gift Funds */}
-                  {allFunds.length > 0 && (
-                    <div id="gift-funds" className="scroll-mt-20">
-                      <h3 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">
-                        Gift Funds
-                        <Badge variant="secondary">{allFunds.length}</Badge>
-                      </h3>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {allFunds.map((fund) => (
-                          <CashFundCard key={fund.id} fund={fund} registryId={registryId} highlightId={highlight} purchases={purchasesByFundId.get(fund.id)} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {fundsAt === "top" && fundsSection}
 
                   {allCategories.map((category) => {
                     const categoryItems = itemsByCategory.get(category.id) || [];
@@ -375,6 +384,8 @@ export default async function RegistryManagePage({
                       </div>
                     </div>
                   )}
+
+                  {fundsAt === "bottom" && fundsSection}
                 </div>
               </div>
             )}
