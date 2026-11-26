@@ -19,6 +19,6 @@ export default async function SavedPage() {
     redirect("/signup?redirect=/dashboard/saved");
   }
 
-  const { lists, items } = await loadSavedItems(user.id);
-  return <SavedItems lists={lists} items={items} />;
+  const { lists, items, wishlistPromptClosed } = await loadSavedItems(user.id);
+  return <SavedItems lists={lists} items={items} wishlistPromptClosed={wishlistPromptClosed} />;
 }

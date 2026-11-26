@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { eventIncludesRegistry, registrySlugFromLink, resolveRegistryLink } from "@/lib/events-server";
+import { eventGuestFromToken, eventIncludesRegistry, registrySlugFromLink, resolveRegistryLink } from "@/lib/events-server";
 import { EVENT_GUEST_COOKIE, EVENT_GUEST_COOKIE_OPTIONS, encodeEventGuest } from "@/lib/event-guest-cookie";
 
 // A gift link on a guest's invitation: /e/<event>/gifts?g=<rsvp token>&to=<registry slug>.
@@ -13,6 +12,9 @@ import { EVENT_GUEST_COOKIE, EVENT_GUEST_COOKIE_OPTIONS, encodeEventGuest } from
 //
 // The registry's own address ends up in the address bar, so a guest who
 // copies it and sends it on doesn't send their identity along.
+//
+// The phone app's list screen does the same check without a cookie: it sends
+// the event and token with each request (eventGuestFromToken).
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -22,45 +24,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!to) return NextResponse.redirect(eventUrl);
 
   const registryUrl = new URL(`/r/${to}`, request.url);
-  const { data: event } = await supabaseAdmin.from("events").select("id").eq("slug", slug).maybeSingle();
-  if (!event || !token) return NextResponse.redirect(registryUrl);
+  if (!token) return NextResponse.redirect(registryUrl);
 
-  const [{ data: guest }, registry] = await Promise.all([
-    supabaseAdmin
-      .from("event_guests")
-      .select("id, name, email, giftee_id")
-      .eq("event_id", event.id)
-      .eq("token", token)
-      .maybeSingle(),
-    resolveRegistryLink(to),
-  ]);
+  const registry = await resolveRegistryLink(to);
+  const guest = registry ? await eventGuestFromToken(slug, token, [registry.id]) : null;
   if (!guest || !registry) return NextResponse.redirect(registryUrl);
 
-  // The guest's Secret Santa person, when their wishlist is this registry.
-  let santa: { registryId: string; gifteeName: string } | null = null;
-  if (guest.giftee_id) {
-    const { data: giftee } = await supabaseAdmin
-      .from("event_guests")
-      .select("name, wishlist_url")
-      .eq("id", guest.giftee_id)
-      .eq("event_id", event.id)
-      .maybeSingle();
-    if (giftee?.wishlist_url && registrySlugFromLink(giftee.wishlist_url) === registry.slug) {
-      santa = { registryId: registry.id, gifteeName: giftee.name };
-    }
-  }
-
-  // Otherwise the registry must be one the event links, or a guest's
-  // wishlist when everyone gives everyone.
-  if (!santa && !(await eventIncludesRegistry(event.id, registry.id))) {
+  // Unless they're its Secret Santa, the registry must be one the event
+  // links, or a guest's wishlist when everyone gives everyone.
+  if (!guest.santa && !(await eventIncludesRegistry(guest.eventId, registry.id))) {
     return NextResponse.redirect(registryUrl);
   }
 
   const response = NextResponse.redirect(registryUrl);
-  response.cookies.set(
-    EVENT_GUEST_COOKIE,
-    encodeEventGuest({ eventId: event.id, guestId: guest.id, name: guest.name, email: guest.email, santa }),
-    EVENT_GUEST_COOKIE_OPTIONS,
-  );
+  response.cookies.set(EVENT_GUEST_COOKIE, encodeEventGuest(guest), EVENT_GUEST_COOKIE_OPTIONS);
   return response;
 }

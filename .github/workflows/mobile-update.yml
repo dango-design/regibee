@@ -56,6 +56,7 @@ on:
       - src/lib/people-page-types.ts
       - src/lib/profile-link.ts
       - src/lib/profile-photos.ts
+      - src/lib/public-list-page-types.ts
       - src/lib/push.ts
       - src/lib/registry-copy.ts
       - src/lib/registry-listing.ts
@@ -63,6 +64,7 @@ on:
       - src/lib/retailers.ts
       - src/lib/rsvp-questions.ts
       - src/lib/saved-items-types.ts
+      - src/lib/shared-events.ts
       - src/lib/shared-link.ts
       - src/lib/signups.ts
       - src/lib/step-nav.ts

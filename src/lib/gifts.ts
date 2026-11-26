@@ -159,6 +159,128 @@ export function ownerItemStatus(item: OwnerItem, purchases: OwnerItemPurchase[] 
   };
 }
 
+// ── An item's status on someone else's list ─────────────────────────────
+//
+// The website's list page (PublicItemCard in
+// src/components/public-registry-grid.tsx) and the app's list screen
+// (mobile/src/app/r/[slug].tsx) both show this, so a guest reads the same
+// words in both.
+
+interface GuestItem {
+  quantity_needed: number;
+  quantity_fulfilled: number;
+  is_essential: boolean;
+  is_parent_purchased: boolean;
+}
+
+export type GuestItemTagKind =
+  | "parent-purchased"
+  | "reserved"
+  | "purchased-by-you"
+  | "gifted"
+  | "most-wanted";
+
+export interface GuestItemStatus {
+  /** Every one the owner asked for is reserved or given. */
+  isFulfilled: boolean;
+  /** How many are still needed. */
+  remaining: number;
+  /** How many a guest can still give: for an item the owners bought, how many aren't covered yet. */
+  availableToGift: number;
+  /** "2 of 3 still needed", or "1 of 2 available to gift" once the owners bought it. */
+  quantity: string;
+  /** The guest gave this item, or covered it. */
+  itemPurchased: boolean;
+  /** The guest reserved it and hasn't said they bought it yet. */
+  myReservation: boolean;
+  /** The guest's own group gift on it. */
+  myGroupGift?: { token: string; organizer: boolean };
+  /** Nothing left for anyone to do: shown faded. */
+  looksDone: boolean;
+  /** The guest can start a group gift on it. */
+  canStartGroupGift: boolean;
+  /** The tag under the item's title. Null when there's nothing to say. */
+  tag: { kind: GuestItemTagKind; label: string } | null;
+  /** The card shows its gift buttons. */
+  showsActions: boolean;
+}
+
+/**
+ * What a guest sees about one item on someone else's list.
+ *
+ * - `gift` is the guest's own gift on it, matched on the server.
+ * - `cookieValue` is what their gifts cookie holds for it: gifts saved before
+ *   the cookie held purchase ids say "cover" for an item the owners bought.
+ * - `reservedQty` is how many other guests reserved but haven't bought.
+ * - `coveredQty` is how many guests covered, for an item the owners bought.
+ * - `groupGift` is the guest's own group gift on it. `groupGiftsOn` is false
+ *   for the list's managers, who can't start one.
+ * - `endedLinkOpen` is true when the guest came from a "reservation ended"
+ *   email for this item, so its buttons show even when it's taken.
+ */
+export function guestItemStatus(
+  item: GuestItem,
+  opts: {
+    gift?: MyItemGift | null;
+    cookieValue?: string;
+    reservedQty?: number;
+    coveredQty?: number;
+    groupGift?: { token: string; organizer: boolean };
+    groupGiftsOn?: boolean;
+    selfPurchasedLabel?: string;
+    endedLinkOpen?: boolean;
+  } = {},
+): GuestItemStatus {
+  const gift = opts.gift ?? undefined;
+  const isFulfilled = item.quantity_fulfilled >= item.quantity_needed;
+  const remaining = item.quantity_needed - item.quantity_fulfilled;
+  // Gifts go by what the server matched to this visitor. Covers saved before
+  // the cookie held purchase ids left "cover" in it, which still counts.
+  const itemPurchased = item.is_parent_purchased ? !!gift || opts.cookieValue === "cover" : gift?.status === "purchased";
+  const myReservation = !item.is_parent_purchased && gift?.status === "reserved";
+  const coveredQty = opts.coveredQty ?? 0;
+  const availableToGift = item.is_parent_purchased ? item.quantity_needed - coveredQty : remaining;
+  const isFullyCovered = item.is_parent_purchased && coveredQty >= item.quantity_needed;
+  const myGroupGift = item.is_parent_purchased ? undefined : opts.groupGift;
+  const looksDone = (isFulfilled && !item.is_parent_purchased && !myReservation && !myGroupGift) || isFullyCovered;
+  // Anyone but the list's managers can start a group gift on an open item.
+  const canStartGroupGift = Boolean(opts.groupGiftsOn) && !item.is_parent_purchased && remaining > 0 && !gift && !myGroupGift;
+
+  let tag: GuestItemStatus["tag"] = null;
+  if (item.is_parent_purchased) tag = { kind: "parent-purchased", label: opts.selfPurchasedLabel ?? "Purchased by parent" };
+  else if (myGroupGift) tag = { kind: "reserved", label: myGroupGift.organizer ? "Your group gift" : "You're chipping in" };
+  else if (myReservation) {
+    tag = {
+      kind: "reserved",
+      label: gift?.reservedUntil
+        ? `Reserved for you · until ${formatReservedUntil(gift.reservedUntil, "short")}`
+        : "Reserved for you",
+    };
+  } else if (itemPurchased) tag = { kind: "purchased-by-you", label: "You gifted this" };
+  else if (isFulfilled) tag = (opts.reservedQty ?? 0) > 0 ? { kind: "reserved", label: "Reserved by a guest" } : { kind: "gifted", label: "Gifted" };
+  else if (item.is_essential) tag = { kind: "most-wanted", label: "Most wanted" };
+
+  const showsActions = item.is_parent_purchased
+    ? availableToGift > 0 || !!gift || !!opts.endedLinkOpen
+    : !isFulfilled || !!gift || !!myGroupGift || !!opts.endedLinkOpen;
+
+  return {
+    isFulfilled,
+    remaining,
+    availableToGift,
+    quantity: item.is_parent_purchased
+      ? `${availableToGift} of ${item.quantity_needed} available to gift`
+      : `${remaining} of ${item.quantity_needed} still needed`,
+    itemPurchased,
+    myReservation,
+    myGroupGift,
+    looksDone,
+    canStartGroupGift,
+    tag,
+    showsActions,
+  };
+}
+
 // ── A gift in its owner's gift activity ─────────────────────────────────
 //
 // The website's Gift Activity tab and dashboard cards, and the app's Gifts tab

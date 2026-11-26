@@ -18,7 +18,7 @@ import { USED_CONDITIONS, type Item } from "@/lib/types";
  * (src/components/ui/used-condition-tag.tsx). Before a noun, "like-new" takes
  * a hyphen and "very good" doesn't.
  */
-function usedLabel(item: Item) {
+export function usedLabel(item: { minimum_condition: string | null }) {
   const condition = USED_CONDITIONS.find((c) => c.id === item.minimum_condition) ?? USED_CONDITIONS[0];
   const words = condition.id === "like-new" ? "like-new" : condition.label.toLowerCase();
   return `Open to ${words} hand-me-downs`;

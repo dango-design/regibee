@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
 import { isUuid } from "@/lib/extension";
@@ -182,4 +183,25 @@ export async function startMyWishlist(): Promise<{ error: string } | { registryI
   if (!registryId) return { error: "Your wishlist was made. Find it on My registries." };
   revalidateLists([registryId]);
   return { registryId };
+}
+
+/**
+ * Closes the "Start your wishlist" prompt on the Saved tab, for this account on
+ * every device. For someone who keeps a birthday wishlist or a Christmas list
+ * instead of one main wishlist.
+ */
+export async function dismissWishlistPrompt(): Promise<{ error: string | null }> {
+  const { user, error } = await requireAccount();
+  if (error || !user) return { error: error || "You need an account to do this." };
+
+  const { error: saveError } = await supabaseAdmin
+    .from("profiles")
+    .update({ wishlist_prompt_dismissed_at: new Date().toISOString() })
+    .eq("id", user.id);
+  if (saveError) {
+    console.error("[saved] Failed to close the wishlist prompt:", saveError);
+    return { error: "That didn't save. Try again in a moment." };
+  }
+  revalidatePath("/dashboard/saved");
+  return { error: null };
 }
