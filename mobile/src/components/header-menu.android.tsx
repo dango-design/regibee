@@ -1,4 +1,4 @@
-// The "⋮" button in a screen's header on Android. It opens a Material menu
+// The "⋮" button in a screen's header, or at the end of a row, on Android. It opens a Material menu
 // that drops down from the button, like other Android apps' overflow menus.
 // A tap anywhere else closes it.
 
@@ -14,7 +14,7 @@ export type { HeaderMenuChoice } from "./header-menu-types";
 
 const moreIcon = require("../../assets/icons/more_vert.xml");
 
-export function HeaderMenu({ accessibilityLabel, choices }: HeaderMenuProps) {
+export function HeaderMenu({ accessibilityLabel, choices, size = "large" }: HeaderMenuProps) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -28,7 +28,7 @@ export function HeaderMenu({ accessibilityLabel, choices }: HeaderMenuProps) {
               setOpen(true);
             }}
           >
-            <Icon source={moreIcon} tint={theme.tint} size={24} contentDescription={accessibilityLabel} />
+            <Icon source={moreIcon} tint={theme.tint} size={size === "small" ? 20 : 24} contentDescription={accessibilityLabel} />
           </IconButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Items>

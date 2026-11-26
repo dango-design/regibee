@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { FolderOpen, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { Input } from "@/components/base/input/input";
 import {
   Sheet,
@@ -33,6 +35,8 @@ export function CategoryManager({
   const [editName, setEditName] = useState("");
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
+  // The category waiting for the owner to confirm its delete.
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -50,12 +54,12 @@ export function CategoryManager({
     setLoading(false);
   };
 
-  const handleDelete = async (categoryId: string, name: string) => {
-    if (!confirm(`Delete category "${name}"? Items will become uncategorized.`))
-      return;
+  const handleDelete = async () => {
+    if (!deleting) return;
     setLoading(true);
-    await deleteCategory(categoryId, registryId);
+    await deleteCategory(deleting.id, registryId);
     setLoading(false);
+    setDeleting(null);
   };
 
   const startEditing = (id: string, name: string) => {
@@ -102,23 +106,19 @@ export function CategoryManager({
           ) : (
             <>
               <span className="flex-1 text-sm">{cat.name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => startEditing(cat.id, cat.name)}
-                aria-label={`Rename ${cat.name}`}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDelete(cat.id, cat.name)}
-                aria-label={`Delete ${cat.name}`}
-                className="text-error-primary hover:text-error-primary"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              {/* Rename and Delete are rare, so they share one "…" menu
+                  instead of two buttons on every row. */}
+              <RowActionsMenu
+                label={`More actions for ${cat.name}`}
+                actions={[
+                  { id: "rename", label: "Rename", icon: Pencil },
+                  { id: "delete", label: "Delete", icon: Trash2, destructive: true },
+                ]}
+                disabled={loading}
+                onAction={(id) =>
+                  id === "rename" ? startEditing(cat.id, cat.name) : setDeleting({ id: cat.id, name: cat.name })
+                }
+              />
             </>
           )}
         </div>
@@ -145,6 +145,16 @@ export function CategoryManager({
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+
+      <ConfirmActionDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={`Delete the ${deleting?.name ?? ""} category?`}
+        description="Its items stay on the list, with no category."
+        confirmLabel="Delete"
+        working={loading}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 

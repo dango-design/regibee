@@ -24,6 +24,7 @@ import {
 } from "@shared/signups";
 
 import { DateField } from "@/components/date-field";
+import { HeaderMenu } from "@/components/header-menu";
 import { Icon } from "@/components/icon";
 import { Button, Card, Divider, Field, haptic, IconButton, Stepper, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -413,7 +414,7 @@ function SignupRow({
   const theme = useTheme();
   const full = row.claims.length >= row.needed;
   const name = rowName(row);
-  // IconButton has no disabled state, so its presses wait here while a change runs.
+  // IconButton and the menu have no disabled state, so their presses wait here while a change runs.
   const unlessBusy = (work: () => void) => () => {
     if (!busy) work();
   };
@@ -429,8 +430,17 @@ function SignupRow({
             {full ? "Full" : `${row.claims.length} of ${row.needed} taken`}
           </Text>
         </View>
-        <IconButton icon="edit" size={18} accessibilityLabel={`Edit ${name}`} onPress={unlessBusy(onEdit)} />
-        <IconButton icon="trash" size={18} accessibilityLabel={`Remove ${name}`} onPress={unlessBusy(onRemove)} />
+        {/* Edit and Remove are in one "…" menu, as on the website, so a row
+            isn't crowded with buttons and Remove isn't one stray tap away. */}
+        <HeaderMenu
+          size="small"
+          accessibilityLabel={`More actions for ${name}`}
+          title={name}
+          choices={[
+            { label: "Edit row", icon: "edit", onPress: unlessBusy(onEdit) },
+            { label: "Remove row", icon: "trash", destructive: true, onPress: unlessBusy(onRemove) },
+          ]}
+        />
       </View>
       {row.claims.map((claim) => (
         <View key={claim.guestId} style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
@@ -442,7 +452,7 @@ function SignupRow({
           </Text>
           <IconButton
             icon="close"
-            size={13}
+            size={16}
             color={theme.textTertiary}
             accessibilityLabel={`Take ${claim.name} off ${name}`}
             onPress={unlessBusy(() => onRemoveClaim(claim.guestId, claim.name))}

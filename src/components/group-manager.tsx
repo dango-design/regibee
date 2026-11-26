@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarHeart, Gift, Loader2, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { CalendarHeart, Gift, Loader2, Pencil, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -274,19 +275,19 @@ export function GroupManager({ group, members, events, sharedLists, actions: ove
                       <span className="block truncate text-sm font-medium text-primary">{member.name}</span>
                       <span className="block truncate text-xs text-tertiary">{emailLabel(member)}</span>
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Remove ${member.name}`}
+                    {/* In a menu, not a button on every row, so nobody is
+                        removed by a stray click. It doesn't ask first: nobody
+                        is emailed, and adding them back is quick. */}
+                    <RowActionsMenu
+                      label={`More actions for ${member.name}`}
                       disabled={busy !== null}
-                      onClick={async () => {
+                      actions={[{ id: "remove", label: "Remove from group", icon: UserMinus, destructive: true }]}
+                      onAction={async () => {
                         if (await run(`remove-${member.id}`, () => actions.removeMember(group.id, member.id))) {
                           router.refresh();
                         }
                       }}
-                    >
-                      <X className="size-4" />
-                    </Button>
+                    />
                   </li>
                 ))}
               </ul>

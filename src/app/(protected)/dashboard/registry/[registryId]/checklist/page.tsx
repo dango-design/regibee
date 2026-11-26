@@ -21,6 +21,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
@@ -361,7 +362,7 @@ export default function ChecklistPage() {
                             <div className="flex flex-wrap items-center gap-2 shrink-0">
                               <Badge variant="secondary" className="shrink-0">
                                 <Check className="h-3 w-3 mr-1" />
-                                Manually mark as registered
+                                Marked as registered
                               </Badge>
                               <button
                                 onClick={() => handleToggleDismissed(item)}
@@ -372,16 +373,7 @@ export default function ChecklistPage() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-4 shrink-0 max-sm:flex-wrap max-sm:justify-end max-sm:gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="shrink-0"
-                                disabled={isDismissing}
-                                onClick={() => handleToggleDismissed(item)}
-                              >
-                                Manually mark as registered
-                              </Button>
+                            <div className="flex items-center gap-2 shrink-0 max-sm:flex-wrap max-sm:justify-end">
                               <Button
                                 size="sm"
                                 variant="secondary"
@@ -402,6 +394,15 @@ export default function ChecklistPage() {
                                   )}
                                 </span>
                               </Button>
+                              {/* For something registered elsewhere, like at a
+                                  store. Few rows need it, so it's in a "…" menu
+                                  instead of a second button on every row. */}
+                              <RowActionsMenu
+                                label={`More actions for ${item.name}`}
+                                actions={[{ id: "mark", label: "Mark as registered", icon: Check }]}
+                                disabled={isDismissing}
+                                onAction={() => handleToggleDismissed(item)}
+                              />
                             </div>
                           )}
                         </div>

@@ -13,6 +13,7 @@ import { memberCountLabel } from "@shared/groups";
 
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { CAN_PICK_CONTACTS, useContactPicker } from "@/components/contact-picker";
+import { HeaderMenu } from "@/components/header-menu";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, ErrorState, Field, haptic, IconButton, LoadingState, Section, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
@@ -249,11 +250,20 @@ export default function GroupScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <IconButton
-                  icon="close"
-                  color={theme.textTertiary}
-                  accessibilityLabel={`Remove ${member.name}`}
-                  onPress={() => attempt(`remove-${member.id}`, () => run("groups.removeGroupMember", group.id, member.id))}
+                {/* In a menu, not a button on every row, as on the website. It
+                    doesn't ask first: nobody is emailed, and adding them back is quick. */}
+                <HeaderMenu
+                  size="small"
+                  accessibilityLabel={`More actions for ${member.name}`}
+                  title={member.name}
+                  choices={[
+                    {
+                      label: "Remove from group",
+                      icon: "personRemove",
+                      destructive: true,
+                      onPress: () => attempt(`remove-${member.id}`, () => run("groups.removeGroupMember", group.id, member.id)),
+                    },
+                  ]}
                 />
               </View>
             </View>

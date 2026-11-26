@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Info, Link as LinkIcon, Package, Percent, RotateCcw } from "lucide-react";
+import { Info, Link as LinkIcon, Package, Percent, RotateCcw, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { Input } from "@/components/base/input/input";
 import { SelectField } from "@/components/base/select/select-field";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -49,6 +51,8 @@ export function StoreRegistriesCard({
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // The store registry waiting for the owner to confirm its removal.
+  const [removing, setRemoving] = useState<StoreId | null>(null);
 
   const unlinkedStores = STORES.filter((s) => !registries.some((r) => r.store === s.id));
 
@@ -88,8 +92,11 @@ export function StoreRegistriesCard({
     }
   };
 
-  const handleRemove = (storeId: StoreId) => {
-    save(registries.filter((r) => r.store !== storeId));
+  // An error shows under the list, like an error from adding one.
+  const handleRemove = async () => {
+    if (!removing) return;
+    await save(registries.filter((r) => r.store !== removing));
+    setRemoving(null);
   };
 
   return (
@@ -139,16 +146,13 @@ export function StoreRegistriesCard({
                       {displayUrl(r.url)}
                     </a>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
+                  {/* Removing is rare, so it's in a "…" menu, not a button on every row. */}
+                  <RowActionsMenu
+                    label={`More actions for ${s.name} registry`}
+                    actions={[{ id: "remove", label: "Remove", icon: Unlink, destructive: true }]}
                     disabled={saving}
-                    onClick={() => handleRemove(r.store)}
-                    aria-label={`Remove ${s.name} registry`}
-                  >
-                    Remove
-                  </Button>
+                    onAction={() => setRemoving(r.store)}
+                  />
                 </li>
               );
             })}
@@ -195,6 +199,16 @@ export function StoreRegistriesCard({
         )}
 
         {error && <p className="text-sm text-error-primary">{error}</p>}
+
+        <ConfirmActionDialog
+          open={removing !== null}
+          onOpenChange={(open) => !open && setRemoving(null)}
+          title={`Remove your ${removing ? getStore(removing).name : ""} registry?`}
+          description="Its link comes off this list. Your registry at the store stays as it is, and you can link it again later."
+          confirmLabel="Remove"
+          working={saving}
+          onConfirm={handleRemove}
+        />
 
         <p className="flex items-start gap-1.5 text-xs text-tertiary">
           <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
