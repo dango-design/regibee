@@ -99,6 +99,13 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The product readers fill it in when the page has one: `src/lib/product-page.ts` on the server, and `extension/src/product-reader.ts` in the extension and the phone app. The rules and their tests are in `src/lib/gtin.ts`. The extension's reader can't import, so it has its own copy: change both.
 - A barcode belongs to the link it was read from. The dialogs send it only with that link, and the server actions clear a saved one when the link changes without a new one (`gtinChange`). Swapping a store link for its registry link keeps it, since that's the same product.
 
+## Guessing categories
+
+- Adding an item guesses its category on the website, in the extension and in the phone app, from its name and the store's own category (the page's breadcrumbs). The rules and their tests are in `src/lib/item-categories.ts`.
+- The guess prefers a category the list already has. When none fits, it names a broad one, such as "Food & Drink", which shows as chosen and marked new. It's added to the list only when the item is saved, so a closed dialog leaves no empty category.
+- "Sort into categories", next to a list's Other heading on the website and in the app, does the same for the items that have none (`src/lib/actions/categories.ts`), with an Undo.
+- The product readers fill in `storeCategory`: `src/lib/product-page.ts` on the server, and `extension/src/product-reader.ts` in the extension and the app. The extension's reader can't import, so it has its own copy of `storeCategoryPath`: change both. Nothing saves the store's category.
+
 ## Filling in details later
 
 - Some stores, Amazon above all, block Regibee's server. An item added without the extension, such as from an iPad, then keeps its link and a name guessed from it, with no photo or price.

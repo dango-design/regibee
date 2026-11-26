@@ -16,6 +16,7 @@ import { AddItemDialog } from "@/components/add-item-dialog";
 import { ItemCard } from "@/components/item-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
 import { MissingDetailsNotice } from "@/components/missing-details-notice";
+import { SortIntoCategoriesButton } from "@/components/sort-into-categories-button";
 import { DetailReview } from "@/components/detail-review";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { RegistryTabs } from "@/components/registry-tabs";
@@ -361,7 +362,10 @@ export default async function RegistryManagePage({
                   {/* Uncategorized items */}
                   {(itemsByCategory.get(null) || []).length > 0 && (
                     <div id={getCategorySectionId(null)} className="scroll-mt-20">
-                      <h3 className="font-display text-lg font-semibold mb-3">Other</h3>
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-display text-lg font-semibold">Other</h3>
+                        <SortIntoCategoriesButton registryId={registryId} count={itemsByCategory.get(null)!.length} />
+                      </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         {itemsByCategory.get(null)!.map((item) => (
                           <ItemCard

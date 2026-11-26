@@ -8,6 +8,7 @@
 import { isIP } from "node:net";
 import * as cheerio from "cheerio";
 import { gtinFromStorePageData, gtinFromStructuredData, normalizeGtin } from "./gtin.ts";
+import { storeCategoryPath } from "./item-categories.ts";
 
 export interface ProductDetails {
   title?: string;
@@ -16,6 +17,12 @@ export interface ProductDetails {
   price?: string;
   /** The product's barcode number (src/lib/gtin.ts), when the page has one. */
   gtin?: string;
+  /**
+   * The store's category path from the page's breadcrumbs, most general
+   * first, when it has some. It helps guess the item's category
+   * (src/lib/item-categories.ts).
+   */
+  storeCategory?: string[];
   error?: string;
 }
 
@@ -347,6 +354,7 @@ export function readProductPage(html: string, pageUrl: string): ProductDetails {
 
   const primaryImageUrl = imageCandidates[0];
   const gtin = readGtin($, pageUrl);
+  const storeCategory = readStoreCategory($, title);
 
   // If we got nothing useful, return a helpful error
   if (!title && !primaryImageUrl && !price) {
@@ -362,7 +370,61 @@ export function readProductPage(html: string, pageUrl: string): ProductDetails {
     imageUrls: imageCandidates.length > 0 ? imageCandidates : undefined,
     price: price || undefined,
     ...(gtin ? { gtin } : {}),
+    ...(storeCategory.length > 0 ? { storeCategory } : {}),
   };
+}
+
+/**
+ * The store's category path, from the page's breadcrumbs: Amazon's, then the
+ * structured data most shops add for search engines, then schema.org or
+ * labelled breadcrumbs on the page. The extension reads the same places.
+ */
+function readStoreCategory($: cheerio.CheerioAPI, title: string | undefined): string[] {
+  const text = (el: Parameters<typeof $>[0]) => $(el).text().replace(/\s+/g, " ").trim();
+
+  const amazon = $("#wayfinding-breadcrumbs_feature_div li a").map((_, el) => text(el)).get();
+  if (amazon.length > 0) return storeCategoryPath(amazon, title);
+
+  const lists: string[][] = [];
+  let productCategory: string | null = null;
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) return node.forEach(visit);
+    const value = node as Record<string, unknown>;
+    const types = ([] as unknown[]).concat(value["@type"]);
+    if (types.includes("BreadcrumbList") && Array.isArray(value.itemListElement)) {
+      const steps = (value.itemListElement as Record<string, unknown>[])
+        .slice()
+        .sort((a, b) => Number(a?.position ?? 0) - Number(b?.position ?? 0))
+        .map((step) => step?.name ?? (step?.item as Record<string, unknown> | undefined)?.name);
+      lists.push(steps.filter((s): s is string => typeof s === "string"));
+    }
+    if (!productCategory && types.some((t) => typeof t === "string" && /^(Product|ProductGroup|IndividualProduct)$/i.test(t))) {
+      const category = value.category;
+      if (typeof category === "string" && !/^https?:/i.test(category)) productCategory = category;
+    }
+    visit(value["@graph"]);
+  };
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      visit(JSON.parse($(el).text()));
+    } catch {
+      // Ignore invalid JSON-LD
+    }
+  });
+  for (const steps of lists) {
+    const path = storeCategoryPath(steps, title);
+    if (path.length > 0) return path;
+  }
+  if (productCategory) {
+    const path = storeCategoryPath((productCategory as string).split(/\s*[>›/|]\s*/), title);
+    if (path.length > 0) return path;
+  }
+
+  const marked = $('[itemtype*="schema.org/BreadcrumbList"] [itemprop="name"]').map((_, el) => text(el)).get();
+  if (marked.length > 0) return storeCategoryPath(marked, title);
+  const labelled = $('nav[aria-label*="breadcrumb" i] a, ol.breadcrumb a, ul.breadcrumb a, .breadcrumbs a').map((_, el) => text(el)).get();
+  return storeCategoryPath(labelled, title);
 }
 
 /**
