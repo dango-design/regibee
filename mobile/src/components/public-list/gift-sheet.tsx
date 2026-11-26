@@ -204,8 +204,8 @@ export function GiftSheet({
           {step === "reserve"
             ? registryStoreName
               ? `It's on ${parentName}'s ${registryStoreName} registry, so the store has their address.`
-              : "Reserve it so nobody else buys it, and you'll get the address to ship it to."
-            : `They'll see it's from ${fromWhom}, and nobody else will buy it.`}
+              : "Reserve it so nobody else buys it."
+            : `They'll see it's from ${fromWhom}.`}
         </Text>
         <ItemPanel item={item} shop={shop} showShop={step === "reserve"} />
         <Field label="Your Name" value={name} onChangeText={setName} placeholder="Alex Kim" autoComplete="name" textContentType="name" returnKeyType="next" />
@@ -251,8 +251,8 @@ export function GiftSheet({
           {step === "reserve" ? (
             <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
               {oneTap
-                ? `${shopName} opens in the browser. Close it when you've checked out.`
-                : `We'll hold it for you for ${GIFT_HOLD_DAYS} days while you buy it.`}
+                ? `${shopName} opens in the browser. Come back here after checkout.`
+                : `We'll hold it for you for ${GIFT_HOLD_DAYS} days.`}
             </Text>
           ) : null}
         </View>
@@ -293,8 +293,8 @@ export function GiftSheet({
         ) : !address ? (
           <Text variant="callout" tone="secondary">
             {prefill?.secretGiver
-              ? "This registry has no shipping address yet. Bring it to the gift exchange, or ask the host where to send it."
-              : `This registry has no shipping address yet. Ask ${parentName} where to send it.`}
+              ? "No shipping address yet. Bring it to the gift exchange, or ask the host."
+              : `No shipping address yet. Ask ${parentName} where to send it.`}
           </Text>
         ) : null}
         {!registryStoreName ? shipTo(!copyAndGo) : null}
@@ -319,7 +319,7 @@ export function GiftSheet({
     content = (
       <>
         <Text variant="callout" tone="secondary">
-          Tell us so nobody else buys it. {parentName} will see it&apos;s from {fromWhom}.
+          {parentName} will see it&apos;s from {fromWhom}.
         </Text>
         {errorLine}
         <Button title="Yes, I bought it" loading={confirm.isPending} onPress={markBought} />
@@ -338,8 +338,7 @@ export function GiftSheet({
         </View>
         <Text variant="callout" tone="secondary" style={{ textAlign: "center" }}>
           We&apos;ll hold the {item.title}
-          {until ? ` until ${until}` : ""} and remind you the day before. Finish it from the banner at the top of the registry,
-          or the link in your email.
+          {until ? ` until ${until}` : ""} and email you the day before.
         </Text>
         <Button title="Done" onPress={onClose} />
         <Button title="Release it instead" variant="ghost" size="medium" onPress={goToRelease} />
@@ -364,7 +363,7 @@ export function GiftSheet({
     content = (
       <>
         <Text variant="callout" tone="secondary">
-          It goes back on the list so another guest can give it.
+          It goes back on the list.
         </Text>
         {errorLine}
         <Button title={undo ? "Undo gift" : "Release gift"} variant="danger" loading={release.isPending} onPress={releaseGift} />

@@ -106,9 +106,7 @@ function EveryoneGivesManager({
             <h2 id="exchange-manager-heading" className="text-lg font-semibold text-primary">
               Everyone gives everyone
             </h2>
-            <p className="text-sm text-tertiary">
-              {exchange.budget ? `About ${exchange.budget} a gift · ` : ""}Guests link wishlists when they RSVP
-            </p>
+            {exchange.budget && <p className="text-sm text-tertiary">About {exchange.budget} a gift</p>}
           </div>
         </div>
         <Link href={editHref} className="text-sm font-medium text-brand-tertiary hover:underline max-sm:min-h-11">
@@ -118,7 +116,7 @@ function EveryoneGivesManager({
 
       <p className="text-primary">
         {taking.length === 0
-          ? "Nobody is taking part yet. Guests who say they're going or might go take part."
+          ? "Nobody is taking part yet."
           : `${taking.length === 1 ? "1 guest is" : `${taking.length} guests are`} taking part, and ${
               withList.length === taking.length
                 ? "everyone has"
@@ -149,9 +147,8 @@ function EveryoneGivesManager({
       )}
 
       <p className="text-xs text-tertiary">
-        Guests see everyone&apos;s lists on the invitation, and what the others reserved from each one. Nobody sees
-        what&apos;s been reserved from their own list until the day after the event. Taking part yourself? Add
-        yourself to the guest list and RSVP from your own link.
+        Guests see each other&apos;s lists and what&apos;s been reserved, but not what&apos;s reserved from their own
+        until the day after the event. To take part yourself, add yourself as a guest.
       </p>
     </section>
   );
@@ -246,25 +243,25 @@ function DrawManager({
         <div className="flex flex-col gap-2">
           <p className="text-primary">
             Names were drawn on {new Date(exchange.drawn_at!).toLocaleDateString("en-US", { month: "long", day: "numeric" })}.{" "}
-            Everyone with an email got their person. Nobody else can see who drew whom, you included.
+            Nobody else sees who drew whom, not even you.
           </p>
           {status.withoutEmail > 0 && (
             <p className="text-sm text-secondary">
-              {status.withoutEmail === 1 ? "1 person has" : `${status.withoutEmail} people have`} no email. Copy their RSVP
-              link from the guest list and text it to them: it shows their person.
+              {status.withoutEmail === 1 ? "1 person has" : `${status.withoutEmail} people have`} no email. Text them their
+              RSVP link from the guest list.
             </p>
           )}
           {status.stale && (
             <p className="flex items-start gap-2 rounded-xl bg-sunshine-50 dark:bg-sunshine-400/10 p-3 text-sm text-sunshine-900 dark:text-sunshine-200">
               <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              Someone joined or left after the draw, so not everyone has exactly one person. Draw again to fix it.
+              Someone joined or left after the draw. Draw again to fix it.
             </p>
           )}
         </div>
       ) : (
         <p className="text-primary">
           {participants.length === 0
-            ? "Nobody has joined yet. Guests join when they RSVP."
+            ? "Nobody has joined yet."
             : `${participants.length === 1 ? "1 person is" : `${participants.length} people are`} in, and ${
                 status.withWishlist === 1 ? "1 has" : `${status.withWishlist} have`
               } added a wishlist or gift ideas.`}
@@ -309,8 +306,7 @@ function DrawManager({
         )}
         {!drawn && (
           <p className="text-xs text-tertiary">
-            Taking part yourself? Add yourself to the guest list with your email and RSVP from your own link, so you
-            get your person like everyone else.
+            To take part yourself, add yourself as a guest with your email.
           </p>
         )}
       </div>
@@ -319,7 +315,7 @@ function DrawManager({
       {(!drawn || exclusions.length > 0) && (
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-secondary">Who won&apos;t draw each other</h3>
-          {exclusions.length > 0 ? (
+          {exclusions.length > 0 && (
             <ul className="flex flex-wrap gap-2">
               {exclusions.map((x) => (
                 <li
@@ -341,8 +337,6 @@ function DrawManager({
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-tertiary">Partners usually don&apos;t draw each other. Add them here.</p>
           )}
           {!drawn && participants.length >= 2 && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -395,11 +389,11 @@ function DrawManager({
         <div className="flex flex-col gap-3 rounded-xl bg-primary p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-secondary">
             {confirming === "draw" &&
-              `Draw names for ${participants.length} people? Each gets an email with their person. You won't see who drew whom.`}
+              `Draw names for ${participants.length} people? Each gets an email with their person.`}
             {confirming === "again" &&
-              "Draw again? Everyone in gets a new person and a new email, replacing the old one."}
+              "Draw again? Everyone gets a new person by email."}
             {confirming === "undo" &&
-              "Undo the draw? Everyone's person is cleared, so you can change who's in. Nobody is emailed."}
+              "Undo the draw? Everyone's person is cleared. Nobody is emailed."}
           </p>
           <div className="flex shrink-0 gap-2">
             <Button

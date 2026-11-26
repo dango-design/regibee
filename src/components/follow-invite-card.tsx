@@ -63,8 +63,7 @@ export function FollowInviteCard({
     case "signed-out":
       body = (
         <>
-          If you say yes, they&apos;ll see the registries you choose to show on your Regibee profile.
-          Create a free account or log in to answer.
+          If you say yes, they&apos;ll see the lists you show on your profile.
         </>
       );
       actions = (
@@ -81,8 +80,8 @@ export function FollowInviteCard({
     case "open":
       body = (
         <>
-          If you say yes, they&apos;ll see the registries you choose to show on your profile,
-          including private ones. You can remove them as a follower at any time.
+          If you say yes, they&apos;ll see the lists you show followers on your profile. You can
+          remove them anytime.
         </>
       );
       actions = (
@@ -100,11 +99,7 @@ export function FollowInviteCard({
       title = `${name} follows you now`;
       body = (
         <>
-          They&apos;ll see the registries you show on your profile, and your birthday if you add it. You
-          choose which registries on your account page.
-          {inviter && followingInviter !== "approved" && (
-            <> Follow {name} back to see theirs.</>
-          )}
+          They&apos;ll see your birthday and the lists you show on your profile.
         </>
       );
       actions = (
@@ -118,7 +113,7 @@ export function FollowInviteCard({
             />
           )}
           <Button variant="outline" asChild>
-            <Link href="/dashboard/account#profile-registries">Choose registries</Link>
+            <Link href="/dashboard/account#profile-registries">Choose lists</Link>
           </Button>
           {inviter && (
             <Button variant="outline" asChild>
@@ -139,7 +134,7 @@ export function FollowInviteCard({
       break;
     case "own":
       title = "This is your invite";
-      body = <>Send the link to the person you invited. They&apos;ll need to open it themselves.</>;
+      body = <>Send the link to the person you invited.</>;
       break;
     case "answered":
       title = "This invite has been answered";
@@ -151,7 +146,7 @@ export function FollowInviteCard({
       break;
     case "invalid":
       title = "This invite link doesn't work";
-      body = <>Check that the whole link was copied from the email.</>;
+      body = <>Check that you copied the whole link.</>;
       break;
   }
 

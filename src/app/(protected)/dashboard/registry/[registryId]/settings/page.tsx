@@ -28,6 +28,7 @@ import {
   listInvites,
 } from "@/lib/actions/registry";
 import { CategoryManager } from "@/components/category-manager";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import { DeleteRegistryCard } from "@/components/delete-registry-card";
 import { ProfileListingField } from "@/components/profile-listing-field";
 import { ListAccessField } from "@/components/list-access-field";
@@ -145,6 +146,12 @@ export default function RegistrySettingsPage() {
   const [generatedLink, setGeneratedLink] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [maxUses, setMaxUses] = useState<string>("1");
+  // What the confirm dialog asks about. It's kept after the dialog closes, so
+  // the dialog's words don't change while it fades out.
+  const [asking, setAsking] = useState<{ kind: "manager" | "invite"; id: string } | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askWorking, setAskWorking] = useState(false);
+  const [askError, setAskError] = useState("");
 
   const isOwner = currentUserId !== null && registry?.owner_id === currentUserId;
 
@@ -334,24 +341,35 @@ export default function RegistrySettingsPage() {
     setGeneratingLink(false);
   };
 
-  const handleRemoveManager = async (managerId: string) => {
-    if (!confirm("Remove this manager? They will lose access to the registry.")) return;
-    const result = await removeManager(registryId, managerId);
-    if (result.error) {
-      alert(result.error);
-    } else {
-      fetchManagerData();
-    }
+  // Removing a manager or revoking an invite asks first. The dialog stays
+  // open while the action runs, and shows its error if it fails.
+  const askToRemoveManager = (managerId: string) => {
+    setAskError("");
+    setAsking({ kind: "manager", id: managerId });
+    setAskOpen(true);
   };
 
-  const handleRevokeInvite = async (inviteId: string) => {
-    if (!confirm("Revoke this invite? The link will stop working.")) return;
-    const result = await revokeInvite(inviteId, registryId);
+  const askToRevokeInvite = (inviteId: string) => {
+    setAskError("");
+    setAsking({ kind: "invite", id: inviteId });
+    setAskOpen(true);
+  };
+
+  const confirmAsked = async () => {
+    if (!asking) return;
+    setAskWorking(true);
+    setAskError("");
+    const result =
+      asking.kind === "manager"
+        ? await removeManager(registryId, asking.id)
+        : await revokeInvite(asking.id, registryId);
+    setAskWorking(false);
     if (result.error) {
-      alert(result.error);
-    } else {
-      fetchManagerData();
+      setAskError(result.error);
+      return;
     }
+    setAskOpen(false);
+    fetchManagerData();
   };
 
   if (loading || !registry) {
@@ -410,7 +428,6 @@ export default function RegistrySettingsPage() {
           <Card id="general" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="general">General</SectionTitle>
-              <CardDescription>Update your registry details</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-6 flex items-center gap-4">
@@ -429,12 +446,7 @@ export default function RegistrySettingsPage() {
                   </span>
                 )}
                 <div className="min-w-0 space-y-2">
-                  <div>
-                    <p className="text-sm font-medium text-secondary">Registry photo</p>
-                    <p className="text-xs text-tertiary">
-                      Shown at the top of your registry page. Without one, guests see your initials.
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium text-secondary">Registry photo</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <PhotoUploadButton
                       label={registry.photo_url ? "Change photo" : "Upload photo"}
@@ -484,7 +496,6 @@ export default function RegistrySettingsPage() {
                   name="honoreeNames"
                   placeholder={copyFor({ registryType: registry.registry_type, eventType: registry.event_type }).honoreePlaceholder}
                   defaultValue={registry.honoree_names || registry.parent_names || ""}
-                  hint="The name shown to gift givers and in email notifications."
                 />
 
                 <Input
@@ -510,8 +521,7 @@ export default function RegistrySettingsPage() {
 
                   {visibilityChoice === "private" && listVisibility(registry) !== "private" && (
                     <p role="status" className="rounded-lg bg-warning-primary px-3 py-2 text-sm text-warning-800 dark:text-warning-300">
-                      When you save, people you&apos;ve sent the link to won&apos;t be able to open it, and it&apos;ll
-                      come off any event or group you&apos;ve shared it with.
+                      Once you save, people with the link can&apos;t open it, and it comes off any events and groups.
                     </p>
                   )}
 
@@ -563,10 +573,7 @@ export default function RegistrySettingsPage() {
                 <Card id="gift-profile" className={SECTION_SCROLL_MARGIN}>
                   <CardHeader>
                     <SectionTitle sectionId="gift-profile">About {childName}</SectionTitle>
-                    <CardDescription>
-                      Help people pick gifts. Sizes, likes and the rest show on this list, so anyone with its
-                      link sees them.
-                    </CardDescription>
+                    <CardDescription>Anyone with this list&apos;s link sees these.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <GiftProfileForm
@@ -584,7 +591,6 @@ export default function RegistrySettingsPage() {
           <Card id="categories" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="categories">Categories</SectionTitle>
-              <CardDescription>Organize your registry items into categories</CardDescription>
             </CardHeader>
             <CardContent>
               <CategoryManager registryId={registryId} categories={categories} inline />
@@ -594,9 +600,7 @@ export default function RegistrySettingsPage() {
           <Card id="location" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="location">Location</SectionTitle>
-              <CardDescription>
-                Used to estimate sales tax on item prices when auto-filling from product URLs
-              </CardDescription>
+              <CardDescription>Used to estimate sales tax.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={handleSaveZip} className="space-y-4">
@@ -613,7 +617,7 @@ export default function RegistrySettingsPage() {
                   name="taxEnabled"
                   value="true"
                   defaultSelected={registry.settings?.tax_enabled !== false}
-                  label="Auto-add estimated sales tax to prices"
+                  label="Add estimated sales tax to prices"
                 />
 
                 {zipError && (
@@ -634,10 +638,7 @@ export default function RegistrySettingsPage() {
           <Card id="payment-methods" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="payment-methods">Payment methods</SectionTitle>
-              <CardDescription>
-                Add your payment info so gift givers can send you money for cash
-                funds and items you&apos;ve already purchased.
-              </CardDescription>
+              <CardDescription>Gift givers pay you directly. Regibee never handles money.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={handleSavePayment} className="space-y-4">
@@ -689,9 +690,6 @@ export default function RegistrySettingsPage() {
           <Card id="shipping-address" className={SECTION_SCROLL_MARGIN}>
             <CardHeader>
               <SectionTitle sectionId="shipping-address">Shipping address</SectionTitle>
-              <CardDescription>
-                Share your shipping address with gift givers so they know where to send gifts.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <form action={handleSaveAddress} className="space-y-4">
@@ -733,9 +731,7 @@ export default function RegistrySettingsPage() {
                 <Users className="h-5 w-5" />
                 Managers
               </SectionTitle>
-              <CardDescription>
-                Invite others to help manage this registry. Managers can add/edit items, view gift activity, and manage categories.
-              </CardDescription>
+              <CardDescription>Managers can edit this list and see its gifts.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Current managers list */}
@@ -758,7 +754,7 @@ export default function RegistrySettingsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveManager(m.id)}
+                          onClick={() => askToRemoveManager(m.id)}
                           aria-label={`Remove ${m.name}`}
                           className="text-error-primary hover:text-error-primary shrink-0 max-sm:min-w-11"
                         >
@@ -883,7 +879,7 @@ export default function RegistrySettingsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRevokeInvite(inv.id)}
+                                onClick={() => askToRevokeInvite(inv.id)}
                                 className="text-error-primary hover:text-error-primary shrink-0"
                               >
                                 Revoke
@@ -903,6 +899,19 @@ export default function RegistrySettingsPage() {
           {isOwner && <DeleteRegistryCard registryId={registryId} />}
         </div>
       </div>
+
+      <ConfirmActionDialog
+        open={askOpen}
+        onOpenChange={setAskOpen}
+        title={asking?.kind === "invite" ? "Revoke this invite?" : "Remove this manager?"}
+        description={
+          asking?.kind === "invite" ? "The link will stop working." : "They will lose access to the registry."
+        }
+        confirmLabel={asking?.kind === "invite" ? "Revoke invite" : "Remove manager"}
+        working={askWorking}
+        error={askError}
+        onConfirm={confirmAsked}
+      />
     </div>
   );
 }

@@ -41,6 +41,8 @@ import { StoreLinkNotice } from "@/components/store-link-notice";
 import { ItemImage } from "@/components/item-image";
 import { readLinkMessages, storeNameForLink } from "@/components/add-item-dialog";
 import { uploadRegistryPhoto } from "@/lib/upload-registry-photo";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 
 interface Category {
   id: string;
@@ -166,32 +168,27 @@ function openableLink(raw: string): string | null {
 function TogglePill({
   pressed,
   onPress,
-  title,
   children,
 }: {
   pressed: boolean;
   onPress: () => void;
-  /** What it does, shown when the pointer rests on it. The info button explains all of them. */
-  title: string;
   children: ReactNode;
 }) {
   const Icon = pressed ? Check : Plus;
   return (
-    <Tooltip title={title}>
-      <AriaButton
-        aria-pressed={pressed}
-        onPress={onPress}
-        className={cn(
-          "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold outline-brand transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 pressing:scale-[0.97] max-sm:min-h-11",
-          pressed
-            ? "border-brand bg-brand-primary text-brand-secondary hover:bg-brand-secondary"
-            : "border-primary bg-primary text-secondary hover:bg-primary_hover pressing:bg-tertiary",
-        )}
-      >
-        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        {children}
-      </AriaButton>
-    </Tooltip>
+    <AriaButton
+      aria-pressed={pressed}
+      onPress={onPress}
+      className={cn(
+        "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold outline-brand transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 pressing:scale-[0.97] max-sm:min-h-11",
+        pressed
+          ? "border-brand bg-brand-primary text-brand-secondary hover:bg-brand-secondary"
+          : "border-primary bg-primary text-secondary hover:bg-primary_hover pressing:bg-tertiary",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      {children}
+    </AriaButton>
   );
 }
 
@@ -247,6 +244,10 @@ export function EditItemDialog({
   // until the action ends, so "Saving..." would never appear.
   const [loading, setLoading] = useOptimistic(false);
   const [deleting, setDeleting] = useState(false);
+  // Removing the item asks first, in a dialog over this one. It shows the
+  // error if the remove fails.
+  const [askingDelete, setAskingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   // Adding the item to another list, or moving it there, is under way.
   const [placing, setPlacing] = useState(false);
   // Lists it was added to since the dialog opened. The page's own list of
@@ -388,7 +389,7 @@ export function EditItemDialog({
 
     const result = await fetchProductDetails(url, {
       onReadingWithExtension: () => {
-        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab with the Regibee extension…");
+        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab…");
       },
     });
     if (!stillCurrent()) return;
@@ -478,7 +479,7 @@ export function EditItemDialog({
     }
     const shared = findSharedLink({ text });
     if (!shared) {
-      setScrapeStatus("There's no link on your clipboard. Copy the product's link, then tap Paste.");
+      setScrapeStatus("There's no link on your clipboard.");
       setScrapeIsError(true);
       return;
     }
@@ -518,7 +519,7 @@ export function EditItemDialog({
     if (found.length === 0) {
       setPhotoStatus(
         result.error
-          ? `We couldn't read ${store}'s page. Upload a photo or paste an image link instead.`
+          ? `We couldn't read ${store}'s page.`
           : `We found no photos on ${store}'s page.`,
       );
       return;
@@ -731,29 +732,35 @@ export function EditItemDialog({
     });
   };
 
-  const handleDelete = async () => {
-    const question = onOtherLists
-      ? `Remove "${item.title}" from this list? It stays on ${listNames(alsoOn)}.`
-      : `Delete "${item.title}"? This cannot be undone.`;
-    if (!confirm(question)) return;
+  const askToDelete = () => {
     setError("");
     setNotice("");
+    setDeleteError("");
+    setAskingDelete(true);
+  };
+
+  // Both dialogs stay open until the list behind them shows the change.
+  const handleDelete = () => {
+    setDeleteError("");
     setDeleting(true);
     startTransition(async () => {
       const result = await deleteRegistryItem(item.id, registryId);
       if (result?.error) {
-        setError(result.error);
+        setDeleteError(result.error);
         setDeleting(false);
         return;
       }
-      closeWithNewPage(() => setDeleting(false));
+      closeWithNewPage(() => {
+        setDeleting(false);
+        setAskingDelete(false);
+      });
     });
   };
   const removeLabel = onOtherLists ? "Remove from list" : "Remove item";
   const menuBusy = deleting || placing;
   /** Runs a choice from the More actions menu or one of its two lists. */
   const chooseMenuAction = (key: string) => {
-    if (key === "remove") return void handleDelete();
+    if (key === "remove") return askToDelete();
     const [action, listId] = key.split(":");
     const list = listsToOffer.find((l) => l.id === listId);
     if (!list) return;
@@ -763,8 +770,8 @@ export function EditItemDialog({
   // The info button shows these under the pointer, and in a box when tapped.
   const guestHelp = [
     ["Most wanted", "tags it so guests spot it first."],
-    ["Open to hand-me-downs", "lets guests give one that's been used, in at least the condition you pick."],
-    [copy.selfPurchasedLabel, "means you bought it already. Guests can pay you back for it instead of buying one."],
+    ["Open to hand-me-downs", "lets guests give a used one."],
+    [copy.selfPurchasedLabel, "means you bought it already. Guests can pay you back instead."],
   ];
   // One photo that's already the item's photo leaves nothing to pick.
   const showPhotoChoices = photoChoices.length > 1 || (photoChoices.length === 1 && photoChoices[0] !== imageUrl);
@@ -778,7 +785,7 @@ export function EditItemDialog({
           <DialogTitle>Edit item</DialogTitle>
           {onOtherLists && (
             <DialogDescription>
-              It&apos;s also on {listNames(alsoOn)}, so changes show there too. Its category is only for this list.
+              Also on {listNames(alsoOn)}. Changes show there too.
             </DialogDescription>
           )}
         </DialogHeader>
@@ -793,7 +800,7 @@ export function EditItemDialog({
           {linkBig ? (
             <div className="space-y-2.5 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-primary p-4">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <Label className="!text-sm !font-semibold !text-primary">Paste a link from any store</Label>
+                <Label className="!text-sm !font-semibold !text-primary">Paste a product link</Label>
                 {linkBefore !== null && (
                   <button
                     type="button"
@@ -876,7 +883,7 @@ export function EditItemDialog({
                 role="status"
                 className={cn("text-xs", scrapeIsError ? "text-warning-primary" : scrapeStatus ? "text-brand-tertiary" : "text-tertiary")}
               >
-                {scrapeStatus || (scraping ? "Reading the page…" : "We'll fill in the name, price and photo from the page.")}
+                {scrapeStatus || (scraping ? "Reading the page…" : "")}
               </p>
             </div>
           ) : (
@@ -1014,8 +1021,7 @@ export function EditItemDialog({
                 <div className="space-y-1.5">
                   {/* An item shows one photo, so say that these are choices. */}
                   <p id={`${uid}-photos`} className="text-xs text-tertiary">
-                    <span className="font-semibold text-secondary">Pick one photo.</span> Guests see the one with the
-                    check.
+                    Choose a photo
                   </p>
                   <div role="group" aria-labelledby={`${uid}-photos`} className="flex gap-2 overflow-x-auto p-0.5 pb-1">
                     {photoChoices.map((candidate, index) => {
@@ -1207,21 +1213,18 @@ export function EditItemDialog({
                   <TogglePill
                     pressed={mostWanted}
                     onPress={() => setMostWanted((on) => !on)}
-                    title="Guests see it tagged Most wanted."
                   >
                     Most wanted
                   </TogglePill>
                   <TogglePill
                     pressed={openToUsed}
                     onPress={() => setOpenToUsed((on) => !on)}
-                    title="Guests may give a hand-me-down."
                   >
                     Open to hand-me-downs
                   </TogglePill>
                   <TogglePill
                     pressed={parentPurchased}
                     onPress={() => setParentPurchased((on) => !on)}
-                    title="Guests can pay you back for it instead of buying one."
                   >
                     {copy.selfPurchasedLabel}
                   </TogglePill>
@@ -1328,6 +1331,32 @@ export function EditItemDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      {/* After the edit dialog's content, not inside it, so its form isn't
+          inside the edit form. It opens on top. */}
+      {onOtherLists ? (
+        <ConfirmActionDialog
+          open={askingDelete}
+          onOpenChange={setAskingDelete}
+          title={`Remove "${item.title}" from this list?`}
+          description={`It stays on ${listNames(alsoOn)}.`}
+          confirmLabel="Remove from list"
+          working={deleting}
+          error={deleteError}
+          onConfirm={handleDelete}
+        />
+      ) : (
+        <ConfirmDeleteDialog
+          open={askingDelete}
+          onOpenChange={setAskingDelete}
+          title={`Delete "${item.title}"?`}
+          description="This cannot be undone."
+          phrase={null}
+          confirmLabel="Delete item"
+          working={deleting}
+          error={deleteError}
+          onConfirm={handleDelete}
+        />
+      )}
     </Dialog>
   );
 }

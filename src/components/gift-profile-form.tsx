@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { SelectField } from "@/components/base/select/select-field";
 import { TextArea } from "@/components/base/textarea/textarea";
+import { TightSelect } from "@/components/ui/tight-select";
 import {
-  BIRTHDAY_REMINDER_DAYS,
+  GIFT_PROFILE_AUDIENCES,
+  GIFT_PROFILE_AUDIENCE_LABELS,
+  GIFT_PROFILE_SECTION_LABELS,
   MAX_SIZE_LENGTH,
   MAX_TAG_LENGTH,
   MAX_TAGS,
@@ -15,8 +18,13 @@ import {
   MONTH_OPTIONS,
   SIZE_LABELS,
   daysInMonth,
+  giftProfileAudienceHint,
+  giftProfileAudiences,
   parseGiftProfile,
   type GiftProfile,
+  type GiftProfileAudience,
+  type GiftProfileAudiences,
+  type GiftProfileSection,
   type GiftProfileSizes,
 } from "@/lib/gift-profile";
 
@@ -64,7 +72,7 @@ function TagField({
   onDraftChange,
 }: {
   label: string;
-  hint: string;
+  hint?: string;
   placeholder: string;
   tags: string[];
   draft: string;
@@ -134,6 +142,50 @@ function TagField({
   );
 }
 
+const AUDIENCE_OPTIONS = GIFT_PROFILE_AUDIENCES.map((value) => ({
+  value,
+  label: GIFT_PROFILE_AUDIENCE_LABELS[value],
+}));
+
+/**
+ * One part of the form with its heading. On your own profile, the heading has
+ * a menu for who sees the part.
+ */
+function Section({
+  title,
+  audience,
+  onAudienceChange,
+  hint,
+  children,
+}: {
+  title: string;
+  audience?: { section: GiftProfileSection; value: GiftProfileAudience };
+  onAudienceChange?: (value: GiftProfileAudience) => void;
+  hint?: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <div role="group" aria-labelledby={id}>
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p id={id} className="text-sm font-medium text-secondary">
+          {title}
+        </p>
+        {audience && onAudienceChange && (
+          <TightSelect<GiftProfileAudience>
+            ariaLabel={`Who sees your ${GIFT_PROFILE_SECTION_LABELS[audience.section].toLowerCase()}`}
+            value={audience.value}
+            onChange={onAudienceChange}
+            options={AUDIENCE_OPTIONS}
+          />
+        )}
+      </div>
+      {children}
+      {hint && <p className="mt-1.5 text-sm text-tertiary">{hint}</p>}
+    </div>
+  );
+}
+
 /** Birthday, sizes, colors, likes, things to skip and notes, for givers. */
 export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps) {
   const [month, setMonth] = useState(initial.birthday ? String(initial.birthday.month) : "");
@@ -145,6 +197,7 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
   const [skip, setSkip] = useState<string[]>(initial.skip ?? []);
   const [skipDraft, setSkipDraft] = useState("");
   const [notes, setNotes] = useState(initial.notes ?? "");
+  const [audiences, setAudiences] = useState<GiftProfileAudiences>(giftProfileAudiences(initial));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -191,6 +244,8 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
       likes: allLikes,
       skip: allSkip,
       notes,
+      // A child's list has no audience choices.
+      ...(child ? {} : { audience: audiences }),
     });
 
     setSaving(true);
@@ -208,12 +263,29 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
     setSaving(false);
   };
 
-  const legendClass = "mb-1.5 text-sm font-medium text-secondary";
+  // The audience menu for a part, on your own profile only.
+  const audienceProps = (section: GiftProfileSection) =>
+    child
+      ? {}
+      : {
+          audience: { section, value: audiences[section] },
+          onAudienceChange: (value: GiftProfileAudience) => {
+            setAudiences((current) => ({ ...current, [section]: value }));
+            setSaved(false);
+          },
+        };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <fieldset>
-        <legend className={legendClass}>{title("Birthday")}</legend>
+      <Section
+        title={title("Birthday")}
+        {...audienceProps("birthday")}
+        hint={
+          child
+            ? `Only you and followers you approve see ${whose} birthday, while this list is on your profile.`
+            : giftProfileAudienceHint("birthday", audiences.birthday)
+        }
+      >
         <div className="flex gap-3">
           <SelectField
             aria-label={`${title("Birthday")}: month`}
@@ -237,15 +309,13 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
             className="min-w-0 flex-1"
           />
         </div>
-        <p className="mt-1.5 text-sm text-tertiary">
-          {child
-            ? `No year needed. Only you and followers you approve see ${whose} birthday, and only while this list is on your profile.`
-            : `No year needed. Only you and followers you approve see it, and they get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`}
-        </p>
-      </fieldset>
+      </Section>
 
-      <fieldset>
-        <legend className={legendClass}>{title("Sizes")}</legend>
+      <Section
+        title={title("Sizes")}
+        {...audienceProps("sizes")}
+        hint={child ? undefined : giftProfileAudienceHint("sizes", audiences.sizes)}
+      >
         <div className="grid grid-cols-2 gap-3">
           {SIZE_FIELDS.map(({ key, placeholder }) => (
             <Input
@@ -258,48 +328,51 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
             />
           ))}
         </div>
-      </fieldset>
+      </Section>
 
-      <Input
-        label="Favorite colors"
-        value={colors}
-        onChange={setColors}
-        placeholder="Green, gold, anything sparkly"
-        maxLength={MAX_TEXT_LENGTH}
-      />
+      <Section
+        title={title("Likes and dislikes")}
+        {...audienceProps("likes")}
+        hint={child ? undefined : giftProfileAudienceHint("likes", audiences.likes)}
+      >
+        <div className="space-y-4">
+          <Input
+            label="Favorite colors"
+            value={colors}
+            onChange={setColors}
+            placeholder="Green, gold, anything sparkly"
+            maxLength={MAX_TEXT_LENGTH}
+          />
 
-      <TagField
-        label="Likes"
-        hint="Type one and press Enter, or separate them with commas."
-        placeholder="Tea, puzzles, hiking"
-        tags={likes}
-        draft={likeDraft}
-        onTagsChange={setLikes}
-        onDraftChange={setLikeDraft}
-      />
+          <TagField
+            label="Likes"
+            hint="Press Enter after each one."
+            placeholder="Tea, puzzles, hiking"
+            tags={likes}
+            draft={likeDraft}
+            onTagsChange={setLikes}
+            onDraftChange={setLikeDraft}
+          />
 
-      <TagField
-        label="Please skip"
-        hint={
-          child
-            ? `Things ${childName ?? "your child"} already has or shouldn't get.`
-            : "Things you already have or don't want."
-        }
-        placeholder="Candles, mugs"
-        tags={skip}
-        draft={skipDraft}
-        onTagsChange={setSkip}
-        onDraftChange={setSkipDraft}
-      />
+          <TagField
+            label="Please skip"
+            placeholder="Candles, mugs"
+            tags={skip}
+            draft={skipDraft}
+            onTagsChange={setSkip}
+            onDraftChange={setSkipDraft}
+          />
 
-      <TextArea
-        label="Notes"
-        value={notes}
-        onChange={setNotes}
-        placeholder="Anything else givers should know"
-        maxLength={MAX_TEXT_LENGTH}
-        rows={3}
-      />
+          <TextArea
+            label="Notes"
+            value={notes}
+            onChange={setNotes}
+            placeholder="Anything else givers should know"
+            maxLength={MAX_TEXT_LENGTH}
+            rows={3}
+          />
+        </div>
+      </Section>
 
       {error && (
         <p role="alert" className="text-sm text-error-primary">

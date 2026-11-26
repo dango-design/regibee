@@ -111,7 +111,7 @@ export default function PublicListScreen() {
       <EmptyState
         icon="gift"
         title="This link doesn't open a list"
-        message="It may have a typo, or the list may be gone. Its owner may also have turned this link off and made a new one. Ask the person who sent it to you for the current link."
+        message="The link may be wrong or out of date. Ask the person who sent it for the current link."
       />
     );
   }
@@ -171,7 +171,7 @@ export default function PublicListScreen() {
             icon="gift"
             tone="accent"
             title={`You're ${data.santaFor}'s Secret Santa.`}
-            message={`If you reserve a gift here, ${data.santaFor} sees “Secret Santa” instead of your name.`}
+            message={`${data.santaFor} sees “Secret Santa” instead of your name.`}
           />
         ) : null}
         {data.listEvents.length > 0 ? (
@@ -195,9 +195,9 @@ export default function PublicListScreen() {
             icon="people"
             tone="success"
             title={`You're shopping as a guest of ${data.fellowGuests.eventTitle}`}
-            message={`You can see which of the other guests reserved what, so nobody doubles up. ${
+            message={`You can see what other guests reserved. ${
               data.fellowGuests.ownerName ? `${data.fellowGuests.ownerName} can't` : "The list's owner can't"
-            } see who reserved what until the day after.`}
+            } until the day after.`}
             secondary={{ title: "Everyone's lists", onPress: () => openSite(`/e/${data.fellowGuests!.eventSlug}`) }}
           />
         ) : null}

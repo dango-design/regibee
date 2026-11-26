@@ -83,7 +83,7 @@ export const GuestOptions: Story = {
   play: async () => {
     const body = within(document.body);
     await userEvent.click(await body.findByRole("button", { name: "What these mean" }));
-    await waitFor(() => expect(body.getByText(/lets guests give one that's been used/)).toBeVisible());
+    await waitFor(() => expect(body.getByText(/lets guests give a used one/)).toBeVisible());
   },
 };
 
@@ -144,6 +144,21 @@ export const PickingAList: Story = {
     await expect(body.queryByRole("menuitem", { name: "Remi's Christmas List" })).toBeNull();
     // It's on another list, so removing it here keeps it there.
     await expect(body.getByRole("menuitem", { name: "Remove from list" })).toBeVisible();
+  },
+};
+
+// Remove item asks first, in a second dialog on top of this one. The item is
+// on no other list, so removing it deletes it.
+export const ConfirmingRemove: Story = {
+  play: async () => {
+    const body = within(document.body);
+    await userEvent.click(await body.findByRole("button", { name: "More actions" }));
+    await userEvent.click(await body.findByRole("menuitem", { name: "Remove item" }));
+    const confirm = await body.findByRole("dialog", {
+      name: 'Delete "Philips Avent Natural Baby Bottles, 4 pack"?',
+    });
+    await waitFor(() => expect(within(confirm).getByRole("button", { name: "Delete item" })).toBeVisible());
+    await expect(confirm).toHaveTextContent("This cannot be undone.");
   },
 };
 

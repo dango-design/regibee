@@ -41,9 +41,7 @@ export function SortIntoCategoriesButton({
     const sorted = result.sorted ?? 0;
     const undo = result.undo;
     if (sorted === 0 || !undo) {
-      toast(count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit.", {
-        description: "Choose one on each item instead.",
-      });
+      toast(count === 1 ? "We couldn't tell which category this item fits." : "We couldn't tell which categories these items fit.");
       return;
     }
     const added = result.added ?? 0;

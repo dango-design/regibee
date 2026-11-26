@@ -291,7 +291,7 @@ export function ItemEditor({
         setPhotoStatus(
           product
             ? `We found no photos on ${storeName}'s page.`
-            : `We couldn't read ${storeName}'s page. Upload a photo or paste an image link instead.`
+            : `We couldn't read ${storeName}'s page.`
         );
         return;
       }
@@ -612,7 +612,7 @@ export function ItemEditor({
           <View style={[styles.notice, { backgroundColor: theme.tintSoft }]}>
             <Icon name="info" size={16} color={theme.tint} />
             <Text variant="footnote" style={{ flex: 1, color: theme.tint }}>
-              It&apos;s also on {listNames(otherLists)}, so changes show there too. Its category is only for this list.
+              Also on {listNames(otherLists)}. Changes show there too.
             </Text>
           </View>
         ) : null}
@@ -659,7 +659,7 @@ export function ItemEditor({
               // Adding reads a link once. Editing reads it when it changed since the last read.
               if (mode === "add" ? readState === "idle" : normalized !== lastReadUrl.current) startReading(link);
             }}
-            placeholder="Paste a link from any store"
+            placeholder="Paste a product link"
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -688,7 +688,7 @@ export function ItemEditor({
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
               <PasteLinkButton onPaste={startReading} />
               <Text variant="footnote" tone="tertiary" style={{ flex: 1 }}>
-                Or share a product to Regibee from any store's app or website.
+                Or share a product to Regibee from a store's app or website.
               </Text>
             </View>
           ) : null}
@@ -710,8 +710,6 @@ export function ItemEditor({
             store={store}
             failedWithName={failedWithName}
             guessedName={guessedName}
-            // An item that already has its details needs no promise to fill them in.
-            showHint={mode === "add" || !link.trim()}
           />
           {linkedRegistries && registryId ? (
             <StoreLinkStatus
@@ -775,7 +773,7 @@ export function ItemEditor({
           ) : null}
           {images.length > 1 ? (
             <Text variant="footnote" tone="tertiary" style={{ textAlign: "center" }}>
-              Pick one photo. Guests see the one with the outline.
+              Choose a photo
             </Text>
           ) : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" }}>
@@ -959,7 +957,6 @@ export function ItemEditor({
           <SwitchRow
             icon="star"
             label="Most wanted"
-            description="Guests see it tagged Most wanted."
             value={mostWanted}
             onValueChange={setMostWanted}
           />
@@ -972,7 +969,7 @@ export function ItemEditor({
                 ? copyForRegistry(detail.data?.registry).selfPurchasedLabel
                 : copyForRegistry(detail.data?.registry).selfPurchaseButton
             }
-            description={mode === "edit" ? "Guests can pay you back for it instead of buying one." : undefined}
+            description={mode === "edit" ? "Guests can pay you back instead." : undefined}
             value={bought}
             onValueChange={setBought}
           />
@@ -980,7 +977,6 @@ export function ItemEditor({
           <SwitchRow
             icon="refresh"
             label="Open to hand-me-downs"
-            description="Guests may give a hand-me-down."
             value={openToUsed}
             onValueChange={setOpenToUsed}
           />
@@ -1031,8 +1027,8 @@ export function ItemEditor({
               <View style={{ gap: spacing.sm }}>
                 <Text variant="footnote" tone="secondary">
                   {placing === "add"
-                    ? "Which list should it go on as well? It stays on this one."
-                    : "Which list should it move to? It leaves this one, and its gifts go with it."}
+                    ? "Add it to which list as well?"
+                    : "Move it to which list? Its gifts go with it."}
                 </Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, opacity: addToList.isPending || moveToList.isPending ? 0.5 : 1 }}>
                   {listsToOffer.map((list) => (
@@ -1211,7 +1207,7 @@ function StoreLinkStatus({
           <Text variant="footnote" tone="success" style={{ fontWeight: "600" }}>
             {store.name} registry link.
           </Text>{" "}
-          Gifts bought through this link count toward your {store.name} registry.
+          Gifts bought through it count toward your registry.
         </Text>
       </View>
     );
@@ -1242,7 +1238,7 @@ function StoreLinkStatus({
             <Text variant="footnote" style={{ fontWeight: "600" }}>
               Have a {store.name} registry?
             </Text>{" "}
-            Link it so gifts bought at {store.name} can count toward it and earn you its perks.
+            Link it so gifts bought there count toward it.
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: spacing.md, rowGap: spacing.xs }}>
             <Button title={`Link ${store.name} registry`} variant="secondary" size="small" onPress={openSettings} />
@@ -1319,25 +1315,15 @@ function ReadStatus({
   store,
   failedWithName,
   guessedName,
-  showHint,
 }: {
   state: ReadState;
   store: string | null;
   failedWithName: boolean;
   /** The name was taken from the words in the link. */
   guessedName: boolean;
-  /** Say what reading a link will do, before one is read. */
-  showHint: boolean;
 }) {
   const theme = useTheme();
-  if (state === "idle") {
-    if (!showHint) return null;
-    return (
-      <Text variant="footnote" tone="tertiary">
-        We&apos;ll fill in the name, price and photo from the page.
-      </Text>
-    );
-  }
+  if (state === "idle") return null;
   if (state === "reading") {
     return (
       <View style={styles.status} accessibilityLiveRegion="polite">
@@ -1366,10 +1352,10 @@ function ReadStatus({
       <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
         We couldn&apos;t read the details from {store ?? "this link"}
         {guessedName
-          ? ", so we took the name from the link. Check it and fill in the rest."
+          ? ". Check the name and fill in the rest."
           : failedWithName
-            ? ". Your link and name are kept, so fill in the rest by hand."
-            : ". Your link is kept, so add the name and the rest by hand."}
+            ? ". Fill in the rest yourself."
+            : ". Add the name and the rest yourself."}
       </Text>
     </View>
   );

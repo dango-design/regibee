@@ -1174,7 +1174,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
       .eq("event_id", event.id)
       .eq("token", input.token)
       .maybeSingle();
-    if (!data) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
+    if (!data) return { error: "This RSVP link no longer works. Ask the host for a new one." };
     existing = data;
   }
 
@@ -1249,7 +1249,7 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
       .eq("token", input.token)
       .select("id, name, email, token, in_exchange, wishlist_url, gift_ideas")
       .maybeSingle();
-    if (error || !data) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
+    if (error || !data) return { error: "This RSVP link no longer works. Ask the host for a new one." };
     guest = data;
   } else {
     if (!event.open_rsvp) {
@@ -1418,7 +1418,7 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
         .eq("token", input.token)
         .maybeSingle()
     : { data: null };
-  if (!guest) return { error: "This RSVP link isn't on the guest list anymore. Ask the host for a new one." };
+  if (!guest) return { error: "This RSVP link no longer works. Ask the host for a new one." };
   if (!guest.in_exchange) return { error: "RSVP that you're coming first, then add your wishlist." };
   // A wishlist here is a Regibee list, so it takes an account.
   if (input.url?.trim() || input.giftIdeas?.trim()) return { error: ACCOUNT_FOR_WISH_LIST };
@@ -2050,7 +2050,7 @@ export async function drawExchangeNames(
       error:
         result.reason === "too_few"
           ? `A gift exchange needs at least ${MIN_EXCHANGE_PARTICIPANTS} people.`
-          : "There's no way to draw names with these exclusions: someone has nobody left to give to. Remove an exclusion and try again.",
+          : "These exclusions leave someone with nobody to draw. Remove one and try again.",
     };
   }
 

@@ -51,8 +51,7 @@ export function GroupsSection({
             Groups
           </h2>
           <p className="text-sm text-tertiary">
-            Guest lists you keep, like your family or book club. Invite a whole group, run its gift exchange each year,
-            or share a wishlist with it.
+            People you invite together, like your family or book club.
           </p>
         </div>
         {!adding && (
@@ -118,7 +117,7 @@ export function GroupsSection({
       ) : (
         !adding && (
           <p className="mt-4 text-sm text-tertiary">
-            No groups yet. Make one here, or save an event&apos;s guest list as a group from the event&apos;s page.
+            No groups yet.
           </p>
         )
       )}

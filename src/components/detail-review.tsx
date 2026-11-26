@@ -93,13 +93,13 @@ export function DetailReview({
           <h3 id="detail-review-heading" className="text-sm font-semibold text-primary">
             {total === 1 ? "Filled in details for 1 item" : `Filled in details for ${total} items`}
           </h3>
-          <p className="text-sm text-secondary">
-            {replaced.length === 0
-              ? "Everything filled in was empty before."
-              : replaced.length === 1
-                ? "One item already had something the store has differently. Its old value is kept below, so you can switch back."
-                : `${replaced.length} items already had something the store has differently. Their old values are kept below, so you can switch back.`}
-          </p>
+          {replaced.length > 0 && (
+            <p className="text-sm text-secondary">
+              {replaced.length === 1
+                ? "Its old value is below, so you can switch back."
+                : "Their old values are below, so you can switch back."}
+            </p>
+          )}
         </div>
       </div>
 
@@ -150,7 +150,6 @@ export function DetailReview({
         <Button size="sm" onClick={finish} disabled={saving !== null}>
           {saving === "finish" ? "Saving…" : "Done"}
         </Button>
-        <p className="text-sm text-tertiary">Items keep what they show now.</p>
       </div>
     </section>
   );

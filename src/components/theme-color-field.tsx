@@ -24,8 +24,7 @@ export function ThemeColorField({ value, onChange }: { value: string; onChange: 
           Color
         </p>
         <p className="text-sm text-tertiary">
-          Fills the invitation&apos;s gift lists and wishlists, and its top when there&apos;s no picture. Pick one
-          that goes with your invitation.
+          For the invitation&apos;s gift lists, and its top when there&apos;s no picture.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

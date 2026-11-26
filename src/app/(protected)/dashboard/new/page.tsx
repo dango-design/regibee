@@ -25,9 +25,6 @@ export default async function NewPlanPage() {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-3xl font-bold">Start something new</h1>
-      <p className="mt-1 text-tertiary">
-        A gift list on its own, or an event with invitations. You can add the other one later.
-      </p>
       <div className="mt-6">
         <PlanPicker myName={firstName} myLists={myLists} />
       </div>

@@ -30,7 +30,6 @@ export default async function NewEventPage({
         Events
       </Link>
       <h1 className="mt-4 text-3xl font-bold">Plan an event</h1>
-      <p className="mt-1 text-tertiary">You&apos;ll add guests and send the invitation next.</p>
       <div className="mt-6">
         <EventForm registries={registries} startRegistryId={linked} />
       </div>

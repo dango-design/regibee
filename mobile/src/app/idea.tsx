@@ -72,10 +72,10 @@ export default function IdeaScreen() {
       if (guessed) setTitle(guessed);
       setStatus(
         guessed
-          ? `We couldn't read ${store}, so we took the name from the link. Check it.`
+          ? `We couldn't read ${store}. Check the name.`
           : hasTitle
-            ? `We couldn't read ${store}. Your link and name are kept.`
-            : `We couldn't read ${store}. The link is kept, so add a name yourself.`
+            ? `We couldn't read ${store}.`
+            : `We couldn't read ${store}. Add a name yourself.`
       );
       return;
     }
@@ -167,7 +167,7 @@ export default function IdeaScreen() {
         <View style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}>
           <Icon name="lock" size={15} color={theme.textSecondary} />
           <Text variant="footnote" tone="secondary" style={{ flex: 1 }}>
-            Only you can see your gift ideas. The person they&apos;re for never does.
+            Only you can see gift ideas.
           </Text>
         </View>
 

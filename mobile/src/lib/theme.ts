@@ -106,15 +106,38 @@ export function useTheme(): Theme {
   return useColorScheme() === "dark" ? darkTheme : lightTheme;
 }
 
-// The website has no dark mode, so its pages inside the app are always light,
-// on white. The web view's header uses these colours so it matches the page
-// under it, whatever mode the phone is in (mobile/src/app/web.tsx).
-export const sitePageColors = {
+// The colours of a website page, for the header above it when it shows inside
+// the app (mobile/src/app/web.tsx), so the header matches the page under it.
+// The website follows the phone's light or dark setting, as the app does.
+// These are its tokens in each mode (src/styles/theme.css): bg-primary,
+// text-primary, border-secondary, and the brand colour of its links.
+export interface SitePageColors {
+  dark: boolean;
+  background: string;
+  text: string;
+  tint: string;
+  border: string;
+}
+
+const siteLightColors: SitePageColors = {
+  dark: false,
   background: palette.white,
   text: palette.gray900,
   tint: palette.brand600,
   border: palette.gray200,
-} as const;
+};
+
+const siteDarkColors: SitePageColors = {
+  dark: true,
+  background: palette.gray950,
+  text: palette.gray50,
+  tint: palette.brand300,
+  border: palette.gray800,
+};
+
+export function useSitePageColors(): SitePageColors {
+  return useColorScheme() === "dark" ? siteDarkColors : siteLightColors;
+}
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 export const radius = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 } as const;

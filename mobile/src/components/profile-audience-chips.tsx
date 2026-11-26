@@ -16,12 +16,15 @@ import { View } from "react-native";
 import { Chip, Text } from "@/components/ui";
 import { spacing } from "@/lib/theme";
 
-/** What it says under the choice. The website's profileAudienceHint says the same. */
+/** What it says under the choice, or "" for nothing. The website's profileAudienceHint says the same. */
 export function profileAudienceHint(audience: ProfileAudience, hasShippingAddress = false): string {
-  let hint: string = PROFILE_AUDIENCE[audience].description;
-  if (audience === "friends" || audience === "followers") hint += ` ${PROFILE_AUDIENCE_LINK_NOTE}`;
-  if (audience !== "hidden" && hasShippingAddress) hint += " Anyone who reserves a gift can see your shipping address.";
-  return hint;
+  return [
+    PROFILE_AUDIENCE[audience].description,
+    audience === "friends" || audience === "followers" ? PROFILE_AUDIENCE_LINK_NOTE : "",
+    audience !== "hidden" && hasShippingAddress ? "Anyone who reserves a gift can see your shipping address." : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function ProfileAudienceChips({
@@ -49,6 +52,7 @@ export function ProfileAudienceChips({
     );
   }
   const shown = clampProfileAudience(value, visibility);
+  const hint = profileAudienceHint(shown, hasShippingAddress);
   return (
     <View style={{ gap: spacing.sm }}>
       {label ? (
@@ -68,9 +72,11 @@ export function ProfileAudienceChips({
           />
         ))}
       </View>
-      <Text variant="footnote" tone="tertiary">
-        {profileAudienceHint(shown, hasShippingAddress)}
-      </Text>
+      {hint ? (
+        <Text variant="footnote" tone="tertiary">
+          {hint}
+        </Text>
+      ) : null}
     </View>
   );
 }

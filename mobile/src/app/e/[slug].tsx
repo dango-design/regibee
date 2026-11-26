@@ -97,7 +97,7 @@ export default function InvitationScreen() {
           <View style={{ flexDirection: "row", gap: spacing.sm, borderRadius: radius.md, padding: spacing.lg, backgroundColor: theme.accentSoft }}>
             <Icon name="info" size={18} color={theme.onAccentSoft} />
             <Text variant="footnote" style={{ flex: 1, color: theme.dark ? theme.text : theme.onAccentSoft }}>
-              This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
+              This RSVP link no longer works. Ask the host for a new one.
             </Text>
           </View>
         ) : null}

@@ -94,8 +94,7 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
             <DialogHeader>
               <DialogTitle>Thank you!</DialogTitle>
               <DialogDescription>
-                Your suggestion has been sent to the registry owner. They&apos;ll
-                review it and decide whether to add it to their registry.
+                We sent your suggestion to the list&apos;s owner.
               </DialogDescription>
             </DialogHeader>
             <Button onClick={() => setOpen(false)}>Done</Button>
@@ -105,8 +104,7 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
             <DialogHeader>
               <DialogTitle>Suggest an item</DialogTitle>
               <DialogDescription>
-                Know something they might love? Suggest it here and
-                they&apos;ll be notified.
+                We&apos;ll let the list&apos;s owner know.
               </DialogDescription>
             </DialogHeader>
             <form action={handleSubmit} className="space-y-4">

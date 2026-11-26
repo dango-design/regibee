@@ -64,13 +64,11 @@ export default async function DashboardPage() {
         <div>
           {/* The My registries tab is the visible title (see (tabs)/layout.tsx). */}
           <h1 className="sr-only">My Registries</h1>
-          {giftsThisWeek > 0 ? (
+          {giftsThisWeek > 0 && (
             <p className="flex items-start gap-2 text-tertiary">
               <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-mint-500" />
               {giftsThisWeek === 1 ? "1 gift reserved this week" : `${giftsThisWeek} gifts reserved this week`}
             </p>
-          ) : (
-            <p className="text-tertiary">Manage your registries and track gifts</p>
           )}
         </div>
         <Button asChild>
@@ -96,7 +94,7 @@ export default async function DashboardPage() {
                   : `${followRequestCount} people want to follow you`}
               </p>
               <p className="text-sm text-tertiary">
-                People you approve can see the registries you show to followers on your profile.
+                People you approve see your birthday and the lists you show followers.
               </p>
             </div>
           </div>
@@ -115,7 +113,7 @@ export default async function DashboardPage() {
             <div>
               <p className="font-medium">Give friends one link to all your registries</p>
               <p className="text-sm text-tertiary">
-                Your profile shows only the registries you choose. Friends can follow it to see new ones.
+                It shows only the registries you choose.
               </p>
             </div>
           </div>
@@ -133,9 +131,6 @@ export default async function DashboardPage() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <PandaMark className="h-20 w-auto" />
             <h2 className="mt-4 text-xl font-semibold">No registries yet</h2>
-            <p className="mt-2 text-tertiary">
-              Create your first registry to start adding items.
-            </p>
             <Button className="mt-6" asChild>
               <Link href="/dashboard/new">
                 <span className="inline-flex items-center gap-1.5">
@@ -163,9 +158,6 @@ export default async function DashboardPage() {
                   <Users className="h-5 w-5" />
                   Shared with you
                 </h2>
-                <p className="text-sm text-tertiary mt-1">
-                  Registries you&apos;ve been invited to manage
-                </p>
               </div>
               <div className="mt-4 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {sharedRegistries.map((registry) => (

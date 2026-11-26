@@ -31,7 +31,7 @@ test("a private list opens only for its owner and co-managers", async ({ page, b
   // The choices are cards: each radio button is hidden inside its label.
   await page.locator("label", { hasText: /^Private/ }).click();
   await expect(page.getByRole("radio", { name: /^Private/ })).toBeChecked();
-  await expect(page.getByText(/won't be able to open it/)).toBeVisible();
+  await expect(page.getByText(/people with the link can't open it/)).toBeVisible();
   await expect(page.getByText("Private lists don't show on your profile.")).toBeVisible();
   await expect(page.getByText(`/r/${registry.slug}`)).toBeHidden();
   await page.getByRole("button", { name: "Save changes" }).click();

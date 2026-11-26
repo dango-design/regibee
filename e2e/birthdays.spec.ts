@@ -1,8 +1,9 @@
-// Gift profiles, birthdays and Follow back. Someone's sizes and likes show to
-// anyone with their links, but their birthday only to them and the followers
-// they approved. Those followers see it coming up on their Following page,
-// and get one email 10 days before it. A follower is one tap from following
-// back, and two people who follow each other show as Friends.
+// Gift profiles, birthdays and Follow back. Until someone chooses otherwise,
+// their sizes and likes show only to friends, and their birthday only to them
+// and the followers they approved. Those followers see it coming up on their
+// Following page, and get one email 10 days before it. Each part can show to
+// only them, friends, followers or everyone instead. A follower is one tap
+// from following back, and two people who follow each other show as Friends.
 
 import { expect, test, type Page } from "@playwright/test";
 import { chooseOption, createAccount, createWishlist, CRON_SECRET, db, waitForReact } from "./fixtures";
@@ -31,13 +32,26 @@ async function follow(followerId: string, followeeId: string, status: "pending" 
   if (error) throw error;
 }
 
-/** Someone with a birthday, sizes, likes and a public note, and one wishlist on their profile. */
-async function personWithBirthday(name: string, birthday: { month: number; day: number }) {
+/**
+ * Someone with a birthday, sizes, likes and a public note, and one wishlist on
+ * their profile. `audience` is who they show each part to.
+ */
+async function personWithBirthday(
+  name: string,
+  birthday: { month: number; day: number },
+  audience?: Record<string, string>,
+) {
   const person = await createAccount(name);
   const { error } = await db
     .from("profiles")
     .update({
-      gift_profile: { birthday, sizes: { tops: "M" }, likes: ["Bubble tea"], skip: ["Candles"] },
+      gift_profile: {
+        birthday,
+        sizes: { tops: "M" },
+        likes: ["Bubble tea"],
+        skip: ["Candles"],
+        ...(audience ? { audience } : {}),
+      },
       public_note: "Ask me about my garden.",
     })
     .eq("id", person.id);
@@ -154,6 +168,84 @@ test("followers see a birthday, friends see sizes and likes, and anyone sees the
   await visitor.close();
 });
 
+test("each part of a gift profile shows to the people its owner chose", async ({ browser, page }) => {
+  const birthday = birthdayIn(10);
+  // Sizes to everyone, likes to followers, and the birthday only to friends.
+  const glinda = await personWithBirthday("Glinda Choosy", birthday, {
+    birthday: "friends",
+    sizes: "everyone",
+    likes: "followers",
+  });
+  const max = await createAccount("Max Follower Only");
+  const friend = await createAccount("Fiyero Friend");
+  await follow(max.id, glinda.id, "approved");
+  await follow(friend.id, glinda.id, "approved");
+  await follow(glinda.id, friend.id, "approved");
+  const paths = [glinda.path, `/r/${glinda.registry.slug}`];
+
+  // Anyone with the links sees her sizes, and nothing else.
+  const visitor = await browser.newContext();
+  const visitorPage = await visitor.newPage();
+  for (const path of paths) {
+    await visitorPage.goto(path);
+    await expect(visitorPage.getByText("Tops: M")).toBeVisible();
+    await expect(visitorPage.getByText("Bubble tea")).toHaveCount(0);
+    await expect(visitorPage.getByText(formatBirthday(birthday), { exact: true })).toHaveCount(0);
+  }
+  await visitor.close();
+
+  // A follower who isn't a friend sees her likes too, but not her birthday,
+  // and it isn't on his Following page.
+  const maxContext = await browser.newContext();
+  const maxPage = await maxContext.newPage();
+  await signInAs(maxPage, max);
+  for (const path of paths) {
+    await maxPage.goto(path);
+    await expect(maxPage.getByText("Bubble tea")).toBeVisible();
+    await expect(maxPage.getByText(formatBirthday(birthday), { exact: true })).toHaveCount(0);
+  }
+  await maxPage.goto("/dashboard/following");
+  await expect(maxPage.getByRole("region", { name: "Birthdays coming up" }).getByText("Glinda Choosy")).toHaveCount(0);
+  await maxContext.close();
+
+  // Her friend sees the birthday, and only he gets the email about it.
+  const friendContext = await browser.newContext();
+  const friendPage = await friendContext.newPage();
+  await signInAs(friendPage, friend);
+  await friendPage.goto(glinda.path);
+  await expect(friendPage.getByText(formatBirthday(birthday), { exact: true })).toBeVisible();
+  await friendContext.close();
+
+  await runBirthdayJob(page);
+  await waitForEmail(friend.email, "Glinda Choosy's birthday is in 10 days");
+  await page.waitForTimeout(1500);
+  expect((await birthdayEmails(max.email)).filter((e) => e.subject.includes("Glinda Choosy"))).toHaveLength(0);
+
+  // Kept to herself, the birthday shows to nobody else and is in no email.
+  await db
+    .from("profiles")
+    .update({
+      gift_profile: {
+        birthday,
+        sizes: { tops: "M" },
+        audience: { birthday: "private", sizes: "private", likes: "private" },
+      },
+    })
+    .eq("id", glinda.id);
+  const friendAgain = await browser.newContext();
+  const friendAgainPage = await friendAgain.newPage();
+  await signInAs(friendAgainPage, friend);
+  await friendAgainPage.goto(glinda.path);
+  await expect(friendAgainPage.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(friendAgainPage.getByText(formatBirthday(birthday), { exact: true })).toHaveCount(0);
+  await expect(friendAgainPage.getByText("Tops: M")).toHaveCount(0);
+  await friendAgainPage.goto("/dashboard/following");
+  await expect(
+    friendAgainPage.getByRole("region", { name: "Birthdays coming up" }).getByText("Glinda Choosy"),
+  ).toHaveCount(0);
+  await friendAgain.close();
+});
+
 test("a follower is one tap from following back, and approving offers it too", async ({ page }) => {
   const glinda = await createAccount("Glinda Host");
   const max = await createAccount("Max Mutual");
@@ -191,7 +283,10 @@ test("a follower is one tap from following back, and approving offers it too", a
     .eq("follower_id", glinda.id)
     .eq("followee_id", max.id);
   await page.reload();
-  await expect(page.getByText("Friends", { exact: true })).toHaveCount(2);
+  // The gift profile's "Who sees" menus say Friends too, so look only here.
+  for (const section of ["#followers", "#following"]) {
+    await expect(page.locator(section).getByText("Friends", { exact: true })).toHaveCount(1);
+  }
 });
 
 test("someone fills in their gift profile on the Account page", async ({ page }) => {
@@ -207,6 +302,8 @@ test("someone fills in their gift profile on the Account page", async ({ page })
   await likes.fill("Puzzles");
   await likes.press("Enter");
   await likes.fill("Tea, hiking,");
+  await chooseOption(form, /Who sees your birthday/, "Everyone");
+  await chooseOption(form, /Who sees your sizes/, "Only me");
   await form.getByRole("button", { name: "Save" }).click();
   await expect(form.getByText("Saved")).toBeVisible();
 
@@ -219,6 +316,7 @@ test("someone fills in their gift profile on the Account page", async ({ page })
       birthday: { month: 2, day: 29 },
       sizes: { tops: "L" },
       likes: ["Puzzles", "Tea", "hiking"],
+      audience: { birthday: "everyone", sizes: "private", likes: "friends" },
     });
 
   // Birthday emails are on until she turns them off, which saves at once.
