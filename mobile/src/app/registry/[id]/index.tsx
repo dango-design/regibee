@@ -247,7 +247,7 @@ export default function RegistryScreen() {
           // starts at the top of the screen.
           headerStyle: { backgroundColor: scrolled ? theme.background : theme.tintSoft },
           headerRight: () => (
-            <View style={{ flexDirection: "row", gap: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
               <HeaderMenu accessibilityLabel="More" title={r.title} choices={moreChoices} />
             </View>

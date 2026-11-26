@@ -152,7 +152,7 @@ export default function EventScreen() {
         options={{
           title: event.title,
           headerRight: () => (
-            <View style={{ flexDirection: "row", gap: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share the event link" onPress={share} />
               <IconButton icon="edit" accessibilityLabel="Edit" onPress={() => edit()} />
               <HeaderMenu accessibilityLabel="More actions" title={event.title} choices={moreActions} />
