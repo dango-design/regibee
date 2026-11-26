@@ -44,7 +44,7 @@ import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
 import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
 import { MY_GIFTS_COOKIE, MY_GIFTS_COOKIE_OPTIONS, withGift } from "@/lib/my-gifts-cookie";
 import { readEventGuestCookie } from "@/lib/event-guest-cookie";
-import { eventIncludesRegistry } from "@/lib/events-server";
+import { eventGuestFromToken, eventIncludesRegistry } from "@/lib/events-server";
 import { GIFT_HOLD_DAYS, isOpenReservation, SECRET_GIVER_NAME } from "@/lib/gifts";
 import {
   releaseExpiredOnItem,
@@ -78,17 +78,22 @@ async function addToMyGiftsCookie(
  *   guests then see who reserved it (src/app/r/[slug]/page.tsx).
  * - Anywhere else, nothing changes.
  *
+ * The phone app has no cookie. It sends the event's slug and the guest's
+ * RSVP token instead (`link`), which are checked the same way the gift link
+ * route checks them.
+ *
  * Call it once the purchase exists and before any owner emails go out, since
  * those read hide_giver. Returns whether the giver is hidden. A failure is
  * logged and never fails the gift.
  */
 async function recordEventGuestOnGift(
   purchaseId: string,
-  target: { itemId: string } | { fundId: string }
+  target: { itemId: string } | { fundId: string },
+  link: { eventSlug: string; token: string } | null = null
 ): Promise<{ hideGiver: boolean }> {
   try {
-    const guest = await readEventGuestCookie();
-    if (!guest || !isUuid(guest.eventId) || !isUuid(guest.guestId)) return { hideGiver: false };
+    const cookieGuest = link ? null : await readEventGuestCookie();
+    if (!link && !cookieGuest) return { hideGiver: false };
 
     // An item can be on several of its owner's lists (src/lib/list-items.ts),
     // so a gift through any of them counts for each.
@@ -100,6 +105,9 @@ async function recordEventGuestOnGift(
       registryIds = fund?.registry_id ? [fund.registry_id as string] : [];
     }
     if (registryIds.length === 0) return { hideGiver: false };
+
+    const guest = link ? await eventGuestFromToken(link.eventSlug, link.token, registryIds) : cookieGuest;
+    if (!guest || !isUuid(guest.eventId) || !isUuid(guest.guestId)) return { hideGiver: false };
 
     let hideGiver = false;
     if (guest.santa?.registryId && registryIds.includes(guest.santa.registryId)) {
@@ -725,6 +733,10 @@ export async function reserveItem(formData: FormData): Promise<ReserveItemResult
   const buyerEmail = String(formData.get("buyerEmail") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const alreadyBought = formData.get("alreadyBought") === "1";
+  // From the phone app, which has no event guest cookie: the invitation the
+  // guest came from (recordEventGuestOnGift).
+  const eventSlug = String(formData.get("eventSlug") ?? "").trim();
+  const guestToken = String(formData.get("guestToken") ?? "").trim();
 
   if (!isUuid(itemId)) return { error: "This item isn't on the registry anymore." };
   if (!buyerName || !buyerEmail) return { error: "Add your name and email." };
@@ -763,7 +775,7 @@ export async function reserveItem(formData: FormData): Promise<ReserveItemResult
   }
 
   // Before the emails below, which read hide_giver to decide what owners see.
-  await recordEventGuestOnGift(purchaseId, { itemId });
+  await recordEventGuestOnGift(purchaseId, { itemId }, eventSlug && guestToken ? { eventSlug, token: guestToken } : null);
 
   if (alreadyBought) {
     const { error: confirmError } = await supabaseAdmin.rpc("confirm_registry_gift", {

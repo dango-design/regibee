@@ -10,12 +10,36 @@ import { isWebViewPath, safeAppPath } from "@shared/in-app";
 
 import { SITE_URL, supabase } from "@/lib/supabase";
 
+/** A value from a query string, decoded, or undefined. */
+function queryValue(query: string, name: string): string | undefined {
+  const raw = query.match(new RegExp(`(?:^|&)${name}=([^&]*)`))?.[1];
+  if (raw === undefined) return undefined;
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, " "));
+  } catch {
+    return undefined;
+  }
+}
+
+/** A list's slug from a gift link's `to`: a slug, or a link to /r/<slug>. */
+function listSlugFrom(to: string): string | null {
+  const fromPath = to.match(/(?:^|\/)r\/([a-z0-9][a-z0-9-]{0,120})(?:[/?#]|$)/i);
+  if (fromPath) return fromPath[1].toLowerCase();
+  return /^[a-z0-9][a-z0-9-]{2,120}$/i.test(to) ? to.toLowerCase() : null;
+}
+
 /**
  * The app's own screen for a website page, or null when it shows the page in
  * the web view. Each native screen lives at the website's own path, so a
  * link from outside can open it as it is.
  *
  * - /e/<slug>, with the guest's ?g=<token>: the invitation (src/app/e/[slug].tsx).
+ * - /r/<slug>: someone else's list (src/app/r/[slug].tsx). Not with a signed
+ *   buyer link (?email=&sig=) or a step from a gift email (?gift=&step=):
+ *   the web view still handles those.
+ * - /e/<event>/gifts?g=<token>&to=<list>, a gift link on a guest's
+ *   invitation: the list, with the event and token, so a gift is matched to
+ *   the guest's RSVP.
  *
  * The screens need a signed-in account. Signed out, they send the page on to
  * the web view themselves.
@@ -23,13 +47,52 @@ import { SITE_URL, supabase } from "@/lib/supabase";
 export function nativeRoute(path: string): Href | null {
   const [beforeHash] = path.split("#");
   const [pathname, query = ""] = beforeHash.split("?");
+  const giftLink = pathname.match(/^\/e\/([^/]+)\/gifts\/?$/);
+  if (giftLink) {
+    const slug = listSlugFrom(queryValue(query, "to") ?? "");
+    if (!slug) return null;
+    const token = queryValue(query, "g");
+    const event = decodeURIComponent(giftLink[1]);
+    return token ? { pathname: "/r/[slug]", params: { slug, event, g: token } } : { pathname: "/r/[slug]", params: { slug } };
+  }
   const invitation = pathname.match(/^\/e\/([^/]+)\/?$/);
   if (invitation) {
     const token = query.match(/(?:^|&)g=([^&]*)/)?.[1];
     const slug = decodeURIComponent(invitation[1]);
     return token ? { pathname: "/e/[slug]", params: { slug, g: decodeURIComponent(token) } } : { pathname: "/e/[slug]", params: { slug } };
   }
+  const list = pathname.match(/^\/r\/([^/]+)\/?$/);
+  if (list) {
+    if (queryValue(query, "sig") !== undefined || queryValue(query, "gift") !== undefined) return null;
+    return { pathname: "/r/[slug]", params: { slug: decodeURIComponent(list[1]) } };
+  }
   return null;
+}
+
+/**
+ * The native screen a website path opens, with its slug filled in, such as
+ * "/r/<slug>", or null when it has none. Two paths with the same key open the
+ * same screen: /e/<event>/gifts?to=<list> and the /r/<list> it leads to.
+ */
+export function nativeScreenKey(path: string): string | null {
+  const route = nativeRoute(path);
+  if (!route || typeof route === "string" || !("pathname" in route)) return null;
+  const slug = (route.params as { slug?: string } | undefined)?.slug ?? "";
+  return route.pathname.replace("[slug]", slug);
+}
+
+/**
+ * The app's own path for a website page that has a native screen, for a link
+ * from outside the app (+native-intent.ts), or null.
+ */
+export function nativePath(path: string): string | null {
+  const route = nativeRoute(path);
+  if (!route || typeof route === "string" || !("pathname" in route)) return null;
+  const { slug, ...rest } = (route.params ?? {}) as Record<string, string>;
+  const query = Object.entries(rest)
+    .map(([name, value]) => `${name}=${encodeURIComponent(value)}`)
+    .join("&");
+  return `${route.pathname.replace("[slug]", encodeURIComponent(slug ?? ""))}${query ? `?${query}` : ""}`;
 }
 
 /** Opens a page of the website, such as "/r/<slug>", inside the app: its own screen, or the web view. */

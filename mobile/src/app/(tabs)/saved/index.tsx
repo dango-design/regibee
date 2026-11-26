@@ -21,6 +21,7 @@ import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import {
   setSavedNotice,
   storeDomain,
+  useDismissWishlistPrompt,
   useGiftIdeas,
   useSavedItems,
   useSavedNotice,
@@ -139,6 +140,7 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
   const saved = useSavedItems();
   const pull = usePullToRefresh(saved.refetch);
   const start = useStartWishlist();
+  const dismissPrompt = useDismissWishlistPrompt();
   const notice = useSavedNotice("items");
   const [status, setStatus] = useState<Status>("wanted");
   const [search, setSearch] = useState("");
@@ -158,6 +160,7 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
   };
   const shown = matching.filter((i) => matchesStatus(i, status));
   const hasOwnWishlist = (data?.lists ?? []).some((l) => l.isOwnWishlist);
+  const showWishlistPrompt = Boolean(data) && !hasOwnWishlist && !data?.wishlistPromptClosed;
   const hidesSome = (data?.lists ?? []).some((l) => l.hidesReservations);
 
   // Opens the new wishlist, as on the website. It has no items yet, so the
@@ -173,6 +176,14 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
     });
   }
 
+  // For someone who keeps a birthday wishlist or a Christmas list instead.
+  function closeWishlistPrompt() {
+    setStartError("");
+    dismissPrompt.mutate(undefined, {
+      onError: (e) => setStartError(errorMessage(e) || "That didn't save. Try again in a moment."),
+    });
+  }
+
   function bulk(mode: "add" | "remove") {
     if (selected.size === 0) return;
     setSavedNotice("items", "");
@@ -184,9 +195,14 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
   const header = (
     <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
       <ViewSwitch view={view} onView={onView} />
-      {data && !hasOwnWishlist ? (
+      {showWishlistPrompt ? (
         <View style={[styles.callout, { backgroundColor: theme.tintSoft }]}>
-          <Text variant="headline">Start your wishlist</Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
+            <Text variant="headline" style={{ flex: 1 }}>
+              Start your wishlist
+            </Text>
+            <IconButton icon="close" size={18} color={theme.textTertiary} accessibilityLabel="Close" onPress={closeWishlistPrompt} />
+          </View>
           <Text variant="footnote" tone="secondary">
             One list for birthdays, Christmas and any other day.
           </Text>

@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 25, 2026",
+  effectiveDate: "November 26, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -390,7 +390,11 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 <strong className="font-semibold text-primary">Other people&apos;s pages.</strong> Someone else&apos;s
                 registry, profile or invitation opens as its regibee.com page inside the app, signed in as you, so
                 it works the way it does for your account on the website. That page keeps the same cookies in the
-                app that regibee.com keeps in a browser. A link to a store or any other site opens in your
+                app that regibee.com keeps in a browser. The app and that page share which gifts you gave: when the
+                app opens a page, it sends regibee.com your gifts so the page shows them as yours, and it reads the
+                page&apos;s gifts cookie to learn about gifts you gave there. The cookie inside the app also notes
+                which account the gifts belong to, so another account signed in on the same phone doesn&apos;t get
+                them. A link to a store or any other site opens in your
                 phone&apos;s browser.
               </li>
               <li>
@@ -402,8 +406,9 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 <strong className="font-semibold text-primary">Kept on your phone.</strong> Your sign-in session, a
-                copy of what you last saw, such as your registries and events, so the app opens quickly, and the
-                registry you last added to. With notifications on, it also keeps the phone&apos;s notification token
+                copy of what you last saw, such as your registries and events, so the app opens quickly, the
+                registry you last added to, and the gifts you gave on other people&apos;s lists, so the app knows
+                they&apos;re yours. With notifications on, it also keeps the phone&apos;s notification token
                 and whether you turned notifications off. Signing out removes the session, the copy and the token. Deleting the app removes everything it kept.
               </li>
               <li>

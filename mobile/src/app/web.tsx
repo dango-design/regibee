@@ -14,6 +14,13 @@
 // Android uses the website's own dark colours instead of darkening a light
 // page itself.
 //
+// The guest's gifts follow them between the app's own list screen and these
+// pages. Opening the page sends the gifts the app keeps (src/lib/my-gifts.ts)
+// to the website with the first request, which adds them to the website's
+// gifts cookie. A gift given on a page here comes back the other way: a
+// script in the page reads that cookie whenever it changes, and the app keeps
+// the new gifts. The rules are in the website's src/lib/my-gifts-cookie.ts.
+//
 // The header has no title while the page's own title shows. Once the page's
 // title scrolls up under the header, the header fills in: that title fades
 // into it and a line appears under it, as in Spotify or Apple Music.
@@ -23,15 +30,19 @@ import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, BackHandler, Platform, Share, StyleSheet, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 
 import { appScreenForPath, IN_APP_HEADER } from "@shared/in-app";
+import { APP_GIFTS_HEADER, MAX_APP_GIFTS, MY_GIFTS_COOKIE, newGifts, webViewGifts } from "@shared/my-gifts-cookie";
 
 import { ErrorState, IconButton, LoadingState } from "@/components/ui";
 import { useSession } from "@/lib/auth";
+import { readMyGifts, rememberGifts } from "@/lib/my-gifts";
+import { publicListKeys } from "@/lib/public-list-data";
 import { SITE_URL } from "@/lib/supabase";
 import { fonts, useSitePageColors, type SitePageColors } from "@/lib/theme";
-import { freshAccessToken, nativeRoute, signedInAddress, sitePath } from "@/lib/web";
+import { freshAccessToken, nativeRoute, nativeScreenKey, signedInAddress, sitePath } from "@/lib/web";
 
 /** The path of an address on the website, or null for another site. */
 function pathOnSite(url: string): string | null {
@@ -70,8 +81,29 @@ const HEADER_SCRIPT = `(function () {
   window.addEventListener("resize", queue);
   new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
   check();
-})();
-true;`;
+})();`;
+
+// Runs in each page. It sends the screen the website's gifts cookie each time
+// it changes: when the page loads, and after a gift is saved on it. The
+// cookie is readable in the page on purpose (MY_GIFTS_COOKIE_OPTIONS on the
+// website). Checking once a second is cheap, and catches every way a gift
+// is saved without the website having to tell the app.
+const GIFTS_SCRIPT = `(function () {
+  if (window.__regibeeGifts) return;
+  window.__regibeeGifts = true;
+  var last = null;
+  function check() {
+    var match = document.cookie.match(/(?:^|;\\s*)${MY_GIFTS_COOKIE}=([^;]*)/);
+    var value = match ? match[1] : "";
+    if (value === last) return;
+    last = value;
+    if (value) window.ReactNativeWebView.postMessage(JSON.stringify({ type: "gifts", cookie: value }));
+  }
+  check();
+  setInterval(check, 1000);
+})();`;
+
+const PAGE_SCRIPT = `${HEADER_SCRIPT}\n${GIFTS_SCRIPT}\ntrue;`;
 
 /** The header's title, which fades in once the page's own title has scrolled under it. */
 function HeaderTitle({
@@ -100,11 +132,14 @@ function HeaderTitle({
 export default function WebScreen() {
   const { path: pathParam } = useLocalSearchParams<{ path: string }>();
   const path = sitePath(pathParam ?? "/");
-  const { session } = useSession();
+  const { session, userId } = useSession();
+  const queryClient = useQueryClient();
   const site = useSitePageColors();
   const web = useRef<WebView<object>>(null);
   // undefined while the token is being read, null when signed out.
   const [token, setToken] = useState<string | null | undefined>(undefined);
+  // The app's gifts, as the APP_GIFTS_HEADER value, sent with the first request.
+  const [giftsHeader, setGiftsHeader] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [current, setCurrent] = useState(`${SITE_URL}${path}`);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -121,15 +156,23 @@ export default function WebScreen() {
 
   useEffect(() => {
     let live = true;
-    freshAccessToken()
-      .catch(() => null)
-      .then((value) => {
-        if (live) setToken(value);
-      });
+    (async () => {
+      const value = await freshAccessToken().catch(() => null);
+      // The newest gifts: more wouldn't fit in the website's cookie.
+      const gifts = value && userId ? Object.entries(await readMyGifts(userId)).slice(-MAX_APP_GIFTS) : null;
+      if (!live) return;
+      setGiftsHeader(gifts ? JSON.stringify(Object.fromEntries(gifts)) : null);
+      setToken(value);
+    })();
     return () => {
       live = false;
     };
-  }, [attempt]);
+  }, [attempt, userId]);
+
+  // The gifts the cookie held the last time the page sent it. Only gifts that
+  // are new since then are kept, so a page left open under another screen
+  // never puts back an older gift over one given there since.
+  const cookieGifts = useRef<Record<string, string>>({});
 
   // Android's back button goes back a page first, then leaves the screen.
   useEffect(() => {
@@ -152,9 +195,13 @@ export default function WebScreen() {
    */
   const openInApp = useCallback((sitePathname: string): boolean => {
     // A page the app has its own screen for, such as an invitation, opens
-    // there, on top of this one. Not the page this web view was opened for:
-    // the native screen sends a page here when it can't show it itself.
-    const native = signedIn && sitePathname.split(/[?#]/)[0] !== path.split(/[?#]/)[0] ? nativeRoute(sitePathname) : null;
+    // there, on top of this one. Not the screen this web view was opened
+    // for: the native screen sends a page here when it can't show it itself.
+    // A gift link (/e/<event>/gifts?to=<list>) redirects to its list, which
+    // is the same screen, so it stays here too.
+    const ownScreen = nativeScreenKey(path) ?? path.split(/[?#]/)[0];
+    const native =
+      signedIn && (nativeScreenKey(sitePathname) ?? sitePathname.split(/[?#]/)[0]) !== ownScreen ? nativeRoute(sitePathname) : null;
     const target = native ? null : appScreenForPath(sitePathname);
     if (!native && !target) return false;
     const now = Date.now();
@@ -188,9 +235,36 @@ export default function WebScreen() {
     if (state.title && !state.title.startsWith("http")) setTitle(state.title.replace(/\s*\|\s*Regibee$/, ""));
   }
 
+  /** Keeps the gifts given on a page here that the app doesn't know yet. */
+  function onGiftsCookie(cookie: string) {
+    if (!session || !userId) return;
+    const current = webViewGifts(cookie, userId);
+    if (!current) return;
+    const added = newGifts(cookieGifts.current, current);
+    cookieGifts.current = current;
+    if (Object.keys(added).length === 0) return;
+    rememberGifts(userId, added)
+      .then(() => queryClient.invalidateQueries({ queryKey: publicListKeys.all }))
+      .catch(() => {
+        // Kept next time the page sends the cookie.
+        cookieGifts.current = {};
+      });
+  }
+
   function onMessage(event: WebViewMessageEvent) {
+    // Only this site's pages. Frames inside them, like a map, can post too.
+    if (pathOnSite(event.nativeEvent.url) === null) return;
     try {
-      const message = JSON.parse(event.nativeEvent.data) as { type?: string; filled?: unknown; heading?: unknown };
+      const message = JSON.parse(event.nativeEvent.data) as {
+        type?: string;
+        filled?: unknown;
+        heading?: unknown;
+        cookie?: unknown;
+      };
+      if (message.type === "gifts" && typeof message.cookie === "string") {
+        onGiftsCookie(message.cookie);
+        return;
+      }
       if (message.type !== "header") return;
       setFilled(message.filled === true);
       setHeading(typeof message.heading === "string" ? message.heading : "");
@@ -252,7 +326,16 @@ export default function WebScreen() {
         <WebView
           key={attempt}
           ref={web}
-          source={{ uri: signedInAddress(path), headers: token ? { [IN_APP_HEADER]: "1", Authorization: `Bearer ${token}` } : { [IN_APP_HEADER]: "1" } }}
+          source={{
+            uri: signedInAddress(path),
+            headers: token
+              ? {
+                  [IN_APP_HEADER]: "1",
+                  Authorization: `Bearer ${token}`,
+                  ...(giftsHeader ? { [APP_GIFTS_HEADER]: giftsHeader } : {}),
+                }
+              : { [IN_APP_HEADER]: "1" },
+          }}
           style={{ flex: 1, backgroundColor: site.background }}
           startInLoadingState
           renderLoading={() => (
@@ -261,7 +344,7 @@ export default function WebScreen() {
             </View>
           )}
           onNavigationStateChange={onNavigation}
-          injectedJavaScript={HEADER_SCRIPT}
+          injectedJavaScript={PAGE_SCRIPT}
           onMessage={onMessage}
           onError={() => setFailed(true)}
           onShouldStartLoadWithRequest={(request) => {

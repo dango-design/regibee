@@ -154,6 +154,30 @@ export function useStartWishlist() {
   });
 }
 
+/**
+ * Closes the "Start your wishlist" prompt for this account, on every device.
+ * It goes straight away, and comes back if saving fails.
+ */
+export function useDismissWishlistPrompt() {
+  const queryClient = useQueryClient();
+  const { userId } = useSession();
+  const key = savedKeys.items(userId);
+  return useMutation({
+    mutationFn: async () => {
+      if (isDemo()) notInDemo();
+      return act<{ error: string | null }>("saved.dismissWishlistPrompt");
+    },
+    onMutate: () => {
+      const previous = queryClient.getQueryData<SavedItemsData>(key);
+      if (previous) queryClient.setQueryData<SavedItemsData>(key, { ...previous, wishlistPromptClosed: true });
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Gift ideas
 // ---------------------------------------------------------------------------

@@ -45,5 +45,10 @@ export interface SavedItem {
 export interface SavedItemsData {
   lists: SavedList[];
   items: SavedItem[];
+  /**
+   * Whether the person closed the "Start your wishlist" prompt. Optional, since
+   * older app builds and stories leave it out.
+   */
+  wishlistPromptClosed?: boolean;
 }
 

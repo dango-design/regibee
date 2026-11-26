@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, useTransition } from "react";
-import { EyeOff, Gift, ListPlus, Plus } from "lucide-react";
+import { EyeOff, Gift, ListPlus, Plus, X } from "lucide-react";
 import { SearchLg } from "@untitledui/icons";
 import {
   Dialog as AriaDialog,
@@ -21,7 +21,7 @@ import { ItemImage } from "@/components/item-image";
 import { PandaMark } from "@/components/panda-mark";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
-import { addItemsToList, removeItemsFromList, startMyWishlist } from "@/lib/actions/saved";
+import { addItemsToList, dismissWishlistPrompt, removeItemsFromList, startMyWishlist } from "@/lib/actions/saved";
 import { formatPrice } from "@/lib/money";
 import type { SavedItem, SavedList } from "@/lib/saved-items";
 import { cx } from "@/lib/utils/cx";
@@ -34,10 +34,13 @@ import { cx } from "@/lib/utils/cx";
 export interface SavedItemsProps {
   lists: SavedList[];
   items: SavedItem[];
+  /** Whether the person closed the "Start your wishlist" prompt. */
+  wishlistPromptClosed?: boolean;
   // Stories pass stand-ins. The page uses the real server actions.
   addAction?: typeof addItemsToList;
   removeAction?: typeof removeItemsFromList;
   startWishlistAction?: typeof startMyWishlist;
+  dismissWishlistPromptAction?: typeof dismissWishlistPrompt;
   /**
    * Rendered in place of the "Save an item" dialog, which needs the server.
    * Gets the lists and the one it starts on.
@@ -124,12 +127,36 @@ function EmptyState({ hasLists }: { hasLists: boolean }) {
   );
 }
 
-function StartWishlistCallout({ action }: { action: typeof startMyWishlist }) {
+function StartWishlistCallout({
+  action,
+  dismissAction,
+}: {
+  action: typeof startMyWishlist;
+  dismissAction: typeof dismissWishlistPrompt;
+}) {
   const router = useRouter();
   const headingId = useId();
   const [busy, setBusy] = useState(false);
   const [refreshing, startRefresh] = useTransition();
   const [error, setError] = useState("");
+  // Hidden as soon as it's closed. If saving that fails, it comes back with
+  // the error, so it doesn't vanish now and return on the next visit.
+  const [hidden, setHidden] = useState(false);
+
+  const close = async () => {
+    setHidden(true);
+    setError("");
+    let message: string | null;
+    try {
+      message = (await dismissAction()).error;
+    } catch {
+      message = "That didn't save. Try again in a moment.";
+    }
+    if (message) {
+      setError(message);
+      setHidden(false);
+    }
+  };
 
   const start = async () => {
     setBusy(true);
@@ -154,12 +181,23 @@ function StartWishlistCallout({ action }: { action: typeof startMyWishlist }) {
   };
 
   const working = busy || refreshing;
+  if (hidden) return null;
 
   return (
     <section
       aria-labelledby={headingId}
-      className="mt-6 flex flex-col gap-4 rounded-2xl bg-brand-primary p-4 sm:flex-row sm:items-center sm:p-5"
+      className="relative mt-6 flex flex-col gap-4 rounded-2xl bg-brand-primary p-4 sm:flex-row sm:items-center sm:p-5 sm:pr-14"
     >
+      <button
+        type="button"
+        aria-label="Close"
+        title="Close"
+        onClick={close}
+        disabled={working}
+        className="absolute top-2 right-2 flex size-8 cursor-pointer items-center justify-center rounded-full text-tertiary transition outline-none hover:bg-primary hover:text-secondary focus-visible:ring-2 focus-visible:ring-brand-solid disabled:cursor-default disabled:opacity-50 max-sm:size-11"
+      >
+        <X aria-hidden="true" className="size-4" />
+      </button>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary">
         <Gift aria-hidden="true" className="size-5 text-brand-tertiary" />
       </span>
@@ -554,7 +592,9 @@ export function SavedItems({
   items,
   addAction = addItemsToList,
   removeAction = removeItemsFromList,
+  wishlistPromptClosed = false,
   startWishlistAction = startMyWishlist,
+  dismissWishlistPromptAction = dismissWishlistPrompt,
   renderSaveItem,
 }: SavedItemsProps) {
   const router = useRouter();
@@ -750,7 +790,9 @@ export function SavedItems({
         {saveButton && <div className="shrink-0">{saveButton}</div>}
       </div>
 
-      {!ownWishlist && <StartWishlistCallout action={startWishlistAction} />}
+      {!ownWishlist && !wishlistPromptClosed && (
+        <StartWishlistCallout action={startWishlistAction} dismissAction={dismissWishlistPromptAction} />
+      )}
 
       {current.length === 0 ? (
         <EmptyState hasLists={lists.length > 0} />

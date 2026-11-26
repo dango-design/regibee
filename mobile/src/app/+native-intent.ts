@@ -6,16 +6,17 @@
 //
 // A link to a website page for guests and followers, such as
 // regibee://r/<slug> or https://www.regibee.com/e/<slug>, opens inside the
-// app: on the app's own screen at the same path when it has one (nativeRoute
+// app: on the app's own screen at the same path when it has one (nativePath
 // in src/lib/web.ts), and otherwise in the web view (src/app/web.tsx).
 
-import { nativeRoute, sitePathFromLink } from "@/lib/web";
+import { nativePath, sitePathFromLink } from "@/lib/web";
 
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
   try {
     if (path.includes("dataUrl=")) return "/share";
     const sitePath = sitePathFromLink(path);
-    if (sitePath && nativeRoute(sitePath)) return sitePath.split("#")[0];
+    const native = sitePath ? nativePath(sitePath) : null;
+    if (native) return native;
     if (sitePath) return `/web?path=${encodeURIComponent(sitePath)}`;
     return path;
   } catch {

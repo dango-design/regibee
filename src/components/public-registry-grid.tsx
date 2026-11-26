@@ -16,7 +16,7 @@ import {
   type OpenGift,
 } from "@/components/reserve-item-dialog";
 import { ReservationBanner, type ReservationBannerEntry } from "@/components/reservation-banner";
-import { formatReservedUntil, type MyItemGift } from "@/lib/gifts";
+import { guestItemStatus, type MyItemGift } from "@/lib/gifts";
 import { CoverItemDialog, type CoverActions } from "@/components/cover-item-dialog";
 import { ContributeFundDialog } from "@/components/contribute-fund-dialog";
 import { StartGroupGiftDialog, type StartGroupGiftDialogProps } from "@/components/start-group-gift-dialog";
@@ -560,23 +560,18 @@ function PublicItemCard({
   const registryStoreName = showStoreRegistries
     ? registryStoreFor(item.external_url, linkedStores)?.name
     : undefined;
-  const isFulfilled = item.quantity_fulfilled >= item.quantity_needed;
-  const remaining = item.quantity_needed - item.quantity_fulfilled;
-  // Gifts go by what the server matched to this visitor. Covers saved before
-  // the cookie held purchase ids left "cover" in it, which still counts.
-  const itemPurchased = item.is_parent_purchased
-    ? !!myItemGift || myGifts.items?.[item.id] === "cover"
-    : myItemGift?.status === "purchased";
-  const myReservation = !item.is_parent_purchased && myItemGift?.status === "reserved";
-  const coveredQty = coverCounts[item.id] || 0;
-  const availableToGift = item.is_parent_purchased
-    ? item.quantity_needed - coveredQty
-    : remaining;
-  const isFullyCovered = item.is_parent_purchased && coveredQty >= item.quantity_needed;
-  const myGroupGift = item.is_parent_purchased ? undefined : groupGifts?.mine[item.id];
-  const looksDone = (isFulfilled && !item.is_parent_purchased && !myReservation && !myGroupGift) || isFullyCovered;
-  // Anyone but the list's managers can start a group gift on an open item.
-  const canStartGroupGift = Boolean(groupGifts) && !item.is_parent_purchased && remaining > 0 && !myItemGift && !myGroupGift;
+  // The same rules as the app's list screen (src/lib/gifts.ts).
+  const status = guestItemStatus(item, {
+    gift: myItemGift,
+    cookieValue: myGifts.items?.[item.id],
+    reservedQty,
+    coveredQty: coverCounts[item.id] || 0,
+    groupGift: groupGifts?.mine[item.id],
+    groupGiftsOn: Boolean(groupGifts),
+    selfPurchasedLabel,
+    endedLinkOpen: openStep === "ended",
+  });
+  const { availableToGift, itemPurchased, myGroupGift, looksDone, canStartGroupGift } = status;
 
   return (
     <Card
@@ -618,11 +613,7 @@ function PublicItemCard({
                   {formatPrice(item.price)}
                 </span>
               )}
-              <span className="text-xs text-secondary">
-                {item.is_parent_purchased
-                  ? `${availableToGift} of ${item.quantity_needed} available to gift`
-                  : `${remaining} of ${item.quantity_needed} still needed`}
-              </span>
+              <span className="text-xs text-secondary">{status.quantity}</span>
             </div>
             {store && (
               <span className="inline-flex items-center gap-1 text-xs text-tertiary">
@@ -643,29 +634,15 @@ function PublicItemCard({
             )}
           </div>
           <div className="flex w-full min-w-0 flex-wrap gap-2.5 empty:hidden">
-            {item.is_parent_purchased ? (
-              <Tag variant="parent-purchased">{selfPurchasedLabel}</Tag>
-            ) : myGroupGift ? (
-              <Tag variant="reserved">{myGroupGift.organizer ? "Your group gift" : "You're chipping in"}</Tag>
-            ) : myReservation ? (
-              <Tag variant="reserved">
-                {/* One text node: the tag is a flex box, which would drop the space between pieces. */}
-                <span suppressHydrationWarning>
-                  {myItemGift?.reservedUntil
-                    ? `Reserved for you · until ${formatReservedUntil(myItemGift.reservedUntil, "short")}`
-                    : "Reserved for you"}
-                </span>
+            {status.tag && (
+              <Tag variant={status.tag.kind}>
+                {status.myReservation && !myGroupGift ? (
+                  // The date depends on the viewer's time zone, so it can differ from the server's.
+                  <span suppressHydrationWarning>{status.tag.label}</span>
+                ) : (
+                  status.tag.label
+                )}
               </Tag>
-            ) : itemPurchased ? (
-              <Tag variant="purchased-by-you">You gifted this</Tag>
-            ) : isFulfilled ? (
-              reservedQty > 0 ? (
-                <Tag variant="reserved">Reserved by a guest</Tag>
-              ) : (
-                <Tag variant="gifted">Gifted</Tag>
-              )
-            ) : (
-              item.is_essential && <Tag variant="most-wanted">Most wanted</Tag>
             )}
             {item.is_open_to_used && (
               <UsedConditionTag condition={item.minimum_condition} />
@@ -673,9 +650,7 @@ function PublicItemCard({
           </div>
         </div>
 
-        {(item.is_parent_purchased
-          ? availableToGift > 0 || !!myItemGift || openStep === "ended"
-          : !isFulfilled || !!myItemGift || !!myGroupGift || openStep === "ended") && (
+        {status.showsActions && (
           <div className="flex flex-wrap items-center justify-end gap-2">
             {myGroupGift ? (
               <Link
