@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { formatShortEventDate, eventTypeLabel } from "@shared/events";
 import { LIST_ACCESS, PROFILE_AUDIENCE, listAccess, listVisibility, profileAudience } from "@shared/list-access";
+import { headerChoice, listHeader, type ListHeader as BandHeader } from "@shared/list-headers";
 import { copyForRegistry } from "@shared/registry-copy";
 import { getStore } from "@shared/retailers";
 
@@ -65,8 +66,7 @@ import { fonts, radius, spacing, useTheme } from "@/lib/theme";
 import { openSite } from "@/lib/web";
 import type { CashFund, Gift, Item, RegistryDetail } from "@/lib/types";
 
-/** The guest page's dots (bg-brand-primary with brand-200 dots), in each mode. */
-const DOT = { light: "#C3E3E8", dark: "#1B4552" } as const;
+/** The gap between the band's dots, as on the website. */
 const DOT_GAP = 20;
 /** How far the card overlaps the band's bottom edge. */
 const CARD_OVERLAP = 40;
@@ -232,6 +232,8 @@ export default function RegistryScreen() {
   // On iPhone the list starts under the header, so at rest it's scrolled to
   // about minus the header's height. Android's starts at 0. The title has
   // gone by about 120 points down the band.
+  const band = listHeader(headerChoice(r.settings));
+  const bandColor = theme.dark ? band.color.dark.bg : band.color.light.bg;
   const restOffset = Platform.OS === "ios" ? -(insets.top + 44) : 0;
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = e.nativeEvent.contentOffset.y - restOffset > 120;
@@ -245,7 +247,7 @@ export default function RegistryScreen() {
           title: scrolled ? r.title : "",
           // At the top, the header takes the band's colour, so the band
           // starts at the top of the screen.
-          headerStyle: { backgroundColor: scrolled ? theme.background : theme.tintSoft },
+          headerStyle: { backgroundColor: scrolled ? theme.background : bandColor },
           headerRight: () => (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
@@ -425,10 +427,13 @@ function ListHeader({
   const access =
     visibility === "private" ? listAccess(visibility).label : `${listAccess(visibility).short} · ${PROFILE_AUDIENCE[audience].short}`;
   const itemCount = detail.items.length;
+  // The color and pattern the owner chose on the website (@shared/list-headers).
+  const header = listHeader(headerChoice(r.settings));
+  const tones = theme.dark ? header.color.dark : header.color.light;
 
   return (
     <View style={{ paddingBottom: spacing.sm }}>
-      <DottedBand bleed={bandTop + 200}>
+      <DottedBand bleed={bandTop + 200} header={header}>
         <View style={styles.bandInner}>
           {r.photo_url ? (
             <Image
@@ -440,7 +445,7 @@ function ListHeader({
               accessibilityIgnoresInvertColors
             />
           ) : null}
-          <Text variant="caption" style={[styles.eyebrow, { color: theme.dark ? theme.tint : "#2E7387" }]}>
+          <Text variant="caption" style={[styles.eyebrow, { color: tones.ink }]}>
             {`${occasionLabel(r)} · ${plural(itemCount, "item")}`.toUpperCase()}
           </Text>
           <Text variant="display" numberOfLines={3} style={{ textAlign: "center" }}>
@@ -509,25 +514,30 @@ function CategoryChips({
 }
 
 /**
- * The guest page's band: brand tint with a grid of dots. It reaches up by
+ * The guest page's band, in the color the owner chose. It reaches up by
  * `bleed` behind the header and past the top when pulled down, so no strip
  * of another colour shows above it.
+ *
+ * Only the Dots pattern is drawn here so far. The website's other patterns
+ * are SVG tiles, and the app draws those bands plain until it can show them.
  */
-function DottedBand({ bleed, children }: { bleed: number; children: React.ReactNode }) {
+function DottedBand({ bleed, header, children }: { bleed: number; header: BandHeader; children: React.ReactNode }) {
   const theme = useTheme();
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const color = theme.dark ? DOT.dark : DOT.light;
-  const cols = Math.ceil(size.width / DOT_GAP);
-  const rows = Math.ceil(size.height / DOT_GAP);
+  const tones = theme.dark ? header.color.dark : header.color.light;
+  const color = tones.pattern;
+  const dots = header.pattern.id === "dots";
+  const cols = dots ? Math.ceil(size.width / DOT_GAP) : 0;
+  const rows = dots ? Math.ceil(size.height / DOT_GAP) : 0;
   return (
     <View
-      style={{ backgroundColor: theme.tintSoft, paddingBottom: CARD_OVERLAP + spacing.lg }}
+      style={{ backgroundColor: tones.bg, paddingBottom: CARD_OVERLAP + spacing.lg }}
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
         if (width !== size.width || height !== size.height) setSize({ width, height });
       }}
     >
-      <View style={{ position: "absolute", left: 0, right: 0, top: -bleed, height: bleed, backgroundColor: theme.tintSoft }} />
+      <View style={{ position: "absolute", left: 0, right: 0, top: -bleed, height: bleed, backgroundColor: tones.bg }} />
       <View pointerEvents="none" style={StyleSheet.absoluteFill} importantForAccessibility="no-hide-descendants">
         {Array.from({ length: rows }, (_, row) => (
           <View key={row} style={{ flexDirection: "row", height: DOT_GAP }}>

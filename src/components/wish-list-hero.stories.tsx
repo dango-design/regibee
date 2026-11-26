@@ -1,5 +1,6 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react";
 import type { GiftProfile } from "@/lib/gift-profile";
+import { listHeader } from "@/lib/list-headers";
 import type { FollowButtonState } from "./follow-button";
 import { NavBar } from "./nav-bar";
 import { OwnerChip } from "./owner-chip";
@@ -149,4 +150,10 @@ export const TitleOnly: Story = {
     fulfilledItems: 0,
     totalItems: 6,
   },
+};
+
+// A birthday wishlist with the header its owner picked.
+export const WithHeader: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: { ...Following.args, header: listHeader({ color: "sunshine", pattern: "balloons" }) },
 };

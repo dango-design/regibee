@@ -61,6 +61,8 @@ import { formatPrice } from "@/lib/money";
 import { RegistryTabs } from "@/components/registry-tabs";
 import { PlanEventButton } from "@/components/registry-events-banner";
 import { OwnerListTop } from "@/components/owner-list-top";
+import { ListHeaderPicker } from "@/components/list-header-picker";
+import { headerChoice, headerOccasion, listHeader, type HeaderChoice } from "@/lib/list-headers";
 import { LIST_ACCESS, PROFILE_AUDIENCE, listVisibility, profileAudience } from "@/lib/list-access";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
@@ -1115,6 +1117,13 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
     return { error: null };
   };
 
+  // A new header lasts until you leave too.
+  const [header, setHeader] = useState(() => listHeader(headerChoice(registry.settings)));
+  const saveHeader = async (_registryId: string, choice: HeaderChoice) => {
+    setHeader(listHeader(choice));
+    return { error: null };
+  };
+
   const handleAddItem = (item: DemoItem) => {
     setItems((prev) => [...prev, item]);
   };
@@ -1251,6 +1260,16 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
         title={registry.title}
         occasion={occasionLabel(registry.registry_type, registry.event_type)}
         itemCount={totalItems}
+        header={header}
+        customize={
+          <ListHeaderPicker
+            registryId={registry.id}
+            title={registry.title}
+            header={header}
+            occasion={headerOccasion(registry.registry_type, registry.event_type)}
+            saveAction={saveHeader}
+          />
+        }
         dateLabel={
           registry.event_date
             ? `${copy.eventDateLabel}: ${new Date(`${registry.event_date}T00:00:00`).toLocaleDateString("en-US", {

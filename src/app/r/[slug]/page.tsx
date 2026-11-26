@@ -11,6 +11,7 @@ import { SuggestItemDialog } from "@/components/suggest-item-dialog";
 import { PublicRegistryGrid } from "@/components/public-registry-grid";
 import { PublicRegistryHero } from "@/components/public-registry-hero";
 import { WishListHero } from "@/components/wish-list-hero";
+import { listHeader } from "@/lib/list-headers";
 import { OwnerChip } from "@/components/owner-chip";
 import { FollowButton } from "@/components/follow-button";
 import { Nav } from "@/components/nav";
@@ -141,6 +142,7 @@ export default async function PublicRegistryPage({
             fulfilledItems={page.fulfilledItems}
             totalItems={page.totalItems}
             owner={owner && ownerRelation ? owner : null}
+            header={page.header ? listHeader(page.header) : null}
             followButton={
               owner &&
               ownerRelation &&
@@ -179,6 +181,7 @@ export default async function PublicRegistryPage({
             giftProfile={giftProfile}
             giftProfileName={page.giftProfileName}
             showBirthday={showBirthday}
+            header={listHeader(page.header)}
           />
         )}
 

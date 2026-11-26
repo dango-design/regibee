@@ -28,6 +28,7 @@ import { isUuid } from "@/lib/extension";
 import { verifyBuyerLink } from "@/lib/buyer-link";
 import type { PaymentMethods, RegistrySettings, RegistryType } from "@/lib/types";
 import { copyForRegistry, honoreeDisplayName } from "@/lib/registry-copy";
+import { headerChoice } from "@/lib/list-headers";
 import { displayName, profilePath } from "@/lib/profile-link";
 import { getViewer, getViewerRelation, giftProfileViewer } from "@/lib/viewer";
 import { parseRetailerRegistries, type StoreId } from "@/lib/retailers";
@@ -632,6 +633,7 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
       parent_names: registry.parent_names ?? null,
       registry_type: registryType,
     },
+    header: headerChoice(registry.settings),
     owner,
     ownerRelation: owner && ownerRelation
       ? { state: ownerRelation.state, isOwner: ownerRelation.isOwner, followsYou: ownerRelation.followsYou }

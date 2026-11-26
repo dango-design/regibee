@@ -2,6 +2,8 @@ import type { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { Button } from "@/components/ui/button";
 import { NavBar } from "./nav-bar";
+import { listHeader } from "@/lib/list-headers";
+import { ListHeaderPicker } from "./list-header-picker";
 import { OwnerListTop } from "./owner-list-top";
 
 /**
@@ -109,4 +111,26 @@ export const PlanPrompt: Story = {
 export const Dark: Story = {
   ...EverythingShowing,
   parameters: { theme: "dark", chromatic: { disableSnapshot: true } },
+};
+
+/** A baby registry with a header the owner picked, and the Header button in its corner. */
+export const BabyHeader: Story = {
+  args: {
+    ...EverythingShowing.args,
+    header: listHeader({ color: "blush", pattern: "feet" }),
+    customize: (
+      <ListHeaderPicker
+        registryId="reg-1"
+        title="Remi & Max's Baby Registry"
+        header={listHeader({ color: "blush", pattern: "feet" })}
+        occasion="baby"
+        saveAction={fn(async () => ({ error: null }))}
+      />
+    ),
+  },
+};
+
+export const BabyHeaderDark: Story = {
+  ...BabyHeader,
+  parameters: { theme: "dark" },
 };

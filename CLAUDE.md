@@ -80,6 +80,13 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
 - Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
 
+## List headers
+
+- The band at the top of a list's page has a color and a pattern the owner picks with the Header button on their list's page. The choice is saved in `registries.settings.header` as `{ color, pattern }`. A list with nothing saved keeps the light teal with dots.
+- The colors, the patterns and which kinds of list each pattern suits are in `src/lib/list-headers.ts`, which the phone app shares. The icon patterns are Lucide drawings, tiled as SVG. On the website, `listHeaderVars` and `HEADER_BAND` (`src/lib/list-header-style.ts`) draw the band in both light and dark mode.
+- `setListHeader` saves it, and any manager can change it. The owner's page, the wishlist guest page and the phone app's list screen draw the band. A baby registry's guest page keeps its illustrated header until the owner picks a band.
+- The phone app draws the chosen color, and dots only for the Dots pattern. It draws other patterns as a plain band for now.
+
 ## Gift profiles
 
 - A person's gift profile (birthday, sizes, colors, likes, things to skip, notes) is in `profiles.gift_profile`. The rules are in `src/lib/gift-profile.ts`.

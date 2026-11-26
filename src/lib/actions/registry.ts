@@ -17,6 +17,7 @@ import { requireAccount } from "@/lib/require-account";
 import { noEmailsMessage, reserveEmails, settleEmails, visitorEmailAllowance } from "@/lib/email-budget";
 import { generateRegistrySlug, insertRegistry } from "@/lib/registry-create";
 import { canKeepOldLinks } from "@/lib/list-links";
+import { HEADER_SETTING, parseHeaderChoice } from "@/lib/list-headers";
 import {
   DEFAULT_LIST_VISIBILITY,
   parseListVisibility,
@@ -1306,6 +1307,31 @@ export async function dismissEventPrompt(registryId: string): Promise<{ error: s
   if (error) return { error: error.message };
 
   revalidatePath(`/dashboard/registry/${registryId}`);
+  return { error: null };
+}
+
+/**
+ * Saves the color and pattern of a list's band (src/lib/list-headers.ts).
+ * Any manager can change it, like the list's other settings. The phone app
+ * calls it too, as registry.setListHeader.
+ */
+export async function setListHeader(registryId: string, choice: unknown): Promise<{ error: string | null }> {
+  const header = parseHeaderChoice(choice);
+  if (!header) return { error: "Choose a color and a pattern." };
+
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const supabase = await createClient();
+  const { data: registry } = await supabase.from("registries").select("settings, slug").eq("id", registryId).single();
+  if (!registry) return { error: "Registry not found" };
+
+  const settings = { ...((registry.settings as Record<string, unknown>) || {}), [HEADER_SETTING]: header };
+  const { error } = await supabase.from("registries").update({ settings }).eq("id", registryId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/registry/${registryId}`);
+  revalidatePath(`/r/${registry.slug}`);
   return { error: null };
 }
 

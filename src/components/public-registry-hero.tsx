@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Calendar, LockOpen } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { RegistryAvatar } from "@/components/registry-avatar";
+import type { ListHeader } from "@/lib/list-headers";
+import { HEADER_BAND, listHeaderVars } from "@/lib/list-header-style";
+import { cx } from "@/lib/utils/cx";
 
 export interface PublicRegistryHeroProps {
   isBabyRegistry: boolean;
@@ -18,6 +21,11 @@ export interface PublicRegistryHeroProps {
   owner?: { name: string; path: string } | null;
   /** The Follow button under "Shared by", for anyone but the owner. */
   followButton?: React.ReactNode;
+  /**
+   * The band the owner chose, or null when they never chose one
+   * (src/lib/list-headers.ts). It replaces the white background and the illustrations.
+   */
+  header?: ListHeader | null;
 }
 
 /**
@@ -36,6 +44,7 @@ export function PublicRegistryHero({
   totalItems,
   owner,
   followButton,
+  header,
 }: PublicRegistryHeroProps) {
   const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
 
@@ -44,13 +53,17 @@ export function PublicRegistryHero({
     // personal registries size to content with a looser minimum, and tighten
     // further when there's no welcome message.
     <section
-      className={`relative flex items-center justify-center bg-primary py-12 ${
-        isBabyRegistry ? "min-h-[400px]" : description ? "min-h-[260px]" : "min-h-[200px]"
-      }`}
+      className={cx(
+        "relative flex items-center justify-center py-12",
+        header ? HEADER_BAND : "bg-primary",
+        isBabyRegistry ? "min-h-[400px]" : description ? "min-h-[260px]" : "min-h-[200px]",
+      )}
+      style={header ? listHeaderVars(header) : undefined}
     >
       {/* Decorative illustrations — baby-specific; personal registries keep
-          a clean hero. Pinned to a 1440px canvas. */}
-      {isBabyRegistry && (
+          a clean hero. Pinned to a 1440px canvas. A band the owner chose
+          takes their place. */}
+      {isBabyRegistry && !header && (
         <div className="pointer-events-none absolute inset-0 mx-auto hidden max-w-[1440px] lg:block" aria-hidden="true">
           {/* Left side */}
           <img src="/hero/star-teal-left.svg" alt="" className="absolute left-[89px] top-[108px] w-[62px] h-[63px]" />
