@@ -304,8 +304,10 @@ function Row({
         <Icon aria-hidden="true" className="size-4" />
       </span>
       <Link href={href} className="card-link flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium text-primary">{label}</span>
-        {detail && <span className="truncate text-xs text-tertiary">{detail}</span>}
+        {/* Four across leaves a part about 250px wide, so long words wrap to
+            a second line instead of being cut off. */}
+        <span className="line-clamp-2 text-sm font-medium break-words text-primary">{label}</span>
+        {detail && <span className="line-clamp-2 text-xs break-words text-tertiary">{detail}</span>}
       </Link>
       {trailing ? (
         <span className="card-action shrink-0">{trailing}</span>
