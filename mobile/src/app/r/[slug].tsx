@@ -18,7 +18,7 @@
 
 import { Redirect, router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { Platform, Pressable, RefreshControl, ScrollView, Share, View } from "react-native";
+import { Platform, Pressable, RefreshControl, Share, View } from "react-native";
 
 import { eventTypeLabel, formatShortEventDate } from "@shared/events";
 import { guestItemStatus, reservationsHiddenText, formatReservedUntil, type MyItemGift } from "@shared/gifts";
@@ -27,6 +27,7 @@ import type { PublicListItem, PublicListPageData } from "@shared/public-list-pag
 import { classifyStoreLink, registryStoreFor } from "@shared/retailers";
 
 import { Icon } from "@/components/icon";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { Notice } from "@/components/notice";
 import { CoverSheet } from "@/components/public-list/cover-sheet";
 import { FundSheet } from "@/components/public-list/fund-sheet";
@@ -164,7 +165,7 @@ export default function PublicListScreen() {
           headerRight: () => <IconButton icon="share" accessibilityLabel="Share the list's link" onPress={share} />,
         }}
       />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: theme.background }}
@@ -293,7 +294,7 @@ export default function PublicListScreen() {
         <View style={{ alignItems: "center", gap: spacing.sm }}>
           <Button title="Suggest an item" icon="add" variant="secondary" size="medium" onPress={() => setOther({ kind: "suggest" })} />
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
 
       {sheet && sheetItem ? (
         <GiftSheet

@@ -6,7 +6,7 @@
 
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, RefreshControl, ScrollView, View } from "react-native";
+import { Alert, RefreshControl, View } from "react-native";
 
 import { looksLikeEmail } from "@shared/email-address";
 import { birthdayCountdown, formatBirthdayDate, sortBirthdays } from "@shared/gift-profile";
@@ -14,6 +14,7 @@ import { profilePath, displayName } from "@shared/profile-link";
 import { isPastEvent, sortListedRegistries, type ListedRegistry } from "@shared/registry-listing";
 import { occasionLabel } from "@shared/registry-copy";
 
+import { KeyboardScrollView } from "@/components/keyboard";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, EmptyState, ErrorState, Field, haptic, LoadingState, Pill, Section, Text } from "@/components/ui";
 import { Icon } from "@/components/icon";
@@ -58,7 +59,7 @@ export default function FollowingScreen() {
     : [];
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       style={{ backgroundColor: theme.background }}
@@ -168,7 +169,7 @@ export default function FollowingScreen() {
           )}
         </>
       )}
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }
 

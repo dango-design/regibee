@@ -3,7 +3,7 @@
 
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Share, View } from "react-native";
+import { Alert, Share, View } from "react-native";
 
 import { MAX_PUBLIC_NOTE_LENGTH } from "@shared/gift-profile";
 import { LIST_ACCESS, listVisibility, profileAudience, type ProfileAudience } from "@shared/list-access";
@@ -12,6 +12,7 @@ import { displayName, profilePath } from "@shared/profile-link";
 import { occasionLabel } from "@shared/registry-copy";
 
 import { Icon } from "@/components/icon";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { Button, Card, ErrorState, Field, haptic, LoadingState, SwitchRow, Text } from "@/components/ui";
@@ -30,9 +31,9 @@ export default function ProfileScreen() {
     return page.isError ? <ErrorState message={errorMessage(page.error)} onRetry={() => page.refetch()} /> : <LoadingState />;
   }
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={100}>
+    <>
       <Stack.Screen options={{ title: "Your profile" }} />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: theme.background }}
@@ -58,8 +59,8 @@ export default function ProfileScreen() {
             </View>
           )}
         </Card>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardScrollView>
+    </>
   );
 }
 

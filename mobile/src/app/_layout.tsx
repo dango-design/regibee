@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { Alert, Platform } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { useAnalyticsAccount, useScreenViews } from "@/lib/analytics";
 import { AuthProvider, useSession } from "@/lib/auth";
@@ -29,11 +30,15 @@ export default function RootLayout() {
     // Shares are cleared once the owner saves or cancels them, not when the app
     // goes to the background, so a share isn't lost while they sign in.
     <ShareIntentProvider options={{ resetOnBackground: false, disabled: Platform.OS === "web" }}>
-      <QueryProvider>
-        <AuthProvider>
-          <RootNavigator ready={fontsLoaded || Boolean(fontError)} />
-        </AuthProvider>
-      </QueryProvider>
+      {/* Lets KeyboardAwareScrollView keep the field being typed in above the
+          keyboard. Android doesn't shrink an edge-to-edge app for it. */}
+      <KeyboardProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <RootNavigator ready={fontsLoaded || Boolean(fontError)} />
+          </AuthProvider>
+        </QueryProvider>
+      </KeyboardProvider>
     </ShareIntentProvider>
   );
 }

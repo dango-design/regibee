@@ -7,7 +7,7 @@
 
 import { router, Stack } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { BackHandler, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -28,6 +28,7 @@ import {
 
 import { DateField } from "@/components/date-field";
 import { Icon, type IconName } from "@/components/icon";
+import { KeyboardFooter, KeyboardScrollView, useKeyboardFooter } from "@/components/keyboard";
 import { Button, EmptyState, ErrorState, Field, haptic, IconButton, LoadingState, Section, SwitchRow, Text } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
@@ -119,7 +120,6 @@ const TINT_DOTS: Record<OccasionTint, string> = {
 };
 
 export default function NewPlanScreen() {
-  const theme = useTheme();
   const { demo } = useSession();
   const query = usePlanPicker();
 
@@ -143,7 +143,7 @@ export default function NewPlanScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Stack.Screen
         options={{
           title: "Start something new",
@@ -154,7 +154,7 @@ export default function NewPlanScreen() {
         }}
       />
       {body}
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -247,6 +247,7 @@ function StepSection({ children }: { children: ReactNode }) {
 function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string; title: string }[] }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardFooter = useKeyboardFooter();
   const { run } = useRunEventAction();
   const [state, setState] = useState<PlanPickerState>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -448,7 +449,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
         {state.step !== "what" ? (
           <View accessibilityLabel="Steps" style={{ flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: 4 }}>
             {STEPS.map((s, index) => {
@@ -706,10 +707,10 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
             .
           </Text>
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
 
       {state.step !== "what" ? (
-        <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+        <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
           {error ? (
             <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
               {error}
@@ -729,7 +730,7 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
               />
             ) : null}
           </View>
-        </View>
+        </KeyboardFooter>
       ) : null}
     </>
   );
