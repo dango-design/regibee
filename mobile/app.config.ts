@@ -53,7 +53,12 @@ const config: ExpoConfig = {
       foregroundImage: "./assets/images/android-icon-foreground.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
-    predictiveBackGestureEnabled: true,
+    // Off, so the back button reaches the app's screens on Android 13 to 15.
+    // With it on, those versions send back straight to the system, and React
+    // Native 0.88 only passes it to the app on Android 16. So back closed the
+    // app from any screen. Android 16 uses predictive back either way, and
+    // React Native handles it there.
+    predictiveBackGestureEnabled: false,
     intentFilters: [
       {
         action: "VIEW",

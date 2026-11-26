@@ -69,7 +69,7 @@ cp .env.local.example .env.local
 
 Fill in `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`. It's the website's `NEXT_PUBLIC_SUPABASE_ANON_KEY` (from `vercel env pull`). Like the website, the app uses the production database, so anything you do while signed in changes real data. Use the demo to try things.
 
-To try it against a local copy instead, point `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` at local Supabase (`supabase status`), run the website locally against the same database, and set `EXPO_PUBLIC_SITE_URL` to it, such as `http://localhost:3000`. The iPhone simulator reaches your Mac at localhost. Delete `.env.local` when you're done, so a later run doesn't point at a database that's stopped.
+To try it against a local copy instead, point `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` at local Supabase (`supabase status`), run the website locally against the same database, and set `EXPO_PUBLIC_SITE_URL` to it, such as `http://localhost:3000`. The iPhone simulator reaches your Mac at localhost. The Android emulator does too after `adb reverse tcp:3000 tcp:3000` and `adb reverse tcp:54321 tcp:54321` (use your ports), so the same `.env.local` works for both. Use that rather than `10.0.2.2`: the website's pages in the app's web view also call Supabase at the address the website was given. Delete `.env.local` when you're done, so a later run doesn't point at a database that's stopped.
 
 ## Run it
 
@@ -184,6 +184,6 @@ The privacy policy URL for both store listings is https://www.regibee.com/privac
 
 - **Store accounts.** The Google Play developer account is set up. iPhone still needs an Apple Developer account. The bundle id is `com.regibee.app` for both, set in `app.config.ts`. The first upload locks it, so change it before then if you want another.
 - **Public release on Play.** A personal Play developer account needs a closed test, with at least 12 testers opted in for 14 days in a row, before Google allows a public release. Internal testing doesn't count. An organization account skips this.
-- **Real phones.** On an Android phone, sharing from the Amazon and Target apps opens the add form, and a Target product filled in from the hidden web view (checked 19 Nov 2026 on the testing build, version code 3). Not yet tried on a phone: sharing from Walmart and Safari, whether an Amazon product fills in, and anything on an iPhone.
+- **Real phones.** On an Android phone, sharing from the Amazon and Target apps opens the add form, and a Target product filled in from the hidden web view (checked 19 Nov 2026 on the testing build, version code 3). Someone else's list and its gift sheet were checked on the Android 14 emulator against local Supabase on 26 Nov 2026: light and dark mode, the back button, the keyboard, reserving, the store and back, the reservation banner, releasing, and an invitation gift link opened from outside the app. Not yet tried on a phone: sharing from Walmart and Safari, whether an Amazon product fills in, and anything on an iPhone.
 - **Notifications.** Push needs the Apple push key and Firebase set up (see "Push notifications"). Not yet tried on a real phone.
 - **App group.** The iPhone share extension shares data with the app through `group.com.regibee.app`. EAS sets it up when it manages your credentials.
