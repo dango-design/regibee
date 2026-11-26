@@ -126,8 +126,12 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
 
 // How long to wait for the extension to say hello before saying it's missing.
 const DETECT_TIMEOUT_MS = 2000;
-// How long to wait for the extension to confirm it saved the session.
-const CONNECT_TIMEOUT_MS = 10000;
+// How long to wait for the extension to confirm it saved the session. Before
+// it answers, the extension loads the account from /api/extension/me to check
+// the session works. That can take several seconds when the server is cold.
+// The old 10 seconds ran out first, so the page showed an error and then the
+// success screen a moment later.
+const CONNECT_TIMEOUT_MS = 30000;
 
 function postToExtension(message: PageMessage) {
   window.postMessage(message, window.location.origin);
@@ -141,6 +145,7 @@ export function ExtensionConnect({ name }: { name: string }) {
   const [status, setStatus] = useState<ConnectStatus>("checking");
   const [error, setError] = useState<string | null>(null);
   const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connected = useRef(false);
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -151,8 +156,12 @@ export function ExtensionConnect({ name }: { name: string }) {
         setStatus((current) => (current === "checking" || current === "missing" ? "ready" : current));
       } else if (message.type === "connected") {
         if (connectTimer.current) clearTimeout(connectTimer.current);
+        connected.current = true;
+        setError(null);
         setStatus("connected");
       } else if (message.type === "connect-failed") {
+        // Once connected, a late failure doesn't undo it.
+        if (connected.current) return;
         if (connectTimer.current) clearTimeout(connectTimer.current);
         setError(message.error);
         setStatus("error");
