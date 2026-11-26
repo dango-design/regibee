@@ -18,7 +18,7 @@
 // Node library can break every story that imports one.
 
 import { after } from "next/server";
-import { appAccessToken } from "@/lib/app-request";
+import { inAppRequest } from "@/lib/app-request";
 import type { ListVisibility } from "@/lib/list-access";
 
 type NoProperties = Record<string, never>;
@@ -82,7 +82,7 @@ export function track<E extends keyof AnalyticsEvents>(
   const key = posthogKey();
   if (!key) return;
 
-  const platform = options.platform ?? (appAccessToken() ? "app" : "web");
+  const platform = options.platform ?? (inAppRequest() ? "app" : "web");
   const body = JSON.stringify({
     api_key: key,
     event,

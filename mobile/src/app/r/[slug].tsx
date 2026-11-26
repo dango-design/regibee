@@ -12,10 +12,12 @@
 // suggesting an item still happen on the website's page, in the web view.
 //
 // It sits in the root stack, at the website's own path, so back returns to
-// whatever opened it. Signed out, lists still open in the web view, since the
-// app's server routes need a signed-in account.
+// whatever opened it. It works signed out and in the demo too, as the
+// website's page does for a visitor with no account: the loader and the gift
+// actions are guest calls (src/lib/api.ts), and the gifts are kept under the
+// phone's own key (src/lib/my-gifts.ts).
 
-import { Redirect, router, Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Platform, Pressable, RefreshControl, ScrollView, Share, View } from "react-native";
 
@@ -31,14 +33,13 @@ import { GiftSheet, type GiftStep, type ItemShop } from "@/components/public-lis
 import { PublicListHero } from "@/components/public-list/hero";
 import { GuestItemCard, type GuestItemActions } from "@/components/public-list/item-card";
 import { Button, Card, EmptyState, Field, IconButton, LoadingState, ProgressBar, Text } from "@/components/ui";
-import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { formatDollars } from "@/lib/format";
 import { useConfirmGift, usePublicList, type EventLink } from "@/lib/public-list-data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { SITE_URL } from "@/lib/supabase";
 import { radius, spacing, useTheme } from "@/lib/theme";
-import { openSite, openWebView, sitePath } from "@/lib/web";
+import { openSite, openWebView } from "@/lib/web";
 
 const PART_LABEL = { host: "You're hosting", yes: "You're going", maybe: "You said maybe", pending: "You haven't replied" } as const;
 
@@ -69,7 +70,6 @@ export default function PublicListScreen() {
     [event, g],
   );
   const theme = useTheme();
-  const { session } = useSession();
   const page = usePublicList(slug, link);
   const pull = usePullToRefresh(page.refetch);
   const confirm = useConfirmGift();
@@ -82,10 +82,6 @@ export default function PublicListScreen() {
   const webPath = link
     ? `/e/${encodeURIComponent(link.event)}/gifts?g=${encodeURIComponent(link.token)}&to=${encodeURIComponent(slug)}`
     : `/r/${slug}`;
-
-  // Signed out (or looking around in the demo), the app's server routes
-  // won't answer, so the website's page shows instead.
-  if (!session) return <Redirect href={{ pathname: "/web", params: { path: sitePath(webPath) } }} />;
 
   const data = page.data;
   if (data === undefined) {

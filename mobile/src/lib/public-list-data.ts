@@ -3,6 +3,10 @@
 // the website's gift actions (reserveItem, confirmGift and releaseGift in
 // src/lib/actions/registry.ts). The gifts this account reserves are kept on
 // the phone (src/lib/my-gifts.ts), in place of the website's cookie.
+//
+// These work signed out too, and in the demo, which has no account: the
+// website lets anyone open a list and reserve a gift (see src/lib/api.ts).
+// Signed out, the gifts are kept under the phone's own key.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -20,21 +24,26 @@ export interface EventLink {
 
 export const publicListKeys = {
   all: ["public-list"] as const,
-  list: (slug: string, link: EventLink | null, userId: string) =>
-    ["public-list", slug, link?.event ?? "", link?.token ?? "", userId] as const,
+  list: (slug: string, link: EventLink | null, accountId: string) =>
+    ["public-list", slug, link?.event ?? "", link?.token ?? "", accountId] as const,
 };
 
+/** The signed-in account's id, or "" signed out and in the demo. Gifts are kept under it. */
+function useAccountId() {
+  return useSession().session?.user.id ?? "";
+}
+
 /**
- * The list with this slug, as this account sees it as a guest. Null when the
- * website says "not found": there's no such list, or it's private.
+ * The list with this slug, as this account, or a signed-out guest, sees it.
+ * Null when the website says "not found": there's no such list, or it's
+ * private.
  */
 export function usePublicList(slug: string, link: EventLink | null) {
-  const { userId, demo } = useSession();
+  const accountId = useAccountId();
   return useQuery({
-    queryKey: publicListKeys.list(slug, link, userId),
-    enabled: Boolean(userId) && !demo,
+    queryKey: publicListKeys.list(slug, link, accountId),
     queryFn: async () => {
-      const items = await readMyGifts(userId);
+      const items = await readMyGifts(accountId);
       return (await loadPage<PublicListPageData>("publicList", slug, items, link)) ?? null;
     },
   });
@@ -70,7 +79,7 @@ function useRefreshLists() {
  * list shows the gift as this guest's.
  */
 export function useReserveItem(link: EventLink | null) {
-  const { userId } = useSession();
+  const accountId = useAccountId();
   const refresh = useRefreshLists();
   return useMutation({
     mutationFn: async (input: ReserveInput) => {
@@ -89,7 +98,7 @@ export function useReserveItem(link: EventLink | null) {
           guestToken: link?.token ?? null,
         }),
       );
-      await rememberGift(userId, input.itemId, result.purchaseId);
+      await rememberGift(accountId, input.itemId, result.purchaseId);
       return result;
     },
     onSettled: refresh,
@@ -107,12 +116,12 @@ export function useConfirmGift() {
 
 /** The guest isn't getting the item after all: it goes back on the list. */
 export function useReleaseGift() {
-  const { userId } = useSession();
+  const accountId = useAccountId();
   const refresh = useRefreshLists();
   return useMutation({
     mutationFn: async ({ itemId, purchaseId }: { itemId: string; purchaseId: string }) => {
       await act("registry.releaseGift", purchaseId);
-      await forgetGift(userId, itemId);
+      await forgetGift(accountId, itemId);
     },
     onSettled: refresh,
   });

@@ -41,8 +41,8 @@ function listSlugFrom(to: string): string | null {
  *   invitation: the list, with the event and token, so a gift is matched to
  *   the guest's RSVP.
  *
- * The screens need a signed-in account. Signed out, they send the page on to
- * the web view themselves.
+ * Signed in or out: the screens work without an account, as the website's
+ * pages do (the guest calls in src/lib/api.ts).
  */
 export function nativeRoute(path: string): Href | null {
   const [beforeHash] = path.split("#");

@@ -3,8 +3,9 @@
 // RsvpWishlistStep (src/components/rsvp-wishlist-step.tsx), with the same
 // choices and words, sending the website's events.saveEventWishlist.
 //
-// The app is always signed in here, so there's no "make an account" branch:
-// the guest picks one of their lists or makes a new one.
+// Signed in, the guest picks one of their lists or makes a new one. Signed
+// out, a Regibee wishlist takes an account, so they make one or sign in, as
+// on the website. The RSVP stays saved meanwhile, under their link.
 
 import { router } from "expo-router";
 import { useState } from "react";
@@ -15,6 +16,7 @@ import type { InvitationPageData, RsvpWishlistData } from "@shared/invitation-pa
 
 import { Icon } from "@/components/icon";
 import { Button, haptic, Text } from "@/components/ui";
+import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { useRunEventAction } from "@/lib/events-data";
 import { radius, spacing, useTheme } from "@/lib/theme";
@@ -30,6 +32,7 @@ export function WishlistStep({ page, wishlist, token }: { page: InvitationPageDa
   const theme = useTheme();
   const colors = useInvitationColors(wishlist.themeColor, page.event.event_type);
   const { run } = useRunEventAction();
+  const { demo, endDemo } = useSession();
   const { current, giftIdeas, more = [], account } = wishlist;
   const hasSomething = Boolean(current || giftIdeas);
   const [choosing, setChoosing] = useState(!hasSomething);
@@ -48,6 +51,12 @@ export function WishlistStep({ page, wishlist, token }: { page: InvitationPageDa
     ? { backgroundColor: colors.fill, borderRadius: radius.md, padding: spacing.lg }
     : { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border, paddingTop: spacing.lg };
   const ink = colors.hostColor ? colors.ink : theme.tint;
+
+  // The sign-in and sign-up screens open only signed out, so the demo ends first.
+  function goToAccount(path: "/sign-in" | "/sign-up") {
+    if (demo) endDemo();
+    router.push(path);
+  }
 
   async function save(choice: Choice, key: string) {
     setBusy(key);
@@ -239,51 +248,65 @@ export function WishlistStep({ page, wishlist, token }: { page: InvitationPageDa
   return (
     <View style={[box, { gap: spacing.lg }]}>
       {heading(current ? "Change your wishlist" : "Now add your wishlist")}
-      {lists.length > 0 ? (
+      {account ? (
+        <>
+          {lists.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
+                Use one of your lists
+              </Text>
+              {lists.map((list) =>
+                listRow(
+                  list.id,
+                  list.title,
+                  current?.ownListId === list.id ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Icon name="check" size={14} color={theme.success} />
+                      <Text variant="footnote" tone="success">
+                        Linked
+                      </Text>
+                    </View>
+                  ) : (
+                    <Button
+                      title="Use this list"
+                      size="small"
+                      variant="secondary"
+                      accessibilityLabel={`Use ${list.title}`}
+                      disabled={busy !== null && busy !== list.id}
+                      loading={busy === list.id}
+                      onPress={() => save({ registryId: list.id }, list.id)}
+                    />
+                  ),
+                ),
+              )}
+            </View>
+          ) : null}
+          <View style={{ gap: spacing.xs }}>
+            {/* With lists to pick from, picking one is the main thing to do, so
+                making another is a quieter button. */}
+            <Button
+              title={lists.length > 0 ? "Make a new wishlist" : "Make my wishlist"}
+              icon="add"
+              size="medium"
+              variant={lists.length > 0 ? "ghost" : "primary"}
+              style={lists.length > 0 ? { alignSelf: "flex-start" } : undefined}
+              disabled={busy !== null && busy !== "new"}
+              loading={busy === "new"}
+              onPress={() => save({ makeNew: true }, "new")}
+            />
+          </View>
+        </>
+      ) : (
         <View style={{ gap: spacing.sm }}>
-          <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
-            Use one of your lists
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            <Button title="Make a free wishlist" size="medium" onPress={() => goToAccount("/sign-up")} />
+            <Button title="Log in" size="medium" variant="secondary" onPress={() => goToAccount("/sign-in")} />
+          </View>
+          <Text variant="footnote" tone="tertiary">
+            Already have a Regibee list? Log in to pick it.
           </Text>
-          {lists.map((list) =>
-            listRow(
-              list.id,
-              list.title,
-              current?.ownListId === list.id ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="check" size={14} color={theme.success} />
-                  <Text variant="footnote" tone="success">
-                    Linked
-                  </Text>
-                </View>
-              ) : (
-                <Button
-                  title="Use this list"
-                  size="small"
-                  variant="secondary"
-                  accessibilityLabel={`Use ${list.title}`}
-                  disabled={busy !== null && busy !== list.id}
-                  loading={busy === list.id}
-                  onPress={() => save({ registryId: list.id }, list.id)}
-                />
-              ),
-            ),
-          )}
         </View>
-      ) : null}
-      <View style={{ gap: spacing.xs }}>
-        {/* With lists to pick from, picking one is the main thing to do, so
-            making another is a quieter button. */}
-        <Button
-          title={lists.length > 0 ? "Make a new wishlist" : "Make my wishlist"}
-          icon="add"
-          size="medium"
-          variant={lists.length > 0 ? "ghost" : "primary"}
-          style={lists.length > 0 ? { alignSelf: "flex-start" } : undefined}
-          disabled={busy !== null && busy !== "new"}
-          loading={busy === "new"}
-          onPress={() => save({ makeNew: true }, "new")}
-        />
-      </View>
+      )}
       {errorLine}
       {hasSomething ? (
         <Button

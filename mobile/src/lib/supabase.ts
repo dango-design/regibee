@@ -25,6 +25,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+/**
+ * A guest's anonymous session, for a signed-out phone that reserves a gift
+ * or RSVPs on a native guest screen (guestAccessToken in src/lib/api.ts). The
+ * website gives a guest the same kind of session. It's saved under its own
+ * key, apart from the account's, so the app never treats it as signed in and
+ * signing in or out leaves it alone. The server lets it call only the guest
+ * actions (src/lib/app-guest-calls.ts on the website).
+ */
+export const guestSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: kvStorage,
+    storageKey: "regibee-guest-session",
+    // Refreshed when it's next used, not in the background.
+    autoRefreshToken: false,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+
 // Refresh the session only while the app is in front.
 if (Platform.OS !== "web") {
   AppState.addEventListener("change", (state) => {

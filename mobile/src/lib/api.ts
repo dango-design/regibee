@@ -5,23 +5,56 @@
 // same server actions and page loaders the website uses, as this user
 // (src/app/api/app on the website). So the app and the website do the same
 // thing, in the same code.
+//
+// Signed out, the app may still call the guest loaders and actions the
+// website lets anyone use (src/lib/app-guest-calls.ts on the website): the
+// loaders with no token, and the actions with a guest's anonymous session.
 
-import { SITE_URL, supabase } from "@/lib/supabase";
+import { isGuestAction, isGuestLoader } from "@shared/app-guest-calls";
+
+import { guestSupabase, SITE_URL, supabase } from "@/lib/supabase";
 
 /** An error to show people as it is: the server's own words. */
 export class ApiError extends Error {}
 
-async function post(path: string, body: unknown): Promise<Record<string, unknown>> {
-  // getSession refreshes the token first if it has run out.
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new ApiError("You're signed out. Sign in again.");
+const SIGNED_OUT = "You're signed out. Sign in again.";
 
+/** The signed-in account's access token, or null. getSession refreshes it first if it has run out. */
+async function accountToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+/**
+ * The phone's guest session's access token. The first guest action on a
+ * signed-out phone makes the session, from the phone, the way the website's
+ * gift dialog gives a guest one. Later ones reuse it.
+ */
+async function guestAccessToken(): Promise<string> {
+  const { data, error } = await guestSupabase.auth.getSession();
+  if (data.session && !error) return data.session.access_token;
+  // A session that can't be refreshed any more is dropped for a new one.
+  if (error) await guestSupabase.auth.signOut({ scope: "local" }).catch(() => {});
+  const made = await guestSupabase.auth.signInAnonymously();
+  if (made.error || !made.data.session) throw new ApiError("Regibee can't be reached right now. Try again.");
+  return made.data.session.access_token;
+}
+
+/** The token for a call: the account's, or a guest's when the call is one guests may make. */
+async function tokenFor(call: { loader: string } | { action: string }): Promise<string | null> {
+  const token = await accountToken();
+  if (token) return token;
+  if ("loader" in call && isGuestLoader(call.loader)) return null;
+  if ("action" in call && isGuestAction(call.action)) return guestAccessToken();
+  throw new ApiError(SIGNED_OUT);
+}
+
+async function post(path: string, body: unknown, token: string | null): Promise<Record<string, unknown>> {
   let response: Response;
   try {
     response = await fetch(`${SITE_URL}${path}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
   } catch {
@@ -39,7 +72,7 @@ async function post(path: string, body: unknown): Promise<Record<string, unknown
  * website). Null when the page would say "not found".
  */
 export async function loadPage<T>(loader: string, ...args: unknown[]): Promise<T | null> {
-  const json = await post("/api/app/data", { loader, args });
+  const json = await post("/api/app/data", { loader, args }, await tokenFor({ loader }));
   if ("data" in json) return json.data as T;
   return null;
 }
@@ -58,11 +91,12 @@ export interface ActionOutcome<T> {
 
 /**
  * Runs one of the website's server actions ("registry.updateRegistry") as
- * this user. An action that answers { error } throws it as an ApiError, in the
- * action's own words.
+ * this user, or as the phone's guest for a guest action when signed out. An
+ * action that answers { error } throws it as an ApiError, in the action's own
+ * words.
  */
 export async function runAction<T = unknown>(action: string, ...args: unknown[]): Promise<ActionOutcome<T>> {
-  const json = await post("/api/app/action", { action, args });
+  const json = await post("/api/app/action", { action, args }, await tokenFor({ action }));
   if (json.notFound) throw new ApiError("We couldn't find that. It may have been deleted.");
   const result = (json.result ?? null) as T;
   const error = result && typeof result === "object" && "error" in result ? (result as { error: unknown }).error : null;
