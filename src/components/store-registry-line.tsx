@@ -22,7 +22,7 @@ export function StoreRegistryLine({
   if (!store) return null;
   return (
     <p className={cn("flex items-center gap-1 text-xs text-tertiary", className)}>
-      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success-600" aria-hidden="true" />
+      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success-primary" aria-hidden="true" />
       Counts toward your {store.name} registry
     </p>
   );

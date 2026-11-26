@@ -94,7 +94,7 @@ export default async function GroupGiftRoute({
       <footer className="mt-8 border-t py-6">
         <div className="container mx-auto px-4 text-center text-sm text-tertiary">
           Powered by{" "}
-          <a href="/" className="font-medium text-brand-600 hover:underline">
+          <a href="/" className="font-medium text-brand-tertiary hover:underline">
             Regibee
           </a>
           . Regibee never holds the money: everyone pays the organizer back directly.

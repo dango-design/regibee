@@ -20,16 +20,16 @@ export function FellowGuestsNotice({
   className?: string;
 }) {
   return (
-    <div className={cx("flex items-start gap-3 rounded-2xl border border-mint-200 bg-mint-50 p-4", className)}>
+    <div className={cx("flex items-start gap-3 rounded-2xl border border-mint-200 dark:border-mint-800 bg-mint-50 dark:bg-mint-500/10 p-4", className)}>
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-        <Users aria-hidden="true" className="h-4.5 w-4.5 text-mint-800" />
+        <Users aria-hidden="true" className="h-4.5 w-4.5 text-mint-800 dark:text-mint-300" />
       </span>
       <div className="min-w-0 text-sm">
         <p className="font-medium text-primary">You&apos;re shopping as a guest of {eventTitle}</p>
         <p className="text-secondary">
           You can see which of the other guests reserved what, so nobody doubles up.{" "}
           {ownerName ? `${ownerName} can't` : "The list's owner can't"} see who reserved what until the day after.{" "}
-          <a href={eventHref} className="font-medium text-brand-600 hover:underline">
+          <a href={eventHref} className="font-medium text-brand-tertiary hover:underline">
             Everyone&apos;s lists
           </a>
         </p>

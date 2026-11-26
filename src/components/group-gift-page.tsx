@@ -79,7 +79,7 @@ const linkClass =
 function ShareLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-25 p-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-brand-200 dark:border-brand-800 bg-brand-25 dark:bg-brand-primary p-4">
       <div>
         <h2 className="font-semibold text-primary">Share this link with friends</h2>
         <p className="text-sm text-secondary">
@@ -298,8 +298,8 @@ export function GroupGiftPage({
 
   const statusBanner =
     view.status === "bought" ? (
-      <div className="flex items-start gap-3 rounded-2xl border border-mint-500 bg-mint-50 p-4">
-        <Gift aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-mint-800" />
+      <div className="flex items-start gap-3 rounded-2xl border border-mint-500 bg-mint-50 dark:bg-mint-500/10 p-4">
+        <Gift aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-mint-800 dark:text-mint-300" />
         <div className="min-w-0">
           <p className="font-semibold text-primary">
             {isOrganizer ? "You bought it" : `${view.organizerName} bought it`}
@@ -327,7 +327,7 @@ export function GroupGiftPage({
         </p>
       </div>
     ) : !view.item.onList ? (
-      <div className="rounded-2xl border border-warning-300 bg-warning-primary p-4 text-sm text-primary">
+      <div className="rounded-2xl border border-warning-300 dark:border-warning-800 bg-warning-primary p-4 text-sm text-primary">
         This item was taken off {view.recipientName}&apos;s list.
         {isOrganizer ? " You can call off the group gift below." : ` Check with ${view.organizerName} before you pay.`}
       </div>
@@ -584,7 +584,7 @@ export function GroupGiftPage({
               aria-labelledby="finish-confirm"
               className={cn(
                 "flex flex-col gap-3 rounded-xl border p-4",
-                confirming === "calloff" ? "border-warning-300 bg-warning-primary" : "border-secondary bg-secondary",
+                confirming === "calloff" ? "border-warning-300 dark:border-warning-800 bg-warning-primary" : "border-secondary bg-secondary",
               )}
             >
               <p id="finish-confirm" className="text-sm text-primary">

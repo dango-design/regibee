@@ -43,7 +43,7 @@ function PersonCard({
     <li className={`flex items-center gap-4 ${CARD}`}>
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10 text-sm font-semibold text-brand-600"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-solid/10 text-sm font-semibold text-brand-tertiary"
       >
         {initialsFor(name)}
       </span>

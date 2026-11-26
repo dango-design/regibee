@@ -50,7 +50,7 @@ export function ReservationsHiddenNotice({
           {settingsHref && (
             <>
               {" "}
-              <Link href={settingsHref} className="font-medium text-brand-600 hover:underline">
+              <Link href={settingsHref} className="font-medium text-brand-tertiary hover:underline">
                 Change this in settings
               </Link>
             </>

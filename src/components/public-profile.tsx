@@ -24,8 +24,8 @@ function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today
       href={`${basePath}${event.href}`}
       className="group clickable-card flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 shadow-sm"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600/10">
-        <Icon aria-hidden="true" className="h-5 w-5 text-brand-600 motion-safe:group-hover:animate-wiggle" />
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-solid/10">
+        <Icon aria-hidden="true" className="h-5 w-5 text-brand-tertiary motion-safe:group-hover:animate-wiggle" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block break-words font-medium text-primary">{event.title}</span>
@@ -130,7 +130,7 @@ export function PublicProfile({
             isOwnProfile && (
               <Link
                 href={`${basePath}/dashboard/account#gift-profile`}
-                className="text-sm font-medium text-brand-600 hover:underline"
+                className="text-sm font-medium text-brand-tertiary hover:underline"
               >
                 Edit
               </Link>
@@ -144,7 +144,7 @@ export function PublicProfile({
             you.{" "}
             <Link
               href={`${basePath}/dashboard/account#gift-profile`}
-              className="font-medium text-brand-600 hover:underline"
+              className="font-medium text-brand-tertiary hover:underline"
             >
               Add a gift profile
             </Link>
@@ -159,7 +159,7 @@ export function PublicProfile({
           {isOwnProfile && (
             <Link
               href={`${basePath}/dashboard/account#profile-registries`}
-              className="mt-2 text-sm font-medium text-brand-600 hover:underline"
+              className="mt-2 text-sm font-medium text-brand-tertiary hover:underline"
             >
               Choose which registries to show
             </Link>

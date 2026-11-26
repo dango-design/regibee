@@ -49,10 +49,10 @@ export interface DashboardRegistryCardProps {
 // Initials circles take a tint picked from the name, so one person gets the
 // same color on every card.
 const AVATAR_TINTS = [
-  "bg-mint-100 text-mint-800",
-  "bg-sunshine-100 text-sunshine-900",
-  "bg-brand-100 text-brand-700",
-  "bg-blush-100 text-blush-700",
+  "bg-mint-100 dark:bg-mint-500/15 text-mint-800 dark:text-mint-300",
+  "bg-sunshine-100 dark:bg-sunshine-400/15 text-sunshine-900 dark:text-sunshine-200",
+  "bg-brand-secondary text-brand-secondary",
+  "bg-blush-100 dark:bg-blush-300/15 text-blush-700 dark:text-blush-200",
 ];
 
 function avatarTint(name: string) {
@@ -147,7 +147,7 @@ export function DashboardRegistryCard({
                 {fulfilledItems} of {totalItems} items gifted
               </span>
               {allDone ? (
-                <span className="inline-flex items-center gap-1 font-medium text-mint-800">
+                <span className="inline-flex items-center gap-1 font-medium text-mint-800 dark:text-mint-300">
                   <PartyPopper aria-hidden="true" className="h-3.5 w-3.5 motion-safe:group-hover/card:animate-wiggle" />
                   All done
                 </span>
