@@ -44,7 +44,7 @@ export function PublicRegistryHero({
     // personal registries size to content with a looser minimum, and tighten
     // further when there's no welcome message.
     <section
-      className={`relative flex items-center justify-center bg-white py-12 ${
+      className={`relative flex items-center justify-center bg-primary py-12 ${
         isBabyRegistry ? "min-h-[400px]" : description ? "min-h-[260px]" : "min-h-[200px]"
       }`}
     >

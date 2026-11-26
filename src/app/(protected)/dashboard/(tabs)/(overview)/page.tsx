@@ -84,10 +84,10 @@ export default async function DashboardPage() {
       </div>
 
       {followRequestCount > 0 && (
-        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-blush-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-blush-50 dark:bg-blush-300/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-              <UserPlus aria-hidden="true" className="h-4.5 w-4.5 text-blush-700" />
+              <UserPlus aria-hidden="true" className="h-4.5 w-4.5 text-blush-700 dark:text-blush-200" />
             </span>
             <div>
               <p className="font-medium">
@@ -107,10 +107,10 @@ export default async function DashboardPage() {
       )}
 
       {showProfilePrompt && (
-        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-brand-primary p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-              <Link2 aria-hidden="true" className="h-4.5 w-4.5 text-brand-600" />
+              <Link2 aria-hidden="true" className="h-4.5 w-4.5 text-brand-tertiary" />
             </span>
             <div>
               <p className="font-medium">Give friends one link to all your registries</p>

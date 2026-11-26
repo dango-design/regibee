@@ -501,7 +501,7 @@ export function EventForm({
           <img
             src={shownImage}
             alt="Invitation preview"
-            className="max-h-72 w-auto max-w-full rounded-lg shadow-sm ring-1 ring-black/5"
+            className="max-h-72 w-auto max-w-full rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10"
           />
           <div className="flex gap-2 sm:flex-col">
             <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
@@ -534,9 +534,9 @@ export function EventForm({
             e.preventDefault();
             pickImage(e.dataTransfer.files?.[0]);
           }}
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-secondary px-4 py-10 text-center transition outline-none hover:border-brand-600 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-600"
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-secondary px-4 py-10 text-center transition outline-none hover:border-brand-solid hover:bg-brand-primary focus-visible:ring-2 focus-visible:ring-brand-solid"
         >
-          <ImagePlus aria-hidden="true" className="size-8 text-brand-600" />
+          <ImagePlus aria-hidden="true" className="size-8 text-brand-tertiary" />
           <span className="font-medium text-primary">Upload your invitation</span>
           <span className="text-sm text-tertiary">JPEG, PNG, WebP or GIF. Click or drop a file here.</span>
         </button>
@@ -555,7 +555,7 @@ export function EventForm({
               className="flex items-center justify-between gap-3 rounded-lg border border-secondary px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <Gift aria-hidden="true" className="size-4 shrink-0 text-brand-600" />
+                <Gift aria-hidden="true" className="size-4 shrink-0 text-brand-tertiary" />
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-primary">{registry.title}</span>
                   {registry.honoree && <span className="block truncate text-sm text-tertiary">{registry.honoree}</span>}
@@ -622,7 +622,7 @@ export function EventForm({
       {registries.length === 0 && linked.length === 0 && (
         <p className="text-sm text-tertiary">
           Don&apos;t have a registry yet?{" "}
-          <Link href="/dashboard/registry/new" className="font-medium text-brand-600 hover:underline">
+          <Link href="/dashboard/registry/new" className="font-medium text-brand-tertiary hover:underline">
             Create one
           </Link>{" "}
           and link it here later.
@@ -686,9 +686,9 @@ export function EventForm({
                 disabled={drawn && kind !== option.value}
                 onClick={() => setKind(option.value)}
                 className={cx(
-                  "flex cursor-pointer flex-col gap-1 rounded-xl border p-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:cursor-not-allowed disabled:opacity-50",
+                  "flex cursor-pointer flex-col gap-1 rounded-xl border p-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid disabled:cursor-not-allowed disabled:opacity-50",
                   kind === option.value
-                    ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
+                    ? "border-brand-solid bg-brand-primary ring-1 ring-brand-solid"
                     : "border-secondary hover:border-primary",
                 )}
               >
@@ -967,9 +967,9 @@ export function EventForm({
                 aria-pressed={eventType === option.value}
                 onClick={() => chooseType(option.value)}
                 className={cx(
-                  "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-600 max-sm:min-h-11",
+                  "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid max-sm:min-h-11",
                   eventType === option.value
-                    ? "border-brand-600 bg-brand-600 text-white"
+                    ? "border-brand-solid bg-brand-solid text-primary_on-brand"
                     : "border-secondary text-secondary hover:border-primary",
                 )}
               >
@@ -1125,7 +1125,7 @@ export function EventForm({
         </Section>
 
         {changes.length > 0 && (
-          <div className="rounded-xl bg-brand-50 p-4">
+          <div className="rounded-xl bg-brand-primary p-4">
             <Checkbox
               isSelected={notifyGuests}
               onChange={setNotifyGuests}

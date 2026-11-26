@@ -113,7 +113,7 @@ export function ShareLinkField({
           Sent it to someone by mistake?{" "}
           <button
             type="button"
-            className="font-medium text-brand-600 hover:underline max-sm:min-h-11"
+            className="font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
             onClick={() => {
               setConfirming(true);
               setReplaced(false);
@@ -125,7 +125,7 @@ export function ShareLinkField({
       )}
 
       {replaced && (
-        <p role="status" className="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-800">
+        <p role="status" className="rounded-lg bg-success-primary px-3 py-2 text-sm text-success-800 dark:text-success-300">
           {replacedMessage}
         </p>
       )}

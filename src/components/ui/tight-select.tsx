@@ -26,7 +26,7 @@ export function TightSelect<T extends string>({
       value={value}
       onChange={(key) => key != null && onChange(String(key) as T)}
     >
-      <Button className="relative inline-flex cursor-pointer items-center rounded-md border border-primary bg-primary py-1.5 pl-3 pr-8 text-sm outline-hidden focus-visible:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-500 data-pressed:bg-primary_hover max-sm:min-h-11">
+      <Button className="relative inline-flex cursor-pointer items-center rounded-md border border-primary bg-primary py-1.5 pl-3 pr-8 text-sm outline-hidden focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand data-pressed:bg-primary_hover max-sm:min-h-11">
         <SelectValue className="whitespace-nowrap">{({ selectedText }) => selectedText}</SelectValue>
         <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 h-4 w-4 text-tertiary" />
       </Button>

@@ -25,7 +25,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ffffff",
+  // The browser's own bars match the page: white, or the dark page color
+  // (gray-950) when the device is in dark mode.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#110b0a" },
+  ],
 };
 
 export default function RootLayout({

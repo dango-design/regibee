@@ -94,7 +94,7 @@ export function WishListHero({
   return (
     <>
       <section
-        className="bg-brand-50 px-4 pt-8 pb-20 sm:pt-10 sm:pb-24"
+        className="bg-brand-primary px-4 pt-8 pb-20 sm:pt-10 sm:pb-24"
         style={{
           backgroundImage: "radial-gradient(var(--color-brand-200) 1.4px, transparent 1.4px)",
           backgroundSize: "20px 20px",
@@ -102,7 +102,7 @@ export function WishListHero({
       >
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center">
           {photoUrl && <RegistryAvatar photoUrl={photoUrl} names={null} className="mb-1 size-20" />}
-          <p className="text-xs font-semibold tracking-[0.08em] text-brand-500 uppercase">
+          <p className="text-xs font-semibold tracking-[0.08em] text-fg-brand-secondary uppercase">
             Wishlist · {totalItems} {totalItems === 1 ? "item" : "items"}
           </p>
           <h1 className="break-words text-3xl font-bold tracking-tight text-primary sm:text-4xl lg:text-5xl">{title}</h1>

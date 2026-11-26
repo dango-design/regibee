@@ -66,7 +66,7 @@ export function ReservationBanner({
             key={entry.item.id}
             hidden={!live}
             aria-label="Your reservation"
-            className="flex flex-col gap-3 rounded-2xl border border-sunshine-200 bg-sunshine-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-2xl border border-sunshine-200 dark:border-sunshine-900 bg-sunshine-50 dark:bg-sunshine-400/10 p-4 sm:flex-row sm:items-center sm:justify-between"
           >
             {live ? (
               <div className="flex min-w-0 items-start gap-3">

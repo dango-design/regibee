@@ -180,7 +180,7 @@ export function WithdrawRequest({
       onClick={onClick}
       disabled={busy}
       aria-label={`Withdraw your request to follow ${name}`}
-      className="cursor-pointer font-medium text-brand-600 hover:underline disabled:cursor-default disabled:opacity-50"
+      className="cursor-pointer font-medium text-brand-tertiary hover:underline disabled:cursor-default disabled:opacity-50"
     >
       Withdraw
     </button>
@@ -238,7 +238,7 @@ export function FollowButton({
         </Button>
         <p className="text-xs text-tertiary">
           You blocked {name}.{" "}
-          <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-600 hover:underline">
+          <Link href={`${basePath}/dashboard/account#blocked`} className="font-medium text-brand-tertiary hover:underline">
             Unblock
           </Link>
         </p>

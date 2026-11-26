@@ -135,7 +135,7 @@ export function CelebrationDialog({
               <button
                 type="button"
                 onClick={handleCopy}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors max-sm:min-h-11"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-brand-tertiary hover:text-brand-secondary transition-colors max-sm:min-h-11"
               >
                 {copied ? (
                   <>
