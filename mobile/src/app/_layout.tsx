@@ -116,6 +116,9 @@ function RootNavigator({ ready }: { ready: boolean }) {
         {/* An invitation, at the website's own path. Signed out, it sends the
             page on to the web view. */}
         <Stack.Screen name="e/[slug]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
+        {/* Someone else's list, at the website's own path. Signed out, it
+            sends the page on to the web view too. */}
+        <Stack.Screen name="r/[slug]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ title: "Create an account" }} />
