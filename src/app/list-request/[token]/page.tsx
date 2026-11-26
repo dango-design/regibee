@@ -84,14 +84,12 @@ export default async function ListRequestPage({ params }: { params: Promise<{ to
         ) : (
           <>
             <p className="text-sm text-tertiary">
-              It&apos;s yours: add things from any store, and guests reserve them without an account. It&apos;s linked
-              to the invitation as soon as you make it. {hostName} can&apos;t change it.
+              It goes on the invitation when you make it. {hostName} can&apos;t change it.
             </p>
             {signedIn ? (
               <MakeListButton token={token} label={`Make my ${noun}`} />
             ) : (
               <>
-                <p className="text-sm text-tertiary">Sign in or make a free account to start.</p>
                 <div className="flex justify-center gap-3">
                   <Button asChild>
                     <Link href={`/signup?redirect=${encodeURIComponent(back)}`}>Create account</Link>

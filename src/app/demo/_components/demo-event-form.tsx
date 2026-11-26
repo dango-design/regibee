@@ -56,11 +56,6 @@ export function DemoEventForm({ eventId, registryId }: { eventId?: string; regis
           {event ? event.title : "Events"}
         </Link>
         <h1 className="mt-4 text-3xl font-bold">{event ? "Edit event" : "Plan an event"}</h1>
-        <p className="mt-1 text-tertiary">
-          {event
-            ? "Guests see your changes on the event page right away."
-            : "You'll add guests and send the invitation next."}
-        </p>
         <DemoNotice />
         <div className="mt-6">
           {event ? (

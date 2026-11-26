@@ -166,32 +166,27 @@ function openableLink(raw: string): string | null {
 function TogglePill({
   pressed,
   onPress,
-  title,
   children,
 }: {
   pressed: boolean;
   onPress: () => void;
-  /** What it does, shown when the pointer rests on it. The info button explains all of them. */
-  title: string;
   children: ReactNode;
 }) {
   const Icon = pressed ? Check : Plus;
   return (
-    <Tooltip title={title}>
-      <AriaButton
-        aria-pressed={pressed}
-        onPress={onPress}
-        className={cn(
-          "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold outline-brand transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 pressing:scale-[0.97] max-sm:min-h-11",
-          pressed
-            ? "border-brand-500 bg-brand-50 text-brand-700 hover:bg-brand-100"
-            : "border-primary bg-primary text-secondary hover:bg-primary_hover pressing:bg-tertiary",
-        )}
-      >
-        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        {children}
-      </AriaButton>
-    </Tooltip>
+    <AriaButton
+      aria-pressed={pressed}
+      onPress={onPress}
+      className={cn(
+        "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold outline-brand transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 pressing:scale-[0.97] max-sm:min-h-11",
+        pressed
+          ? "border-brand-500 bg-brand-50 text-brand-700 hover:bg-brand-100"
+          : "border-primary bg-primary text-secondary hover:bg-primary_hover pressing:bg-tertiary",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      {children}
+    </AriaButton>
   );
 }
 
@@ -388,7 +383,7 @@ export function EditItemDialog({
 
     const result = await fetchProductDetails(url, {
       onReadingWithExtension: () => {
-        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab with the Regibee extension…");
+        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab…");
       },
     });
     if (!stillCurrent()) return;
@@ -478,7 +473,7 @@ export function EditItemDialog({
     }
     const shared = findSharedLink({ text });
     if (!shared) {
-      setScrapeStatus("There's no link on your clipboard. Copy the product's link, then tap Paste.");
+      setScrapeStatus("There's no link on your clipboard.");
       setScrapeIsError(true);
       return;
     }
@@ -518,7 +513,7 @@ export function EditItemDialog({
     if (found.length === 0) {
       setPhotoStatus(
         result.error
-          ? `We couldn't read ${store}'s page. Upload a photo or paste an image link instead.`
+          ? `We couldn't read ${store}'s page.`
           : `We found no photos on ${store}'s page.`,
       );
       return;
@@ -763,8 +758,8 @@ export function EditItemDialog({
   // The info button shows these under the pointer, and in a box when tapped.
   const guestHelp = [
     ["Most wanted", "tags it so guests spot it first."],
-    ["Open to hand-me-downs", "lets guests give one that's been used, in at least the condition you pick."],
-    [copy.selfPurchasedLabel, "means you bought it already. Guests can pay you back for it instead of buying one."],
+    ["Open to hand-me-downs", "lets guests give a used one."],
+    [copy.selfPurchasedLabel, "means you bought it already. Guests can pay you back instead."],
   ];
   // One photo that's already the item's photo leaves nothing to pick.
   const showPhotoChoices = photoChoices.length > 1 || (photoChoices.length === 1 && photoChoices[0] !== imageUrl);
@@ -778,7 +773,7 @@ export function EditItemDialog({
           <DialogTitle>Edit item</DialogTitle>
           {onOtherLists && (
             <DialogDescription>
-              It&apos;s also on {listNames(alsoOn)}, so changes show there too. Its category is only for this list.
+              Also on {listNames(alsoOn)}. Changes show there too.
             </DialogDescription>
           )}
         </DialogHeader>
@@ -793,7 +788,7 @@ export function EditItemDialog({
           {linkBig ? (
             <div className="space-y-2.5 rounded-xl border border-brand-200 bg-brand-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <Label className="!text-sm !font-semibold !text-primary">Paste a link from any store</Label>
+                <Label className="!text-sm !font-semibold !text-primary">Paste a product link</Label>
                 {linkBefore !== null && (
                   <button
                     type="button"
@@ -876,7 +871,7 @@ export function EditItemDialog({
                 role="status"
                 className={cn("text-xs", scrapeIsError ? "text-warning-primary" : scrapeStatus ? "text-brand-600" : "text-tertiary")}
               >
-                {scrapeStatus || (scraping ? "Reading the page…" : "We'll fill in the name, price and photo from the page.")}
+                {scrapeStatus || (scraping ? "Reading the page…" : "")}
               </p>
             </div>
           ) : (
@@ -1014,8 +1009,7 @@ export function EditItemDialog({
                 <div className="space-y-1.5">
                   {/* An item shows one photo, so say that these are choices. */}
                   <p id={`${uid}-photos`} className="text-xs text-tertiary">
-                    <span className="font-semibold text-secondary">Pick one photo.</span> Guests see the one with the
-                    check.
+                    Choose a photo
                   </p>
                   <div role="group" aria-labelledby={`${uid}-photos`} className="flex gap-2 overflow-x-auto p-0.5 pb-1">
                     {photoChoices.map((candidate, index) => {
@@ -1207,21 +1201,18 @@ export function EditItemDialog({
                   <TogglePill
                     pressed={mostWanted}
                     onPress={() => setMostWanted((on) => !on)}
-                    title="Guests see it tagged Most wanted."
                   >
                     Most wanted
                   </TogglePill>
                   <TogglePill
                     pressed={openToUsed}
                     onPress={() => setOpenToUsed((on) => !on)}
-                    title="Guests may give a hand-me-down."
                   >
                     Open to hand-me-downs
                   </TogglePill>
                   <TogglePill
                     pressed={parentPurchased}
                     onPress={() => setParentPurchased((on) => !on)}
-                    title="Guests can pay you back for it instead of buying one."
                   >
                     {copy.selfPurchasedLabel}
                   </TogglePill>

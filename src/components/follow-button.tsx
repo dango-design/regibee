@@ -225,7 +225,6 @@ export function FollowButton({
         <Button size="sm" asChild>
           <Link href={`/login?redirect=${encodeURIComponent(returnTo)}`}>Follow</Link>
         </Button>
-        <p className="text-xs text-tertiary">Log in to ask to follow {name}.</p>
       </div>
     );
   }
@@ -247,25 +246,25 @@ export function FollowButton({
   }
 
   const hint = {
-    none: followsYou ? `${name} follows you. They approve every follower.` : `${name} approves every follower.`,
+    none: followsYou ? `${name} follows you.` : null,
     pending: `Waiting for ${name} to approve.`,
-    approved: followsYou
-      ? "You follow each other."
-      : `You can see ${name}'s private registries.`,
+    approved: followsYou ? "You follow each other." : null,
   }[state];
 
   return (
     <div className="flex flex-col items-center gap-1">
       <FollowToggle state={state} busy={busy} onClick={toggle} followsYou={followsYou} />
-      <p className="text-xs text-tertiary">
-        {hint}
-        {state === "pending" && (
-          <>
-            {" "}
-            <WithdrawRequest name={name} busy={busy} onClick={toggle} />
-          </>
-        )}
-      </p>
+      {hint && (
+        <p className="text-xs text-tertiary">
+          {hint}
+          {state === "pending" && (
+            <>
+              {" "}
+              <WithdrawRequest name={name} busy={busy} onClick={toggle} />
+            </>
+          )}
+        </p>
+      )}
       {error && <p className="text-xs text-error-primary">{error}</p>}
     </div>
   );

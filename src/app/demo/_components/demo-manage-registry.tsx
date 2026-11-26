@@ -42,7 +42,6 @@ import { Select } from "@/components/base/select/select";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -50,7 +49,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -224,9 +222,6 @@ function DemoAddItemDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Add an item</DialogTitle>
-          <DialogDescription>
-            Add anything from any store, in two taps.
-          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Step 1 — URL hero */}
@@ -236,12 +231,9 @@ function DemoAddItemDialog({
                 1
               </span>
               <Label className="!text-sm !font-semibold !text-primary">
-                Paste a product link from any store
+                Paste a product link
               </Label>
             </div>
-            <p className="text-xs text-tertiary pl-8">
-              Target, Amazon, Etsy, or a small shop — we&apos;ll pull the name, price, and image.
-            </p>
             <div className="flex items-stretch gap-2 pl-8">
               <InputGroup
                 leadingAddon={<InputPrefix>http://</InputPrefix>}
@@ -302,7 +294,6 @@ function DemoAddItemDialog({
             name="isEssential"
             value="true"
             label="Most wanted"
-            hint="Guests see it tagged Most wanted."
           />
 
           <Select
@@ -347,7 +338,6 @@ function DemoAddItemDialog({
             isSelected={openToUsed}
             onChange={setOpenToUsed}
             label="Open to hand-me-downs"
-            hint="Guests may give a hand-me-down."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -486,9 +476,6 @@ function DemoEditItemDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Edit item</DialogTitle>
-          <DialogDescription>
-            This is a demo — paste a URL to see auto-fill in action.
-          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -543,7 +530,6 @@ function DemoEditItemDialog({
             value="true"
             defaultSelected={item.is_essential}
             label="Most wanted"
-            hint="Guests see it tagged Most wanted."
           />
 
           <Select
@@ -589,7 +575,6 @@ function DemoEditItemDialog({
             isSelected={openToUsed}
             onChange={setOpenToUsed}
             label="Open to hand-me-downs"
-            hint="Guests may give a hand-me-down."
           />
           {openToUsed && (
             <div className="pl-6">
@@ -809,9 +794,6 @@ export function DemoCategoryManager({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Manage Categories</SheetTitle>
-          <SheetDescription>
-            This is a demo — changes are local only.
-          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-3">
@@ -901,7 +883,6 @@ function DemoGiftActivity({ purchases, items }: { purchases: DemoPurchase[]; ite
     <>
       <div className="mb-6">
         <h2 className="text-xl font-semibold">Gift Activity</h2>
-        <p className="text-sm text-tertiary">See who has reserved items and contributed to funds</p>
       </div>
 
       <div className="space-y-3">
@@ -987,14 +968,13 @@ function DemoSuggestionInbox({
     <>
       <div className="mb-6">
         <h2 className="text-xl font-semibold">Suggestion Inbox</h2>
-        <p className="text-sm text-tertiary">Items suggested by your guests</p>
       </div>
 
       {suggestions.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Lightbulb className="h-8 w-8 text-tertiary mb-2" />
-            <p className="text-tertiary">No suggestions yet. Guests can suggest items from your registry page.</p>
+            <p className="text-tertiary">No suggestions yet.</p>
           </CardContent>
         </Card>
       ) : (

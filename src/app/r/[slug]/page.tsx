@@ -729,8 +729,7 @@ export default async function PublicRegistryPage({
               <div className="min-w-0">
                 <p className="font-semibold text-primary">You&apos;re {santaFor}&apos;s Secret Santa.</p>
                 <p className="text-sm text-secondary">
-                  If you reserve a gift here, {santaFor} sees &ldquo;{SECRET_GIVER_NAME}&rdquo; instead of your
-                  name.
+                  {santaFor} sees &ldquo;{SECRET_GIVER_NAME}&rdquo; instead of your name.
                 </p>
               </div>
             </div>

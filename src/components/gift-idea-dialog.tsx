@@ -136,10 +136,10 @@ export function GiftIdeaDialog({
       if (guessed) setTitle(guessed);
       setReadStatus({
         text: guessed
-          ? `We couldn't read ${store}, so we took the name from the link. Check it.`
+          ? `We couldn't read ${store}. Check the name.`
           : currentTitle
-            ? `We couldn't read ${store}. Your link and name are kept.`
-            : `We couldn't read ${store}. The link is kept, so add a name yourself.`,
+            ? `We couldn't read ${store}.`
+            : `We couldn't read ${store}. Add a name yourself.`,
         isError: true,
       });
       if (options.fromTap && !currentTitle && !guessed) titleRef.current?.focus();
@@ -192,7 +192,7 @@ export function GiftIdeaDialog({
     }
     const shared = findSharedLink({ text });
     if (!shared) {
-      setReadStatus({ text: "There's no link on your clipboard. Copy the product's link, then tap Paste.", isError: true });
+      setReadStatus({ text: "There's no link on your clipboard.", isError: true });
       return;
     }
     setUrl(shared.url);
@@ -282,7 +282,7 @@ export function GiftIdeaDialog({
           <DialogTitle>{editing ? "Edit gift idea" : "Save a gift idea"}</DialogTitle>
           <DialogDescription>
             <Lock aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" />
-            Only you can see your gift ideas. The person they&apos;re for never does.
+            Only you can see gift ideas.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="min-w-0 space-y-5">

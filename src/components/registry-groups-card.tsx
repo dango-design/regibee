@@ -79,21 +79,18 @@ export function RegistryGroupsCard({
     <Card id="groups" className={SECTION_SCROLL_MARGIN}>
       <CardHeader>
         <SectionTitle sectionId="groups">Share with a group</SectionTitle>
-        <CardDescription>
-          People in these groups who have a Regibee account see this list on their Following page, even when it&apos;s
-          private. Anyone with the link can still open it.
-        </CardDescription>
+        <CardDescription>Group members with an account see this list on their Following page.</CardDescription>
       </CardHeader>
       <CardContent>
         {groups === null ? (
           <p className="text-sm text-tertiary">Loading your groups…</p>
         ) : groups.length === 0 ? (
           <p className="text-sm text-tertiary">
-            You don&apos;t have any groups yet. Make one on the{" "}
+            No groups yet. Make one on the{" "}
             <Link href="/dashboard/events" className="font-medium text-brand-600 hover:underline">
               Events tab
             </Link>
-            , or save an event&apos;s guest list as a group.
+            .
           </p>
         ) : (
           <div className="flex flex-col gap-3">

@@ -27,7 +27,7 @@ export function EventGroupGifts({
           <Users aria-hidden="true" className="size-5" />
           Group gifts
         </h2>
-        <p className="text-sm text-secondary">Guests are going in on these together. Chip in if you&apos;d like.</p>
+        <p className="text-sm text-secondary">Guests are going in on these together.</p>
       </div>
       <ul className="flex flex-col gap-3">
         {gifts.map((gift) => {

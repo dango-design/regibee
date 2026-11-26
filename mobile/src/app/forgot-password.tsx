@@ -40,7 +40,7 @@ export default function ForgotPasswordScreen() {
         <EmptyState
           icon="checkCircle"
           title="Check your email"
-          message={`If there's an account for ${email.trim()}, we sent it a link to set a new password. Then sign in here with it.`}
+          message={`If there's an account for ${email.trim()}, we sent it a link to set a new password.`}
           action={
             <View style={{ alignItems: "center", gap: spacing.sm }}>
               <Button title="Back to sign in" onPress={() => router.back()} />
@@ -63,7 +63,7 @@ export default function ForgotPasswordScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <Text variant="callout" tone="secondary">
-        Enter the email you signed up with. We'll send you a link to set a new password.
+        We'll email you a link to set a new password.
       </Text>
       <AutofillFields>
         <Field

@@ -64,7 +64,7 @@ function TagField({
   onDraftChange,
 }: {
   label: string;
-  hint: string;
+  hint?: string;
   placeholder: string;
   tags: string[];
   draft: string;
@@ -239,8 +239,8 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
         </div>
         <p className="mt-1.5 text-sm text-tertiary">
           {child
-            ? `No year needed. Only you and followers you approve see ${whose} birthday, and only while this list is on your profile.`
-            : `No year needed. Only you and followers you approve see it, and they get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`}
+            ? `Only you and followers you approve see ${whose} birthday, while this list is on your profile.`
+            : `Only you and followers you approve see it. They get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`}
         </p>
       </fieldset>
 
@@ -270,7 +270,7 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
 
       <TagField
         label="Likes"
-        hint="Type one and press Enter, or separate them with commas."
+        hint="Press Enter after each one."
         placeholder="Tea, puzzles, hiking"
         tags={likes}
         draft={likeDraft}
@@ -280,11 +280,6 @@ export function GiftProfileForm({ initial, onSave, child }: GiftProfileFormProps
 
       <TagField
         label="Please skip"
-        hint={
-          child
-            ? `Things ${childName ?? "your child"} already has or shouldn't get.`
-            : "Things you already have or don't want."
-        }
         placeholder="Candles, mugs"
         tags={skip}
         draft={skipDraft}

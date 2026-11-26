@@ -46,7 +46,6 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
             <CheckCircle2 className="size-10 text-success-600" aria-hidden="true" />
             <h1 className="font-display text-display-xs font-semibold text-primary">The extension is connected</h1>
             <p className="text-sm text-tertiary">
-              Open one of your store registries and click the Regibee button in your browser&apos;s toolbar.
               You can close this tab.
             </p>
           </div>
@@ -57,7 +56,7 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
                 Connect the Regibee extension
               </h1>
               <p className="text-sm text-tertiary">
-                It brings items from your store registries into the registries you manage on Regibee.
+                It copies items from your store registries to Regibee.
               </p>
             </div>
 
@@ -70,8 +69,7 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
                 </p>
                 <p className="flex items-start gap-2 text-sm text-primary">
                   <Check className="mt-0.5 size-4 shrink-0 text-success-600" aria-hidden="true" />
-                  Read a product page when you click its button, or when you paste a link from those stores
-                  on Regibee, so you can add that item
+                  Read a product page when you click its button or paste its link
                 </p>
                 <p className="flex items-start gap-2 text-sm text-primary">
                   <Check className="mt-0.5 size-4 shrink-0 text-success-600" aria-hidden="true" />
@@ -93,8 +91,8 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
 
             {status === "missing" && (
               <p className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-sm text-warning-800" role="alert">
-                The Regibee extension isn&apos;t installed in this browser. Install it, then open this page
-                from the extension&apos;s button.
+                The extension isn&apos;t installed in this browser. Install it, then open this page from
+                its button.
               </p>
             )}
             {status === "error" && error && (
@@ -120,7 +118,7 @@ export function ExtensionConnectCard({ name, status, error, onConnect, onCancel 
       </section>
 
       <p className="max-w-lg text-center text-xs text-tertiary">
-        Signed in as {name}. You can disconnect the extension any time from its menu.
+        Signed in as {name}. Disconnect anytime from the extension&apos;s menu.
       </p>
     </main>
   );

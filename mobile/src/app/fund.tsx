@@ -97,7 +97,7 @@ export default function FundScreen() {
         />
         {fund && fund.current_amount > 0 ? (
           <Text variant="footnote" tone="tertiary">
-            {formatPrice(fund.current_amount)} has been contributed so far.
+            {formatPrice(fund.current_amount)} contributed so far.
           </Text>
         ) : null}
 

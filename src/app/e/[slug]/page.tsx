@@ -289,7 +289,7 @@ export default async function PublicEventPage({
               )}
               {token && !guest && (
                 <p className="rounded-xl bg-sunshine-50 p-4 text-sm text-sunshine-900">
-                  This RSVP link isn&apos;t on the guest list anymore. Ask the host for a new one.
+                  This RSVP link no longer works. Ask the host for a new one.
                 </p>
               )}
               <RsvpForm

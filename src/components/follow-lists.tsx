@@ -136,7 +136,7 @@ export function FollowLists({
   const block = (person: PersonSummary, card: CardName) => {
     if (
       !confirm(
-        `Block ${displayName(person)}? They'll be removed from your followers and the people you follow, and won't be able to ask to follow you.`,
+        `Block ${displayName(person)}? You'll stop following each other, and they can't ask to follow you.`,
       )
     ) {
       return;
@@ -190,13 +190,13 @@ export function FollowLists({
         <CardHeader>
           <SectionTitle sectionId="follow-requests">Follow requests</SectionTitle>
           <CardDescription>
-            People you approve can see the registries you show to followers on your profile, and your birthday.
+            People you approve see your birthday and the lists you show followers.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {requests.length + justApproved.length === 0 && (
             <p className="text-sm text-tertiary">
-              No follow requests right now. When someone asks to follow you, you can approve or decline them here.
+              No follow requests right now.
             </p>
           )}
           {justApproved.map((person) => (
@@ -258,15 +258,14 @@ export function FollowLists({
         <CardHeader>
           <SectionTitle sectionId="followers">Followers</SectionTitle>
           <CardDescription>
-            They can see the registries you show to followers on your profile, and your birthday. Follow them
-            back to see theirs. Friends are the ones you follow too: they also see the registries you show only
-            to friends.
+            They see your birthday and the lists you show followers. Friends, the ones you follow back, also
+            see lists you show friends.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {followers.length === 0 ? (
             <p className="text-sm text-tertiary">
-              No followers yet. Share your profile link, or let people find you in search.
+              No followers yet.
             </p>
           ) : (
             followers.map((person) => (
@@ -311,13 +310,6 @@ export function FollowLists({
       <Card id="following" className={SECTION_SCROLL_MARGIN}>
         <CardHeader>
           <SectionTitle sectionId="following">Following</SectionTitle>
-          <CardDescription>
-            People whose registries you follow. See them all on your{" "}
-            <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
-              Following page
-            </Link>
-            .
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {following.length === 0 ? (
@@ -326,7 +318,7 @@ export function FollowLists({
               <Link href={`${basePath}/dashboard/following`} className="font-medium text-brand-600 hover:underline">
                 Following page
               </Link>
-              , or open someone&apos;s profile link and tap Follow.
+              .
             </p>
           ) : (
             following.map((person) => (
@@ -371,8 +363,7 @@ export function FollowLists({
           <CardHeader>
             <SectionTitle sectionId="blocked">Blocked</SectionTitle>
             <CardDescription>
-              They can&apos;t ask to follow you or find you in search, and your profile is hidden from
-              them while they&apos;re signed in.
+              They can&apos;t follow you, find you in search, or see your profile while signed in.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -89,8 +89,7 @@ export function DeleteAccountCard({
         <CardHeader>
           <SectionTitle sectionId="delete-account">Delete account</SectionTitle>
           <CardDescription>
-            Deletes your account, your registries and events, and your profile. Registries other
-            people help manage stay with them. This can&apos;t be undone.
+            Deletes your account, lists, events and profile. This can&apos;t be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -72,14 +72,10 @@ function EmptyState({ saveButton }: { saveButton: React.ReactNode }) {
         <Lightbulb aria-hidden="true" className="size-6 text-brand-600" />
       </span>
       <h2 className="mt-3 font-semibold text-primary">No gift ideas yet</h2>
-      <p className="mt-1 max-w-md text-sm text-tertiary">
-        See something that would make a good gift for someone? Save it here to think about before their next
-        birthday or holiday. Only you can see it.
-      </p>
       <ul className="mt-4 max-w-md space-y-1.5 text-left text-sm text-secondary">
-        <li>• Paste its link into Save a gift idea.</li>
-        <li>• In the Regibee app, share it to Regibee from the store&apos;s app or your browser, then pick Gift ideas.</li>
-        <li>• With the Regibee extension for Chrome, open it on the product&apos;s page and pick Gift ideas under Add to.</li>
+        <li>• Paste a link into Save a gift idea.</li>
+        <li>• In the Regibee app, share it to Regibee from a store&apos;s app.</li>
+        <li>• In the Regibee extension, pick Gift ideas under Add to.</li>
       </ul>
       <div className="mt-6">{saveButton}</div>
     </div>

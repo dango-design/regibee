@@ -57,9 +57,7 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-tertiary">
-            Baby showers, birthdays, Christmas, weddings — build a wishlist with
-            items from any store and share a single link. No more juggling
-            multiple lists.
+            Add gifts from any store to one list, and share one link.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             {signedIn ? (
@@ -119,8 +117,7 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">1. Create Your Registry</h3>
                 <p className="mt-2 text-tertiary">
-                  Pick an occasion — baby shower, birthday, Christmas, wedding,
-                  anything — and set up your registry in under 5 minutes.
+                  Pick an occasion and set up your list in minutes.
                 </p>
               </div>
               <div className="text-center">
@@ -129,8 +126,7 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">2. Add Items From Anywhere</h3>
                 <p className="mt-2 text-tertiary">
-                  Add products from any online store by pasting a URL, or browse
-                  our curated checklist of essentials.
+                  Paste a link from any store, or start from our checklist.
                 </p>
               </div>
               <div className="text-center">
@@ -139,8 +135,7 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 </div>
                 <h3 className="mt-6 font-display text-xl font-semibold">3. Share & Receive Gifts</h3>
                 <p className="mt-2 text-tertiary">
-                  Share your unique registry link. Gift givers can reserve items
-                  with no sign-up required.
+                  Share your link. Guests reserve gifts without signing up.
                 </p>
               </div>
             </div>
@@ -158,22 +153,22 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 {
                   icon: Link2,
                   title: "Universal Registry",
-                  desc: "Add items from Amazon, Target, or any online store into one list.",
+                  desc: "Add items from any store to one list.",
                 },
                 {
                   icon: Shield,
                   title: "No Duplicate Gifts",
-                  desc: "Real-time reservations prevent two people from buying the same item.",
+                  desc: "Guests reserve gifts, so nobody buys the same one twice.",
                 },
                 {
                   icon: Gift,
                   title: "Cash Funds",
-                  desc: "Set up funds for diapers, college savings, honeymoons, or anything you need.",
+                  desc: "Ask for money toward diapers, college, a honeymoon or anything.",
                 },
                 {
                   icon: Baby,
                   title: "Baby Checklist",
-                  desc: "Baby registries get a curated list of 100 essentials across 10 categories.",
+                  desc: "Baby registries start with a checklist of 100 essentials.",
                 },
               ].map((feature) => (
                 <div
@@ -197,10 +192,6 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
             {signedIn ? (
               <>
                 <h2 className="text-3xl font-bold">Pick Up Where You Left Off</h2>
-                <p className="mt-4 text-tertiary">
-                  Your registries, events and the people you follow are all on
-                  your dashboard.
-                </p>
                 <DashboardButton className="mt-8" />
               </>
             ) : (
@@ -208,10 +199,6 @@ export function LandingPage({ signedIn, nav }: { signedIn: boolean; nav: React.R
                 <h2 className="text-3xl font-bold">
                   Ready to Build Your Registry?
                 </h2>
-                <p className="mt-4 text-tertiary">
-                  Join thousands of people who trust Regibee for their registry — baby
-                  shower, birthday, Christmas, or anything in between.
-                </p>
                 <Button size="lg" className="mt-8" asChild>
                   <Link href="/signup">Get Started Free</Link>
                 </Button>

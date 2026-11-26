@@ -40,7 +40,7 @@ export default function FollowingScreen() {
       <EmptyState
         icon="people"
         title="Following is for accounts"
-        message="Make an account to follow friends and family, see their registries, and get reminded before their birthdays."
+        message="Make an account to follow friends and family."
       />
     );
   }
@@ -70,9 +70,6 @@ export default function FollowingScreen() {
         />
       }
     >
-      <Text variant="subhead" tone="secondary">
-        Registries from people who&apos;ve approved your follow.
-      </Text>
       <PeopleSearch />
       <OpenLinkCard />
 
@@ -123,18 +120,18 @@ export default function FollowingScreen() {
             <EmptyState
               icon="people"
               title="You're not following anyone yet"
-              message="Search for friends above by name or email, or open their profile link and tap Follow. Once they approve, their registries show up here."
+              message="Follow friends to see their lists here."
             />
           ) : (
             <>
               {data.registries.length === 0 ? (
                 <EmptyState
                   icon="gift"
-                  title="No registries yet"
+                  title="No lists yet"
                   message={
                     approved.length === 0
-                      ? "Their registries will show up here once they approve your follow."
-                      : "The people you follow haven't shared any registries on their profiles yet."
+                      ? "Their lists show here once they approve you."
+                      : "The people you follow haven't shared any lists yet."
                   }
                 />
               ) : (
@@ -152,7 +149,7 @@ export default function FollowingScreen() {
                   ))
               )}
 
-              <Section title="People you follow" footer="Manage who you follow on your Account tab.">
+              <Section title="People you follow">
                 {[...approved, ...waiting].map((person, index) => (
                   <View key={person.public_id}>
                     {index > 0 ? <Divider inset={52} /> : null}
@@ -261,9 +258,9 @@ function PeopleSearch() {
     return () => clearTimeout(timer);
   }, [query, isEmailQuery]);
 
-  let hint = "Search by name, or type someone's whole email address and press Look up.";
+  let hint = "Type a name, or a whole email address.";
   if (isEmailQuery) {
-    hint = looksLikeEmail(query) ? "Tap Look up to look up this email address." : "Type the whole email address, then tap Look up.";
+    hint = looksLikeEmail(query) ? "Tap Look up." : "Type the whole email address.";
   }
   const showEmpty = results && results.list.length === 0 && !searching;
 
@@ -336,24 +333,23 @@ function PeopleSearch() {
       ) : null}
       {showEmpty && results.kind !== "email" ? (
         <Text variant="footnote" tone="tertiary">
-          No one found. Try their email address, or ask them for their profile link.
+          No one found. Try their email address.
         </Text>
       ) : null}
       {showEmpty && results.kind === "email" ? (
         <Card>
           {invite === "sent" ? (
             <Text variant="footnote" tone="secondary">
-              Invite sent to <Text variant="footnote" style={{ fontWeight: "600" }}>{results.query}</Text>. If they say yes,
-              you&apos;ll follow them.
+              Invite sent to <Text variant="footnote" style={{ fontWeight: "600" }}>{results.query}</Text>.
             </Text>
           ) : (
             <>
               <Text variant="footnote" tone="secondary">
-                No one has made their account findable with{" "}
+                No one found with{" "}
                 <Text variant="footnote" style={{ fontWeight: "600" }}>
                   {results.query}
                 </Text>
-                . Invite them, and if they say yes, you&apos;ll follow them.
+                . Invite them to follow each other?
               </Text>
               <Button
                 title="Send invite"
@@ -386,27 +382,23 @@ function PeopleSearch() {
                     {displayName(person)}
                   </Text>
                   {/* The line under the name, in the website's words. */}
-                  <Text variant="footnote" tone="tertiary">
-                    {person.state === "self"
-                      ? "That's you"
-                      : person.state === "none"
-                        ? "Approves every follower"
-                        : person.state === "approved"
-                          ? "You can see their private registries"
-                          : "Waiting for approval · "}
-                    {person.state === "pending" ? (
-                      <Text
-                        variant="footnote"
-                        tone="tint"
-                        style={{ fontWeight: "600" }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Withdraw your request to follow ${displayName(person)}`}
-                        onPress={() => follow(person)}
-                      >
-                        Withdraw
-                      </Text>
-                    ) : null}
-                  </Text>
+                  {person.state === "self" || person.state === "pending" ? (
+                    <Text variant="footnote" tone="tertiary">
+                      {person.state === "self" ? "That's you" : "Waiting for approval · "}
+                      {person.state === "pending" ? (
+                        <Text
+                          variant="footnote"
+                          tone="tint"
+                          style={{ fontWeight: "600" }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Withdraw your request to follow ${displayName(person)}`}
+                          onPress={() => follow(person)}
+                        >
+                          Withdraw
+                        </Text>
+                      ) : null}
+                    </Text>
+                  ) : null}
                 </View>
                 {person.state === "self" ? null : person.state === "approved" ? (
                   <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
@@ -429,7 +421,7 @@ function PeopleSearch() {
         </Section>
       ) : null}
       <Text variant="caption" tone="tertiary">
-        Only people who let others find them appear here. Email addresses are never shown.
+        Only findable accounts show up. Email addresses are never shown.
       </Text>
     </View>
   );

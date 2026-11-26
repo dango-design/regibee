@@ -182,7 +182,7 @@ test("an owner adds an item to another list from its menu, then moves it there w
   await page.getByRole("menuitem", { name: "Add to another list" }).click();
   await page.getByRole("menuitem", { name: other.title }).click();
   await expect(dialog.getByText(`Added to ${other.title}.`)).toBeVisible();
-  await expect(dialog.getByText(`It's also on ${other.title}`)).toBeVisible();
+  await expect(dialog.getByText(`Also on ${other.title}`)).toBeVisible();
   const placement = () =>
     db.from("registry_item_placements").select("registry_id").eq("item_id", item.id).then(({ data }) => data);
   expect(await placement()).toEqual([{ registry_id: other.id }]);

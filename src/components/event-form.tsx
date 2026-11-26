@@ -118,12 +118,10 @@ export interface EventFormProps {
 function Section({
   id,
   title,
-  description,
   children,
 }: {
   id: EditEventSection;
   title: string;
-  description?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -135,7 +133,6 @@ function Section({
       <SectionTitle sectionId={id} className="text-md font-semibold text-primary">
         {title}
       </SectionTitle>
-      {description && <p className="mt-0.5 text-sm text-tertiary">{description}</p>}
       <div className="mt-4 flex flex-col gap-4">{children}</div>
     </section>
   );
@@ -538,7 +535,7 @@ export function EventForm({
         >
           <ImagePlus aria-hidden="true" className="size-8 text-brand-600" />
           <span className="font-medium text-primary">Upload your invitation</span>
-          <span className="text-sm text-tertiary">JPEG, PNG, WebP or GIF. Click or drop a file here.</span>
+          <span className="text-sm text-tertiary">JPEG, PNG, WebP or GIF.</span>
         </button>
       )}
     </>
@@ -669,10 +666,8 @@ export function EventForm({
         label={<span className="font-normal">Guests give gifts to each other</span>}
         hint={
           drawn
-            ? "Names have been drawn. To turn this off, undo the draw on the event's page first."
-            : brief
-            ? undefined
-            : "Guests add a wishlist or gift ideas when they RSVP."
+            ? "Names have been drawn. Undo the draw on the event's page to turn this off."
+            : undefined
         }
       />
       {exchangeOn && (
@@ -711,14 +706,12 @@ export function EventForm({
                 type="date"
                 value={drawBy}
                 onChange={setDrawBy}
-                hint={brief ? undefined : "Guests see this, so they know when to join by."}
               />
             )}
           </div>
           {kind === "everyone" && !brief && (
             <p className="text-sm text-tertiary">
-              Each list hides what&apos;s been reserved from its owner, and shows it to them the day after the
-              event, so they know who to thank.
+              Nobody sees what&apos;s been reserved from their own list until the day after.
             </p>
           )}
           {kind === "draw" && (
@@ -729,7 +722,7 @@ export function EventForm({
               hint={
               brief
                 ? undefined
-                : "Guests answer “I'm in” instead of RSVPing, and give a shipping address that only the person who draws them sees."
+                : "Guests give a shipping address. Only the person who draws them sees it."
             }
             />
           )}
@@ -931,9 +924,6 @@ export function EventForm({
               {saving ? "Creating…" : "Create event"}
             </span>
           </Button>
-          <p className="text-center text-xs text-tertiary">
-            Only the name is required. You can change all of this later.
-          </p>
         </div>
       </form>
     );
@@ -991,15 +981,11 @@ export function EventForm({
             onChange={setHostedBy}
             maxLength={120}
             placeholder='e.g., "Aunt Linda & Grandma Jo"'
-            hint="Guests see this on the invitation. Emails come from this name."
+            hint="Emails to guests come from this name."
           />
         </Section>
 
-        <Section
-          id="invitation"
-          title="Invitation"
-          description="Upload the invitation you designed, or a photo. Guests see it at the top of the event page and in their email."
-        >
+        <Section id="invitation" title="Invitation">
           <div className="flex flex-col gap-6">
             {pictureField}
             <ThemeColorField value={themeColor} onChange={setThemeColor} />
@@ -1029,7 +1015,7 @@ export function EventForm({
               maxLength={300}
               rows={2}
               placeholder={"123 Main St\nSan Francisco, CA 94102"}
-              hint="Only people who sign up for a day see it, on their own link and in their email."
+              hint="Only people who sign up for a day see it."
             />
           </Section>
         ) : (
@@ -1048,12 +1034,12 @@ export function EventForm({
               maxLength={300}
               rows={2}
               placeholder={"123 Main St\nSan Francisco, CA 94102"}
-              hint="Only people with the event link see it. Guests get a map link."
+              hint="Only people with the event link see it."
             />
           </Section>
         )}
 
-        <Section id="message" title="Message to guests" description="Parking, dress code, what to bring: anything guests should know.">
+        <Section id="message" title="Message to guests">
           <TextArea
             aria-label="Message to guests"
             value={message}
@@ -1069,7 +1055,7 @@ export function EventForm({
             <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
             <SelectField
               label="People per RSVP"
-              hint="Including the guest. 2 lets each guest bring one person."
+              hint="Including the guest."
               value={maxPartySize}
               onChange={setMaxPartySize}
               options={partySizeOptions}
@@ -1079,13 +1065,11 @@ export function EventForm({
             isSelected={openRsvp}
             onChange={setOpenRsvp}
             label={<span className="font-normal">Anyone with the event link can RSVP</span>}
-            hint="They're added to your guest list. Turn this off to take RSVPs only from guests you invite."
           />
           <Checkbox
             isSelected={askKids}
             onChange={changeAskKids}
             label={<span className="font-normal">Ask how many kids are coming</span>}
-            hint="Guests say how many of their party are kids, and you see both counts."
           />
           <Checkbox
             isSelected={emailHost}
@@ -1096,18 +1080,16 @@ export function EventForm({
             isSelected={remindDayBefore}
             onChange={setRemindDayBefore}
             label={<span className="font-normal">Email everyone going a reminder the day before</span>}
-            hint="With the time, the place and anything they signed up to bring."
           />
           <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
         </Section>
 
-        <Section id="gifts" title="Gifts" description="What guests see about gifts, under the details on the invitation.">
+        <Section id="gifts" title="Gifts">
           <div className="flex flex-col gap-3">
             <div>
               <p className="text-sm font-medium text-secondary">Registries and wishlists</p>
               <p className="text-sm text-tertiary">
-                Link yours, or someone else&apos;s with its link, like the parents&apos; registry for a baby shower.
-                They get an email saying you linked it. Linking doesn&apos;t let you change their registry.
+                Linking someone else&apos;s list emails them.
               </p>
             </div>
             {registryFields(false)}
@@ -1116,11 +1098,7 @@ export function EventForm({
           {giftNoteField}
         </Section>
 
-        <Section
-          id="exchange"
-          title="Gifts among the guests"
-          description="For a family Christmas, a holiday party or a Secret Santa, when the guests give gifts to each other."
-        >
+        <Section id="exchange" title="Gifts among the guests">
           {exchangeFields(false)}
         </Section>
 
@@ -1130,7 +1108,7 @@ export function EventForm({
               isSelected={notifyGuests}
               onChange={setNotifyGuests}
               label={<span className="font-medium">Email guests about the {changeSummary(changes).replace(/^New /, "new ")}</span>}
-              hint="Everyone who said yes or maybe, and everyone invited who hasn't answered, gets the new details, and a line on the invitation says what changed. Untick this for a small fix, like a typo."
+              hint="Goes to everyone who said yes or maybe, or hasn't answered yet."
             />
           </div>
         )}

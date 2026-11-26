@@ -33,7 +33,7 @@ function PersonCard({
   basePath,
 }: {
   person: SearchResult;
-  detail: React.ReactNode;
+  detail?: React.ReactNode;
   error?: string;
   action?: React.ReactNode;
   basePath: string;
@@ -51,7 +51,7 @@ function PersonCard({
         <Link href={`${basePath}${profilePath(person)}`} className="block break-words font-medium text-primary hover:underline">
           {name}
         </Link>
-        <span className="mt-0.5 block text-sm text-tertiary">{detail}</span>
+        {detail && <span className="mt-0.5 block text-sm text-tertiary">{detail}</span>}
         {error && <span className="mt-0.5 block text-sm text-error-primary">{error}</span>}
       </span>
       {action && <span className="shrink-0">{action}</span>}
@@ -59,10 +59,10 @@ function PersonCard({
   );
 }
 
-const DETAIL: Record<FollowToggleState, string> = {
-  none: "Approves every follower",
+const DETAIL: Record<FollowToggleState, string | undefined> = {
+  none: undefined,
   pending: "Waiting for approval",
-  approved: "You can see their private registries",
+  approved: undefined,
 };
 
 function FollowablePerson({
@@ -167,11 +167,9 @@ export function PeopleSearch({
     setInvite(result?.error ? { status: "idle", error: result.error } : { status: "sent" });
   };
 
-  let hint = "Search by name, or type someone's whole email address and press Enter.";
+  let hint = "Type a name, or a whole email address.";
   if (isEmailQuery) {
-    hint = looksLikeEmail(query)
-      ? "Press Enter to look up this email address."
-      : "Type the whole email address, then press Enter.";
+    hint = looksLikeEmail(query) ? "Press Enter to look it up." : "Type the whole email address.";
   }
 
   const results = response?.results ?? [];
@@ -211,7 +209,7 @@ export function PeopleSearch({
 
       {showEmpty && response.kind !== "email" && (
         <p className="text-sm text-tertiary">
-          No one found. Try their email address, or ask them for their profile link.
+          No one found. Try their email address.
         </p>
       )}
 
@@ -219,15 +217,13 @@ export function PeopleSearch({
         <div className={`space-y-3 ${CARD}`}>
           {invite.status === "sent" ? (
             <p className="text-sm text-secondary">
-              Invite sent to <strong className="break-words">{response.query}</strong>. If they say yes,
-              you&apos;ll follow them.
+              Invite sent to <strong className="break-words">{response.query}</strong>.
             </p>
           ) : (
             <>
               <p className="text-sm text-secondary">
-                No one has made their account findable with{" "}
-                <strong className="break-words">{response.query}</strong>. Invite them, and if they say
-                yes, you&apos;ll follow them.
+                No one found with <strong className="break-words">{response.query}</strong>. Invite
+                them to follow each other?
               </p>
               <Button
                 size="sm"
@@ -261,7 +257,7 @@ export function PeopleSearch({
       )}
 
       <p className="text-xs text-tertiary">
-        Only people who let others find them appear here. Email addresses are never shown.
+        Only findable accounts show up. Email addresses are never shown.
       </p>
     </div>
   );

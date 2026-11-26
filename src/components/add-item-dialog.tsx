@@ -15,7 +15,6 @@ import { Select } from "@/components/base/select/select";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -105,8 +104,8 @@ export const readLinkMessages = {
   nothingNew: (store: string) => `Nothing new to fill in from ${store}.`,
   failed: (store: string, hasName: boolean) =>
     hasName
-      ? `We couldn't read the details from ${store}. Your link and name are kept, so fill in the rest by hand.`
-      : `We couldn't read the details from ${store}. Your link is kept, so add the name and the rest by hand.`,
+      ? `We couldn't read the details from ${store}. Fill in the rest yourself.`
+      : `We couldn't read the details from ${store}. Add the name and the rest yourself.`,
 };
 
 /** The category field's key for a guessed category the list doesn't have yet. */
@@ -293,7 +292,7 @@ export function AddItemDialog({
 
     const result = await fetchProductDetails(url, {
       onReadingWithExtension: () => {
-        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab with the Regibee extension…");
+        if (stillCurrent()) setScrapeStatus("Reading the page in a background tab…");
       },
     });
     if (!stillCurrent()) return;
@@ -308,7 +307,7 @@ export function AddItemDialog({
       if (currentTitle || guessedTitle) inferCategory(currentTitle || guessedTitle || "");
       setScrapeStatus(
         guessedTitle
-          ? `We couldn't read the details from ${store}, so we took the name from the link. Check it and fill in the rest.`
+          ? `We couldn't read the details from ${store}. Check the name and fill in the rest.`
           : readLinkMessages.failed(store, Boolean(currentTitle)),
       );
       setScrapeIsError(true);
@@ -367,7 +366,7 @@ export function AddItemDialog({
     }
     const shared = findSharedLink({ text });
     if (!shared) {
-      setScrapeStatus("There's no link on your clipboard. Copy the product's link, then tap Paste.");
+      setScrapeStatus("There's no link on your clipboard.");
       setScrapeIsError(true);
       return;
     }
@@ -472,9 +471,6 @@ export function AddItemDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{saveTo ? "Save an item" : "Add an item"}</DialogTitle>
-          <DialogDescription>
-            Add anything from any store, in two taps.
-          </DialogDescription>
         </DialogHeader>
         <form action={handleSubmit} className="min-w-0 space-y-5">
           {saveTo && saveTo.length > 0 && (
@@ -483,7 +479,6 @@ export function AddItemDialog({
               selectedKey={registryId}
               onSelectionChange={(key) => key && chooseList(key.toString())}
               items={saveTo.map((list) => ({ id: list.id, label: list.title }))}
-              hint="You can put it on more of your lists from Saved."
             >
               {(item) => <Select.Item id={item.id} label={item.label} />}
             </Select>
@@ -495,12 +490,9 @@ export function AddItemDialog({
                 1
               </span>
               <Label className="!text-sm !font-semibold !text-primary">
-                Paste a product link from any store
+                Paste a product link
               </Label>
             </div>
-            <p className="text-xs text-tertiary pl-8">
-              Target, Amazon, Etsy, or a small shop — we&apos;ll pull the name, price, and image.
-            </p>
             {/* On phones the field takes the full width, with the buttons
                 below it sharing a row. */}
             <div className="flex items-stretch gap-2 pl-8 max-sm:flex-col max-sm:pl-0">
@@ -613,7 +605,6 @@ export function AddItemDialog({
             value="true"
             defaultSelected={defaultValues?.isEssential}
             label="Most wanted"
-            hint="Guests see it tagged Most wanted."
           />
 
           <CategoryField
@@ -621,7 +612,7 @@ export function AddItemDialog({
             categories={fieldCategories}
             value={categoryId}
             onChange={setCategoryId}
-            hint={pendingChosen ? "A new category. It's added to the list when you save." : undefined}
+            hint={pendingChosen ? "New category" : undefined}
             onCreate={async (name) => {
               const result = await createCategory(registryId, name);
               if (result?.error) return result.error;
@@ -643,7 +634,7 @@ export function AddItemDialog({
             {imageCandidates.filter((c) => !brokenCandidates.has(c)).length > 1 && (
               <div className="space-y-1.5">
                 <p className="text-xs text-tertiary">
-                  Choose which image to use:
+                  Choose a photo
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {imageCandidates
@@ -736,7 +727,6 @@ export function AddItemDialog({
             isSelected={openToUsed}
             onChange={setOpenToUsed}
             label="Open to hand-me-downs"
-            hint="Guests may give a hand-me-down."
           />
           {openToUsed && (
             <div className="pl-6">

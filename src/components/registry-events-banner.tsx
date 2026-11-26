@@ -91,10 +91,7 @@ export function RegistryEventsBanner({
       <div className={cx("flex items-start gap-3 rounded-xl border border-secondary py-3 pr-2 pl-4", className)}>
         <CalendarHeart aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-tertiary sm:mt-2" />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <p className="text-sm text-tertiary">
-            <span className="font-medium text-secondary">Planning a party?</span> Send invitations and track
-            RSVPs, with guests linked to this registry.
-          </p>
+          <p className="text-sm font-medium text-secondary">Planning a party?</p>
           <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-auto" asChild>
             <Link href={planHref(registryId, basePath)}>Plan an event</Link>
           </Button>

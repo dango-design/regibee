@@ -55,7 +55,7 @@ export function StoreLinkNotice({
         <CheckCircle2 className="mt-px h-4 w-4 shrink-0 text-success-700" aria-hidden="true" />
         <p className="text-sm text-success-800">
           <span className="font-semibold">{store.name} registry link.</span> Gifts bought
-          through this link count toward your {store.name} registry.
+          through it count toward your registry.
         </p>
       </div>
     );
@@ -72,7 +72,7 @@ export function StoreLinkNotice({
           <Package className="mt-px h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
           <p className="text-sm text-secondary">
             <span className="font-semibold text-primary">Have a {store.name} registry?</span>{" "}
-            Link it so gifts bought at {store.name} can count toward it and earn you its perks.
+            Link it so gifts bought there count toward it.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 pl-6.5">
@@ -128,9 +128,8 @@ export function StoreLinkNotice({
   return (
     <div className={cn("space-y-2 rounded-lg border border-brand-200 bg-primary p-3", className)}>
       <p className="text-sm text-secondary">
-        <span className="font-semibold text-primary">{store.name} link.</span> If you
-        copied it from your {store.name} registry, gifts bought through it count
-        toward that registry.
+        <span className="font-semibold text-primary">{store.name} link.</span> If it&apos;s
+        from your {store.name} registry, gifts bought through it count toward it.
       </p>
       <details className="group">
         <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-brand-secondary [&::-webkit-details-marker]:hidden">

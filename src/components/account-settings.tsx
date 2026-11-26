@@ -67,6 +67,7 @@ function RegistryListingRow({
   const [audience, setAudience] = useState<ProfileAudience>(profileAudience(registry));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const hint = profileAudienceHint(audience, registry.has_shipping_address);
 
   const handleChange = async (next: ProfileAudience) => {
     const before = audience;
@@ -112,7 +113,7 @@ function RegistryListingRow({
           }))}
         />
       </div>
-      <p className="mt-1 text-sm text-tertiary">{profileAudienceHint(audience, registry.has_shipping_address)}</p>
+      {hint && <p className="mt-1 text-sm text-tertiary">{hint}</p>}
       {error && <p className="mt-1 text-sm text-error-primary">{error}</p>}
     </div>
   );
@@ -266,8 +267,7 @@ export function AccountSettings({
             <CardHeader>
               <SectionTitle sectionId="profile">Your profile</SectionTitle>
               <CardDescription>
-                One link to all the registries you choose below. Anyone with the link can see your name,
-                your public note and those registries.
+                Anyone with your profile link sees your name and public note.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -279,12 +279,7 @@ export function AccountSettings({
                   fallbackClassName="text-2xl"
                 />
                 <div className="min-w-0 space-y-2">
-                  <div>
-                    <p className="text-sm font-medium text-secondary">Profile photo</p>
-                    <p className="text-xs text-tertiary">
-                      Shown on your profile. Without one, people see your initials.
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium text-secondary">Profile photo</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <PhotoUploadButton
                       label={photoUrl ? "Change photo" : "Upload photo"}
@@ -326,14 +321,13 @@ export function AccountSettings({
                   name="fullName"
                   autoComplete="name"
                   defaultValue={profile.full_name ?? ""}
-                  hint="Shown on your profile, and to people you ask to follow"
                   isRequired
                 />
                 <TextArea
                   label="Public note"
                   name="publicNote"
                   defaultValue={profile.public_note ?? ""}
-                  hint="Optional. Anyone who opens your profile sees this, under your name."
+                  hint="Anyone who opens your profile sees this."
                   placeholder="Anything you'd like everyone to know"
                   maxLength={MAX_PUBLIC_NOTE_LENGTH}
                   rows={3}
@@ -343,21 +337,19 @@ export function AccountSettings({
                   isSelected={discoverable}
                   onChange={setDiscoverable}
                   label="Show me in people search"
-                  hint="People signed in to Regibee can find you by name."
                 />
                 <input type="hidden" name="findableByEmail" value={findableByEmail ? "true" : "false"} />
                 <Checkbox
                   isSelected={findableByEmail}
                   onChange={setFindableByEmail}
                   label="Let people find me by my email address"
-                  hint="Only someone who types your whole email address finds you this way. Your email is never shown."
+                  hint="Only by your whole address. Your email is never shown."
                 />
                 <input type="hidden" name="emailFollowRequests" value={emailRequests ? "true" : "false"} />
                 <Checkbox
                   isSelected={emailRequests}
                   onChange={setEmailRequests}
                   label="Email me when someone asks to follow me"
-                  hint="Includes invites sent to your email address. At most one email per person per day."
                 />
                 {error && <p className="text-sm text-error-primary">{error}</p>}
                 <div className="flex flex-wrap items-center gap-2">
@@ -386,11 +378,7 @@ export function AccountSettings({
             <Card id="gift-profile" className={SECTION_SCROLL_MARGIN}>
               <CardHeader>
                 <SectionTitle sectionId="gift-profile">Gift profile</SectionTitle>
-                <CardDescription>
-                  Help people pick gifts you&apos;ll love. Sizes, likes and the rest show on your wishlists
-                  and your profile, only to the people you follow who follow you back. To tell everyone
-                  something, use the public note in Your profile.
-                </CardDescription>
+                <CardDescription>Only you and your friends see this.</CardDescription>
               </CardHeader>
               <CardContent>
                 <GiftProfileForm initial={giftProfile} onSave={giftProfileAction} />
@@ -430,9 +418,7 @@ export function AccountSettings({
             <CardHeader>
               <SectionTitle sectionId="profile-registries">Registries on your profile</SectionTitle>
               <CardDescription>
-Choose who sees each one on your profile: nobody, your friends, your followers or everyone.
-                Friends are people you follow who follow you back. Registries you help manage for someone else
-                aren&apos;t included.
+                Choose who sees each one on your profile. Friends are people you follow who follow you back.
               </CardDescription>
             </CardHeader>
             <CardContent>

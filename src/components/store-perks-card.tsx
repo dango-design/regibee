@@ -125,10 +125,7 @@ export function StorePerksCard({
     <Card>
       <CardHeader>
         <CardTitle>Store perks</CardTitle>
-        <CardDescription>
-          Perks your store registries may give you. Rules change and differ by store, so
-          check each store&apos;s terms.
-        </CardDescription>
+        <CardDescription>Rules differ by store, so check each store&apos;s terms.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {giftUnlocked.map((row) => (
@@ -270,8 +267,7 @@ export function StorePerksCard({
           />
           <p className="flex items-start gap-1.5 text-xs text-tertiary">
             <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            We count gifts guests reserve on Regibee. Gifts bought straight from a store
-            registry won&apos;t show here.
+            Only gifts reserved on Regibee count here.
           </p>
         </div>
       </CardContent>

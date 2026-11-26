@@ -83,7 +83,7 @@ export const GuestOptions: Story = {
   play: async () => {
     const body = within(document.body);
     await userEvent.click(await body.findByRole("button", { name: "What these mean" }));
-    await waitFor(() => expect(body.getByText(/lets guests give one that's been used/)).toBeVisible());
+    await waitFor(() => expect(body.getByText(/lets guests give a used one/)).toBeVisible());
   },
 };
 

@@ -56,7 +56,7 @@ function TagField({
   onDraftChange,
 }: {
   label: string;
-  hint: string;
+  hint?: string;
   placeholder: string;
   tags: string[];
   onTagsChange: (tags: string[]) => void;
@@ -196,8 +196,8 @@ export function GiftProfileForm({
         ) : null}
         <Text variant="footnote" tone="tertiary">
           {child
-            ? `No year needed. Only you and followers you approve see ${whose} birthday, and only while this list is on your profile.`
-            : `No year needed. Only you and followers you approve see it, and they get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`}
+            ? `Only you and followers you approve see ${whose} birthday, while this list is on your profile.`
+            : `Only you and followers you approve see it. They get a reminder ${BIRTHDAY_REMINDER_DAYS} days before.`}
         </Text>
       </View>
 
@@ -223,7 +223,7 @@ export function GiftProfileForm({
       <Field label="Favorite colors" value={colors} onChangeText={setColors} placeholder="Green, gold, anything sparkly" maxLength={MAX_TEXT_LENGTH} />
       <TagField
         label="Likes"
-        hint="Type one and press return, or separate them with commas."
+        hint="Press return after each one."
         placeholder="Tea, puzzles, hiking"
         tags={likes}
         onTagsChange={setLikes}
@@ -232,7 +232,6 @@ export function GiftProfileForm({
       />
       <TagField
         label="Please skip"
-        hint={child ? `Things ${childName ?? "your child"} already has or shouldn't get.` : "Things you already have or don't want."}
         placeholder="Candles, mugs"
         tags={skip}
         onTagsChange={setSkip}

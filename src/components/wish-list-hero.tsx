@@ -136,7 +136,7 @@ export function WishListHero({
             <Progress value={progress} aria-label="Items gifted" />
             <p className="flex items-start gap-1.5 text-xs text-tertiary">
               <LockOpen className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-              Reserve a gift in 10 seconds — no sign-up required.
+              No account needed to reserve a gift.
             </p>
           </div>
 

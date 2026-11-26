@@ -66,8 +66,7 @@ function sampleGroupGift(today: string, token: string, as: DemoGroupGiftRole): D
     note:
       as === "organizer" ? (
         <>
-          You&apos;re {organizer}, who started this group gift, so you see what everyone pledged and can tick them
-          off as they pay you back.{" "}
+          You&apos;re {organizer}, who started this group gift.{" "}
           <Link href={path} className="font-medium underline">
             See it as a guest
           </Link>
@@ -122,7 +121,7 @@ function startedByVisitor(today: string, token: string): DemoGroupGiftData | nul
       myPledge: null,
       prefill: ownList ? null : { name: DEMO_ME.full_name, email: DEMO_ME.email },
     },
-    note: "You started this group gift. Chip in your own share, or mark it bought. The demo doesn't save anything.",
+    note: "You started this group gift. The demo doesn't save anything.",
   };
 }
 

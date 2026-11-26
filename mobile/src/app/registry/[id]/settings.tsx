@@ -108,7 +108,7 @@ export default function ListSettingsScreen() {
         {r.registry_type === "personal" && privacy.for_child ? (
           <Panel
             title={`About ${r.honoree_names?.trim() || "your child"}`}
-            description="Help people pick gifts. Sizes, likes and the rest show on this list, so anyone with its link sees them."
+            description="Anyone with this list's link sees these."
           >
             <ChildGiftProfile detail={detail} />
           </Panel>
@@ -220,7 +220,7 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
   }
 
   return (
-    <Panel title="General" description="Update your registry details">
+    <Panel title="General">
       <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
         {r.photo_url ? (
           <Image source={{ uri: r.photo_url }} style={styles.photo} contentFit="cover" />
@@ -232,14 +232,9 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
           </View>
         )}
         <View style={{ flex: 1, gap: spacing.sm }}>
-          <View style={{ gap: 2 }}>
-            <Text variant="subhead" style={{ fontWeight: "600" }}>
-              Registry photo
-            </Text>
-            <Text variant="footnote" tone="tertiary">
-              Shown at the top of your registry page. Without one, guests see your initials.
-            </Text>
-          </View>
+          <Text variant="subhead" style={{ fontWeight: "600" }}>
+            Registry photo
+          </Text>
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <Button
               title={r.photo_url ? "Change photo" : "Upload photo"}
@@ -267,7 +262,6 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
         value={honorees}
         onChangeText={setHonorees}
         placeholder={copy.honoreePlaceholder}
-        hint="The name shown to gift givers and in email notifications."
       />
       <DateField label={copy.eventDateLabel} value={eventDate} onChange={setEventDate} />
       <Field label="Welcome Message" value={description} onChangeText={setDescription} multiline />
@@ -289,8 +283,7 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
         {visibility === "private" && listVisibility(r) !== "private" ? (
           <View style={[styles.warning, { backgroundColor: theme.accentSoft }]}>
             <Text variant="footnote" style={{ color: theme.onAccentSoft }}>
-              When you save, people you&apos;ve sent the link to won&apos;t be able to open it, and it&apos;ll come off any
-              event or group you&apos;ve shared it with.
+              Once you save, people with the link can&apos;t open it, and it comes off any events and groups.
             </Text>
           </View>
         ) : null}
@@ -328,11 +321,10 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
           {confirmingLink ? (
             <View style={{ gap: spacing.sm }}>
               <Text variant="footnote" tone="secondary">
-                The link you have now will stop working for everyone who has it. You&apos;ll get a new one to send to the
-                people you still want to see this list. Guests who already gave a gift can still get to it from their emails.
+                The current link will stop working for everyone who has it.
               </Text>
               <Button
-                title="Turn off this link and get a new one"
+                title="Replace link"
                 size="small"
                 variant="danger"
                 loading={replaceLink.isPending}
@@ -342,7 +334,7 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
                       setConfirmingLink(false);
                       Alert.alert(
                         "Done",
-                        "The old link no longer works. Send this one to the people you want to have it.",
+                        "The old link no longer works.",
                         [
                           { text: "OK" },
                           { text: "Share", onPress: () => Share.share({ message: registryShareUrl(result.slug) }) },
@@ -353,7 +345,7 @@ function GeneralPanel({ detail }: { detail: RegistryDetail }) {
                   })
                 }
               />
-              <Button title="Keep this link" size="small" variant="ghost" onPress={() => setConfirmingLink(false)} />
+              <Button title="Cancel" size="small" variant="ghost" onPress={() => setConfirmingLink(false)} />
             </View>
           ) : (
             <Button title="Get a new link" size="small" variant="ghost" onPress={() => setConfirmingLink(true)} />
@@ -381,10 +373,10 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
 
   if (!isOwner) {
     return (
-      <Panel title="What's been reserved" description="The owner chooses whether they see what people reserve and pledge.">
+      <Panel title="What's been reserved">
         <Text variant="footnote" tone="secondary">
           {privacy.hide_reservations === true && !privacy.for_child
-            ? "The owner hides what's been reserved from themselves, so their gifts stay a surprise. You still see everything and get gift emails."
+            ? "The owner hides what's reserved from themselves. You still see it and get gift emails."
             : "Everyone who manages this list sees what's been reserved."}
         </Text>
       </Panel>
@@ -392,14 +384,14 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
   }
 
   return (
-    <Panel title="What's been reserved" description="Choose whether you see what people reserve and pledge on this list.">
+    <Panel title="What's been reserved">
       <View style={{ marginHorizontal: -spacing.lg }}>
         {/* Off and greyed out while the list is kept for a child, as on the website. */}
         <View style={{ opacity: forChild ? 0.45 : 1 }} pointerEvents={forChild ? "none" : "auto"} accessibilityState={{ disabled: forChild }}>
           <SwitchRow
             label="Hide what's been reserved from me"
-            description={`Every item shows as not yet reserved for you, and you don't get gift emails. Guests still see what's taken, so nobody buys the same thing twice. Co-managers still see everything. When the list is part of an event, you see what was given, and by whom, from the day after it. Or turn this off any time to see everything.${
-              privacy.hide_reservations_source === "exchange" ? " Regibee turned this on when you added this list to a gift exchange." : ""
+            description={`You won't see what's reserved or get gift emails. Guests and co-managers still do.${
+              privacy.hide_reservations_source === "exchange" ? " Turned on when you added this list to a gift exchange." : ""
             }`}
             value={hide && !forChild}
             onValueChange={setHide}
@@ -408,7 +400,7 @@ function ReservationPanel({ detail }: { detail: RegistryDetail }) {
         {isPersonal ? (
           <SwitchRow
             label="I keep this list for my child"
-            description="You always see what's been reserved, so you can plan, even when the list is in a gift exchange."
+            description="You always see what's reserved, even in a gift exchange."
             value={forChild}
             onValueChange={setForChild}
           />
@@ -448,19 +440,16 @@ function GroupsPanel({ registryId }: { registryId: string }) {
   const selected = chosen ?? new Set(choices.data?.sharedWith ?? []);
 
   return (
-    <Panel
-      title="Share with a group"
-      description="People in these groups who have a Regibee account see this list on their Following page, even when it's private. Anyone with the link can still open it."
-    >
+    <Panel title="Share with a group" description="Group members with an account see this list on their Following page.">
       {choices.isPending ? (
         <LoadingState />
       ) : (choices.data?.groups ?? []).length === 0 ? (
         <Text variant="footnote" tone="secondary">
-          You don&apos;t have any groups yet. Make one on the{" "}
+          No groups yet. Make one on the{" "}
           <Text variant="footnote" tone="tint" onPress={() => router.navigate("/events")}>
             Events tab
           </Text>
-          , or save an event&apos;s guest list as a group.
+          .
         </Text>
       ) : (
         <>
@@ -504,7 +493,7 @@ function CategoriesPanel({ detail }: { detail: RegistryDetail }) {
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <Panel title="Categories" description="Organize your registry items into categories">
+    <Panel title="Categories">
       <View style={{ gap: spacing.sm }}>
         {detail.categories.map((category) =>
           editing?.id === category.id ? (
@@ -578,10 +567,10 @@ function LocationPanel({ registryId, settings }: { registryId: string; settings:
   const [saved, markSaved] = useSaved();
   const [error, setError] = useState<string | null>(null);
   return (
-    <Panel title="Location" description="Used to estimate sales tax on item prices when auto-filling from product URLs">
+    <Panel title="Location" description="Used to estimate sales tax.">
       <Field label="Zip Code" value={zipCode} onChangeText={setZipCode} placeholder="e.g., 90210" keyboardType="number-pad" />
       <View style={{ marginHorizontal: -spacing.lg }}>
-        <SwitchRow label="Auto-add estimated sales tax to prices" value={taxEnabled} onValueChange={setTaxEnabled} />
+        <SwitchRow label="Add estimated sales tax to prices" value={taxEnabled} onValueChange={setTaxEnabled} />
       </View>
       <ErrorText error={error} />
       <SaveButton
@@ -606,7 +595,7 @@ function PaymentsPanel({ registryId, settings }: { registryId: string; settings:
   const [error, setError] = useState<string | null>(null);
   const plain = { autoCapitalize: "none" as const, autoCorrect: false };
   return (
-    <Panel title="Payment methods" description="Add your payment info so gift givers can send you money for cash funds and items you've already purchased.">
+    <Panel title="Payment methods" description="Gift givers pay you directly. Regibee never handles money.">
       <Field label="Venmo" value={venmo} onChangeText={setVenmo} placeholder="@your-venmo" {...plain} />
       <Field label="PayPal" value={paypal} onChangeText={setPaypal} placeholder="you@email.com or PayPal.me link" {...plain} />
       <Field label="Zelle" value={zelle} onChangeText={setZelle} placeholder="you@email.com or phone number" {...plain} />
@@ -629,7 +618,7 @@ function ShippingPanel({ registryId, settings }: { registryId: string; settings:
   const [saved, markSaved] = useSaved();
   const [error, setError] = useState<string | null>(null);
   return (
-    <Panel title="Shipping address" description="Share your shipping address with gift givers so they know where to send gifts.">
+    <Panel title="Shipping address">
       <Field
         label="Address"
         value={address}
@@ -688,7 +677,7 @@ function StoreRegistriesPanel({ registryId, settings }: { registryId: string; se
   return (
     <Panel
       title="Your store registries"
-      description="Made a registry at Amazon, Target or another store? Link it here. When a guest buys through your registry link, the store counts the gift toward your registry, so you keep its perks."
+      description="Link your registry at Amazon, Target or another store, so guests' gifts count toward its perks."
     >
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
         <Pill label="Completion discount" tone="tint" />
@@ -771,10 +760,7 @@ function ManagersPanel({ detail }: { detail: RegistryDetail }) {
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <Panel
-      title="Managers"
-      description="Invite others to help manage this registry. Managers can add/edit items, view gift activity, and manage categories."
-    >
+    <Panel title="Managers" description="Managers can edit this list and see its gifts.">
       <Text variant="headline">Current managers</Text>
       {data.isPending ? (
         <LoadingState />
@@ -803,7 +789,7 @@ function ManagersPanel({ detail }: { detail: RegistryDetail }) {
                 accessibilityLabel={`Remove ${m.name}`}
                 color={theme.danger}
                 onPress={() =>
-                  Alert.alert("Remove this manager?", "They will lose access to the registry.", [
+                  Alert.alert("Remove this manager?", undefined, [
                     { text: "Cancel", style: "cancel" },
                     {
                       text: "Remove",
@@ -876,7 +862,7 @@ function ManagersPanel({ detail }: { detail: RegistryDetail }) {
           onPress={async () => {
             await Clipboard.setStringAsync(link);
             haptic("success");
-            Alert.alert("Copied!", "Send the link to the person you want to help manage this registry.", [
+            Alert.alert("Copied!", undefined, [
               { text: "OK" },
               { text: "Share", onPress: () => Share.share({ message: link }) },
             ]);
@@ -954,13 +940,13 @@ function DangerPanel({ registryId }: { registryId: string }) {
         : registryDeletionLines(summary);
 
   return (
-    <Panel title="Delete registry" description="Permanently delete this registry and all its items">
+    <Panel title="Delete registry">
       <Button title="Delete registry" variant="danger" icon="trash" onPress={ask} />
       <ConfirmDelete
         visible={open}
         onClose={() => setOpen(false)}
         title="Delete this registry?"
-        message="This can't be undone. Deleting this registry does this:"
+        message="This can't be undone."
         lines={lines}
         loading={summary === null}
         phrase={summary !== null && (summary === "unknown" || registryHasData(summary)) ? deletePhrase("registry") : null}

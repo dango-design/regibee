@@ -136,7 +136,7 @@ export function ContributeFundDialog({
         <DialogHeader>
           <DialogTitle>Contribute to &ldquo;{fund.title}&rdquo;</DialogTitle>
           <DialogDescription>
-            Pledge a contribution and send payment directly to the registry owner.
+            You send the money to them directly.
           </DialogDescription>
         </DialogHeader>
 

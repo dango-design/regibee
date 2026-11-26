@@ -109,7 +109,7 @@ export function MissingDetailsNotice({
           </Button>
         </div>
         <Progress value={total > 0 ? (done / total) * 100 : 0} aria-label="Items read" />
-        <p className="text-sm text-tertiary">Keep this tab open until it&apos;s done. Each item opens in a background tab for a few seconds.</p>
+        <p className="text-sm text-tertiary">Keep this tab open until it&apos;s done. Each item opens briefly in a background tab.</p>
       </div>
     );
   }
@@ -125,9 +125,8 @@ export function MissingDetailsNotice({
       <div className={cn("flex items-start gap-2.5 rounded-lg bg-secondary px-3 py-2.5", className)}>
         <Info className="mt-px h-4 w-4 shrink-0 text-tertiary" aria-hidden="true" />
         <p className="text-sm text-tertiary">
-          <span className="font-semibold text-secondary">{heading}.</span> The store didn&apos;t let Regibee read{" "}
-          {one ? "it" : "them"}. To fill {one ? "it" : "them"} in, open this list in Chrome on a computer with the
-          Regibee browser extension.
+          <span className="font-semibold text-secondary">{heading}.</span> To fill {one ? "it" : "them"} in, open
+          this list in Chrome with the Regibee extension.
         </p>
       </div>
     );
@@ -140,13 +139,11 @@ export function MissingDetailsNotice({
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-semibold text-primary">{heading}</p>
           <p className="text-sm text-secondary">
-            The Regibee extension can read {one ? "it" : "them"} from the store and fill in the name, photo and price.
-            You can check what changed afterward and put back anything you&apos;d rather keep.
+            The Regibee extension can fill {one ? "it" : "them"} in from the store. You can undo changes after.
           </p>
           {notRead > 0 && (
             <p className="text-sm text-error-primary">
-              {notRead === 1 ? "1 item couldn't be read." : `${notRead} items couldn't be read.`} The store may have
-              asked for a robot check, or the product page may be gone. Try again later.
+              {notRead === 1 ? "1 item couldn't be read." : `${notRead} items couldn't be read.`} Try again later.
             </p>
           )}
         </div>

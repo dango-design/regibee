@@ -11,7 +11,6 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -148,9 +147,6 @@ export function CashFundCard({
         <DialogContent className="sm:max-w-lg" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Edit gift fund</DialogTitle>
-            <DialogDescription>
-              Update the details for this fund.
-            </DialogDescription>
           </DialogHeader>
           <form action={handleSubmit} className="space-y-4">
             <Input
@@ -185,7 +181,7 @@ export function CashFundCard({
 
             {fund.current_amount > 0 && (
               <p className="text-sm text-tertiary">
-                {formatPrice(fund.current_amount)} has been contributed so far.
+                {formatPrice(fund.current_amount)} contributed so far.
               </p>
             )}
 

@@ -259,7 +259,6 @@ export function CreateRegistryForm({
             <Icon className="h-6 w-6 text-brand-600" />
           </div>
           <h1 className="text-2xl font-medium text-primary">New registry</h1>
-          <p className="text-xs text-tertiary">{copy.tagline}</p>
         </div>
 
         <div className="space-y-3">
@@ -270,18 +269,16 @@ export function CreateRegistryForm({
                 onClick={() => chooseRegistryType("baby")}
                 icon={<Baby className="h-4 w-4" />}
                 title="A baby"
-                description="Expecting or welcoming a new arrival"
               />
               <ChoiceCard
                 selected={registryType === "personal"}
                 onClick={() => chooseRegistryType("personal")}
                 icon={<Gift className="h-4 w-4" />}
                 title="Something else"
-                description="Birthday, Christmas, wedding, housewarming, more"
               />
             </div>
 
-            {registryType === "personal" ? (
+            {registryType === "personal" && (
               <div className="mt-4 space-y-2">
                 <p className="text-sm font-medium text-secondary">What&apos;s the occasion?</p>
                 <div className="flex flex-wrap gap-2">
@@ -295,10 +292,6 @@ export function CreateRegistryForm({
                   ))}
                 </div>
               </div>
-            ) : (
-              <p className="mt-3 text-xs text-tertiary">
-                Baby registries start with 10 categories, like Nursery &amp; Sleep and Feeding.
-              </p>
             )}
           </StepSection>
 
@@ -324,7 +317,6 @@ export function CreateRegistryForm({
                 type="date"
                 value={eventDate}
                 onChange={changeEventDate}
-                hint={copy.eventDatePlaceholderHint}
               />
             </div>
             <StepFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
@@ -342,7 +334,6 @@ export function CreateRegistryForm({
                     onClick={() => chooseVisibility(value)}
                     icon={<VisibilityIcon className="h-4 w-4" />}
                     title={LIST_ACCESS[value].label}
-                    description={LIST_ACCESS[value].who}
                   />
                 );
               })}
@@ -368,7 +359,6 @@ export function CreateRegistryForm({
               rows={4}
               value={description}
               onChange={setDescription}
-              hint="Shown at the top of your registry page."
             />
             <StepFooter
               label={footerLabel("welcome")}
@@ -379,7 +369,7 @@ export function CreateRegistryForm({
 
           <StepSection title="Payments and sales tax" {...sectionProps("payments", summaries.payments)}>
             <p className="mb-3 text-sm text-tertiary">
-              So guests can send money for cash funds and things you&apos;ve already bought.
+              Gift givers pay you directly. Regibee never handles money.
             </p>
             <div className="space-y-4">
               <Input
@@ -420,7 +410,7 @@ export function CreateRegistryForm({
                 autoComplete="postal-code"
                 value={zipCode}
                 onChange={changeZipCode}
-                hint="When you add something you've already bought, we'll add estimated sales tax to its price. You can turn this off later in settings."
+                hint="Used to estimate sales tax."
               />
             </div>
             <StepFooter
@@ -437,9 +427,6 @@ export function CreateRegistryForm({
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating..." : "Create registry"}
           </Button>
-          <p className="text-center text-xs text-tertiary">
-            Only the name is required. You can change all of this later in settings.
-          </p>
         </div>
       </form>
     </div>

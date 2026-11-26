@@ -40,8 +40,7 @@ export const ForFollowers: Story = {
 export const OwnProfile: Story = {
   args: {
     showBirthday: true,
-    caption:
-      "Only you and the people you follow who follow you back see this. Followers you approved see your birthday.",
+    caption: "Only you and your friends see this. Approved followers see your birthday.",
   },
 };
 

@@ -154,7 +154,7 @@ export function RsvpWishlistStep({
             )}
             {justMade && current?.ownListId && (
               <p className="mt-2 text-sm text-tertiary">
-                It&apos;s linked to the invitation. Add a few things, so everyone knows what to get you.
+                Add a few things so everyone knows what to get you.
               </p>
             )}
           </div>
@@ -216,7 +216,7 @@ export function RsvpWishlistStep({
                   </span>
                 </Button>
                 {more.length === 0 && (
-                  <p className="text-sm text-tertiary">Like a list you keep for your child. Everyone sees it under yours.</p>
+                  <p className="text-sm text-tertiary">Like a list for your child.</p>
                 )}
               </div>
             )}
@@ -348,11 +348,6 @@ export function RsvpWishlistStep({
                 "Making it…",
               )}
             </Button>
-            {lists.length === 0 && (
-              <p className="text-sm text-tertiary">
-                It&apos;s free. Add things from any store, and it&apos;s linked here as soon as you make it.
-              </p>
-            )}
           </div>
         </div>
       ) : (
@@ -366,8 +361,7 @@ export function RsvpWishlistStep({
             </Button>
           </div>
           <p className="text-sm text-tertiary">
-            New to Regibee? Make a free account, and you&apos;ll come back here to make your list. Already have a list
-            on Regibee? Log in to pick it.
+            Already have a Regibee list? Log in to pick it.
           </p>
         </div>
       )}

@@ -27,8 +27,8 @@ export function FellowGuestsNotice({
       <div className="min-w-0 text-sm">
         <p className="font-medium text-primary">You&apos;re shopping as a guest of {eventTitle}</p>
         <p className="text-secondary">
-          You can see which of the other guests reserved what, so nobody doubles up.{" "}
-          {ownerName ? `${ownerName} can't` : "The list's owner can't"} see who reserved what until the day after.{" "}
+          You can see what other guests reserved.{" "}
+          {ownerName ? `${ownerName} can't` : "The list's owner can't"} until the day after.{" "}
           <a href={eventHref} className="font-medium text-brand-600 hover:underline">
             Everyone&apos;s lists
           </a>

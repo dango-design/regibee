@@ -45,7 +45,7 @@ export default function SavedScreen() {
       <EmptyState
         icon="bookmark"
         title="Saved is for accounts"
-        message="Make an account to see everything on your lists in one place, and to keep private gift ideas for other people."
+        message="Make an account to save items and gift ideas."
       />
     );
   }
@@ -179,17 +179,11 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
   const header = (
     <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
       <ViewSwitch view={view} onView={onView} />
-      <Text variant="subhead" tone="secondary">
-        Everything on your lists, in one place.
-      </Text>
       {data && !hasOwnWishlist ? (
         <View style={[styles.callout, { backgroundColor: theme.tintSoft }]}>
           <Text variant="headline">Start your wishlist</Text>
           <Text variant="footnote" tone="secondary">
-            One list for birthdays, Christmas and any other day.{" "}
-            {data.lists.length > 0
-              ? "Save things to it as you find them, and put them on your other lists too."
-              : "Save things to it as you find them, and family and friends always know what you'd love."}
+            One list for birthdays, Christmas and any other day.
           </Text>
           {startError ? (
             <Text variant="footnote" tone="danger" accessibilityLiveRegion="polite">
@@ -303,9 +297,7 @@ function SavedItems({ view, onView }: { view: View_; onView: (view: View_) => vo
               icon="bookmark"
               title="Nothing saved yet"
               message={
-                (data?.lists.length ?? 0) > 0
-                  ? "Found something you'd love? Share it to Regibee from any store's app, or tap + to save it."
-                  : "Start your wishlist, then save things to it as you find them."
+                (data?.lists.length ?? 0) > 0 ? "Share a link to Regibee from any store's app, or tap +." : undefined
               }
             />
           ) : (
@@ -543,7 +535,6 @@ function GiftIdeas({
           <EmptyState
             icon="sparkles"
             title="No gift ideas yet"
-            message="See something that would make a good gift for someone? Save it here to think about before their next birthday or holiday. Only you can see it."
             action={<Button title="Save a gift idea" icon="add" onPress={() => router.push("/idea")} />}
           />
         )

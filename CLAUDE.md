@@ -144,6 +144,22 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Spell it "wishlist", one word, or "Wishlist" at the start of a sentence. This goes for text people see, emails, code comments, docs and PR titles. Don't write "wish list". New code names use `Wishlist` too. Older names such as `GuestWishLists` and `WishListHero`, and the comments in migrations that have already run, still say it the old way.
 - Each kind of list has its own name in `src/lib/occasions.ts`, such as "baby registry", "birthday wishlist" and "Christmas list". "Gift list" is the general word, used where the kind isn't known yet, as on the New page.
 
+## Screen text
+
+Keep text on screens short. People learn the app by using it, not by reading it. This covers the website, the phone app and the extension.
+
+- A label or button names the thing. Don't add a line under it that says the same again ("Shipping address" doesn't need "Share your shipping address with gift givers so they know where to send gifts.").
+- Don't explain what the app does when someone taps something. If it works as expected, they'll see.
+- A hint is one short sentence, or nothing. A notice or empty state is one or two.
+- Keep text that stops a surprise someone can't undo or would mind:
+  - who can see something, when that isn't obvious ("Only you see gift ideas.")
+  - what a delete or a link change breaks for other people
+  - when an email goes out to someone
+  - money: Regibee never handles it
+- Say it once. If a page's title or a field's label already makes a point, the hint doesn't repeat it.
+- Don't name the code, the demo's internals or how the server works.
+- The privacy policy and the emails are the exceptions. They can be as long as they need to be.
+
 ## Clickable cards
 
 - A card that opens one thing, like a registry, an event or an item to edit, opens it from a click anywhere on the card, not only from its title or button. Its other buttons keep doing their own thing.

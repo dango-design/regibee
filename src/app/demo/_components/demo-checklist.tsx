@@ -127,9 +127,6 @@ export function DemoChecklist() {
               <h1 className="text-2xl font-bold">
                 Registry Checklist
               </h1>
-              <p className="text-sm text-tertiary">
-                Browse recommended items and add them to your registry
-              </p>
             </div>
           </div>
 

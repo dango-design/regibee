@@ -303,13 +303,11 @@ export function ChoiceCard({
   onClick,
   icon,
   title,
-  description,
 }: {
   selected: boolean;
   onClick: () => void;
   icon?: ReactNode;
   title: string;
-  description: string;
 }) {
   return (
     <button
@@ -330,7 +328,6 @@ export function ChoiceCard({
         {icon && <span className="flex h-[1lh] shrink-0 items-center">{icon}</span>}
         {title}
       </span>
-      <span className="mt-1 block text-xs text-tertiary">{description}</span>
     </button>
   );
 }
