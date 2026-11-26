@@ -13,6 +13,11 @@
 // their account (moveSignedOutGifts), so they can still say they bought them
 // or release them. That's what the website does too: its cookie belongs to
 // the browser, not the account.
+//
+// The website's pages in the web view (src/app/web.tsx) share them both ways:
+// the web view hands these to the website when it opens, and the gifts given
+// on a page there come back here. The rules are in the website's
+// src/lib/my-gifts-cookie.ts.
 
 import { kvStorage } from "@/lib/kv-storage";
 
@@ -38,8 +43,17 @@ export async function readMyGifts(userId: string): Promise<Record<string, string
 
 /** Remembers a new gift on an item. A later gift on the same item replaces the earlier one, as the cookie does. */
 export async function rememberGift(userId: string, itemId: string, purchaseId: string) {
+  await rememberGifts(userId, { [itemId]: purchaseId });
+}
+
+/** Remembers new gifts, by item id. They go last, as the newest. */
+export async function rememberGifts(userId: string, newGifts: Record<string, string>) {
+  if (Object.keys(newGifts).length === 0) return;
   const gifts = await readMyGifts(userId);
-  gifts[itemId] = purchaseId;
+  for (const [itemId, purchaseId] of Object.entries(newGifts)) {
+    delete gifts[itemId];
+    gifts[itemId] = purchaseId;
+  }
   await kvStorage.setItem(key(userId), JSON.stringify(gifts));
 }
 
