@@ -588,7 +588,7 @@ function EventForm({
       }
     }
     haptic("success");
-    // Close this form, then open the new event on the Events tab.
+    // Close this form, then open the new event.
     router.back();
     router.push({ pathname: "/events/[eventId]", params: { eventId: created.id } });
     if (imageFailed) {

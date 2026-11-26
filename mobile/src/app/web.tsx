@@ -63,13 +63,22 @@ export default function WebScreen() {
     return () => subscription.remove();
   }, [canGoBack]);
 
-  /** Opens the app's own screen for a website path. True when it has one. */
+  // The last app screen opened from this page, so one tap doesn't open it twice.
+  const lastOpened = useRef({ path: "", at: 0 });
+
+  /**
+   * Opens the app's own screen for a website path. True when it has one. The
+   * screen opens on top of this page, so back from it comes back here.
+   */
   const openInApp = useCallback((sitePathname: string): boolean => {
     const target = appScreenForPath(sitePathname);
     if (!target) return false;
-    if (target.screen === "registry") router.replace({ pathname: "/registry/[id]", params: { id: target.id } });
-    else if (target.screen === "event") router.replace({ pathname: "/events/[eventId]", params: { eventId: target.id } });
-    else if (target.screen === "group") router.replace({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
+    const now = Date.now();
+    if (lastOpened.current.path === sitePathname && now - lastOpened.current.at < 1000) return true;
+    lastOpened.current = { path: sitePathname, at: now };
+    if (target.screen === "registry") router.push({ pathname: "/registry/[id]", params: { id: target.id } });
+    else if (target.screen === "event") router.push({ pathname: "/events/[eventId]", params: { eventId: target.id } });
+    else if (target.screen === "group") router.push({ pathname: "/events/group/[groupId]", params: { groupId: target.id } });
     else router.back();
     return true;
   }, []);
@@ -78,9 +87,12 @@ export default function WebScreen() {
     setCanGoBack(state.canGoBack);
     const sitePathname = pathOnSite(state.url);
     // The website moves between its own pages without loading a new one, which
-    // onShouldStartLoadWithRequest doesn't see. Catch those here.
+    // onShouldStartLoadWithRequest doesn't see. Catch those here. By now the
+    // page has already moved on, so step it back to where it was: that's the
+    // page someone expects to see when they come back from the app's screen.
     if (sitePathname && openInApp(sitePathname)) {
       web.current?.stopLoading();
+      if (state.canGoBack) web.current?.goBack();
       return;
     }
     if (sitePathname && !sitePathname.startsWith("/api/app/open")) setCurrent(state.url);

@@ -17,11 +17,6 @@ export default function HomeLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "My registries", ...largeTitleOptions }} />
-      <Stack.Screen name="registry/[id]/index" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="registry/[id]/settings" options={{ title: "Settings", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="registry/[id]/checklist" options={{ title: "Registry Checklist", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="registry/[id]/suggestions" options={{ title: "Suggestions Inbox", headerBackButtonDisplayMode: "minimal" }} />
-      <Stack.Screen name="registry/[id]/perks" options={{ title: "Store perks", headerBackButtonDisplayMode: "minimal" }} />
     </Stack>
   );
 }

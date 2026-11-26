@@ -1,8 +1,8 @@
 // "Coming up" on the home screen: the next few events, with how many days are
 // left until each, as on the website's My registries tab
 // (src/components/upcoming-events.tsx). An event the user hosts opens its
-// screen on the Events tab. Someone else's opens its invitation in the
-// browser: on the user's own guest link when they're invited, so they can RSVP.
+// own screen. Someone else's opens its invitation as a website page, on
+// the user's own guest link when they're invited, so they can RSVP.
 
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";

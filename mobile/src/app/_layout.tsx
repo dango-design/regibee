@@ -81,6 +81,21 @@ function RootNavigator({ ready }: { ready: boolean }) {
       >
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* Every screen past a tab's first one opens here, on top of the
+              tabs, not inside a tab. Then back always returns to the screen
+              it was opened from, whichever tab or page that was. A screen
+              inside a tab can be opened from another tab or a website page,
+              and back from it would go to that tab's own first screen. */}
+          <Stack.Screen name="registry/[id]/index" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/settings" options={{ title: "Settings", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/checklist" options={{ title: "Registry Checklist", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/suggestions" options={{ title: "Suggestions Inbox", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/perks" options={{ title: "Store perks", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="events/[eventId]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="events/group/[groupId]" options={{ title: "Group", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="account/profile" options={{ title: "Your profile", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="account/gift-profile" options={{ title: "Gift profile", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="account/follows" options={{ title: "Follows", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="add" options={{ presentation: "modal", title: "Add an item" }} />
           <Stack.Screen name="item/[id]" options={{ presentation: "modal", title: "Edit item" }} />
           <Stack.Screen name="new-registry" options={{ presentation: "modal", title: "New registry" }} />
@@ -94,7 +109,7 @@ function RootNavigator({ ready }: { ready: boolean }) {
         </Stack.Protected>
         {/* Signed in or out: a link to a list or an invitation opens here
             either way. Signed out, the page shows as it does to guests. */}
-        <Stack.Screen name="web" options={{ title: "" }} />
+        <Stack.Screen name="web" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ title: "Create an account" }} />
