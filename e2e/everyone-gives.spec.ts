@@ -170,7 +170,7 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   await expect(mayaPage.getByText(scarf.title).first()).toBeVisible();
   await expect(mayaPage.getByText("Ben Brother")).toHaveCount(0);
   await mayaPage.goto(`/dashboard/registry/${mayaList.id}?tab=purchases`);
-  await expect(mayaPage.getByText(`Gifts reserved before ${event.title} are revealed`).first()).toBeVisible();
+  await expect(mayaPage.getByText(`Gifts reserved before ${event.title} show on`).first()).toBeVisible();
   await expect(mayaPage.getByText("Ben Brother")).toHaveCount(0);
 
   // The event is over: move it back two days, and the reservation to before it.
