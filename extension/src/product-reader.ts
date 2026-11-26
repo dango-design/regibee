@@ -7,7 +7,10 @@
 // not use anything from outside its own body: no imports, no shared helpers.
 
 export interface ProductPage {
-  /** The page's address, exactly as it is, so a store registry link stays one. */
+  /**
+   * The page's address, exactly as it is, so a store registry link stays one.
+   * The one exception is an Amazon /clp/ page, which becomes its /dp/ link.
+   */
   url: string;
   title: string;
   price: number | null;
@@ -113,11 +116,21 @@ export function readProductPage(): ProductPage {
       if (src) storeImages.push(src.split("?")[0]);
     }
   }
+  // Amazon's /clp/<ASIN> pages, where Google Shopping links, show the
+  // product in a different block, #scans-hero-faceout. Their first heading is
+  // the Alexa panel's "Chat history", so the usual fallbacks read the wrong name.
+  const amazonHero = /(^|\.)amazon\.com$/i.test(location.hostname) ? document.getElementById("scans-hero-faceout") : null;
   if (/(^|\.)amazon\.com$/i.test(location.hostname)) {
-    amazonTitle = clean(document.getElementById("productTitle")?.textContent) || null;
-    const priceEl = document.querySelector(
-      "#corePrice_feature_div .a-price .a-offscreen, #corePriceDisplay_desktop_feature_div .a-price .a-offscreen, #apex_desktop .a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice"
-    );
+    amazonTitle =
+      clean(document.getElementById("productTitle")?.textContent) ||
+      clean(amazonHero?.querySelector(".scans-hero-faceout-title-heading")?.textContent) ||
+      null;
+    const priceEl =
+      document.querySelector(
+        "#corePrice_feature_div .a-price .a-offscreen, #corePriceDisplay_desktop_feature_div .a-price .a-offscreen, #apex_desktop .a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice"
+      ) ??
+      // The struck-out list price is .a-text-price.
+      amazonHero?.querySelector(".a-price:not(.a-text-price) .a-offscreen");
     storePrice = toPrice(priceEl?.textContent);
     const landing = (document.getElementById("landingImage") ?? document.getElementById("imgBlkFront")) as HTMLImageElement | null;
     if (landing) {
@@ -139,6 +152,23 @@ export function readProductPage(): ProductPage {
       const src = img.getAttribute("src") ?? "";
       if (/\/images\/I\//.test(src)) storeImages.push(src.replace(/\._[^/]*_\./, "."));
     }
+    // A /clp/ page's pictures, biggest first, with the same size codes.
+    for (const img of document.querySelectorAll<HTMLImageElement>(".scans-hero-faceout-media-carousel img")) {
+      const src = img.getAttribute("src") ?? "";
+      if (/\/images\/I\//.test(src)) storeImages.push(src.replace(/\._[^/]*_\./, "."));
+    }
+  }
+
+  // Save a /clp/ page as the product's usual /dp/ link. A /clp/ link is never
+  // a registry link, and its query string is only Google's tracking. Take the
+  // product ID of the size the page marks as chosen, and the address's when
+  // it marks none.
+  let url = location.href;
+  const clpId = amazonHero ? location.pathname.match(/^\/clp\/([A-Z0-9]{10})(?=[/?#]|$)/i)?.[1] : undefined;
+  if (clpId) {
+    const chosen = amazonHero?.querySelector(".scans-hero-faceout-value-selected[data-variant-asin]")?.getAttribute("data-variant-asin");
+    const asin = chosen && /^[A-Z0-9]{10}$/i.test(chosen) ? chosen : clpId;
+    url = `https://www.amazon.com/dp/${asin.toUpperCase()}`;
   }
 
   const titleFromDocument = clean(document.title)
@@ -390,5 +420,5 @@ export function readProductPage(): ProductPage {
     // A category is a bonus too.
   }
 
-  return { url: location.href, title: title.slice(0, 300), price, images, isProduct, gtin, storeCategory };
+  return { url, title: title.slice(0, 300), price, images, isProduct, gtin, storeCategory };
 }

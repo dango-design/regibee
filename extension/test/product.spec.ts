@@ -26,7 +26,10 @@ for (const saved of pages) {
       // way the popup's chrome.scripting.executeScript does.
       const product = await tab.evaluate(readProductPage);
 
-      expect(product.url).toBe(saved.url);
+      // An Amazon /clp/ page is saved as its /dp/ link (see the reader).
+      const clp = new URL(saved.url).pathname.match(/^\/clp\/([A-Z0-9]{10})/i);
+      if (clp) expect(product.url).toMatch(/^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}$/);
+      else expect(product.url).toBe(saved.url);
       expect(product.isProduct).toBe(true);
       expect(product.title.length).toBeGreaterThanOrEqual(3);
       expect(product.price).toBeGreaterThan(0);
