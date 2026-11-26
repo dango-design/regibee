@@ -39,6 +39,8 @@ const UNSTABLE: Record<string, string> = {
     "The row of section links ends up scrolled to a different place from run to run.",
   "components-eventform--editing-on-phone":
     "The row of section links ends up scrolled to a different place from run to run.",
+  "components-rsvpform--wedding-questions":
+    "Its play function ends before focus settles, so the party size field sometimes has the focus ring.",
   "components-edititemdialog--changing-the-photo": "The photo menu opens one pixel higher or lower from run to run.",
   "components-edititemdialog--more-actions": "Its menu differs from run to run, like the photo menu.",
   "components-edititemdialog--picking-a-list": "Its menu differs from run to run, like the photo menu.",
