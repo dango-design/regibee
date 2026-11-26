@@ -99,6 +99,8 @@ function RootNavigator({ ready }: { ready: boolean }) {
           <Stack.Screen name="registry/[id]/checklist" options={{ title: "Registry Checklist", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="registry/[id]/suggestions" options={{ title: "Suggestions Inbox", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="registry/[id]/perks" options={{ title: "Store perks", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/gifts" options={{ title: "Gift activity", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/check" options={{ title: "Items to check", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="events/[eventId]" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="events/group/[groupId]" options={{ title: "Group", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="account/profile" options={{ title: "Your profile", headerBackButtonDisplayMode: "minimal" }} />

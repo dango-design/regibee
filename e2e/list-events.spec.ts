@@ -103,8 +103,8 @@ test("a list shows its events to its owner, and to guests invited with the owner
   const olivePage = await (await browser.newContext()).newPage();
   await signIn(olivePage, olive);
   await olivePage.goto(`/dashboard/registry/${registry.id}`);
-  await expect(olivePage.getByText("Linked events")).toBeVisible();
-  const ownerRows = olivePage.locator("li", { hasText: id });
+  // Each event is one part of the card under the list's title.
+  const ownerRows = olivePage.getByRole("list", { name: "About this list" }).locator("li", { hasText: id });
   await expect(ownerRows).toHaveCount(6);
   const swapRow = ownerRows.filter({ hasText: `Gift Swap ${id}` });
   await expect(swapRow).toContainText("added by a guest");

@@ -11,7 +11,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
-import { Modal, Platform, Pressable, View } from "react-native";
+import { Modal, Platform, Pressable, StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GIFT_HOLD_DAYS, SECRET_GIVER_NAME, formatReservedUntil, type MyItemGift } from "@shared/gifts";
@@ -393,7 +393,18 @@ export function GiftSheet({
   }
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+      // On Android the sheet is its own window, and it opened with white
+      // status bar icons, even in light mode. Setting the style again reaches
+      // that window too, so the clock and battery show on a light background.
+      onShow={() => {
+        if (Platform.OS === "android") StatusBar.setBarStyle(theme.dark ? "light-content" : "dark-content");
+      }}
+    >
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <View
           style={{

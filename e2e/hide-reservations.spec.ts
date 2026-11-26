@@ -73,11 +73,15 @@ test("a wishlist added to a gift exchange hides reservations from its owner only
   await signIn(page, maya);
   await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();
   await page.goto(`/dashboard/registry/${registry.id}`);
-  await expect(page.getByText("What's been reserved is hidden from you").first()).toBeVisible();
-  await expect(page.getByText("Regibee turned this on for the gift exchange.")).toBeVisible();
+  // The registry page says so in one line, which opens the Gift Activity
+  // tab. The tab has the whole notice.
+  await expect(page.getByRole("link", { name: /Gifts hidden from you/ })).toBeVisible();
   await expect(page.getByText("1 of 1 still needed")).toBeVisible();
   await expect(page.getByText("Glinda Guest")).toHaveCount(0);
-  await page.goto(`/dashboard/registry/${registry.id}?tab=purchases`);
+  await page.getByRole("link", { name: /Gifts hidden from you/ }).click();
+  await expect(page).toHaveURL(/\?tab=purchases$/);
+  await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();
+  await expect(page.getByText("Regibee turned this on for the gift exchange.")).toBeVisible();
   await expect(page.getByText("Glinda Guest")).toHaveCount(0);
   await page.goto(`/r/${registry.slug}`);
   await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();
