@@ -4,7 +4,7 @@
 import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, RefreshControl, StyleSheet, View } from "react-native";
 
 import { eventTypeLabel, formatShortEventDate, MY_RSVP_LABELS, rsvpStatsText, type RsvpStatus } from "@shared/events";
 import type { EventsTabCard, EventsTabInvite } from "@shared/events-page-types";
@@ -12,6 +12,7 @@ import { memberCountLabel } from "@shared/groups";
 import { countdownLabel } from "@shared/occasions";
 
 import { Icon, type IconName } from "@/components/icon";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { NavRow } from "@/components/nav-row";
 import { Button, Card, Divider, EmptyState, ErrorState, Field, IconButton, LoadingState, Pill, Section, Text } from "@/components/ui";
 import { useSession } from "@/lib/auth";
@@ -50,7 +51,7 @@ export default function EventsScreen() {
           headerRight: () => <IconButton icon="add" accessibilityLabel="Start something new" onPress={() => router.push("/new")} />,
         }}
       />
-      <ScrollView
+      <KeyboardScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={{ backgroundColor: theme.background }}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 120 }}
@@ -141,7 +142,7 @@ export default function EventsScreen() {
             <GroupsSection groups={data.groups} />
           </>
         )}
-      </ScrollView>
+      </KeyboardScrollView>
     </>
   );
 }

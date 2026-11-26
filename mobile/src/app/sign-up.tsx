@@ -1,9 +1,10 @@
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View, type TextInputInstance } from "react-native";
+import { View, type TextInputInstance } from "react-native";
 
 import { AutofillFields } from "@/components/autofill-fields";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { Button, EmptyState, Field, haptic, Section, SwitchRow, Text } from "@/components/ui";
 import { signUp } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
@@ -60,76 +61,74 @@ export default function SignUpScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
-        <AutofillFields>
-          <Field
-            label="Your name"
-            placeholder="Remi & Max Porter"
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-            autoComplete="name"
-            textContentType="name"
-            returnKeyType="next"
-            onSubmitEditing={() => emailRef.current?.focus()}
-            submitBehavior="submit"
-          />
-          <Field
-            ref={emailRef}
-            label="Email"
-            placeholder="you@example.com"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-            submitBehavior="submit"
-          />
-          <Field
-            ref={passwordRef}
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="new-password"
-            textContentType="newPassword"
-            hint="At least 6 characters."
-            returnKeyType="go"
-            onSubmitEditing={submit}
-          />
-        </AutofillFields>
-        <Section>
-          <SwitchRow
-            icon="search"
-            label="Let friends find me on Regibee"
-            description="People can find you by name or email. Your email is never shown."
-            value={findable}
-            onValueChange={setFindable}
-          />
-        </Section>
-        {error ? (
-          <Text variant="footnote" tone="danger" accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
-        <Button title="Create account" onPress={submit} loading={loading} />
-        <Text variant="footnote" tone="secondary" style={{ textAlign: "center" }}>
-          Our{" "}
-          <Text
-            variant="footnote"
-            tone="tint"
-            accessibilityRole="link"
-            onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/privacy`)}
-          >
-            privacy policy
-          </Text>{" "}
-          says what we keep and how to delete it.
+    <KeyboardScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
+      <AutofillFields>
+        <Field
+          label="Your name"
+          placeholder="Remi & Max Porter"
+          value={fullName}
+          onChangeText={setFullName}
+          autoCapitalize="words"
+          autoComplete="name"
+          textContentType="name"
+          returnKeyType="next"
+          onSubmitEditing={() => emailRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <Field
+          ref={emailRef}
+          label="Email"
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <Field
+          ref={passwordRef}
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="new-password"
+          textContentType="newPassword"
+          hint="At least 6 characters."
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
+      </AutofillFields>
+      <Section>
+        <SwitchRow
+          icon="search"
+          label="Let friends find me on Regibee"
+          description="People can find you by name or email. Your email is never shown."
+          value={findable}
+          onValueChange={setFindable}
+        />
+      </Section>
+      {error ? (
+        <Text variant="footnote" tone="danger" accessibilityLiveRegion="polite">
+          {error}
         </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      ) : null}
+      <Button title="Create account" onPress={submit} loading={loading} />
+      <Text variant="footnote" tone="secondary" style={{ textAlign: "center" }}>
+        Our{" "}
+        <Text
+          variant="footnote"
+          tone="tint"
+          accessibilityRole="link"
+          onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/privacy`)}
+        >
+          privacy policy
+        </Text>{" "}
+        says what we keep and how to delete it.
+      </Text>
+    </KeyboardScrollView>
   );
 }

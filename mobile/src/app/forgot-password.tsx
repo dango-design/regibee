@@ -1,8 +1,9 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
 import { AutofillFields } from "@/components/autofill-fields";
+import { KeyboardScrollView } from "@/components/keyboard";
 import { Button, EmptyState, Field, Text } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
@@ -56,7 +57,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
       keyboardShouldPersistTaps="handled"
@@ -86,6 +87,6 @@ export default function ForgotPasswordScreen() {
         </Text>
       ) : null}
       <Button title="Send reset link" onPress={submit} loading={loading} />
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }

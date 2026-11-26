@@ -1,9 +1,10 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeyboardFooter, KeyboardScrollView, useKeyboardFooter } from "@/components/keyboard";
 import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import { Button, Chip, Field, IconButton, Section, SwitchRow, Text } from "@/components/ui";
 import { errorMessage, useCreateRegistry } from "@/lib/data";
@@ -28,6 +29,7 @@ import { copyFor, REGISTRY_OCCASION_CHOICES } from "@shared/registry-copy";
 export default function NewRegistryScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardFooter = useKeyboardFooter();
   const create = useCreateRegistry();
   // "Start something new" opens this with the type, and a personal list's
   // occasion, already chosen, as the website's /dashboard/registry/new?type=…&occasion=… does.
@@ -101,7 +103,7 @@ export default function NewRegistryScreen() {
   const copy = copyFor({ registryType, eventType: registryType === "personal" ? eventType : null });
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <>
       <Stack.Screen
         options={{
           headerLeft:
@@ -110,7 +112,7 @@ export default function NewRegistryScreen() {
               : undefined,
         }}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
         <View style={{ gap: spacing.sm }}>
           <Text variant="footnote" tone="secondary" style={{ fontWeight: "600" }}>
             What's it for?
@@ -252,15 +254,15 @@ export default function NewRegistryScreen() {
             onPress={() => setShowPayments(true)}
           />
         )}
-      </ScrollView>
-      <View style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
+      </KeyboardScrollView>
+      <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
         {error ? (
           <Text variant="footnote" tone="danger" style={{ textAlign: "center" }}>
             {error}
           </Text>
         ) : null}
         <Button title="Create registry" onPress={submit} loading={create.isPending} />
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardFooter>
+    </>
   );
 }
