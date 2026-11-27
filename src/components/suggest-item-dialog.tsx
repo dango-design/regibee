@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lightbulb, Loader2 } from "lucide-react";
+import { DollarSign, Lightbulb, Loader2 } from "lucide-react";
 import { Link01, Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
@@ -135,8 +135,11 @@ export function SuggestItemDialog({ registryId, action }: SuggestItemDialogProps
                 </div>
               </div>
 
-              <InputGroup label="Estimated price (optional)" prefix="$">
+              {/* An icon, not InputGroup's prefix: the prefix only sits inside
+                  the field's border when the group also holds a select. */}
+              <InputGroup label="Estimated price (optional)">
                 <InputBase
+                  icon={DollarSign}
                   name="price"
                   type="number"
                   inputMode="decimal"

@@ -169,9 +169,12 @@ export function ContributeFundDialog({
           </div>
   
           <form action={handleSubmit} className="space-y-4">
-            {/* Amounts are saved in dollars, like every amount on Regibee. */}
-            <InputGroup label="Amount" prefix="$" isRequired>
+            {/* Amounts are saved in dollars, like every amount on Regibee. An
+                icon, not InputGroup's prefix: the prefix only sits inside the
+                field's border when the group also holds a select. */}
+            <InputGroup label="Amount" isRequired>
               <InputBase
+                icon={DollarSign}
                 name="amount"
                 type="number"
                 inputMode="decimal"
