@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fn, userEvent, within, waitFor } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { checklistStatus, countedEntry } from "@/lib/checklist-matching";
 import type { ChecklistPageData } from "@/lib/checklist-page-types";
 import { BABY_DEFAULT_CATEGORIES } from "@/lib/registry-create";
@@ -77,9 +77,10 @@ export const AskingWhichOne: Story = {
     const canvas = within(canvasElement);
     await userEvent.click((await canvas.findAllByRole("button", { name: /Add to registry/ }))[0]);
     const body = within(document.body);
-    // The dialog fades in, and nothing in it counts as visible at the start of
-    // the fade. So wait for it to show instead of checking once.
-    await waitFor(() => expect(body.getByRole("heading", { name: "Have a specific crib in mind?" })).toBeVisible());
-    await expect(body.getByRole("button", { name: "No, guests can choose" })).toBeVisible();
+    const heading = await body.findByRole("heading", { name: "Have a specific crib in mind?" });
+    // The dialog fades in from opacity 0, so wait for it to finish instead of
+    // checking once. A single check failed whenever it landed mid-fade.
+    await waitFor(() => expect(heading).toBeVisible());
+    await waitFor(() => expect(body.getByRole("button", { name: "No, guests can choose" })).toBeVisible());
   },
 };
