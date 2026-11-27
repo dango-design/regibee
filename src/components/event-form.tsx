@@ -73,6 +73,7 @@ type Values = Pick<
   | "ask_kids"
   | "rsvp_questions"
   | "remind_day_before"
+  | "auto_rsvp_reminder"
   | "theme_color"
 >;
 
@@ -179,6 +180,7 @@ export function EventForm({
       : defaultQuestions(EVENT_TYPE_OPTIONS.find((o) => o.value === (initial.event_type ?? "baby_shower"))?.defaults?.questions),
   );
   const [remindDayBefore, setRemindDayBefore] = useState(initial.remind_day_before ?? true);
+  const [autoRsvpReminder, setAutoRsvpReminder] = useState(initial.auto_rsvp_reminder ?? true);
   const [notifyGuests, setNotifyGuests] = useState(true);
 
   // Linked registries. "Plan an event" on a registry's page starts with that one.
@@ -393,6 +395,7 @@ export function EventForm({
     data.set("askKids", String(askKids));
     data.set("rsvpQuestions", JSON.stringify(questions));
     data.set("remindDayBefore", String(remindDayBefore));
+    data.set("autoRsvpReminder", String(autoRsvpReminder));
     data.set("notifyGuests", String(notifyGuests && changes.length > 0));
     data.set("giftNote", giftNote);
     data.set("themeColor", themeColor);
@@ -906,6 +909,13 @@ export function EventForm({
                 onChange={setRemindDayBefore}
                 label={<span className="font-normal">Email everyone going a reminder the day before</span>}
               />
+              {rsvpBy && (
+                <Checkbox
+                  isSelected={autoRsvpReminder}
+                  onChange={setAutoRsvpReminder}
+                  label={<span className="font-normal">Remind guests who haven't replied, 3 days before the reply-by date</span>}
+                />
+              )}
               <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
             </div>
             <StepFooter label={footerLabel("rsvps")} onClick={() => finish("rsvps")} />
@@ -1081,6 +1091,13 @@ export function EventForm({
             onChange={setRemindDayBefore}
             label={<span className="font-normal">Email everyone going a reminder the day before</span>}
           />
+          {rsvpBy && (
+            <Checkbox
+              isSelected={autoRsvpReminder}
+              onChange={setAutoRsvpReminder}
+              label={<span className="font-normal">Remind guests who haven't replied, 3 days before the reply-by date</span>}
+            />
+          )}
           <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
         </Section>
 

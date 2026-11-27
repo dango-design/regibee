@@ -88,6 +88,11 @@ export interface Item {
   /** It's on this list through a placement from another of the owner's lists. */
   placed?: boolean;
   /**
+   * Whether the website's list page checks its price weekly (@shared/item-details).
+   * Missing when that doesn't apply, and from older servers' answers.
+   */
+  priceChecks?: "on" | "off";
+  /**
    * The baby checklist entry it counts for: a key, "none", or null to match by
    * its title (src/lib/checklist-matching.ts on the website).
    */

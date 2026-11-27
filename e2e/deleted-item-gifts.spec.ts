@@ -118,10 +118,10 @@ test("an owner removes an item a guest reserved, and the guest's gift goes with 
   expect(itemRow).toBeNull();
   expect(await giftRow(gift!.id)).toBeNull();
 
-  // Glinda hears it's off the list, so she doesn't buy it (#205).
-  const removed = await waitForEmail(guestEmail, `"${item.title}" was taken off the list`);
-  expect(removed.html).toContain("Maya took");
-  expect(removed.html).toContain("so you don't need to get it");
+  // Glinda hears her reservation went with it, with a link back to the list.
+  const removed = await waitForEmail(guestEmail, new RegExp(`^"${item.title}" was taken off `));
+  expect(removed.html).toContain("You don't need to buy it.");
+  expect(linkIn(removed, /\/r\//)).toContain(`/r/${registry.slug}`);
 
   // The link in Glinda's email still opens the list, without the gift.
   await guestPage.goto(linkIn(reserved, /\/gift\/[0-9a-f-]+\?step=confirm$/));

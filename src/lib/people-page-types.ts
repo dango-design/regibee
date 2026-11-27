@@ -3,6 +3,7 @@
 // type imports of shareable files, so the app can share it through @shared/*.
 
 import type { GiftProfile, UpcomingBirthday } from "./gift-profile";
+import type { GiftEmails } from "./gift-emails";
 import type { ListedRegistry } from "./registry-listing";
 import type { PersonalEventType, RegistryType } from "./types";
 
@@ -63,4 +64,6 @@ export interface AccountPageData {
   };
   giftProfile: GiftProfile;
   birthdayEmails: boolean;
+  /** How they hear about gifts on lists they manage. Missing from older servers. */
+  giftEmails?: GiftEmails;
 }

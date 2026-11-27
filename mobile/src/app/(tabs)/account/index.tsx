@@ -7,11 +7,12 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from "react-
 
 import { Icon, type IconName } from "@/components/icon";
 import { BIRTHDAY_REMINDER_DAYS } from "@shared/gift-profile";
+import { GIFT_EMAIL_CHOICES, GIFT_EMAILS_HINT, type GiftEmails } from "@shared/gift-emails";
 
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { NavRow } from "@/components/nav-row";
 import { ProfileAvatar } from "@/components/profile-avatar";
-import { Divider, Section, SwitchRow, Text } from "@/components/ui";
+import { Chip, Divider, Section, SwitchRow, Text } from "@/components/ui";
 import { VersionSection } from "@/components/version-section";
 import { useDeleteAccount } from "@/lib/account";
 import { PUSH_SUPPORTED, useNotificationsSwitch } from "@/lib/notifications";
@@ -134,6 +135,8 @@ function AccountSections() {
   const notifications = useNotificationsSwitch();
   const [birthdayEmails, setBirthdayEmails] = useState<boolean | null>(null);
   const emailsOn = birthdayEmails ?? data?.birthdayEmails ?? true;
+  const [giftEmails, setGiftEmails] = useState<GiftEmails | null>(null);
+  const giftChoice = giftEmails ?? data?.giftEmails ?? "instant";
   return (
     <>
       <Section>
@@ -161,6 +164,31 @@ function AccountSections() {
             disabled={notifications.on === null || notifications.busy}
             onValueChange={notifications.change}
           />
+        </Section>
+      ) : null}
+      {/* An older website sends no choice, so the section waits for one. */}
+      {data?.giftEmails ? (
+        <Section title="Gift emails" footer={GIFT_EMAILS_HINT}>
+          <View style={styles.chips}>
+            {GIFT_EMAIL_CHOICES.map((choice) => (
+              <Chip
+                key={choice.value}
+                label={choice.label}
+                selected={giftChoice === choice.value}
+                onPress={async () => {
+                  if (choice.value === giftChoice) return;
+                  const before = giftChoice;
+                  setGiftEmails(choice.value);
+                  try {
+                    await run("giftProfile.setGiftEmails", choice.value);
+                  } catch (e) {
+                    setGiftEmails(before);
+                    Alert.alert("That didn't save", errorMessage(e));
+                  }
+                }}
+              />
+            ))}
+          </View>
         </Section>
       ) : null}
       <Section
@@ -205,6 +233,7 @@ function Row({ icon, label, onPress, destructive }: { icon: IconName; label: str
 }
 
 const styles = StyleSheet.create({
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, padding: spacing.md },
   profile: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.lg, minHeight: 52 },
 });

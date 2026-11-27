@@ -11,6 +11,7 @@ import {
   priceChanges,
   priceCheckDue,
   priceChecksOff,
+  priceCheckSetting,
   shownSide,
   turnedDownBefore,
   type DetailChange,
@@ -227,6 +228,17 @@ test("turning off an item's price checks lasts until its link changes", () => {
   assert.equal(priceChecksOff(newLink, off), false);
   assert.equal(priceCheckDue(newLink, off, now), true);
   assert.equal(priceChecksOff(complete, readOf({ price_checks_off_url: null })), false);
+});
+
+test("the edit dialog shows the price check setting once the extension has read the link", () => {
+  assert.equal(priceCheckSetting(complete, undefined), null);
+  assert.equal(priceCheckSetting(complete, readOf({})), "on");
+  assert.equal(priceCheckSetting(complete, readOf({ read_url: "https://www.amazon.com/dp/B0OLDLINK" })), null);
+  assert.equal(priceCheckSetting(complete, readOf({ price_checks_off_url: complete.external_url })), "off");
+  // Turned off for an old link: the new one hasn't been read yet.
+  const offForOld = readOf({ read_url: "https://www.amazon.com/dp/B0OLDLINK", price_checks_off_url: "https://www.amazon.com/dp/B0OLDLINK" });
+  assert.equal(priceCheckSetting(complete, offForOld), null);
+  assert.equal(priceCheckSetting({ ...complete, is_parent_purchased: true }, readOf({})), null);
 });
 
 test("a review of new prices alone is headed as one", () => {

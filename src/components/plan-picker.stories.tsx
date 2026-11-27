@@ -31,6 +31,19 @@ export const ListsAndEvents: Story = {
   },
 };
 
+/** Opened from the Events tab: events come first, gift lists after. */
+export const EventsFirst: Story = {
+  args: { eventsFirst: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const headings = canvas.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    await expect(headings).toEqual(["Plan an event", "Or make a gift list"]);
+    // Occasions come in small groups, so a host can find theirs.
+    const holidays = canvas.getByRole("group", { name: "Holidays" });
+    await expect(within(holidays).getByRole("button", { name: "Christmas" })).toBeVisible();
+  },
+};
+
 /** A baby shower: it's usually for someone else, so the name field asks for theirs. */
 export const WhoItsFor: Story = {
   play: async ({ canvasElement }) => {

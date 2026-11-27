@@ -4,12 +4,39 @@ import { Resend } from "resend";
 // the fake inbox that the local Supabase stack runs. Tests read Mailpit to
 // check who got which email and to follow the links in it.
 
+export interface EmailAttachment {
+  filename: string;
+  /** The file's contents as text, like an .ics calendar file. */
+  content: string;
+  contentType: string;
+}
+
 export interface Email {
   from: string;
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
+  attachments?: EmailAttachment[];
+  /** Extra headers, like List-Unsubscribe. */
+  headers?: Record<string, string>;
+}
+
+/** The email in the shape Resend's API takes. */
+function forResend(email: Email) {
+  const { attachments, ...rest } = email;
+  return {
+    ...rest,
+    ...(attachments?.length
+      ? {
+          attachments: attachments.map((a) => ({
+            filename: a.filename,
+            content: Buffer.from(a.content, "utf8").toString("base64"),
+            contentType: a.contentType,
+          })),
+        }
+      : {}),
+  };
 }
 
 interface Mailer {
@@ -24,8 +51,9 @@ function resend(): Resend {
 }
 
 const resendMailer: Mailer = {
-  send: (email) => resend().emails.send(email),
-  sendBatch: (emails) => resend().batch.send(emails),
+  send: (email) => resend().emails.send(forResend(email)),
+  // Resend's batch endpoint takes no attachments, so batches never carry one.
+  sendBatch: (emails) => resend().batch.send(emails.map(({ attachments: _, ...email }) => forResend(email))),
 };
 
 /** "Name <a@b.com>" or "a@b.com" as Mailpit's { Name, Email }. */
@@ -45,6 +73,16 @@ function mailpitMailer(baseUrl: string): Mailer {
         ...(email.replyTo ? { ReplyTo: [mailpitAddress(email.replyTo)] } : {}),
         Subject: email.subject,
         HTML: email.html,
+        ...(email.headers ? { Headers: email.headers } : {}),
+        ...(email.attachments?.length
+          ? {
+              Attachments: email.attachments.map((a) => ({
+                Filename: a.filename,
+                ContentType: a.contentType,
+                Content: Buffer.from(a.content, "utf8").toString("base64"),
+              })),
+            }
+          : {}),
       }),
     });
     if (!response.ok) return { error: { message: `Mailpit ${response.status}: ${await response.text()}` } };

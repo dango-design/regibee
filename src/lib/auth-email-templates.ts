@@ -15,7 +15,7 @@
  * files that have no imports of their own, by their full name ("./x.ts").
  */
 
-import { EMAIL_FONT_FAMILY } from "./email-font.ts";
+import { EMAIL_SMALL_STYLE, emailButton, emailLayout } from "./email-font.ts";
 
 /** Supabase replaces this with the email's link when it sends it. */
 export const SUPABASE_LINK = "{{ .ConfirmationURL }}";
@@ -24,23 +24,12 @@ export const SUPABASE_LINK = "{{ .ConfirmationURL }}";
 // 3600 seconds both locally and on production.
 const LINK_LIFETIME = "1 hour";
 
-const finePrint = "margin:16px 0 0;color:#535862;font-size:13px;";
-
-function layout(heading: string, body: string): string {
-  return `<div style="max-width:480px;margin:0 auto;font-family:${EMAIL_FONT_FAMILY};font-size:15px;line-height:1.6;color:#181d27;">
-  <p style="margin:0;padding:32px 0 24px;text-align:center;font-size:20px;font-weight:600;color:#004659;">Regibee</p>
-  <h1 style="margin:0 0 16px;text-align:center;font-size:18px;">${heading}</h1>
-${body}
-</div>
-`;
-}
-
-function button(link: string, label: string): string {
-  return `  <p style="margin:24px 0;text-align:center;"><a href="${link}" style="background-color:#004659;color:#ffffff;padding:12px 32px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:500;">${label}</a></p>`;
-}
+// Notices get no link from Supabase, so theirs is the live site's, even when
+// the local stack sends one in tests.
+const PRODUCTION_SITE = "https://regibee.com";
 
 function copyLink(link: string): string {
-  return `  <p style="${finePrint}">This link works for ${LINK_LIFETIME}. If the button doesn't work, copy this link into your browser:<br /><span style="word-break:break-all;">${link}</span></p>`;
+  return `<p style="${EMAIL_SMALL_STYLE}margin:16px 0 0;">This link works for ${LINK_LIFETIME}. If the button doesn't work, copy this link into your browser:<br /><span style="word-break:break-all;">${link}</span></p>`;
 }
 
 export interface AuthEmail {
@@ -52,29 +41,56 @@ export const AUTH_EMAILS = {
   confirmation: {
     subject: "Confirm your Regibee account",
     html: (link) =>
-      layout(
-        "Confirm your email address",
-        [
-          `  <p style="margin:0;">Thanks for signing up for Regibee. Confirm your email address to finish making your account.</p>`,
-          button(link, "Confirm email address"),
+      emailLayout({
+        preheader: "One click to finish making your account.",
+        heading: "Confirm your email address",
+        body: [
+          `<p style="margin:0;">Thanks for signing up for Regibee. Confirm your email address to finish making your account.</p>`,
+          emailButton(link, "Confirm email address"),
           copyLink(link),
-          `  <p style="${finePrint}">If you didn't sign up for Regibee, you can ignore this email.</p>`,
         ].join("\n"),
-      ),
+        footer: "If you didn't sign up for Regibee, you can ignore this email.",
+      }),
   },
   recovery: {
     subject: "Reset your Regibee password",
     html: (link) =>
-      layout(
-        "Reset your password",
-        [
-          `  <p style="margin:0;">We got a request to reset the password for your Regibee account. Choose a new password with the button below.</p>`,
-          button(link, "Choose a new password"),
+      emailLayout({
+        preheader: "Choose a new password. The link works for 1 hour.",
+        heading: "Reset your password",
+        body: [
+          `<p style="margin:0;">We got a request to reset the password for your Regibee account. Choose a new password with the button below.</p>`,
+          emailButton(link, "Choose a new password"),
           copyLink(link),
-          `  <p style="${finePrint}">If you didn't ask to reset your password, you can ignore this email. Your password won't change.</p>`,
         ].join("\n"),
-      ),
+        footer: "If you didn't ask to reset your password, you can ignore this email. Your password won't change.",
+      }),
   },
 } satisfies Record<string, AuthEmail>;
 
 export type AuthEmailName = keyof typeof AUTH_EMAILS;
+
+/**
+ * Notices Supabase sends after something changed on an account. They carry no
+ * link of Supabase's. The keys are Supabase's names for them, under
+ * [auth.email.notification] in supabase/config.toml, and each file is
+ * <key>_notification.html.
+ */
+export const AUTH_NOTIFICATIONS = {
+  password_changed: {
+    subject: "Your Regibee password was changed",
+    html: () =>
+      emailLayout({
+        preheader: "If this wasn't you, reset your password now.",
+        heading: "Your password was changed",
+        body: [
+          `<p style="margin:0;">The password for your Regibee account was just changed. If you did this, there's nothing else to do.</p>`,
+          `<p>If you didn't, someone else may have your password. Reset it now.</p>`,
+          emailButton(`${PRODUCTION_SITE}/forgot-password`, "Reset your password"),
+        ].join("\n"),
+        footer: "You're getting this because the password changed on your Regibee account.",
+      }),
+  },
+} satisfies Record<string, { subject: string; html: () => string }>;
+
+export type AuthNotificationName = keyof typeof AUTH_NOTIFICATIONS;

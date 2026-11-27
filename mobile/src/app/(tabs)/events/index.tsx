@@ -48,7 +48,7 @@ export default function EventsScreen() {
     <>
       <Stack.Screen
         options={{
-          headerRight: () => <IconButton icon="add" accessibilityLabel="Start something new" onPress={() => router.push("/new")} />,
+          headerRight: () => <IconButton icon="add" accessibilityLabel="Start something new" onPress={() => router.push({ pathname: "/new", params: { first: "events" } })} />,
         }}
       />
       <KeyboardScrollView
@@ -98,7 +98,7 @@ export default function EventsScreen() {
                 icon="party"
                 title="Plan your first event"
                 message="Send invitations and see who's coming."
-                action={<Button title="New" icon="add" onPress={() => router.push("/new")} />}
+                action={<Button title="New" icon="add" onPress={() => router.push({ pathname: "/new", params: { first: "events" } })} />}
               />
             ) : null}
 

@@ -10,7 +10,9 @@ import { groupGiftUrl } from "@/lib/group-gifts";
 import { formatAmount } from "@/lib/money";
 import { groupGiftRecipientName, loadGroupGift, type LoadedGroupGift } from "@/lib/group-gifts-server";
 import {
+  groupGiftBoughtHtml,
   groupGiftCalledOffHtml,
+  groupGiftFundedHtml,
   groupGiftNewPledgeHtml,
   groupGiftPledgedHtml,
   groupGiftStartedHtml,
@@ -130,6 +132,60 @@ export async function sendPledgeEmails(giftToken: string, pledgeId: string) {
         )
       : Promise.resolve(),
   ]);
+
+  // The first time pledges reach the goal, the organizer hears it's time to
+  // buy. Claimed first, so a pledge taken back and added again sends one.
+  if (goal && pledged >= goal && organizerEmail) {
+    const { data: claimed } = await supabaseAdmin
+      .from("group_gifts")
+      .update({ funded_emailed_at: new Date().toISOString() })
+      .eq("id", loaded.gift.id)
+      .is("funded_emailed_at", null)
+      .select("id");
+    if (claimed && claimed.length > 0) {
+      await sendAllowed(
+        allow,
+        organizerEmail,
+        `You've reached your goal for "${itemTitle}"`,
+        groupGiftFundedHtml({
+          organizerName: loaded.organizerName,
+          itemTitle,
+          recipientName,
+          progress: `${formatAmount(pledged)} of ${formatAmount(goal)}`,
+          shareUrl,
+        }),
+        "funded",
+      );
+    }
+  }
+}
+
+/** Tells everyone who chipped in that the organizer bought it. */
+export async function sendGroupGiftBoughtEmails(giftToken: string) {
+  const loaded = await loadGroupGift(giftToken);
+  if (!loaded) return;
+  const { itemTitle, recipientName } = detailsOf(loaded);
+  await Promise.all(
+    loaded.pledges
+      .filter((p) => p.email && p.user_id !== loaded.gift.organizer_id)
+      .map((p) =>
+        send(
+          p.email!,
+          `The group gift of "${itemTitle}" is bought`,
+          groupGiftBoughtHtml({
+            pledgerName: p.name,
+            organizerName: loaded.organizerName,
+            itemTitle,
+            recipientName,
+            amount: formatAmount(Number(p.amount)),
+            paid: Boolean(p.paid_at),
+            paybackNote: loaded.gift.payback_note,
+            pledgeUrl: groupGiftUrl(siteUrl(), loaded.gift.token, p.token),
+          }),
+          "bought",
+        ),
+      ),
+  );
 }
 
 /** Tells everyone who chipped in that the organizer called it off. */
@@ -145,6 +201,13 @@ export async function sendGroupGiftCalledOffEmails(giftToken: string) {
  */
 export async function sendCalledOffEmails(loaded: LoadedGroupGift, opts: { accountClosed?: boolean } = {}) {
   const { itemTitle, recipientName } = detailsOf(loaded);
+  // A private list opens only for its managers, so it gets no link.
+  const { data: list } = await supabaseAdmin
+    .from("registries")
+    .select("slug, is_private")
+    .eq("id", loaded.registry.id)
+    .maybeSingle();
+  const listUrl = list && !list.is_private ? `${siteUrl()}/r/${list.slug}` : null;
   await Promise.all(
     loaded.pledges
       .filter((p) => p.email && p.user_id !== loaded.gift.organizer_id)
@@ -158,6 +221,7 @@ export async function sendCalledOffEmails(loaded: LoadedGroupGift, opts: { accou
             itemTitle,
             recipientName,
             paid: Boolean(p.paid_at),
+            listUrl,
             accountClosed: opts.accountClosed,
           }),
           "called off",

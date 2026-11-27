@@ -54,6 +54,7 @@ import {
   useDeleteItem,
   useMoveItemToList,
   useRegistry,
+  useSetPriceChecks,
   useUpdateItem,
 } from "@/lib/data";
 import { formatGiftDate, giftActivityTag } from "@shared/gifts";
@@ -150,6 +151,7 @@ export function ItemEditor({
   const detail = useRegistry(registryId ?? undefined);
   const addItem = useAddItem();
   const updateItem = useUpdateItem();
+  const setPriceChecks = useSetPriceChecks(item?.registry_id ?? registryId ?? "");
   const deleteItem = useDeleteItem();
   const addToList = useAddItemToList();
   const moveToList = useMoveItemToList();
@@ -184,6 +186,7 @@ export function ItemEditor({
   const [categoryId, setCategoryId] = useState<string | null>(item?.category_id ?? fromChecklist?.categoryId ?? null);
   const [mostWanted, setMostWanted] = useState(item?.is_essential ?? false);
   const [bought, setBought] = useState(item?.is_parent_purchased ?? false);
+  const [priceChecksOn, setPriceChecksOn] = useState(item?.priceChecks === "on");
   const [openToUsed, setOpenToUsed] = useState(item?.is_open_to_used ?? false);
   const [condition, setCondition] = useState<UsedCondition>(item?.minimum_condition ?? "like-new");
   const [notes, setNotes] = useState(item?.notes ?? fromChecklist?.notes ?? "");
@@ -211,6 +214,11 @@ export function ItemEditor({
   const [notice, setNotice] = useState<string | null>(null);
 
   const savedLink = item?.external_url ? normalizeLink(item.external_url) : null;
+  // The website's weekly price checks, for the saved link, as its edit dialog
+  // shows them. A new link starts with checks on, and a bought item's price is
+  // what the owner paid, so neither shows it.
+  const showPriceChecks =
+    mode === "edit" && item?.priceChecks !== undefined && !bought && savedLink !== null && normalizeLink(link) === savedLink;
   // The link the name, price and photo came from. When editing, reading
   // another link replaces them, and reading this one again only refreshes the
   // price and fills in what's empty, as the website's edit dialog does.
@@ -531,6 +539,12 @@ export function ItemEditor({
         // The form has closed by then, so say so in an alert. The list goes back to how it was.
         { onError: (e) => Alert.alert("Couldn't save your changes", errorMessage(e)) }
       );
+      if (showPriceChecks && priceChecksOn !== (item.priceChecks === "on")) {
+        setPriceChecks.mutate(
+          { itemId: item.id, on: priceChecksOn },
+          { onError: (e) => Alert.alert("Couldn't save the price check setting", errorMessage(e)) }
+        );
+      }
       // The list updates right away; the save finishes in the background.
       haptic("success");
       onDone({ type: "saved", registryId });
@@ -1012,6 +1026,12 @@ export function ItemEditor({
                 ))}
               </View>
             </View>
+          ) : null}
+          {showPriceChecks ? (
+            <>
+              <Divider inset={52} />
+              <SwitchRow icon="tag" label="Check the store's price weekly" value={priceChecksOn} onValueChange={setPriceChecksOn} />
+            </>
           ) : null}
         </Section>
 

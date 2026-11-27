@@ -74,6 +74,19 @@ export const PlainLinkWarning: Story = {
   },
 };
 
+// The extension has checked this item's price before, and the owner turned
+// the weekly checks off. The box under the price turns them back on.
+export const PriceChecksOff: Story = {
+  args: {
+    item: { ...meta.args!.item!, priceChecks: "off" },
+  },
+  play: async () => {
+    const body = within(document.body);
+    const box = await body.findByRole("checkbox", { name: "Check the store's price weekly" });
+    await expect(box).not.toBeChecked();
+  },
+};
+
 // Open to hand-me-downs shows the minimum condition. The info button explains
 // the three options: under the pointer, and in a box once it's clicked.
 export const GuestOptions: Story = {

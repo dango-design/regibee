@@ -20,6 +20,8 @@ import { DeleteAccountCard } from "@/components/delete-account-card";
 import { FollowLists } from "@/components/follow-lists";
 import { GiftProfileForm, type SaveGiftProfile } from "@/components/gift-profile-form";
 import { BirthdayEmailsSetting } from "@/components/birthday-emails-setting";
+import { GiftEmailsSetting } from "@/components/gift-emails-setting";
+import type { GiftEmails } from "@/lib/gift-emails";
 import { PhotoUploadButton } from "@/components/photo-upload-button";
 import { profileAudienceHint } from "@/components/profile-listing-field";
 import { SelectField } from "@/components/base/select/select-field";
@@ -135,6 +137,8 @@ export function AccountSettings({
   giftProfileAction = saveGiftProfile,
   birthdayEmails,
   birthdayEmailsAction,
+  giftEmails,
+  giftEmailsAction,
   deleteAccountActions,
   basePath = "",
 }: {
@@ -173,6 +177,9 @@ export function AccountSettings({
   /** Whether birthday reminder emails are on. Without it, the switch is left out. */
   birthdayEmails?: boolean;
   birthdayEmailsAction?: React.ComponentProps<typeof BirthdayEmailsSetting>["action"];
+  /** How they hear about gifts on their lists. Leave out to hide the section. */
+  giftEmails?: GiftEmails;
+  giftEmailsAction?: React.ComponentProps<typeof GiftEmailsSetting>["action"];
   /** Stand-ins for the account API in the Delete account card. The demo passes them. */
   deleteAccountActions?: React.ComponentProps<typeof DeleteAccountCard>;
   /** Put in front of every link. The demo passes "/demo". */
@@ -243,6 +250,7 @@ export function AccountSettings({
           ...(followCounts.blocked > 0 ? [{ id: "blocked", label: "Blocked" }] : []),
         ]
       : []),
+    ...(giftEmails !== undefined ? [{ id: "gift-emails", label: "Gift emails" }] : []),
     ...(birthdayEmails !== undefined ? [{ id: "birthday-emails", label: "Birthday emails" }] : []),
     { id: "profile-registries", label: "Registries on your profile" },
     { id: "delete-account", label: "Delete account" },
@@ -403,6 +411,17 @@ export function AccountSettings({
                 {...followActions}
               />
             </div>
+          )}
+
+          {giftEmails !== undefined && (
+            <Card id="gift-emails" className={SECTION_SCROLL_MARGIN}>
+              <CardHeader>
+                <SectionTitle sectionId="gift-emails">Gift emails</SectionTitle>
+              </CardHeader>
+              <CardContent>
+                <GiftEmailsSetting initial={giftEmails} action={giftEmailsAction} />
+              </CardContent>
+            </Card>
           )}
 
           {birthdayEmails !== undefined && (

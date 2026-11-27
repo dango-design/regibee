@@ -56,7 +56,8 @@ export type EmailKind =
   | "co_host_invite"
   | "manager_invite"
   | "list_request"
-  | "follow_invite";
+  | "follow_invite"
+  | "cancellation";
 
 const NONE_LEFT = "You've reached today's limit for emails. Try again tomorrow.";
 

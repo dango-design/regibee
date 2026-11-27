@@ -8,8 +8,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AUTH_EMAILS, SUPABASE_LINK, type AuthEmailName } from "../src/lib/auth-email-templates.ts";
-import { templateFile } from "./auth-emails.mts";
+import {
+  AUTH_EMAILS,
+  AUTH_NOTIFICATIONS,
+  SUPABASE_LINK,
+  type AuthEmailName,
+  type AuthNotificationName,
+} from "../src/lib/auth-email-templates.ts";
+import { notificationFile, templateFile } from "./auth-emails.mts";
 
 const supabaseDir = dirname(fileURLToPath(import.meta.url));
 const config = readFileSync(join(supabaseDir, "config.toml"), "utf8");
@@ -26,5 +32,20 @@ for (const name of Object.keys(AUTH_EMAILS) as AuthEmailName[]) {
     assert.ok(section, `config.toml has no [auth.email.template.${name}]`);
     assert.match(section[1], new RegExp(`^subject = ${JSON.stringify(AUTH_EMAILS[name].subject)}$`, "m"));
     assert.match(section[1], new RegExp(`^content_path = "\\./supabase/templates/${name}\\.html"$`, "m"));
+  });
+}
+
+for (const name of Object.keys(AUTH_NOTIFICATIONS) as AuthNotificationName[]) {
+  test(`supabase/templates/${name}_notification.html is up to date`, () => {
+    const onDisk = readFileSync(join(supabaseDir, `templates/${name}_notification.html`), "utf8");
+    assert.equal(onDisk, notificationFile(name), "Run `npm run auth-emails`.");
+  });
+
+  test(`config.toml turns on the ${name} notice with its template and subject`, () => {
+    const section = config.match(new RegExp(`^\\[auth\\.email\\.notification\\.${name}\\]\\n([^\\[]*)`, "m"));
+    assert.ok(section, `config.toml has no [auth.email.notification.${name}]`);
+    assert.match(section[1], /^enabled = true$/m);
+    assert.match(section[1], new RegExp(`^subject = ${JSON.stringify(AUTH_NOTIFICATIONS[name].subject)}$`, "m"));
+    assert.match(section[1], new RegExp(`^content_path = "\\./supabase/templates/${name}_notification\\.html"$`, "m"));
   });
 }

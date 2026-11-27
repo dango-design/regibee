@@ -825,7 +825,7 @@ export function useChooseDetailValue(registryId: string) {
   );
 }
 
-/** "Don't check this price again" on the review, and turning the checks back on. */
+/** "Don't check this price again" on the review, and "Check the store's price weekly" in the item editor. */
 export function useSetPriceChecks(registryId: string) {
   return useListChange<{ itemId: string; on: boolean }>(
     () => registryId,
@@ -835,6 +835,9 @@ export function useSetPriceChecks(registryId: string) {
     },
     (detail, { itemId, on }) => ({
       ...detail,
+      items: detail.items.map((item) =>
+        item.id === itemId && item.priceChecks ? { ...item, priceChecks: on ? ("on" as const) : ("off" as const) } : item
+      ),
       detailReview: detail.detailReview.map((review) => (review.itemId === itemId ? { ...review, priceChecksOff: !on } : review)),
     })
   );

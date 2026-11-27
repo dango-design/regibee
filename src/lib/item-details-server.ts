@@ -7,6 +7,7 @@ import {
   PRICE_CHECKS_PER_VISIT,
   priceCheckDue,
   priceChecksOff,
+  priceCheckSetting,
   shownSide,
 } from "@/lib/item-details";
 import type { ListPageDetailReview, ListPageItem, ListPageMissingDetails } from "@/lib/list-page-types";
@@ -48,8 +49,9 @@ async function loadDetailReads(itemIds: string[]): Promise<Map<string, DetailRea
 
 /**
  * Which items on a list the extension can fill in, which prices it should
- * check on this visit, and the filled-in details nobody has reviewed yet. All
- * empty before the migration runs.
+ * check on this visit, the filled-in details nobody has reviewed yet, and each
+ * item's price check setting for its edit dialog. All empty before the
+ * migration runs.
  *
  * `canEditPlaced` is false for someone who helps with this list but isn't its
  * owner. They can't change items placed here from the owner's other lists, so
@@ -74,9 +76,11 @@ export async function loadItemDetailsState(
   missingDetails: ListPageMissingDetails[];
   priceChecks: ListPageMissingDetails[];
   detailReview: ListPageDetailReview[];
+  priceCheckSettings: Map<string, "on" | "off">;
 }> {
   const reads = await loadDetailReads(items.map((i) => i.id));
-  if (!reads) return { missingDetails: [], priceChecks: [], detailReview: [] };
+  const priceCheckSettings = new Map<string, "on" | "off">();
+  if (!reads) return { missingDetails: [], priceChecks: [], detailReview: [], priceCheckSettings };
 
   const missingDetails: ListPageMissingDetails[] = [];
   const dueChecks: { item: ListPageMissingDetails; checked: string }[] = [];
@@ -88,6 +92,10 @@ export async function loadItemDetailsState(
       item.external_url && extensionCanReadLink(item.external_url) && (canEditPlaced || !item.placed)
         ? item.external_url
         : null;
+    if (readable) {
+      const setting = priceCheckSetting({ ...item, external_url: readable }, read);
+      if (setting) priceCheckSettings.set(item.id, setting);
+    }
     if (readable && isMissingDetails(item)) {
       // Read once per link. A new link can be read again.
       if (read?.read_url !== readable) {
@@ -125,5 +133,5 @@ export async function loadItemDetailsState(
     .sort((a, b) => Date.parse(a.checked) - Date.parse(b.checked))
     .slice(0, PRICE_CHECKS_PER_VISIT)
     .map((check) => check.item);
-  return { missingDetails, priceChecks, detailReview };
+  return { missingDetails, priceChecks, detailReview, priceCheckSettings };
 }

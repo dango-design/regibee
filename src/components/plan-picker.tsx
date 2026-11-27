@@ -12,7 +12,7 @@ import { startPlan, type PlanInput } from "@/lib/actions/events";
 import { themeForTint } from "@/lib/occasion-theme";
 import {
   AUDIENCE_LABELS,
-  OCCASIONS,
+  OCCASION_GROUPS,
   giftPlanLabel,
   giftPlanRows,
   listTitleFor,
@@ -151,7 +151,8 @@ const PLAN_ICONS: Partial<Record<GiftPlan, LucideIcon>> = {
 };
 
 /**
- * The one New button's page. It starts with two kinds of thing to make:
+ * The one New button's page. It starts with two kinds of thing to make,
+ * gift lists first, or events first when opened from the Events tab:
  *
  * - A gift list on its own. These link to the registry form, with no event.
  * - An event. Three questions (what, who it's for, how gifts work) and a
@@ -161,6 +162,7 @@ const PLAN_ICONS: Partial<Record<GiftPlan, LucideIcon>> = {
 export function PlanPicker({
   myName = "",
   myLists = [],
+  eventsFirst = false,
   initial,
   startAction = startPlan,
 }: {
@@ -168,6 +170,8 @@ export function PlanPicker({
   myName?: string;
   /** The lists the signed-in person owns or manages, to link one without its link. */
   myLists?: { id: string; title: string }[];
+  /** Put events before gift lists. The Events tab's New button asks for this. */
+  eventsFirst?: boolean;
   /** Stories start partway through. */
   initial?: Partial<PlanPickerState>;
   /** Makes the plan. Stories pass a stand-in. */
@@ -343,6 +347,37 @@ export function PlanPicker({
     }
   }
 
+  // Gift lists on their own. They come first, or after events from the Events tab.
+  const listsSection = (
+    <section aria-labelledby="plan-list" className="flex flex-col gap-4">
+      <div>
+        <h2 id="plan-list" className="text-xl font-semibold">
+          {eventsFirst ? "Or make a gift list" : "Make a gift list"}
+        </h2>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {LISTS_ON_THEIR_OWN.map(({ label, hint, href, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-start gap-3 rounded-xl border border-secondary px-4 py-3 transition outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-brand-solid"
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-brand-tertiary"
+            >
+              <Icon className="size-4" />
+            </span>
+            <span className="flex flex-col gap-0.5">
+              <span className="font-semibold text-primary">{label}</span>
+              <span className="text-sm text-tertiary">{hint}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {state.step !== "what" && (
@@ -371,65 +406,49 @@ export function PlanPicker({
         </ol>
       )}
 
-      {state.step === "what" && (
-        <section aria-labelledby="plan-list" className="flex flex-col gap-4">
-          <div>
-            <h2 id="plan-list" className="text-xl font-semibold">
-              Make a gift list
-            </h2>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {LISTS_ON_THEIR_OWN.map(({ label, hint, href, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-start gap-3 rounded-xl border border-secondary px-4 py-3 transition outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-brand-solid"
-              >
-                <span
-                  aria-hidden="true"
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-brand-tertiary"
-                >
-                  <Icon className="size-4" />
-                </span>
-                <span className="flex flex-col gap-0.5">
-                  <span className="font-semibold text-primary">{label}</span>
-                  <span className="text-sm text-tertiary">{hint}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {state.step === "what" && !eventsFirst && listsSection}
 
       {state.step === "what" && (
         <section aria-labelledby="plan-what" className="flex flex-col gap-4">
           <div>
             <h2 id="plan-what" className="text-xl font-semibold">
-              Or plan an event
+              {eventsFirst ? "Plan an event" : "Or plan an event"}
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {OCCASIONS.map((o) => {
-              const theme = themeForTint(o.tint);
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  aria-pressed={state.occasion === o.id}
-                  onClick={() => chooseOccasion(o.id)}
-                  className={cx(
-                    "flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium text-primary transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid",
-                    state.occasion === o.id ? "border-brand-solid" : "border-secondary hover:border-primary",
-                  )}
-                >
-                  <span aria-hidden="true" className={cx("size-3 shrink-0 rounded-full", theme.bg)} />
-                  {o.label}
-                </button>
-              );
-            })}
+          <div className="flex flex-col gap-4">
+            {OCCASION_GROUPS.map((group, index) => (
+              <div key={group.label} role="group" aria-labelledby={`plan-group-${index}`} className="flex flex-col gap-2">
+                <h3 id={`plan-group-${index}`} className="text-sm font-medium text-tertiary">
+                  {group.label}
+                </h3>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {group.ids.map((id) => {
+                    const o = occasionFor(id);
+                    const theme = themeForTint(o.tint);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={state.occasion === id}
+                        onClick={() => chooseOccasion(id)}
+                        className={cx(
+                          "flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium text-primary transition outline-none focus-visible:ring-2 focus-visible:ring-brand-solid",
+                          state.occasion === id ? "border-brand-solid" : "border-secondary hover:border-primary",
+                        )}
+                      >
+                        <span aria-hidden="true" className={cx("size-3 shrink-0 rounded-full", theme.bg)} />
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
+
+      {state.step === "what" && eventsFirst && listsSection}
 
       {state.step === "who" && occasion && (
         <section aria-labelledby="plan-who" className="flex flex-col gap-4">

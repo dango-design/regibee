@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { openReservationsToEnd, sendReservationRemovedEmails } from "@/lib/gift-reservations-server";
+import { giftsOnItems, sendGiftRemovedEmails } from "@/lib/gift-reservations-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
 import { isUuid } from "@/lib/extension";
@@ -140,11 +140,12 @@ export async function removeItemsFromList(itemIds: string[], registryId: string)
   let deleted = 0;
   const touched = new Set<string>([registryId]);
   for (const [itemId, ids] of onList) {
-    // Read before the delete, which takes the item's gifts with it.
-    const reservations = ids.length === 1 ? await openReservationsToEnd({ itemId }) : [];
+    // An item on no other list is deleted, and its gifts with it. Read them
+    // first, so their guests can be told, as deleteRegistryItem does.
+    const gifts = ids.length === 1 ? await giftsOnItems([itemId]) : [];
     const result = await removeItemFromList(itemId, registryId);
-    if (!("error" in result) && result.removed === "deleted" && reservations.length > 0) {
-      after(() => sendReservationRemovedEmails(reservations, "deleted"));
+    if (!("error" in result) && result.removed === "deleted" && gifts.length > 0) {
+      after(() => sendGiftRemovedEmails(gifts));
     }
     if ("error" in result) {
       console.error("[saved] Failed to take an item off a list:", result.error);

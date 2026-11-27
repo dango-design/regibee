@@ -269,7 +269,7 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
   const turnedOnByExchange = readReservationPrivacy(registry.settings).hide_reservations_source === "exchange";
 
   const listItems = items || [];
-  const [{ purchases: placedPurchases, otherListsByItem, otherListIdsByItem, hiddenItemIds }, { missingDetails, priceChecks, detailReview }] =
+  const [{ purchases: placedPurchases, otherListsByItem, otherListIdsByItem, hiddenItemIds }, { missingDetails, priceChecks, detailReview, priceCheckSettings }] =
     await Promise.all([
       loadPlacementDetails(listItems, registryId, viewer.hiddenItemsFor),
       // Items the extension can fill in or check the price of, and what it changed (src/lib/item-details.ts).
@@ -308,6 +308,7 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
         : item),
     otherLists: otherListsByItem.get(item.id) ?? [],
     otherListIds: otherListIdsByItem.get(item.id) ?? [],
+    ...(priceCheckSettings.has(item.id) ? { priceChecks: priceCheckSettings.get(item.id) } : {}),
   }));
   const dismissedChecklistItems = (registry.settings as Record<string, unknown> | null)?.checklist_dismissed as string[] | undefined;
   // A checklist entry such as Diaper Fund counts when the list has a fund by that name.

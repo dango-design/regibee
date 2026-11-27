@@ -1,4 +1,6 @@
 import { getMailer, sendEmail } from "./mailer";
+import { eventIcs } from "./event-ics";
+import { parseGiftEmails, type GiftEmails } from "./gift-emails";
 import { sendPush } from "./push-server";
 import { supabaseAdmin } from "./supabase-admin";
 import { formatPrice } from "./money";
@@ -8,7 +10,7 @@ import {
   itemReservedBuyerHtml,
   itemReservationReminderBuyerHtml,
   itemReservationEndedBuyerHtml,
-  itemReservationRemovedBuyerHtml,
+  itemReservationCancelledBuyerHtml,
   itemGivenBuyerHtml,
   itemCoveredBuyerHtml,
   cashFundContributionBuyerHtml,
@@ -30,6 +32,10 @@ import {
   guestMessageHtml,
   eventChangedHtml,
   dayBeforeReminderHtml,
+  eventCancelledHtml,
+  giftRemovedBuyerHtml,
+  followApprovedHtml,
+  welcomeHtml,
   type EventEmailDetails,
 } from "./email-templates";
 import { displayName, profilePath } from "./profile-link";
@@ -48,6 +54,15 @@ import type { ChangedPart } from "./event-updates";
 import type { EmailAllowance } from "./email-budget";
 
 const FROM = "Regibee <notifications@regibee.com>";
+
+/**
+ * The List-Unsubscribe header for an email the person can turn off. Mail apps
+ * show an Unsubscribe link next to the sender that opens `settingsUrl`, the
+ * page with the switch.
+ */
+function unsubscribeHeaders(settingsUrl: string): { headers: Record<string, string> } {
+  return { headers: { "List-Unsubscribe": `<${settingsUrl}>` } };
+}
 
 /**
  * Set on the emails a visitor sets off on a list, event or group gift, so
@@ -74,6 +89,8 @@ interface ManagerEmailInfo {
   registryTitle: string;
   registryId: string;
   parentNames: string;
+  /** How they hear about gifts by email (profiles.gift_emails). */
+  giftEmails: GiftEmails;
 }
 
 async function getRegistryManagerEmails(opts: {
@@ -143,7 +160,7 @@ async function getRegistryManagerEmails(opts: {
   for (const uid of userIds) {
     const [{ data: userData }, { data: profile }] = await Promise.all([
       supabaseAdmin.auth.admin.getUserById(uid),
-      supabaseAdmin.from("profiles").select("full_name").eq("id", uid).single(),
+      supabaseAdmin.from("profiles").select("full_name, gift_emails").eq("id", uid).single(),
     ]);
     if (userData?.user?.email) {
       results.push({
@@ -153,11 +170,21 @@ async function getRegistryManagerEmails(opts: {
         registryTitle: registry.title,
         registryId,
         parentNames,
+        giftEmails: parseGiftEmails(profile?.gift_emails),
       });
     }
   }
 
   return results.length > 0 ? results : null;
+}
+
+/**
+ * A list's managers, with each one's address, name and gift email choice,
+ * for the daily gift emails (src/lib/gift-digest-server.ts). Owners who hide
+ * what's been reserved are left out.
+ */
+export async function giftNewsManagers(registryId: string) {
+  return (await getRegistryManagerEmails({ registryId, giftNews: true })) ?? [];
 }
 
 interface PaymentMethods {
@@ -266,23 +293,20 @@ export async function notifyItemReservationEnded(
   }
 }
 
-/** Tells a guest the item they reserved was taken off the list, or their reservation was cancelled. */
-export async function notifyItemReservationRemoved(
-  opts: Parameters<typeof itemReservationRemovedBuyerHtml>[0] & { buyerEmail: string } & Limited
+/** Tells a guest a list's manager cancelled their reservation. */
+export async function notifyItemReservationCancelled(
+  opts: Parameters<typeof itemReservationCancelledBuyerHtml>[0] & { buyerEmail: string } & Limited
 ) {
   try {
     if ((await allowedCount(opts.allow, 1)) < 1) return;
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
-      subject:
-        opts.reason === "deleted"
-          ? `"${opts.itemTitle}" was taken off the list`
-          : `Your reservation of "${opts.itemTitle}" was cancelled`,
-      html: itemReservationRemovedBuyerHtml(opts),
+      subject: `Your reservation of "${opts.itemTitle}" was cancelled`,
+      html: itemReservationCancelledBuyerHtml(opts),
     });
   } catch (err) {
-    console.error("[email] Failed to send reservation removed email:", err);
+    console.error("[email] Failed to send reservation cancelled email:", err);
   }
 }
 
@@ -345,14 +369,76 @@ export async function confirmCashFundContribution(opts: {
 
 export { getRegistryInfoForBuyer };
 
+/**
+ * Tells a guest their gift went with an item the owners deleted. It goes to
+ * an address the guest gave, so it doesn't count against any limit.
+ */
+export async function sendGiftRemovedEmail(opts: {
+  buyerName: string;
+  buyerEmail: string;
+  bought: boolean;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  listUrl: string | null;
+}) {
+  try {
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
+      subject: `"${opts.itemTitle}" was taken off ${opts.registryTitle}`,
+      html: giftRemovedBuyerHtml(opts),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send a gift removed email:", err);
+  }
+}
+
+/**
+ * Splits a gift's managers by how they want to hear about it. Those who
+ * chose a daily summary get a row in gift_email_digest for the daily job
+ * (src/lib/gift-digest-server.ts); those who turned gift emails off get
+ * nothing. Returns the ones to email now. Without a purchase id there's
+ * nothing to queue, so everyone but "off" is emailed now.
+ */
+async function managersToEmailNow(
+  managers: ManagerEmailInfo[],
+  gift: { purchaseId?: string; kind: "given" | "covered" | "fund"; shownName: string },
+): Promise<ManagerEmailInfo[]> {
+  const daily = gift.purchaseId ? managers.filter((m) => m.giftEmails === "daily") : [];
+  if (daily.length > 0) {
+    const { error } = await supabaseAdmin.from("gift_email_digest").upsert(
+      daily.map((m) => ({
+        user_id: m.userId,
+        registry_id: m.registryId,
+        purchase_id: gift.purchaseId,
+        kind: gift.kind,
+        shown_name: gift.shownName.slice(0, 120),
+      })),
+      { onConflict: "user_id,purchase_id", ignoreDuplicates: true },
+    );
+    // Not queued, so better to email them now than not at all.
+    if (error) {
+      console.error("[email] Failed to queue gifts for the daily summary:", error);
+      return managers.filter((m) => m.giftEmails !== "off");
+    }
+  }
+  return managers.filter((m) => m.giftEmails === "instant" || (m.giftEmails === "daily" && !gift.purchaseId));
+}
+
 /** Tells the owners and managers that a guest bought an item. */
 export async function notifyItemGiven(opts: {
   itemId: string;
+  /** The gift, so a manager who chose a daily summary gets it there. */
+  purchaseId?: string;
   itemTitle: string;
   buyerName: string;
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
   hideGiver?: boolean;
   quantity: number;
+  /** The item's photo, as a full URL, and its price, for the email's item card. */
+  itemImageUrl?: string | null;
+  itemPrice?: number | null;
   message?: string | null;
   /** Set when this gift may have unlocked a store's welcome box. */
   welcomeBox?: { storeName: string; boxName: string } | null;
@@ -360,9 +446,9 @@ export async function notifyItemGiven(opts: {
   try {
     const managers = await getRegistryManagerEmails({ itemId: opts.itemId, giftNews: true });
     if (!managers) return;
-    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
-
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
+    const now = await managersToEmailNow(managers, { purchaseId: opts.purchaseId, kind: "given", shownName: buyerName });
+    const allowed = now.slice(0, await allowedCount(opts.allow, now.length));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.itemId}`;
@@ -388,12 +474,16 @@ export async function notifyItemGiven(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject: `🎁 ${buyerName} bought "${opts.itemTitle}"`,
+          ...unsubscribeHeaders(`${siteUrl}/dashboard/account#gift-emails`),
           html: itemGivenOwnerHtml({
+            settingsUrl: `${siteUrl}/dashboard/account#gift-emails`,
             ownerName: m.name,
             registryTitle: m.registryTitle,
             buyerName,
             itemTitle: opts.itemTitle,
             quantity: opts.quantity,
+            itemImageUrl: opts.itemImageUrl,
+            itemPrice: opts.itemPrice,
             message: opts.message,
             dashboardLink,
             welcomeBox,
@@ -428,6 +518,7 @@ export async function notifyCompletionDiscounts(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject,
+          ...unsubscribeHeaders(perksLink),
           html: completionDiscountOwnerHtml({
             ownerName: m.name,
             registryTitle: m.registryTitle,
@@ -444,6 +535,8 @@ export async function notifyCompletionDiscounts(opts: {
 
 export async function notifyCashFundContribution(opts: {
   fundId: string;
+  /** The gift, so a manager who chose a daily summary gets it there. */
+  purchaseId?: string;
   fundTitle: string;
   buyerName: string;
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
@@ -454,9 +547,9 @@ export async function notifyCashFundContribution(opts: {
   try {
     const managers = await getRegistryManagerEmails({ fundId: opts.fundId, giftNews: true });
     if (!managers) return;
-    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
-
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
+    const now = await managersToEmailNow(managers, { purchaseId: opts.purchaseId, kind: "fund", shownName: buyerName });
+    const allowed = now.slice(0, await allowedCount(opts.allow, now.length));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.fundId}`;
@@ -479,7 +572,9 @@ export async function notifyCashFundContribution(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject: `💵 ${buyerName} contributed ${formatted} to "${opts.fundTitle}"`,
+          ...unsubscribeHeaders(`${siteUrl}/dashboard/account#gift-emails`),
           html: cashFundContributionOwnerHtml({
+            settingsUrl: `${siteUrl}/dashboard/account#gift-emails`,
             ownerName: m.name,
             registryTitle: m.registryTitle,
             buyerName,
@@ -499,6 +594,8 @@ export async function notifyCashFundContribution(opts: {
 /** Tells the owners and managers that a guest sent them the money for an item they bought. */
 export async function notifyItemCovered(opts: {
   itemId: string;
+  /** The gift, so a manager who chose a daily summary gets it there. */
+  purchaseId?: string;
   itemTitle: string;
   buyerName: string;
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
@@ -506,14 +603,16 @@ export async function notifyItemCovered(opts: {
   quantity: number;
   /** Price times quantity. Null when the item has no price. */
   amount: number | null;
+  /** The item's photo, as a full URL. */
+  itemImageUrl?: string | null;
   message?: string | null;
 } & Limited) {
   try {
     const managers = await getRegistryManagerEmails({ itemId: opts.itemId, giftNews: true });
     if (!managers) return;
-    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
-
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
+    const now = await managersToEmailNow(managers, { purchaseId: opts.purchaseId, kind: "covered", shownName: buyerName });
+    const allowed = now.slice(0, await allowedCount(opts.allow, now.length));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.itemId}`;
@@ -536,13 +635,16 @@ export async function notifyItemCovered(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject: `🎉 ${buyerName} sent you ${sent} for "${opts.itemTitle}"`,
+          ...unsubscribeHeaders(`${siteUrl}/dashboard/account#gift-emails`),
           html: itemCoveredOwnerHtml({
+            settingsUrl: `${siteUrl}/dashboard/account#gift-emails`,
             ownerName: m.name,
             registryTitle: m.registryTitle,
             buyerName,
             itemTitle: opts.itemTitle,
             quantity: opts.quantity,
             amount: opts.amount,
+            itemImageUrl: opts.itemImageUrl,
             message: opts.message,
             dashboardLink,
           }),
@@ -604,6 +706,7 @@ export async function notifyNewSuggestion(opts: {
             title: opts.title,
             price: opts.price,
             notes: opts.notes,
+            listUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard/registry/${m.registryId}`,
           }),
         })
       )
@@ -706,6 +809,7 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
         from: FROM,
         to: TEST_RECIPIENT_OVERRIDE || user.email,
         subject: `${followerName} wants to follow you on Regibee`,
+        ...unsubscribeHeaders(`${siteUrl}/dashboard/account#profile`),
         html: followRequestHtml({
           followerName,
           profileUrl: `${siteUrl}${profilePath(follower)}`,
@@ -716,6 +820,64 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
     ]);
   } catch (err) {
     console.error("[email] Failed to send follow request email:", err);
+  }
+}
+
+/**
+ * Tells the person who asked to follow that the request was approved. It
+ * goes to their own account's address, so it doesn't count against a limit.
+ * Off when they turned off follow request emails, since it's the other half
+ * of the same exchange.
+ */
+export async function notifyFollowApproved(opts: { followerId: string; followeeId: string }) {
+  try {
+    const [{ data: userData }, { data: follower }, { data: followee }] = await Promise.all([
+      supabaseAdmin.auth.admin.getUserById(opts.followerId),
+      supabaseAdmin.from("profiles").select("email_follow_requests").eq("id", opts.followerId).single(),
+      supabaseAdmin.from("profiles").select("public_id, full_name").eq("id", opts.followeeId).single(),
+    ]);
+    const email = userData?.user?.email;
+    if (!email || !followee || follower?.email_follow_requests === false) return;
+    const name = displayName(followee).slice(0, 60);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || email,
+      subject: `${name} approved your follow request`,
+      ...unsubscribeHeaders(`${siteUrl}/dashboard/account#profile`),
+      html: followApprovedHtml({ followeeName: name, profileUrl: `${siteUrl}${profilePath(followee)}` }),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send follow approved email:", err);
+  }
+}
+
+/**
+ * The welcome email, once per account, right after its address is confirmed.
+ * welcome_emailed_at is claimed first, so two confirmation clicks send one.
+ */
+export async function sendWelcomeEmail(userId: string) {
+  try {
+    const { data: claimed } = await supabaseAdmin
+      .from("profiles")
+      .update({ welcome_emailed_at: new Date().toISOString() })
+      .eq("id", userId)
+      .is("welcome_emailed_at", null)
+      .select("full_name");
+    if (!claimed || claimed.length === 0) return;
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = userData?.user?.email;
+    if (!email) return;
+    const firstName = (claimed[0].full_name as string | null)?.trim().split(/\s+/)[0] || null;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || email,
+      subject: "Welcome to Regibee",
+      html: welcomeHtml({ name: firstName, newListUrl: `${siteUrl}/dashboard/new`, eventsUrl: `${siteUrl}/dashboard/events` }),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send welcome email:", err);
   }
 }
 
@@ -762,6 +924,7 @@ export async function sendBirthdayReminder(opts: {
         opts.birthdays.map((b) => ({ name: b.name.slice(0, 60) })),
         opts.days,
       ),
+      ...unsubscribeHeaders(opts.settingsUrl),
       html: birthdayReminderHtml(opts),
     });
     return true;
@@ -919,6 +1082,7 @@ export async function confirmRsvpToGuest(opts: {
       : opts.status === "yes"
         ? `You're going to ${opts.event.title}`
         : `Your RSVP for ${opts.event.title}`;
+    const ics = opts.status === "no" ? null : eventIcs(event, eventUrl);
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.guest.email,
@@ -930,11 +1094,14 @@ export async function confirmRsvpToGuest(opts: {
         event: eventEmailDetails(event, opts.registries, opts.exchange, opts.signups?.title ?? null),
         rsvpUrl: guestRsvpUrl(opts.event.slug, opts.guest.token),
         calendarUrl: googleCalendarUrl(event, eventUrl),
+        icsUrl: `${eventUrl}/calendar`,
         inExchange: opts.inExchange,
         hasWishlist: opts.hasWishlist,
         signups: opts.signups?.claims ?? [],
         answers: opts.answers,
       }),
+      // The event as a calendar file: one tap adds it in Apple Mail and Outlook.
+      ...(ics ? { attachments: [{ filename: "invite.ics", content: ics, contentType: "text/calendar; charset=utf-8" }] } : {}),
     });
   } catch (err) {
     console.error("[email] Failed to send RSVP confirmation:", err);
@@ -986,6 +1153,7 @@ export async function notifyHostOfRsvp(opts: {
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || email,
       subject: rsvpHeadline(opts.event, opts.guestName, opts.status),
+      ...unsubscribeHeaders(`${siteUrl()}/dashboard/events/${opts.event.id}/edit`),
       html: rsvpHostNotificationHtml({
         hostName: profile?.full_name?.trim() || "there",
         guestName: opts.guestName,
@@ -1118,10 +1286,33 @@ export async function sendEventChangeEmails(opts: {
         })),
         rsvpUrl: guestRsvpUrl(opts.after.slug, guest.token),
         calendarUrl: parts.includes("date") || parts.includes("time") ? googleCalendarUrl(after, siteEventUrl) : null,
+        icsUrl: parts.includes("date") || parts.includes("time") ? `${siteEventUrl}/calendar` : null,
       }),
     });
   }
   return sendGuestEmails(emails, opts);
+}
+
+/** Tells invited guests the host deleted the event. Returns how many were sent. */
+export async function sendEventCancelledEmails(opts: {
+  event: EventDetails;
+  hostName: string;
+  replyTo: string | null;
+  guests: { name: string; email: string }[];
+}): Promise<{ sent: number; error: string | null }> {
+  return sendGuestEmails(
+    opts.guests.map((guest) => ({
+      to: guest.email,
+      subject: `Cancelled: ${opts.event.title}`,
+      html: eventCancelledHtml({
+        guestName: guest.name,
+        hostName: opts.hostName,
+        eventTitle: opts.event.title,
+        date: opts.event.event_date ? formatEventDate(opts.event.event_date) : null,
+      }),
+    })),
+    opts,
+  );
 }
 
 /** The day before the event, to everyone going. Returns how many were sent. */
@@ -1146,6 +1337,7 @@ export async function sendDayBeforeReminders(opts: {
           event: eventEmailDetails(event, opts.registries),
           rsvpUrl: guestRsvpUrl(opts.event.slug, guest.token),
           calendarUrl: googleCalendarUrl(event, eventUrl),
+          icsUrl: `${eventUrl}/calendar`,
           signups: guest.signups,
         }),
       };

@@ -316,3 +316,70 @@ test("a wedding from the New button starts with plus-one, meal and diet question
     ["diet", false],
   ]);
 });
+
+test("deleting an event emails the guests who were invited and haven't said no", async ({ page }) => {
+  const host = await createAccount("Alex Host");
+  const invited = uniqueEmail("invited");
+  const going = uniqueEmail("going");
+  const declined = uniqueEmail("declined");
+  const notInvited = uniqueEmail("not-invited");
+  const sent = new Date().toISOString();
+  const { event } = await createEvent(
+    host.id,
+    { event_date: nextDate(nextDate(dateIn(null))), rsvp_by: null },
+    [
+      { name: "Invited", email: invited, invited_at: sent },
+      { name: "Going", email: going, rsvp_status: "yes", invited_at: sent },
+      { name: "Declined", email: declined, rsvp_status: "no", invited_at: sent },
+      { name: "Not invited", email: notInvited },
+    ],
+  );
+
+  await signIn(page, host);
+  await page.goto(`/dashboard/events/${event.id}`);
+  await page.getByRole("button", { name: "More actions" }).first().click();
+  await page.getByRole("menuitem", { name: "Delete event" }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete this event?" });
+  await expect(dialog).toContainText("The 2 guests you invited get an email saying it's cancelled.");
+  await dialog.getByLabel("Type “I want to delete this event” to confirm").fill("I want to delete this event");
+  await dialog.getByRole("button", { name: "Delete event" }).click();
+  await page.waitForURL(/\/dashboard\/events$/);
+
+  const cancelled = await waitForEmail(invited, `Cancelled: ${event.title}`);
+  expect(cancelled.html).toContain("is cancelled");
+  expect(cancelled.replyTo).toEqual([host.email]);
+  await waitForEmail(going, `Cancelled: ${event.title}`);
+  expect(await emailsTo(declined)).toHaveLength(0);
+  expect(await emailsTo(notInvited)).toHaveLength(0);
+});
+
+test("guests who haven't replied get one reminder 3 days before the reply-by date", async ({ page }) => {
+  const host = await createAccount("Alex Host");
+  const pending = uniqueEmail("pending");
+  const replied = uniqueEmail("replied");
+  const today = dateIn(null);
+  const replyBy = nextDate(nextDate(nextDate(today)));
+  const sent = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+  const { event } = await createEvent(
+    host.id,
+    { event_date: nextDate(replyBy), rsvp_by: replyBy, remind_day_before: false },
+    [
+      { name: "Pending", email: pending, invited_at: sent },
+      { name: "Replied", email: replied, rsvp_status: "yes", invited_at: sent },
+    ],
+  );
+
+  const run = () =>
+    page.request.get("/api/cron/event-reminders", { headers: { authorization: `Bearer ${CRON_SECRET}` } });
+  expect((await run()).status()).toBe(200);
+
+  const reminder = await waitForEmail(pending, `Reminder: will you be at ${event.title}?`);
+  expect(reminder.html).toContain("Reminder from");
+  expect(reminder.replyTo).toEqual([host.email]);
+  expect(await emailsTo(replied)).toHaveLength(0);
+
+  // Running again sends nothing new.
+  await run();
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  expect(await emailsTo(pending)).toHaveLength(1);
+});

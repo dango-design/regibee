@@ -126,4 +126,15 @@ test("the list page fills in missing details and lets the owner put an old value
   await page.reload();
   await expect(page.getByText("1 item is missing a photo or price")).toBeVisible();
   await expect(page.getByRole("region", { name: /Filled in details/ })).toHaveCount(0);
+
+  // The swaddle's edit dialog shows its checks are off, and turns them back on.
+  await page.getByRole("heading", { name: "Halo Sleepsack Swaddle" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  const weekly = dialog.getByRole("checkbox", { name: "Check the store's price weekly" });
+  await expect(weekly).not.toBeChecked();
+  await weekly.locator("xpath=ancestor::label[1]").click();
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+  const { data: after } = await db.from("item_detail_reads").select("price_checks_off_url").eq("item_id", ids[1]).single();
+  expect(after?.price_checks_off_url).toBeNull();
 });

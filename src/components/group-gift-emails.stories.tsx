@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { EmailPreview } from "./email-preview";
 import {
+  groupGiftBoughtHtml,
   groupGiftCalledOffHtml,
+  groupGiftFundedHtml,
   groupGiftNewPledgeHtml,
   groupGiftPledgedHtml,
   groupGiftStartedHtml,
@@ -80,6 +82,41 @@ export const CalledOff: Story = {
       itemTitle: "Hot air balloon ride for two",
       recipientName: "Dorothy",
       paid: true,
+      listUrl: "https://regibee.com/r/dorothys-wishlist-k2m4",
+    }),
+  },
+};
+
+/** To the organizer, the first time pledges reach the goal. */
+export const Funded: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    to: "oz@example.com",
+    subject: 'You\'ve reached your goal for "Hot air balloon ride for two"',
+    html: groupGiftFundedHtml({
+      organizerName: "Uncle Oz",
+      itemTitle: "Hot air balloon ride for two",
+      recipientName: "Dorothy",
+      progress: "$240 of $240",
+      shareUrl: SHARE_URL,
+    }),
+  },
+};
+
+/** To everyone who chipped in, when the organizer marks it bought. */
+export const Bought: Story = {
+  args: {
+    to: "glinda@example.com",
+    subject: 'The group gift of "Hot air balloon ride for two" is bought',
+    html: groupGiftBoughtHtml({
+      pledgerName: "Glinda Good",
+      organizerName: "Uncle Oz",
+      itemTitle: "Hot air balloon ride for two",
+      recipientName: "Dorothy",
+      amount: "$40",
+      paid: false,
+      paybackNote: "Venmo @uncle-oz",
+      pledgeUrl: `${SHARE_URL}?p=story-pledge-token-glinda-00`,
     }),
   },
 };

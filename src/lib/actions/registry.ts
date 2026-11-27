@@ -43,6 +43,7 @@ import type { RegistryDeletionSummary } from "@/lib/delete-confirmation";
 import { summarizeRegistryDeletion } from "@/lib/registry-deletion-server";
 import { addListCategory } from "@/lib/list-categories";
 import { removeItemFromList, revalidateLists } from "@/lib/item-placements";
+import { giftsOnItems, sendGiftRemovedEmails } from "@/lib/gift-reservations-server";
 import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
 import { MY_GIFTS_COOKIE, MY_GIFTS_COOKIE_OPTIONS, withFundGift, withGift } from "@/lib/my-gifts-cookie";
 import { readEventGuestCookie } from "@/lib/event-guest-cookie";
@@ -54,8 +55,8 @@ import {
   sendGiftConfirmedEmails,
   sendReservationEmail,
   sendReservationEndedEmails,
-  openReservationsToEnd,
-  sendReservationRemovedEmails,
+  reservationToCancel,
+  sendReservationCancelledEmail,
 } from "@/lib/gift-reservations-server";
 import crypto from "crypto";
 import { storeDomain, track } from "@/lib/analytics-server";
@@ -420,6 +421,23 @@ export async function deleteRegistry(registryId: string) {
     redirect("/login");
   }
 
+  // Items on another of the owner's lists move there with their gifts. The
+  // rest are deleted with their gifts, so those guests are told. Read them
+  // first, since the delete takes them.
+  const { data: owned } = await supabaseAdmin
+    .from("registries")
+    .select("id")
+    .eq("id", registryId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  let gifts: Awaited<ReturnType<typeof giftsOnItems>> = [];
+  if (owned) {
+    const { data: homeItems } = await supabaseAdmin.from("registry_items").select("id").eq("registry_id", registryId);
+    const ids = (homeItems ?? []).map((i) => i.id as string);
+    const placed = await listsForItems(ids);
+    gifts = await giftsOnItems(ids.filter((id) => (placed.get(id) ?? []).length <= 1));
+  }
+
   const { error } = await supabase
     .from("registries")
     .delete()
@@ -429,6 +447,7 @@ export async function deleteRegistry(registryId: string) {
   if (error) {
     return { error: error.message };
   }
+  if (gifts.length > 0) after(() => sendGiftRemovedEmails(gifts, { listGone: true }));
 
   redirect("/dashboard");
 }
@@ -649,17 +668,15 @@ export async function deleteRegistryItem(itemId: string, registryId: string) {
   const lists = (await listsForItems([itemId])).get(itemId) ?? [];
   if (!lists.includes(registryId)) return { error: "Item not found" };
 
-  // Read before the delete: the database deletes an item's gifts with it.
-  // Only used when the item is on no other list and goes for good.
-  const willDelete = lists.length === 1;
-  const reservations = willDelete ? await openReservationsToEnd({ itemId }) : [];
-
+  // An item on no other list is deleted, and its gifts with it. Read them
+  // first, so their guests can be told.
+  const gifts = lists.length === 1 ? await giftsOnItems([itemId]) : [];
   const result = await removeItemFromList(itemId, registryId);
   if ("error" in result) {
     return { error: result.error };
   }
-  if (result.removed === "deleted" && reservations.length > 0) {
-    after(() => sendReservationRemovedEmails(reservations, "deleted"));
+  if (result.removed === "deleted" && gifts.length > 0) {
+    after(() => sendGiftRemovedEmails(gifts));
   }
 
   revalidateLists(lists);
@@ -1613,7 +1630,7 @@ export async function cancelReservation(
 
   // Read first, for the guest's email. The RPC checks that the caller
   // manages the list, so nothing is sent unless it succeeds.
-  const reservations = isUuid(purchaseId) ? await openReservationsToEnd({ purchaseId }) : [];
+  const reservation = isUuid(purchaseId) ? await reservationToCancel(purchaseId) : null;
 
   const { error } = await supabase.rpc("cancel_reservation", {
     p_purchase_id: purchaseId,
@@ -1624,7 +1641,7 @@ export async function cancelReservation(
     return { error: error.message };
   }
 
-  if (reservations.length > 0) after(() => sendReservationRemovedEmails(reservations, "cancelled"));
+  if (reservation) after(() => sendReservationCancelledEmail(reservation));
   revalidatePath(`/dashboard/registry/${registryId}`);
   return { success: true };
 }
@@ -1696,6 +1713,7 @@ export async function contributeToCashFund(formData: FormData) {
         await notifyCashFundContribution({
           allow,
           fundId,
+          purchaseId: (data as string | null) ?? undefined,
           fundTitle: fund.title,
           buyerName,
           hideGiver,

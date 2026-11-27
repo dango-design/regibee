@@ -110,7 +110,7 @@ export function EventsSkeleton() {
           <h1 className="sr-only">Events</h1>
         </div>
         <Button asChild>
-          <Link href="/dashboard/new">
+          <Link href="/dashboard/new?first=events">
             <span className="inline-flex items-center gap-1.5">
               <Plus className="h-4 w-4 shrink-0" />
               New

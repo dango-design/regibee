@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { deleteEvent, planEventAgain } from "@/lib/actions/events";
+import { cancellationNotice } from "@/lib/event-updates";
 import { deletePhrase } from "@/lib/delete-confirmation";
 
 type Choice = "plan-again" | "delete";
@@ -31,6 +32,7 @@ export function EventActionsMenu({
   eventId,
   isOwner,
   guestCount,
+  cancellationCount = 0,
   planAction = planEventAgain,
   deleteAction = deleteEvent,
 }: {
@@ -38,6 +40,8 @@ export function EventActionsMenu({
   /** Only the owner can delete the event. */
   isOwner: boolean;
   guestCount: number;
+  /** How many guests get the "cancelled" email if the event is deleted (cancellationRecipients). */
+  cancellationCount?: number;
   /** Stand-ins for the server actions. The demo and stories pass them. */
   planAction?: PlanAction;
   deleteAction?: DeleteAction;
@@ -132,11 +136,15 @@ export function EventActionsMenu({
           open={open === "delete"}
           onOpenChange={onOpenChange}
           title="Delete this event?"
-          description={
+          description={[
             guestCount > 0
-              ? `The event page stops working and the guest list of ${guestCount} is deleted. This can't be undone.`
-              : "The event page stops working. This can't be undone."
-          }
+              ? `The event page stops working and the guest list of ${guestCount} is deleted.`
+              : "The event page stops working.",
+            cancellationNotice(cancellationCount),
+            "This can't be undone.",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           // An event with guests asks the owner to type a sentence first.
           phrase={guestCount > 0 ? deletePhrase("event") : null}
           confirmLabel="Delete event"
