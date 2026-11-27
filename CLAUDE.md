@@ -129,6 +129,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - The rules are in `src/lib/item-details.ts`: a read replaces the name and price when the store's are different, fills in a photo only when there's none, and never changes the price of an item the owner marked as bought.
 - `item_detail_reads` keeps each item's last read and the value before each change, so `DetailReview` can show the new and old values and switch back. Only the server reads it, with the service-role client. An item is offered again only when its link changes.
 
+## Checking prices
+
+- On a computer with the extension, a list's page checks a few prices each time a manager opens it (`PriceCheck`, `src/components/price-check.tsx`). A few seconds after the page opens, the extension reads up to 5 items' links in background tabs, one at a time. A line on the page says so while it reads, with a Stop button.
+- The rules and their tests are in `src/lib/item-details.ts` (`priceCheckDue`). An item is checked when its price hasn't been checked for 7 days: since its last read of the same link, or since it was added. The longest unchecked go first. Items the owner bought, items every one of which has been given, items missing a photo or price (the fill-in notice handles those) and items waiting for review are skipped.
+- A check changes only the price, never the name or photo (`savePriceCheck`). The new price shows to guests straight away, and `DetailReview` shows it with the old one, headed "New prices". If the owner switches back to their own price, that item isn't checked again until its link changes.
+- Each check saves its time in `item_detail_reads`, even when the price was the same.
+- The phone app has no extension, so it doesn't check prices.
+
 ## Gift ideas
 
 - A gift idea (`gift_ideas`) is something an owner might give someone else, like their mom, and the point is that she never finds out. Only the account that saved it can read it through the API.

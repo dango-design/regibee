@@ -1,6 +1,13 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { extensionCanReadLink } from "@/lib/extension";
-import { isMissingDetails, parseDetailChanges, shownSide } from "@/lib/item-details";
+import {
+  isMissingDetails,
+  lastPriceCheck,
+  parseDetailChanges,
+  PRICE_CHECKS_PER_VISIT,
+  priceCheckDue,
+  shownSide,
+} from "@/lib/item-details";
 import type { ListPageDetailReview, ListPageItem, ListPageMissingDetails } from "@/lib/list-page-types";
 
 // Filling in items' details later (src/lib/item-details.ts), for a list's
@@ -10,6 +17,7 @@ import type { ListPageDetailReview, ListPageItem, ListPageMissingDetails } from 
 interface DetailReadRow {
   item_id: string;
   read_url: string;
+  read_at: string;
   changes: unknown;
   reviewed_at: string | null;
 }
@@ -20,7 +28,7 @@ async function loadDetailReads(itemIds: string[]): Promise<Map<string, DetailRea
   if (itemIds.length === 0) return reads;
   const { data, error } = await supabaseAdmin
     .from("item_detail_reads")
-    .select("item_id, read_url, changes, reviewed_at")
+    .select("item_id, read_url, read_at, changes, reviewed_at")
     .in("item_id", itemIds);
   if (error) {
     if (error.code === "42P01" || error.code === "PGRST205") return null;
@@ -31,33 +39,60 @@ async function loadDetailReads(itemIds: string[]): Promise<Map<string, DetailRea
 }
 
 /**
- * Which items on a list the extension can fill in, and the filled-in details
- * nobody has reviewed yet. Both empty before the migration runs.
+ * Which items on a list the extension can fill in, which prices it should
+ * check on this visit, and the filled-in details nobody has reviewed yet. All
+ * empty before the migration runs.
  *
  * `canEditPlaced` is false for someone who helps with this list but isn't its
  * owner. They can't change items placed here from the owner's other lists, so
  * those aren't offered.
  */
 export async function loadItemDetailsState(
-  items: Pick<ListPageItem, "id" | "title" | "external_url" | "image_url" | "price" | "is_parent_purchased" | "placed">[],
+  items: Pick<
+    ListPageItem,
+    | "id"
+    | "title"
+    | "external_url"
+    | "image_url"
+    | "price"
+    | "is_parent_purchased"
+    | "placed"
+    | "created_at"
+    | "quantity_needed"
+    | "quantity_fulfilled"
+  >[],
   { canEditPlaced }: { canEditPlaced: boolean },
-): Promise<{ missingDetails: ListPageMissingDetails[]; detailReview: ListPageDetailReview[] }> {
+): Promise<{
+  missingDetails: ListPageMissingDetails[];
+  priceChecks: ListPageMissingDetails[];
+  detailReview: ListPageDetailReview[];
+}> {
   const reads = await loadDetailReads(items.map((i) => i.id));
-  if (!reads) return { missingDetails: [], detailReview: [] };
+  if (!reads) return { missingDetails: [], priceChecks: [], detailReview: [] };
 
   const missingDetails: ListPageMissingDetails[] = [];
+  const dueChecks: { item: ListPageMissingDetails; checked: string }[] = [];
   const detailReview: ListPageDetailReview[] = [];
+  const now = new Date();
   for (const item of items) {
     const read = reads.get(item.id);
-    if (
-      item.external_url &&
-      extensionCanReadLink(item.external_url) &&
-      isMissingDetails(item) &&
-      (canEditPlaced || !item.placed) &&
+    const readable =
+      item.external_url && extensionCanReadLink(item.external_url) && (canEditPlaced || !item.placed)
+        ? item.external_url
+        : null;
+    if (readable && isMissingDetails(item)) {
       // Read once per link. A new link can be read again.
-      read?.read_url !== item.external_url
-    ) {
-      missingDetails.push({ id: item.id, title: item.title, external_url: item.external_url });
+      if (read?.read_url !== readable) {
+        missingDetails.push({ id: item.id, title: item.title, external_url: readable });
+      }
+    } else if (readable) {
+      const checkItem = { ...item, external_url: readable };
+      if (priceCheckDue(checkItem, read, now)) {
+        dueChecks.push({
+          item: { id: item.id, title: item.title, external_url: readable },
+          checked: lastPriceCheck(checkItem, read),
+        });
+      }
     }
 
     if (read && !read.reviewed_at) {
@@ -71,5 +106,10 @@ export async function loadItemDetailsState(
       }
     }
   }
-  return { missingDetails, detailReview };
+  // The longest unchecked first, a few per visit.
+  const priceChecks = dueChecks
+    .sort((a, b) => Date.parse(a.checked) - Date.parse(b.checked))
+    .slice(0, PRICE_CHECKS_PER_VISIT)
+    .map((check) => check.item);
+  return { missingDetails, priceChecks, detailReview };
 }

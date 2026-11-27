@@ -17,6 +17,13 @@
 // The server keeps each change with the value before it (item_detail_reads),
 // so the list's managers can review the changes and put an old value back.
 //
+// Checking prices: the same read also keeps prices current. When a manager
+// opens the list's page on a computer with the extension, the page reads a few
+// items whose price hasn't been checked for a week (PriceCheck). A price check
+// changes only the price, never the name or photo, and the review shows it
+// like any other change. An item whose new price the owner switched back isn't
+// checked again until its link changes.
+//
 // No imports, so the unit tests (item-details.test.ts) and later the phone app
 // can use it.
 
@@ -87,6 +94,77 @@ export function detailChanges(item: ItemDetails, read: ReadDetails): DetailChang
     changes.push({ field: "image_url", before: null, after: photo });
   }
   return changes;
+}
+
+/**
+ * The review's heading. A review of price checks alone says so, since only
+ * prices changed. The website's DetailReview and the phone app's share it.
+ */
+export function detailReviewHeading(reviews: { changes: Pick<DetailChange, "field" | "before">[] }[]): string {
+  const total = reviews.length;
+  const onlyPrices = reviews.every((r) => r.changes.every((c) => c.field === "price" && c.before !== null));
+  if (onlyPrices) return total === 1 ? "New price for 1 item" : `New prices for ${total} items`;
+  return total === 1 ? "Filled in details for 1 item" : `Filled in details for ${total} items`;
+}
+
+/** The changes a price check makes: the price only, on the same rules as a read. */
+export function priceChanges(item: ItemDetails, read: ReadDetails): DetailChange[] {
+  return detailChanges(item, read).filter((change) => change.field === "price");
+}
+
+/** How many days an item's price counts as checked. */
+export const PRICE_CHECK_DAYS = 7;
+
+/** How many prices one visit to a list's page checks. Each opens a store page for a few seconds. */
+export const PRICE_CHECKS_PER_VISIT = 5;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The fields of an item that decide when its price is checked. */
+export interface PriceCheckItem extends ItemDetails {
+  external_url: string;
+  created_at: string;
+  quantity_needed: number;
+  quantity_fulfilled: number;
+}
+
+/** The item's last read, as item_detail_reads keeps it. */
+export interface LastRead {
+  read_url: string;
+  read_at: string;
+  changes: unknown;
+  reviewed_at: string | null;
+}
+
+/**
+ * When the item's price was last checked: its last read of this link, or when
+ * it was added, since adding an item reads its price too.
+ */
+export function lastPriceCheck(item: Pick<PriceCheckItem, "external_url" | "created_at">, read: LastRead | undefined): string {
+  return read && read.read_url === item.external_url ? read.read_at : item.created_at;
+}
+
+/**
+ * Whether a list's page should check this item's price now. Call it only for
+ * items the extension can read and that aren't missing details: the
+ * MissingDetailsNotice handles those.
+ */
+export function priceCheckDue(item: PriceCheckItem, read: LastRead | undefined, now: Date): boolean {
+  // Its price is what the owner paid.
+  if (item.is_parent_purchased) return false;
+  // Every one wanted has been given, so guests aren't looking at its price.
+  if (item.quantity_fulfilled >= item.quantity_needed) return false;
+  if (read && read.read_url === item.external_url) {
+    const changes = parseDetailChanges(read.changes);
+    // The last read is still waiting for review. Another would replace it.
+    if (!read.reviewed_at && changes.length > 0) return false;
+    // The owner switched back to their own price. Keep it.
+    const price = changes.find((change) => change.field === "price");
+    if (price && price.before !== null && shownSide(price, item) === "before") return false;
+  }
+  const checked = Date.parse(lastPriceCheck(item, read));
+  if (Number.isNaN(checked)) return true;
+  return now.getTime() - checked >= PRICE_CHECK_DAYS * DAY_MS;
 }
 
 function isEmpty(value: string | number | null): boolean {

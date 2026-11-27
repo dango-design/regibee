@@ -53,7 +53,7 @@ export interface ListPageItem {
   otherListIds?: string[];
 }
 
-/** An item whose store link the extension can read again for its photo or price (src/lib/item-details.ts). */
+/** An item whose store link the extension can read again for its photo or price, or to check its price (src/lib/item-details.ts). */
 export interface ListPageMissingDetails {
   id: string;
   title: string;
@@ -162,6 +162,8 @@ export interface ListPageData {
   plainLinkGroups: { storeId: StoreId; items: { id: string; title: string }[] }[];
   /** Items the browser extension can fill in. Missing before the item_detail_reads migration runs. */
   missingDetails?: ListPageMissingDetails[];
+  /** Items whose price the extension should check on this visit. Missing from older servers' answers. */
+  priceChecks?: ListPageMissingDetails[];
   /** Filled-in details waiting for review. */
   detailReview?: ListPageDetailReview[];
   perkRows: StorePerksRow[];
