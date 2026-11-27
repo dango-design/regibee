@@ -6,6 +6,7 @@ import {
   parseDetailChanges,
   PRICE_CHECKS_PER_VISIT,
   priceCheckDue,
+  priceChecksOff,
   shownSide,
 } from "@/lib/item-details";
 import type { ListPageDetailReview, ListPageItem, ListPageMissingDetails } from "@/lib/list-page-types";
@@ -20,16 +21,23 @@ interface DetailReadRow {
   read_at: string;
   changes: unknown;
   reviewed_at: string | null;
+  price_checks_off_url?: string | null;
 }
 
 /** The reads of these items, by item. Null before the migration runs. */
 async function loadDetailReads(itemIds: string[]): Promise<Map<string, DetailReadRow> | null> {
   const reads = new Map<string, DetailReadRow>();
   if (itemIds.length === 0) return reads;
-  const { data, error } = await supabaseAdmin
+  const columns = "item_id, read_url, read_at, changes, reviewed_at";
+  const withOff = await supabaseAdmin
     .from("item_detail_reads")
-    .select("item_id, read_url, read_at, changes, reviewed_at")
+    .select(`${columns}, price_checks_off_url`)
     .in("item_id", itemIds);
+  // Before 20261127202011_price_checks_off.sql runs, every item's checks are on.
+  const { data, error } =
+    withOff.error?.code === "42703"
+      ? await supabaseAdmin.from("item_detail_reads").select(columns).in("item_id", itemIds)
+      : withOff;
   if (error) {
     if (error.code === "42P01" || error.code === "PGRST205") return null;
     throw error;
@@ -102,7 +110,13 @@ export async function loadItemDetailsState(
         return shown ? [{ ...change, shown }] : [];
       });
       if (changes.length > 0) {
-        detailReview.push({ itemId: item.id, title: item.title, imageUrl: item.image_url, changes });
+        detailReview.push({
+          itemId: item.id,
+          title: item.title,
+          imageUrl: item.image_url,
+          changes,
+          priceChecksOff: item.external_url ? priceChecksOff({ external_url: item.external_url }, read) : false,
+        });
       }
     }
   }

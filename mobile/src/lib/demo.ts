@@ -58,6 +58,8 @@ interface Store {
   detailReads: Map<string, DetailChange[]>;
   /** Items whose links were read already, so they aren't offered again. */
   readItems: Set<string>;
+  /** Items whose price checks were turned off. The demo checks no prices, so this only keeps the checkbox. */
+  priceChecksOff?: Set<string>;
 }
 
 let store: Store | null = null;
@@ -311,7 +313,9 @@ export const demo = {
           const shown = shownSide(change, item);
           return shown ? [{ ...change, shown }] : [];
         });
-        return changes.length > 0 ? [{ itemId: item.id, title: item.title, imageUrl: item.image_url, changes }] : [];
+        return changes.length > 0
+          ? [{ itemId: item.id, title: item.title, imageUrl: item.image_url, changes, priceChecksOff: current().priceChecksOff?.has(item.id) ?? false }]
+          : [];
       }),
     };
   },
@@ -374,6 +378,11 @@ export const demo = {
     if (field === "price") demo.updateItem(itemId, { price: value == null ? null : Number(value) });
     else if (field === "title") demo.updateItem(itemId, { title: String(value ?? "") });
     else demo.updateItem(itemId, { image_url: value == null ? null : String(value) });
+  },
+  setPriceChecks(itemId: string, on: boolean) {
+    const off = (current().priceChecksOff ??= new Set());
+    if (on) off.delete(itemId);
+    else off.add(itemId);
   },
   finishDetailReview(_registryId: string, itemIds: string[]) {
     for (const id of itemIds) current().detailReads.delete(id);
