@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   fundAsUnpledged,
+  fundsPosition,
   guestItemStatus,
   hidesReservations,
   itemAsUnreserved,
@@ -133,4 +134,11 @@ test("the guest's group gift replaces the reserve buttons", () => {
   assert.deepEqual(s.tag, { kind: "reserved", label: "Your group gift" });
   assert.equal(s.showsActions, true);
   assert.equal(s.looksDone, false);
+});
+
+test("gift funds stay at the top unless the list moved them to the bottom", () => {
+  assert.equal(fundsPosition(null), "top");
+  assert.equal(fundsPosition({}), "top");
+  assert.equal(fundsPosition({ funds_position: "bottom" }), "bottom");
+  assert.equal(fundsPosition({ funds_position: "middle" }), "top");
 });

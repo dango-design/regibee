@@ -11,6 +11,7 @@ import type { DashboardData } from "@shared/dashboard-page-types";
 import type { DetailField, ShownSide } from "@shared/item-details";
 import type { ListPageData, ListPagePurchase } from "@shared/list-page-types";
 import { profileAudienceFields, type ListVisibility, type ProfileAudience } from "@shared/list-access";
+import { FUNDS_POSITION_SETTING, type FundsPosition } from "@shared/gifts";
 
 import { act, ApiError, form, loadPage, runAction } from "@/lib/api";
 import { useSession } from "@/lib/auth";
@@ -543,21 +544,39 @@ export interface FundInput {
   title: string;
   description: string;
   goalAmount: number | null;
+  /** On a new fund only: the list's payment methods, saved with it, replacing all three. */
+  paymentMethods?: { venmo: string; paypal: string; zelle: string };
 }
 
 function fundForm(input: FundInput) {
+  const methods = input.paymentMethods;
   return form({
     title: input.title.trim(),
     description: input.description.trim(),
     goalAmount: input.goalAmount != null && input.goalAmount > 0 ? String(input.goalAmount) : "",
+    ...(methods
+      ? { savePaymentMethods: "1", venmo: methods.venmo.trim(), paypal: methods.paypal.trim(), zelle: methods.zelle.trim() }
+      : {}),
   });
+}
+
+/** Payment methods as the website saves them: an empty field is left out. */
+function savedPaymentMethods(methods: NonNullable<FundInput["paymentMethods"]>) {
+  return {
+    venmo: methods.venmo.trim() || undefined,
+    paypal: methods.paypal.trim() || undefined,
+    zelle: methods.zelle.trim() || undefined,
+  };
 }
 
 export function useSaveFund() {
   return useListChange<{ registryId: string; fund?: CashFund; input: FundInput }>(
     ({ registryId }) => registryId,
     async ({ registryId, fund, input }) => {
-      if (isDemo()) return demo.saveFund(registryId, fund?.id ?? null, input);
+      if (isDemo()) {
+        if (!fund && input.paymentMethods) demo.updateSettings(registryId, { payment_methods: savedPaymentMethods(input.paymentMethods) });
+        return demo.saveFund(registryId, fund?.id ?? null, input);
+      }
       if (fund) await act("registry.updateCashFund", fund.id, registryId, fundForm(input));
       else await act("registry.addCashFund", registryId, fundForm(input));
     },
@@ -571,7 +590,30 @@ export function useSaveFund() {
                 : f
             ),
           }
-        : detail
+        : input.paymentMethods
+          ? {
+              ...detail,
+              registry: {
+                ...detail.registry,
+                settings: { ...detail.registry.settings, payment_methods: savedPaymentMethods(input.paymentMethods) },
+              },
+            }
+          : detail
+  );
+}
+
+/** Puts the list's gift funds above its items or after them, on its screen and the guests'. */
+export function useSetFundsPosition(registryId: string) {
+  return useListChange<FundsPosition>(
+    () => registryId,
+    async (position) => {
+      if (isDemo()) return demo.updateSettings(registryId, { [FUNDS_POSITION_SETTING]: position });
+      await act("registry.setFundsPosition", registryId, position);
+    },
+    (detail, position) => ({
+      ...detail,
+      registry: { ...detail.registry, settings: { ...detail.registry.settings, [FUNDS_POSITION_SETTING]: position } },
+    })
   );
 }
 

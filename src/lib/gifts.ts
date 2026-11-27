@@ -511,3 +511,14 @@ export function formatReservedUntil(iso: string, style: "long" | "short" = "long
     ? date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
     : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+/** Where a list's gift funds go on its page: above the items, or after them. */
+export type FundsPosition = "top" | "bottom";
+
+/** The key in `registries.settings` that holds the funds' position. */
+export const FUNDS_POSITION_SETTING = "funds_position";
+
+/** A list's funds position from its settings. A list with nothing saved keeps them at the top. */
+export function fundsPosition(settings: Record<string, unknown> | null | undefined): FundsPosition {
+  return settings?.[FUNDS_POSITION_SETTING] === "bottom" ? "bottom" : "top";
+}

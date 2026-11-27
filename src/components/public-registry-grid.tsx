@@ -16,7 +16,7 @@ import {
   type OpenGift,
 } from "@/components/reserve-item-dialog";
 import { ReservationBanner, type ReservationBannerEntry } from "@/components/reservation-banner";
-import { guestItemStatus, type MyItemGift } from "@/lib/gifts";
+import { guestItemStatus, type FundsPosition, type MyItemGift } from "@/lib/gifts";
 import { CoverItemDialog, type CoverActions } from "@/components/cover-item-dialog";
 import { ContributeFundDialog } from "@/components/contribute-fund-dialog";
 import { StartGroupGiftDialog, type StartGroupGiftDialogProps } from "@/components/start-group-gift-dialog";
@@ -64,6 +64,8 @@ interface Props {
   items: RegistryItem[];
   categories: Category[];
   cashFunds: CashFund[];
+  /** Whether the funds go above the items or after them. */
+  fundsPosition?: FundsPosition;
   parentName: string;
   paymentMethods?: PaymentMethods;
   shippingAddress?: string;
@@ -147,6 +149,7 @@ export function PublicRegistryGrid({
   items,
   categories,
   cashFunds,
+  fundsPosition = "top",
   parentName,
   paymentMethods,
   shippingAddress,
@@ -169,6 +172,77 @@ export function PublicRegistryGrid({
   const [priceBucket, setPriceBucket] = useState("any");
   const [sort, setSort] = useState<SortMode>("default");
   const [storeFilter, setStoreFilter] = useState<StoreId | "any">("any");
+
+  const fundsSection = cashFunds.length > 0 ? (
+      <div id={getCategorySectionId("gift-funds")} className="scroll-mt-4">
+        {fundsPosition === "bottom" && <Separator className="mb-10" />}
+        <h2 className="text-xl font-semibold mb-4">Gift Funds</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          {cashFunds.map((fund) => {
+            const fundProgress =
+              fund.goal_amount && fund.goal_amount > 0
+                ? (fund.current_amount / fund.goal_amount) * 100
+                : 0;
+            const fundPurchased = !!(myGifts.funds && myGifts.funds[fund.id]);
+            const fundPrevAmount = myGifts.funds?.[fund.id];
+            return (
+              <Card key={fund.id} className="py-0 gap-0 rounded-2xl shadow-none border-primary">
+                <CardContent className="flex h-full flex-col justify-between gap-4 p-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display font-semibold text-lg text-primary">
+                        {fund.title}
+                      </h3>
+                      {fundPurchased && (
+                        <img
+                          src="/hero/panda.svg"
+                          alt=""
+                          className="h-8 w-8 shrink-0"
+                          style={{ animation: "celebration-bounce 1.2s ease-in-out infinite" }}
+                        />
+                      )}
+                    </div>
+                    {fund.description && (
+                      <p className="text-sm text-tertiary whitespace-pre-line">
+                        {fund.description}
+                      </p>
+                    )}
+                    {fund.goal_amount && fund.goal_amount > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between text-sm">
+                          <span>
+                            {formatDollars(fund.current_amount)} raised
+                          </span>
+                          <span>
+                            {formatDollars(fund.goal_amount)} goal
+                          </span>
+                        </div>
+                        <Progress value={fundProgress} aria-label={`Amount raised for ${fund.title}`} />
+                        <span className="text-xs text-tertiary">
+                          {formatDollars(Math.max(0, fund.goal_amount - fund.current_amount))} remaining
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end">
+                    <ContributeFundDialog
+                      fund={fund}
+                      paymentMethods={paymentMethods}
+                      parentName={parentName}
+                      alreadyPurchased={fundPurchased}
+                      previousAmount={fundPrevAmount}
+                      shippingAddress={shippingAddress}
+                      action={actions?.contribute}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        {fundsPosition === "top" && <Separator className="mt-10" />}
+      </div>
+  ) : null;
 
   if (items.length === 0 && cashFunds.length === 0) {
     return (
@@ -227,13 +301,9 @@ export function PublicRegistryGrid({
 
   // Build sidebar nav from CURRENT (filtered) items so counts stay accurate
   const navItems: CategoryNavItem[] = [];
-  if (cashFunds.length > 0) {
-    navItems.push({
-      id: getCategorySectionId("gift-funds"),
-      name: "Gift Funds",
-      count: cashFunds.length,
-    });
-  }
+  const fundsNav: CategoryNavItem | null =
+    cashFunds.length > 0 ? { id: getCategorySectionId("gift-funds"), name: "Gift Funds", count: cashFunds.length } : null;
+  if (fundsNav && fundsPosition === "top") navItems.push(fundsNav);
   for (const category of categories) {
     const count = (itemsByCategory.get(category.id) || []).length;
     if (count > 0) {
@@ -252,6 +322,7 @@ export function PublicRegistryGrid({
       count: uncategorized.length,
     });
   }
+  if (fundsNav && fundsPosition === "bottom") navItems.push(fundsNav);
 
   const noMatches =
     filtersActive &&
@@ -361,76 +432,8 @@ export function PublicRegistryGrid({
           </div>
         )}
 
-        {/* Cash Funds — always visible */}
-        {cashFunds.length > 0 && (
-          <div id={getCategorySectionId("gift-funds")} className="scroll-mt-4">
-            <h2 className="text-xl font-semibold mb-4">Gift Funds</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {cashFunds.map((fund) => {
-                const fundProgress =
-                  fund.goal_amount && fund.goal_amount > 0
-                    ? (fund.current_amount / fund.goal_amount) * 100
-                    : 0;
-                const fundPurchased = !!(myGifts.funds && myGifts.funds[fund.id]);
-                const fundPrevAmount = myGifts.funds?.[fund.id];
-                return (
-                  <Card key={fund.id} className="py-0 gap-0 rounded-2xl shadow-none border-primary">
-                    <CardContent className="flex h-full flex-col justify-between gap-4 p-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-display font-semibold text-lg text-primary">
-                            {fund.title}
-                          </h3>
-                          {fundPurchased && (
-                            <img
-                              src="/hero/panda.svg"
-                              alt=""
-                              className="h-8 w-8 shrink-0"
-                              style={{ animation: "celebration-bounce 1.2s ease-in-out infinite" }}
-                            />
-                          )}
-                        </div>
-                        {fund.description && (
-                          <p className="text-sm text-tertiary whitespace-pre-line">
-                            {fund.description}
-                          </p>
-                        )}
-                        {fund.goal_amount && fund.goal_amount > 0 && (
-                          <div className="flex flex-col gap-1">
-                            <div className="flex justify-between text-sm">
-                              <span>
-                                {formatDollars(fund.current_amount)} raised
-                              </span>
-                              <span>
-                                {formatDollars(fund.goal_amount)} goal
-                              </span>
-                            </div>
-                            <Progress value={fundProgress} aria-label={`Amount raised for ${fund.title}`} />
-                            <span className="text-xs text-tertiary">
-                              {formatDollars(Math.max(0, fund.goal_amount - fund.current_amount))} remaining
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-end">
-                        <ContributeFundDialog
-                          fund={fund}
-                          paymentMethods={paymentMethods}
-                          parentName={parentName}
-                          alreadyPurchased={fundPurchased}
-                          previousAmount={fundPrevAmount}
-                          shippingAddress={shippingAddress}
-                          action={actions?.contribute}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-            <Separator className="mt-10" />
-          </div>
-        )}
+        {/* Gift funds: above the items or after them, as the owner chose. Filters never hide them. */}
+        {fundsPosition === "top" && fundsSection}
 
         {/* Items by category */}
         {categories.map((category) => {
@@ -505,6 +508,8 @@ export function PublicRegistryGrid({
             </div>
           </div>
         )}
+
+        {fundsPosition === "bottom" && fundsSection}
       </div>
     </div>
   );

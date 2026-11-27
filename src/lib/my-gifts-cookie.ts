@@ -98,6 +98,15 @@ export function withGift(
   return myGiftsCookieValue({ ...data, [key]: entries });
 }
 
+/**
+ * The cookie's value with a gift to a fund added to what this guest already
+ * gave to it, so the fund shows everything they gave.
+ */
+export function withFundGift(raw: string | undefined, fundId: string, amount: number): string {
+  const previous = Number(parseMyGiftsCookie(raw).funds?.[fundId]);
+  return withGift(raw, "funds", fundId, (Number.isFinite(previous) && previous > 0 ? previous : 0) + amount);
+}
+
 /** Only the entries that are an item id and a purchase id. */
 function purchaseIdsByItem(value: unknown): Record<string, string> {
   const gifts: Record<string, string> = {};

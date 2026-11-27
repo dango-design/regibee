@@ -32,7 +32,7 @@ import { LIST_ACCESS, PROFILE_AUDIENCE, listAccess, listVisibility, profileAudie
 import { headerChoice, listHeader, type ListHeader as BandHeader } from "@shared/list-headers";
 import { copyForRegistry } from "@shared/registry-copy";
 import { getStore } from "@shared/retailers";
-import { reservationsHiddenText } from "@shared/gifts";
+import { fundsPosition, reservationsHiddenText, type FundsPosition } from "@shared/gifts";
 
 import { Icon, type IconName } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
@@ -56,6 +56,7 @@ import {
   useDeleteItem,
   useDismissEventPrompt,
   useRegistry,
+  useSetFundsPosition,
   useSortIntoCategories,
   useToggleItem,
   useUndoCategorySort,
@@ -84,6 +85,7 @@ export default function RegistryScreen() {
   // The header shows the list's name once the band's title has scrolled away.
   const [scrolled, setScrolled] = useState(false);
   const sortItems = useSortIntoCategories(id);
+  const moveFunds = useSetFundsPosition(id);
   const undoSort = useUndoCategorySort(id);
 
   const { mutate: toggleItem } = useToggleItem();
@@ -222,14 +224,33 @@ export default function RegistryScreen() {
     { label: "Settings", icon: "settings", onPress: openSettings },
   ];
 
+  // Gift funds go above the items or after them, as on the website and the guests' page.
+  const fundsAt = fundsPosition(r.settings);
+  const funds =
+    categoryFilter === "all" && data.funds.length > 0 ? (
+      <FundsSection
+        detail={data}
+        onAdd={addFund}
+        position={fundsAt}
+        onMove={() =>
+          moveFunds.mutate(fundsAt === "top" ? "bottom" : "top", {
+            onError: (e) => Alert.alert("Couldn't move the funds", errorMessage(e)),
+          })
+        }
+      />
+    ) : null;
+
   const header = (
-    <ListHeader
-      detail={data}
-      categoryFilter={categoryFilter}
-      onCategory={setCategoryFilter}
-      onSettings={openSettings}
-      bandTop={insets.top}
-    />
+    <>
+      <ListHeader
+        detail={data}
+        categoryFilter={categoryFilter}
+        onCategory={setCategoryFilter}
+        onSettings={openSettings}
+        bandTop={insets.top}
+      />
+      {fundsAt === "top" ? funds : null}
+    </>
   );
 
   // On iPhone the list starts under the header, so at rest it's scrolled to
@@ -308,9 +329,7 @@ export default function RegistryScreen() {
               />
             </GroupRow>
           )}
-          ListFooterComponent={
-            categoryFilter === "all" && data.funds.length > 0 ? <FundsSection detail={data} onAdd={addFund} /> : undefined
-          }
+          ListFooterComponent={fundsAt === "bottom" && funds ? funds : undefined}
           ListEmptyComponent={
             data.items.length === 0 && data.funds.length === 0 ? (
               <EmptyState
@@ -799,15 +818,37 @@ function SummaryRow({ icon, label, detail, badge, onPress, onDismiss }: Omit<Row
   );
 }
 
-/** Gift funds, after the items: the guest page lists them with the items too. */
-function FundsSection({ detail, onAdd }: { detail: RegistryDetail; onAdd: () => void }) {
+/** Gift funds, above the items or after them, where the guest page shows them too. */
+function FundsSection({
+  detail,
+  onAdd,
+  position,
+  onMove,
+}: {
+  detail: RegistryDetail;
+  onAdd: () => void;
+  position: FundsPosition;
+  onMove: () => void;
+}) {
   return (
     <View>
       <View style={[styles.sectionHeader, { alignItems: "center" }]}>
         <Text variant="headline" style={{ fontFamily: fonts.displayMedium }}>
           Gift funds
         </Text>
-        <Button title="Add" icon="add" size="small" variant="ghost" onPress={onAdd} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+          <Button title="Add" icon="add" size="small" variant="ghost" onPress={onAdd} />
+          <HeaderMenu
+            size="small"
+            accessibilityLabel="Gift fund options"
+            title="Gift funds"
+            choices={[
+              position === "top"
+                ? { label: "Move after the items", icon: "arrowDown", onPress: onMove }
+                : { label: "Move above the items", icon: "arrowUp", onPress: onMove },
+            ]}
+          />
+        </View>
       </View>
       {detail.funds.map((fund, index) => (
         <GroupRow key={fund.id} first={index === 0} last={index === detail.funds.length - 1}>

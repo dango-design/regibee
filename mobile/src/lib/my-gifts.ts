@@ -88,10 +88,10 @@ export async function readMyFundGifts(userId: string): Promise<Record<string, nu
   }
 }
 
-/** Remembers a contribution. A later one to the same fund replaces the earlier amount, as the cookie does. */
+/** Remembers a contribution. A later one to the same fund adds to the earlier amount, as the cookie does. */
 export async function rememberFundGift(userId: string, fundId: string, amount: number) {
   const funds = await readMyFundGifts(userId);
-  funds[fundId] = amount;
+  funds[fundId] = (funds[fundId] ?? 0) + amount;
   await kvStorage.setItem(fundsKey(userId), JSON.stringify(funds));
 }
 

@@ -10,6 +10,7 @@ import {
   purchaseIdsToCheck,
   syncAppGifts,
   webViewGifts,
+  withFundGift,
   withGift,
 } from "./my-gifts-cookie.ts";
 
@@ -142,4 +143,11 @@ test("newGifts lists only gifts that are new or changed", () => {
   assert.deepEqual(newGifts({ [item(1)]: gift(1) }, { [item(1)]: gift(1), [item(2)]: gift(2) }), { [item(2)]: gift(2) });
   assert.deepEqual(newGifts({ [item(1)]: gift(1) }, { [item(1)]: gift(3) }), { [item(1)]: gift(3) });
   assert.deepEqual(newGifts({ [item(1)]: gift(1) }, {}), {});
+});
+
+test("withFundGift adds a second gift to the same fund to the first", () => {
+  let raw = withFundGift(undefined, item(1), 25);
+  raw = withFundGift(raw, item(1), 10.5);
+  raw = withFundGift(raw, item(2), 5);
+  assert.deepEqual(parseMyGiftsCookie(raw).funds, { [item(1)]: 35.5, [item(2)]: 5 });
 });

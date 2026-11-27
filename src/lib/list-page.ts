@@ -310,7 +310,11 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
     otherListIds: otherListIdsByItem.get(item.id) ?? [],
   }));
   const dismissedChecklistItems = (registry.settings as Record<string, unknown> | null)?.checklist_dismissed as string[] | undefined;
-  const checklistProgress = getChecklistProgress(allItems.map((i) => i.title), dismissedChecklistItems);
+  // A checklist entry such as Diaper Fund counts when the list has a fund by that name.
+  const checklistProgress = getChecklistProgress(
+    [...allItems.map((i) => i.title), ...((cashFunds || []) as { title: string }[]).map((f) => f.title)],
+    dismissedChecklistItems
+  );
   const copy = copyForRegistry(registry);
 
   // A Secret Santa's gift shows "Secret Santa" with no email. It's masked

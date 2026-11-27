@@ -1,6 +1,9 @@
 // Create or edit a gift fund, as the website's "Create gift fund" and "Edit
 // gift fund" dialogs do (src/components/add-cash-fund-dialog.tsx,
 // src/components/cash-fund-card.tsx). Editing also lists who contributed.
+// Creating also shows where guests send money, and sets it when the list has
+// none, so the owner doesn't go to settings first. The checklist opens it with
+// `title` and `description` filled in, for an entry such as Diaper Fund.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -14,9 +17,11 @@ import { Button, Divider, EmptyState, Field, haptic, IconButton, Pill, Section, 
 import { errorMessage, useDeleteFund, useRegistry, useSaveFund } from "@/lib/data";
 import { formatPrice, parsePrice } from "@/lib/format";
 import { spacing } from "@/lib/theme";
+import type { PaymentMethods } from "@shared/types";
 
 export default function FundScreen() {
-  const { registryId, fundId } = useLocalSearchParams<{ registryId: string; fundId?: string }>();
+  const params = useLocalSearchParams<{ registryId: string; fundId?: string; title?: string; description?: string }>();
+  const { registryId, fundId } = params;
   const insets = useSafeAreaInsets();
   const keyboardFooter = useKeyboardFooter();
   const registry = useRegistry(registryId);
@@ -25,8 +30,26 @@ export default function FundScreen() {
   const save = useSaveFund();
   const remove = useDeleteFund();
 
-  const [title, setTitle] = useState(fund?.title ?? "");
-  const [description, setDescription] = useState(fund?.description ?? "");
+  const [title, setTitle] = useState(fund?.title ?? params.title ?? "");
+  const [description, setDescription] = useState(fund?.description ?? params.description ?? "");
+  // Until the list has loaded, its payment methods are unknown: the section
+  // waits, so blank fields never replace methods it already has.
+  const methodsKnown = Boolean(registry.data);
+  const saved = registry.data?.registry.settings?.payment_methods as PaymentMethods | undefined;
+  const hasSaved = Boolean(saved?.venmo || saved?.paypal || saved?.zelle);
+  const [editingMethods, setEditingMethods] = useState(!hasSaved);
+  const [venmo, setVenmo] = useState(saved?.venmo ?? "");
+  const [paypal, setPaypal] = useState(saved?.paypal ?? "");
+  const [zelle, setZelle] = useState(saved?.zelle ?? "");
+  const [methodsSeen, setMethodsSeen] = useState(methodsKnown);
+  if (methodsKnown && !methodsSeen) {
+    // The list loaded after this screen opened: start from what it has.
+    setMethodsSeen(true);
+    setEditingMethods(!hasSaved);
+    setVenmo(saved?.venmo ?? "");
+    setPaypal(saved?.paypal ?? "");
+    setZelle(saved?.zelle ?? "");
+  }
   const [goalText, setGoalText] = useState(fund?.goal_amount ? String(fund.goal_amount) : "");
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +64,17 @@ export default function FundScreen() {
       return;
     }
     save.mutate(
-      { registryId, fund, input: { title, description, goalAmount: parsePrice(goalText) } },
+      {
+        registryId,
+        fund,
+        input: {
+          title,
+          description,
+          goalAmount: parsePrice(goalText),
+          // Sent only when the fields showed, as the website's dialog does.
+          ...(!fund && methodsKnown && editingMethods ? { paymentMethods: { venmo, paypal, zelle } } : {}),
+        },
+      },
       {
         onSuccess: () => {
           haptic("success");
@@ -96,6 +129,59 @@ export default function FundScreen() {
           keyboardType="decimal-pad"
           leading={<Text tone="tertiary">$</Text>}
         />
+        {!fund && methodsKnown ? (
+          <Section title="Where guests send money">
+            {editingMethods ? (
+              <View style={{ padding: spacing.lg, gap: spacing.lg }}>
+                <Text variant="footnote" tone="tertiary">
+                  Guests pay you directly. Regibee never handles money.
+                </Text>
+                <Field label="Venmo" value={venmo} onChangeText={setVenmo} placeholder="@your-venmo" autoCapitalize="none" autoCorrect={false} />
+                <Field
+                  label="PayPal"
+                  value={paypal}
+                  onChangeText={setPaypal}
+                  placeholder="you@email.com or PayPal.me link"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Field
+                  label="Zelle"
+                  value={zelle}
+                  onChangeText={setZelle}
+                  placeholder="you@email.com or phone number"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            ) : (
+              <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+                {(
+                  [
+                    ["Venmo", saved?.venmo],
+                    ["PayPal", saved?.paypal],
+                    ["Zelle", saved?.zelle],
+                  ] as const
+                )
+                  .filter(([, value]) => value)
+                  .map(([label, value]) => (
+                    <View key={label} style={{ flexDirection: "row", gap: spacing.sm }}>
+                      <Text variant="subhead" tone="tertiary" style={{ width: 64, fontWeight: "500" }}>
+                        {label}
+                      </Text>
+                      <Text variant="subhead" style={{ flex: 1 }}>
+                        {value}
+                      </Text>
+                    </View>
+                  ))}
+                <View style={{ flexDirection: "row" }}>
+                  <Button title="Edit" variant="ghost" size="small" onPress={() => setEditingMethods(true)} />
+                </View>
+              </View>
+            )}
+          </Section>
+        ) : null}
+
         {fund && fund.current_amount > 0 ? (
           <Text variant="footnote" tone="tertiary">
             {formatPrice(fund.current_amount)} contributed so far.

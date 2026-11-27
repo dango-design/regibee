@@ -3,7 +3,7 @@
 // (src/app/(protected)/dashboard/registry/[registryId]/checklist/page.tsx),
 // with the same items, matching and words.
 
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Pressable, SectionList, StyleSheet, View } from "react-native";
 
@@ -32,9 +32,10 @@ export default function ChecklistScreen() {
   const [adding, setAdding] = useState<string | null>(null);
 
   const detail = registry.data;
+  // An entry such as Diaper Fund counts once the list has a fund by that name.
   const added = useMemo(
-    () => matchedChecklistItems(ALL_NAMES, (detail?.items ?? []).map((i) => i.title)),
-    [detail?.items]
+    () => matchedChecklistItems(ALL_NAMES, [...(detail?.items ?? []), ...(detail?.funds ?? [])].map((i) => i.title)),
+    [detail?.items, detail?.funds]
   );
   const dismissed = useMemo(
     () =>
@@ -62,6 +63,11 @@ export default function ChecklistScreen() {
   }).filter((s) => filter === "all" || s.items.length > 0);
 
   function addItem(categoryName: string, item: ChecklistItem) {
+    // A fund entry opens the create gift fund screen, filled in, as on the website.
+    if (item.fund) {
+      router.push({ pathname: "/fund", params: { registryId: id, title: item.name, description: item.description ?? "" } });
+      return;
+    }
     const category = detail!.categories.find((c) => c.name === categoryName);
     setAdding(item.name);
     add.mutate(
