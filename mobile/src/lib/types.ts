@@ -83,6 +83,11 @@ export interface Item {
   otherListIds?: string[];
   /** It's on this list through a placement from another of the owner's lists. */
   placed?: boolean;
+  /**
+   * The baby checklist entry it counts for: a key, "none", or null to match by
+   * its title (src/lib/checklist-matching.ts on the website).
+   */
+  checklist_entry?: string | null;
 }
 
 /** A gift as an item's row reads it. */
@@ -96,6 +101,8 @@ export interface CashFund {
   description: string | null;
   goal_amount: number | null;
   current_amount: number;
+  /** Which baby checklist entry it counts for, as on items. */
+  checklist_entry?: string | null;
 }
 
 export type PurchaseStatus = "reserved" | "purchased" | "cancelled";
@@ -214,4 +221,6 @@ export interface ItemInput {
   notes: string | null;
   /** The product's barcode number, read from `external_url`. Only sent, never shown. */
   gtin?: string | null;
+  /** The baby checklist entry it's added for, from the checklist. Only sent when adding. */
+  checklist_entry?: string | null;
 }

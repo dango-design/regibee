@@ -109,6 +109,13 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
 
+## Baby checklist
+
+- A baby registry has a checklist of what most new parents need (`src/lib/checklist-data.ts`). The website's page is `src/components/checklist-manager.tsx`, loaded by `src/lib/checklist-page.ts`. The phone app's screen is `mobile/src/app/registry/[id]/checklist.tsx`.
+- Each item or gift fund counts for at most one entry. `checklist_entry` on `registry_items` and `cash_funds` saves the owner's choice: an entry's key, `none`, or null to match by its name. The rules and their tests are in `src/lib/checklist-matching.ts`, which the app shares.
+- Never change an entry's `key`: saved choices point at it. To rename an entry, change its `name` and add the old one to `formerNames`. Add the words stores use for it to `aliases`.
+- Adding from the checklist asks whether the owner has a specific one in mind. Yes opens the add item dialog with a link field. No adds the entry with no product, and guests choose one. Neither marks it Most wanted.
+
 ## Barcode numbers
 
 - Items and gift ideas have a `gtin` column: the product's barcode number (its UPC or EAN), saved as 14 digits. Nothing shows it yet. It's there so Regibee can later match the same product across stores.

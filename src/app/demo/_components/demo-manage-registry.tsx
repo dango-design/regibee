@@ -1189,7 +1189,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
 
   const totalItems = items.length;
   const fulfilledItems = items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
-  const checklistProgress = getChecklistProgress(items.map((i) => i.title));
+  const checklistProgress = getChecklistProgress(items.map((i) => ({ id: i.id, kind: "item" as const, title: i.title })));
 
   // Group items by category
   const itemsByCategory = new Map<string | null, DemoItem[]>();

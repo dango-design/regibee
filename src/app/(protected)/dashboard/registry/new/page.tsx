@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CreateRegistryForm } from "@/components/create-registry-form";
 import { LIST_OCCASIONS, type ListOccasion } from "@/lib/occasions";
 import type { RegistryType } from "@/lib/types";
 import { getSessionUser } from "@/lib/viewer";
+
+export const metadata: Metadata = { title: "New registry | Regibee" };
 
 export default async function NewRegistryPage({
   searchParams,

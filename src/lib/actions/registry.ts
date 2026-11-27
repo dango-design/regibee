@@ -38,6 +38,7 @@ import {
 import { isUuid } from "@/lib/extension";
 import { gtinChange, normalizeGtin } from "@/lib/gtin";
 import { listsForItems } from "@/lib/list-items";
+import { checklistEntryNamed, parseChecklistEntry } from "@/lib/checklist-matching";
 import type { RegistryDeletionSummary } from "@/lib/delete-confirmation";
 import { summarizeRegistryDeletion } from "@/lib/registry-deletion-server";
 import { addListCategory } from "@/lib/list-categories";
@@ -469,6 +470,8 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
   // The product's barcode number, when the dialog read one from this link.
   const gtin = normalizeGtin(formData.get("gtin"));
   const qty = quantityNeeded ? parseInt(quantityNeeded) : 1;
+  // Sent when the item comes from the baby checklist, so it counts for that entry.
+  const checklistEntry = parseChecklistEntry(formData.get("checklistEntry"), "item");
 
   const { data: added, error } = await supabase.from("registry_items").insert({
     registry_id: registryId,
@@ -485,6 +488,7 @@ export async function addRegistryItem(registryId: string, formData: FormData) {
     minimum_condition: isOpenToUsed ? minimumCondition || null : null,
     notes: notes || null,
     ...(gtin ? { gtin } : {}),
+    ...(checklistEntry !== undefined ? { checklist_entry: checklistEntry } : {}),
   }).select("id").single();
 
   if (error) {
@@ -526,6 +530,9 @@ export async function updateRegistryItem(
   const isOpenToUsed = formData.get("isOpenToUsed") === "true";
   const minimumCondition = formData.get("minimumCondition") as string;
   const notes = formData.get("notes") as string;
+  // The baby checklist entry it counts for, when the dialog changed it. Older
+  // versions of the phone app never send it.
+  const checklistEntry = parseChecklistEntry(formData.get("checklistEntry"), "item");
 
   if (!isUuid(itemId) || !isUuid(registryId)) return { error: "Item not found" };
 
@@ -564,6 +571,7 @@ export async function updateRegistryItem(
       minimum_condition: isOpenToUsed ? minimumCondition || null : null,
       notes: notes || null,
       ...gtinChange(sentGtin, savedLink, externalUrl || null),
+      ...(checklistEntry !== undefined ? { checklist_entry: checklistEntry } : {}),
     })
     .eq("id", itemId)
     .select("id");
@@ -646,6 +654,8 @@ export async function addCashFund(registryId: string, formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const goalAmount = formData.get("goalAmount") as string;
+  // Sent when the fund comes from the baby checklist, such as Diaper Fund.
+  const checklistEntry = parseChecklistEntry(formData.get("checklistEntry"), "fund");
 
   // The create dialog can set the list's payment methods too, so the owner
   // doesn't have to go to settings first. It sends them only when it showed
@@ -662,6 +672,7 @@ export async function addCashFund(registryId: string, formData: FormData) {
     title,
     description: description || null,
     goal_amount: goalAmount ? parseFloat(goalAmount) : null,
+    ...(checklistEntry !== undefined ? { checklist_entry: checklistEntry } : {}),
   });
 
   if (error) {
@@ -1372,13 +1383,21 @@ export async function setListHeader(registryId: string, choice: unknown): Promis
   return { error: null };
 }
 
+/**
+ * Marks a baby checklist entry as registered somewhere else, or takes the mark
+ * off. `entryName` is the entry's key, or its name: older versions of the
+ * phone app send the name.
+ */
 export async function toggleChecklistDismissed(
   registryId: string,
-  itemName: string,
+  entryName: string,
   dismissed: boolean
 ) {
   const { user, error: authError } = await requireManager(registryId);
   if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const info = typeof entryName === "string" ? checklistEntryNamed(entryName) : undefined;
+  if (!info) return { error: "That isn't on the checklist." };
 
   const supabase = await createClient();
   const { data: registry } = await supabase
@@ -1392,19 +1411,14 @@ export async function toggleChecklistDismissed(
   }
 
   const settings = (registry.settings as Record<string, unknown>) || {};
-  const current = (settings.checklist_dismissed as string[]) || [];
-  const lower = itemName.toLowerCase();
-
-  if (dismissed) {
-    if (!current.includes(lower)) {
-      current.push(lower);
-    }
-  } else {
-    const idx = current.indexOf(lower);
-    if (idx !== -1) current.splice(idx, 1);
-  }
-
-  settings.checklist_dismissed = current;
+  const saved = Array.isArray(settings.checklist_dismissed) ? (settings.checklist_dismissed as unknown[]) : [];
+  // Older lists saved the entry's lowercased name. Drop every form of this
+  // entry, then save its key if it's marked.
+  const forms = new Set(
+    [info.entry.key, info.entry.name, ...(info.entry.formerNames ?? [])].map((name) => name.toLowerCase()),
+  );
+  const kept = saved.filter((value) => typeof value === "string" && !forms.has(value.toLowerCase())) as string[];
+  settings.checklist_dismissed = dismissed ? [...kept, info.entry.key] : kept;
 
   const { error } = await supabase
     .from("registries")
@@ -1418,6 +1432,56 @@ export async function toggleChecklistDismissed(
   revalidatePath(`/dashboard/registry/${registryId}`);
   revalidatePath(`/dashboard/registry/${registryId}/checklist`);
   return { success: true };
+}
+
+/**
+ * Chooses which baby checklist entry an item or gift fund on this list counts
+ * for: an entry's key, "none" for no entry, or null to go back to matching by
+ * its name. The checklist page and the item dialogs use it.
+ */
+export async function setChecklistEntry(
+  registryId: string,
+  target: { itemId?: string; fundId?: string },
+  entry: string | null,
+): Promise<{ error: string | null }> {
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const kind = target?.fundId ? "fund" : "item";
+  const id = target?.fundId ?? target?.itemId;
+  if (typeof id !== "string" || !isUuid(id)) return { error: "Item not found" };
+  const value = parseChecklistEntry(entry ?? "", kind);
+  if (value === undefined) return { error: "That isn't on the checklist." };
+
+  const supabase = await createClient();
+  if (kind === "fund") {
+    const { data: updated, error } = await supabase
+      .from("cash_funds")
+      .update({ checklist_entry: value })
+      .eq("id", id)
+      .eq("registry_id", registryId)
+      .select("id");
+    if (error) return { error: error.message };
+    if (!updated || updated.length === 0) return { error: "Gift fund not found" };
+  } else {
+    // An item can be on several of its owner's lists (src/lib/list-items.ts).
+    // Its checklist entry is the same on all of them.
+    const lists = (await listsForItems([id])).get(id) ?? [];
+    if (!lists.includes(registryId)) return { error: "Item not found" };
+    const { data: updated, error } = await supabase
+      .from("registry_items")
+      .update({ checklist_entry: value })
+      .eq("id", id)
+      .select("id");
+    if (error) return { error: error.message };
+    // The access rules match nothing for someone who helps with this list but
+    // not with the list the item was first saved to.
+    if (!updated || updated.length === 0) return { error: "Only the list's owner can change this item." };
+  }
+
+  revalidatePath(`/dashboard/registry/${registryId}`);
+  revalidatePath(`/dashboard/registry/${registryId}/checklist`);
+  return { error: null };
 }
 
 export async function toggleParentPurchased(

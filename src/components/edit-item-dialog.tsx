@@ -12,6 +12,7 @@ import { Label } from "@/components/base/input/label";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CategoryField } from "@/components/category-field";
+import { ChecklistEntryField } from "@/components/checklist-entry-picker";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Select } from "@/components/base/select/select";
 import {
@@ -69,6 +70,8 @@ interface EditItemDialogProps {
     minimum_condition: string | null;
     notes: string | null;
     category_id: string | null;
+    /** The baby checklist entry it counts for (src/lib/checklist-matching.ts). */
+    checklist_entry?: string | null;
   };
   registryId: string;
   categories: Category[];
@@ -1174,6 +1177,8 @@ export function EditItemDialog({
                 defaultValue={item.notes || ""}
                 rows={3}
               />
+
+              {isBaby && <ChecklistEntryField title={title} saved={item.checklist_entry} />}
 
               {/* Owners change these rarely, so they share one row. The info
                   button explains all three: under the pointer on a computer,

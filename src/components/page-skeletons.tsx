@@ -558,3 +558,31 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+/** Matches src/components/checklist-manager.tsx. */
+export function ChecklistSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8" aria-busy="true">
+      <LoadingMessage>Loading the checklist</LoadingMessage>
+      <div className="mb-6 flex items-center gap-4">
+        {/* The back button's place. The skeleton doesn't know which list. */}
+        <Skeleton className="size-9 rounded-lg" />
+        <h1 className="text-2xl font-bold">Checklist</h1>
+      </div>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <Skeleton className="h-5 w-64 max-w-full" />
+        <Skeleton className="h-10 w-72 max-w-full rounded-lg" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Card key={i} className="gap-3 p-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-2/3" />
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -43,6 +43,12 @@ export interface ListPageItem {
   category_id: string | null;
   sort_order: number;
   created_at: string;
+  /**
+   * The baby checklist entry it counts for: a key, "none", or null to match by
+   * its title (src/lib/checklist-matching.ts). Missing before the
+   * checklist_entries migration runs.
+   */
+  checklist_entry?: string | null;
   /** The list it was first saved to. */
   home_registry_id: string;
   /** It's on this list through a placement from another of the owner's lists. */
@@ -90,6 +96,8 @@ export interface ListPageFund {
   description: string | null;
   goal_amount: number | null;
   current_amount: number;
+  /** Which baby checklist entry it counts for, as on items. */
+  checklist_entry?: string | null;
 }
 
 /** A gift on the Gift Activity tab, with the giver masked for a Secret Santa. */
@@ -156,6 +164,8 @@ export interface ListPageData {
   linkedEvents: ListPageEvent[];
   showChecklist: boolean;
   checklistProgress: { matched: number; total: number };
+  /** The checklist's essentials done, of all of them. Missing from older servers' answers. */
+  checklistEssentials?: { done: number; total: number };
   /** The owner's store registries, for baby lists. Undefined on other lists. */
   linkedRegistries?: RetailerRegistry[];
   storesWithRegistryLinks?: StoreId[];
