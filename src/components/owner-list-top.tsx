@@ -382,6 +382,8 @@ function ShareButton({ path, access }: { path: string; access: OwnerListTopProps
       </AriaButton>
       <Panel className="w-80">
         <AriaDialog aria-label="Share" className="flex flex-col gap-4 text-sm outline-hidden">
+          {({ close }) => (
+          <>
           {isPrivate ? (
             <div className="flex flex-col gap-1">
               <p className="font-semibold text-primary">This list is private</p>
@@ -421,13 +423,17 @@ function ShareButton({ path, access }: { path: string; access: OwnerListTopProps
                 className="h-9 min-w-0 flex-1 rounded-lg border border-secondary bg-secondary px-2.5 text-xs text-secondary outline-none focus-visible:ring-2 focus-visible:ring-brand-solid"
               />
             )}
+            {/* A link opens its page in place, so the panel closes itself. */}
             <Link
               href={access.href}
+              onClick={close}
               className={cx("font-medium text-brand-tertiary hover:underline", isPrivate ? "" : "shrink-0 px-1")}
             >
               Change
             </Link>
           </div>
+          </>
+          )}
         </AriaDialog>
       </Panel>
     </DialogTrigger>
@@ -481,21 +487,26 @@ function HiddenGiftsButton({ hidden }: { hidden: NonNullable<OwnerListTopProps["
       </Tooltip>
       <Panel className="w-80">
         <AriaDialog className="flex flex-col gap-1 text-sm outline-hidden">
-          <AriaHeading slot="title" className="font-semibold text-primary">
-            {text.title}
-          </AriaHeading>
-          {text.next && <p className="text-secondary">{text.next}</p>}
-          <p className="text-tertiary">{text.why}</p>
-          <div className="mt-2 flex gap-4">
-            <Link href={hidden.href} className="font-medium text-brand-tertiary hover:underline">
-              Gift activity
-            </Link>
-            {hidden.settingsHref && (
-              <Link href={hidden.settingsHref} className="font-medium text-brand-tertiary hover:underline">
-                Change in settings
-              </Link>
-            )}
-          </div>
+          {({ close }) => (
+            <>
+              <AriaHeading slot="title" className="font-semibold text-primary">
+                {text.title}
+              </AriaHeading>
+              {text.next && <p className="text-secondary">{text.next}</p>}
+              <p className="text-tertiary">{text.why}</p>
+              {/* The links open their page in place, so the panel closes itself. */}
+              <div className="mt-2 flex gap-4">
+                <Link href={hidden.href} onClick={close} className="font-medium text-brand-tertiary hover:underline">
+                  Gift activity
+                </Link>
+                {hidden.settingsHref && (
+                  <Link href={hidden.settingsHref} onClick={close} className="font-medium text-brand-tertiary hover:underline">
+                    Change in settings
+                  </Link>
+                )}
+              </div>
+            </>
+          )}
         </AriaDialog>
       </Panel>
     </DialogTrigger>
