@@ -104,18 +104,27 @@ export function DetailReview({
 
       {replaced.length > 0 && (
         <ul className="space-y-3 sm:pl-6.5">
-          {replaced.map((review) => (
-            <li key={review.itemId} className="flex gap-3 rounded-lg border border-secondary p-3">
-              <Thumbnail review={review} />
-              <div className="min-w-0 flex-1 space-y-3">
-                {/* A name change shows the name twice; otherwise say which item it is. */}
-                {!review.changes.some((c) => c.field === "title") && (
-                  <p className="text-sm font-semibold text-primary">{review.title}</p>
-                )}
-                {review.changes.map((change) => changeRow(review, change))}
-              </div>
-            </li>
-          ))}
+          {replaced.map((review) =>
+            // A name change shows the name twice, so it takes the whole card.
+            review.changes.some((c) => c.field === "title") ? (
+              <li key={review.itemId} className="flex gap-3 rounded-lg border border-secondary p-3">
+                <Thumbnail review={review} />
+                <div className="min-w-0 flex-1 space-y-3">{review.changes.map((change) => changeRow(review, change))}</div>
+              </li>
+            ) : (
+              // Otherwise the item on the left and its choices on the right, from small screens up.
+              <li
+                key={review.itemId}
+                className="grid gap-3 rounded-lg border border-secondary p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-start"
+              >
+                <div className="flex min-w-0 gap-3">
+                  <Thumbnail review={review} />
+                  <p className="min-w-0 text-sm font-semibold text-primary sm:pt-0.5">{review.title}</p>
+                </div>
+                <div className="min-w-0 space-y-3">{review.changes.map((change) => changeRow(review, change))}</div>
+              </li>
+            ),
+          )}
         </ul>
       )}
 
@@ -182,6 +191,14 @@ function shownValue(field: DetailField, value: string | number | null) {
   return String(value);
 }
 
+/** A value as a screen reader says it, in a choice's name. */
+function spokenValue(field: DetailField, value: string | number | null): string {
+  if (value === null) return "none";
+  if (field === "price") return formatPrice(Number(value));
+  if (field === "image_url") return "a photo";
+  return String(value);
+}
+
 interface ChangeRowProps {
   review: ListPageDetailReview;
   change: ListPageDetailChange;
@@ -191,8 +208,8 @@ interface ChangeRowProps {
 }
 
 /**
- * One field's change. A replaced value lists the new and the old, with a
- * button on the one not showing. A filled-in one has a button to take it out.
+ * One field's change. A replaced value lists the new and the old as a choice
+ * of two. A filled-in one has a button to take it out.
  */
 function ChangeRow({ review, change, saving, disabled, onChoose }: ChangeRowProps) {
   const name = DETAIL_FIELD_NAMES[change.field];
@@ -224,40 +241,51 @@ function ChangeRow({ review, change, saving, disabled, onChoose }: ChangeRowProp
     { side: "after", label: "New", value: change.after },
     { side: "before", label: "Old", value: change.before },
   ];
+  // A choice of two: the one picked is what the item shows. Clicking anywhere
+  // on the other row switches to it.
   return (
-    <fieldset className="space-y-1.5">
-      <legend className="text-sm text-tertiary">{name}</legend>
+    <fieldset className="space-y-1.5" disabled={disabled}>
+      <legend className="mb-1.5 text-sm text-tertiary">
+        {name}
+        <span className="sr-only"> of {review.title}</span>
+      </legend>
       {options.map((option) => {
-        const showing = change.shown === option.side;
+        const picked = change.shown === option.side;
         return (
-          <div
+          <label
             key={option.side}
             className={cn(
-              "flex items-center gap-x-3 rounded-md px-2.5 py-2 text-sm",
-              showing ? "bg-success-primary ring-1 ring-success-200 dark:ring-success-800 ring-inset" : "bg-secondary",
+              "flex min-h-10 items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus-ring",
+              picked
+                ? "border-brand-solid bg-brand-solid/5 ring-1 ring-brand-solid ring-inset"
+                : "border-secondary hover:border-primary",
+              disabled ? "cursor-default" : "cursor-pointer",
             )}
           >
-            <span className={cn("w-9 shrink-0 font-semibold", showing ? "text-success-800 dark:text-success-300" : "text-tertiary")}>
-              {option.label}
+            <input
+              type="radio"
+              name={`${review.itemId}-${change.field}`}
+              value={option.side}
+              checked={picked}
+              onChange={() => onChoose(option.side)}
+              aria-label={`${option.label} ${lowerName}: ${spokenValue(change.field, option.value)}`}
+              className="sr-only"
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                picked ? "border-brand-solid bg-brand-solid" : "border-primary bg-primary",
+              )}
+            >
+              {picked && <span className="size-1.5 rounded-full bg-primary" />}
             </span>
-            <span className={cn("min-w-0 flex-1 break-words", showing ? "text-primary" : "text-secondary")}>
+            <span className={cn("w-8 shrink-0 font-semibold", picked ? "text-primary" : "text-tertiary")}>{option.label}</span>
+            <span className={cn("min-w-0 flex-1 break-words", picked ? "text-primary" : "text-secondary")}>
               {shownValue(change.field, option.value)}
             </span>
-            {showing ? (
-              <span className="shrink-0 text-xs font-semibold text-success-800 dark:text-success-300">Showing</span>
-            ) : (
-              <Button
-                variant="outline"
-                size="xs"
-                className="shrink-0"
-                disabled={disabled}
-                aria-label={`Use the ${option.label.toLowerCase()} ${lowerName} for ${review.title}`}
-                onClick={() => onChoose(option.side)}
-              >
-                {saving ? "Saving…" : `Use ${option.label.toLowerCase()}`}
-              </Button>
-            )}
-          </div>
+            {saving && picked && <span className="shrink-0 text-xs text-tertiary">Saving…</span>}
+          </label>
         );
       })}
     </fieldset>

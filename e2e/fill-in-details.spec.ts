@@ -96,11 +96,14 @@ test("the list page fills in missing details and lets the owner put an old value
   );
 
   // Put back the name the owner had.
-  await review.getByRole("button", { name: `Use the old name for ${FULL_NAME}` }).click();
+  // Each choice is a row: its radio button is hidden inside its label, so click the row.
+  await review.getByRole("group", { name: `Name of ${FULL_NAME}` }).locator("label", { hasText: /^Old/ }).click();
   await expect
     .poll(async () => (await db.from("registry_items").select("title").eq("id", ids[0]).single()).data?.title)
     .toBe("Hatch Rest Sound Machine");
-  await expect(review.getByRole("button", { name: "Use the new name for Hatch Rest Sound Machine" })).toBeVisible();
+  const names = review.getByRole("group", { name: "Name of Hatch Rest Sound Machine" });
+  await expect(names.getByRole("radio", { name: /^Old name/ })).toBeChecked();
+  await expect(names.getByRole("radio", { name: /^New name/ })).not.toBeChecked();
 
   await review.getByRole("button", { name: "Done" }).click();
   await expect(review).toBeHidden();
