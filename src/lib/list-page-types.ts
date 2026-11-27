@@ -37,6 +37,10 @@ export interface ListPageItem {
   quantity_fulfilled: number;
   is_essential: boolean;
   is_parent_purchased: boolean;
+  /** For an item its managers bought: guests can cover it (src/lib/gifts.ts). Missing from older servers' answers. */
+  guests_can_cover?: boolean;
+  /** For an item its managers bought: they count it as gifted. Missing from older servers' answers. */
+  marked_gifted?: boolean;
   is_open_to_used: boolean;
   minimum_condition: string | null;
   notes: string | null;

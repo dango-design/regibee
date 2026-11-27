@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition } from "react";
-import { ExternalLink, ShoppingBag, Undo2 } from "lucide-react";
+import { CircleOff, ExternalLink, Gift, HandCoins, ShoppingBag, Undo2 } from "lucide-react";
 import { ItemImage } from "@/components/item-image";
 import { RowActionsMenu, type RowAction } from "@/components/row-actions-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tag } from "@/components/ui/tag";
 import { UsedConditionTag } from "@/components/ui/used-condition-tag";
-import { toggleParentPurchased } from "@/lib/actions/registry";
+import { setBoughtItemChoice, toggleParentPurchased } from "@/lib/actions/registry";
 import { EditItemDialog } from "@/components/edit-item-dialog";
 import { GiftDetailModal, type Purchase } from "@/components/gift-detail-modal";
 import { StoreRegistryLine } from "@/components/store-registry-line";
@@ -27,6 +27,8 @@ interface ItemCardProps {
     quantity_fulfilled: number;
     is_essential: boolean;
     is_parent_purchased: boolean;
+    guests_can_cover?: boolean;
+    marked_gifted?: boolean;
     is_open_to_used: boolean;
     minimum_condition: string | null;
     notes: string | null;
@@ -80,11 +82,30 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
     });
   };
 
-  // What the card's "…" menu offers the owner.
+  // For an item the owner bought: whether guests can cover it, and whether it
+  // counts as gifted (src/lib/gifts.ts). Either can change at any time.
+  const handleBoughtChoice = (choice: { guestsCanCover?: boolean; markedGifted?: boolean }) => {
+    startToggle(async () => {
+      await setBoughtItemChoice(item.id, registryId, choice);
+    });
+  };
+
+  // What the card's "…" menu offers the owner. The app's item row offers the
+  // same (mobile/src/components/item-row.tsx).
   const ownerActions: RowAction[] = [
     ...(item.external_url ? [{ id: "shop", label: "Shop", icon: ExternalLink }] : []),
     ...(item.is_parent_purchased
-      ? [{ id: "unbought", label: "Mark as unpurchased", icon: Undo2 }]
+      ? [
+          ...(item.marked_gifted
+            ? [{ id: "not-gifted", label: "Mark as not gifted", icon: Undo2 }]
+            : [
+                { id: "gifted", label: "Mark as gifted", icon: Gift },
+                item.guests_can_cover === false
+                  ? { id: "allow-cover", label: "Let guests cover it", icon: HandCoins }
+                  : { id: "stop-cover", label: "Don't let guests cover it", icon: CircleOff },
+              ]),
+          { id: "unbought", label: "Mark as unpurchased", icon: Undo2 },
+        ]
       : !isFulfilled
         ? [{ id: "bought", label: selfPurchaseButtonLabel, icon: ShoppingBag }]
         : []),
@@ -223,6 +244,10 @@ export function ItemCard({ item, registryId, isOwner, categories = [], zipCode, 
               className="card-action"
               onAction={(id) => {
                 if (id === "shop") window.open(item.external_url!, "_blank", "noopener,noreferrer");
+                else if (id === "gifted") handleBoughtChoice({ markedGifted: true });
+                else if (id === "not-gifted") handleBoughtChoice({ markedGifted: false });
+                else if (id === "allow-cover") handleBoughtChoice({ guestsCanCover: true });
+                else if (id === "stop-cover") handleBoughtChoice({ guestsCanCover: false });
                 else handleToggleParentPurchased();
               }}
             />

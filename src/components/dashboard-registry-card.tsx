@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { EyeOff, Lock, PartyPopper } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { ListProgressBar } from "@/components/list-progress-bar";
 import { Progress } from "@/components/ui/progress";
 import { RegistryIcon } from "@/components/registry-icon";
+import type { ListProgress } from "@/lib/gifts";
 import { countdownLabel, occasionTheme } from "@/lib/occasion-theme";
 import { occasionLabel } from "@/lib/registry-copy";
 import type { PersonalEventType, RegistryType } from "@/lib/types";
@@ -17,7 +19,10 @@ export interface DashboardRegistryCardProps {
   /** YYYY-MM-DD. Passed in so stories and tests get a fixed countdown. */
   today: string;
   totalItems: number;
+  /** How many are gifted. An item a manager bought counts once it's covered (src/lib/gifts.ts). */
   fulfilledItems: number;
+  /** Where each item stands, for the bar's parts. Without it, the bar shows gifted only. */
+  progress?: ListProgress;
   /** Gifts reserved in the last 7 days. */
   giftsThisWeek: number;
   manageHref: string;
@@ -54,6 +59,7 @@ export function DashboardRegistryCard({
   today,
   totalItems,
   fulfilledItems,
+  progress: parts,
   giftsThisWeek,
   manageHref,
   photoUrl,
@@ -64,7 +70,8 @@ export function DashboardRegistryCard({
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const theme = occasionTheme(registryType, eventType);
   const progress = totalItems > 0 ? (fulfilledItems / totalItems) * 100 : 0;
-  const allDone = totalItems > 0 && fulfilledItems >= totalItems;
+  // Done once nothing is left to buy, whether guests gave it or a manager bought it.
+  const allDone = totalItems > 0 && (parts ? parts.toBuy === 0 : fulfilledItems >= totalItems);
   // Only while the date is ahead: once it's gone by, there's nothing to count down to.
   const countdown = eventDate && eventDate >= today ? countdownLabel(eventDate, today, registryType) : null;
 
@@ -116,7 +123,12 @@ export function DashboardRegistryCard({
           </p>
         ) : (
           <>
-            {totalItems > 0 && <Progress value={progress} aria-label={`Items gifted for ${title}`} />}
+            {totalItems > 0 &&
+              (parts ? (
+                <ListProgressBar progress={parts} label={`Items gifted for ${title}`} />
+              ) : (
+                <Progress value={progress} aria-label={`Items gifted for ${title}`} />
+              ))}
             <p className="text-sm text-secondary">
               {totalItems > 0 ? `${fulfilledItems} of ${totalItems} gifted` : "No items yet"}
               {allDone ? (

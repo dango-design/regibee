@@ -22,6 +22,7 @@ export type HomeList = Pick<
   | "is_private"
   | "totalItems"
   | "fulfilledItems"
+  | "progress"
   | "giftsThisWeek"
   | "reservationsHidden"
 >;
@@ -112,6 +113,7 @@ export function DashboardHome({
       today={today}
       totalItems={list.totalItems}
       fulfilledItems={list.fulfilledItems}
+      progress={list.progress}
       giftsThisWeek={list.giftsThisWeek}
       manageHref={`${basePath}/dashboard/registry/${list.id}`}
       photoUrl={list.photo_url}

@@ -27,6 +27,8 @@ export function usedLabel(item: { minimum_condition: string | null }) {
 export interface ItemActions {
   toggleMostWanted: (item: Item) => void;
   toggleBought: (item: Item) => void;
+  /** For an item the owner bought: whether guests can cover it, and whether it counts as gifted. */
+  setBoughtChoice: (item: Item, choice: { guestsCanCover?: boolean; markedGifted?: boolean }) => void;
   remove: (item: Item) => void;
 }
 
@@ -47,6 +49,22 @@ function boughtAction(item: Item, selfPurchaseButton: string) {
   return item.quantity_fulfilled < item.quantity_needed ? selfPurchaseButton : null;
 }
 
+/**
+ * What the owner can choose for an item they bought, as the website's item
+ * card offers it (@shared/gifts): mark it as gifted, or say whether guests can
+ * cover it.
+ */
+function boughtChoices(item: Item): { title: string; icon: string; choice: { guestsCanCover?: boolean; markedGifted?: boolean } }[] {
+  if (!item.is_parent_purchased) return [];
+  if (item.marked_gifted) return [{ title: "Mark as not gifted", icon: "arrow.uturn.backward", choice: { markedGifted: false } }];
+  return [
+    { title: "Mark as gifted", icon: "gift", choice: { markedGifted: true } },
+    item.guests_can_cover === false
+      ? { title: "Let guests cover it", icon: "dollarsign.circle", choice: { guestsCanCover: true } }
+      : { title: "Don't let guests cover it", icon: "nosign", choice: { guestsCanCover: false } },
+  ];
+}
+
 /** An item on the owner's other lists only comes off this one, as on the website. */
 function removeLabel(item: Item) {
   return item.otherLists && item.otherLists.length > 0 ? "Remove from list" : "Remove item";
@@ -64,6 +82,7 @@ function showActions(item: Item, actions: ItemActions, selfPurchaseButton: strin
   const bought = boughtAction(item, selfPurchaseButton);
   Alert.alert(item.title, undefined, [
     { text: item.is_essential ? "Remove from most wanted" : "Mark most wanted", onPress: () => actions.toggleMostWanted(item) },
+    ...boughtChoices(item).map((c) => ({ text: c.title, onPress: () => actions.setBoughtChoice(item, c.choice) })),
     ...(bought ? [{ text: bought, onPress: () => actions.toggleBought(item) }] : []),
     ...(item.external_url ? [{ text: "Shop", onPress: () => openLink(item) }] : []),
     { text: removeLabel(item), style: "destructive" as const, onPress: () => actions.remove(item) },
@@ -178,6 +197,9 @@ export const ItemRow = memo(function ItemRow({
           icon={item.is_essential ? "star.slash" : "star"}
           onPress={() => actions.toggleMostWanted(item)}
         />
+        {boughtChoices(item).map((c) => (
+          <Link.MenuAction key={c.title} title={c.title} icon={c.icon as never} onPress={() => actions.setBoughtChoice(item, c.choice)} />
+        ))}
         {bought ? (
           <Link.MenuAction
             title={bought}
