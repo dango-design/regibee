@@ -61,6 +61,12 @@ export interface ListPageItem {
   otherLists: string[];
   /** The ids of those lists. Missing from older servers' answers. */
   otherListIds?: string[];
+  /**
+   * Whether the list's page checks this item's price each week (src/lib/item-details.ts).
+   * Missing when that doesn't apply: no link the extension reads, bought, or
+   * never read by the extension. Also missing from older servers' answers.
+   */
+  priceChecks?: "on" | "off";
 }
 
 /** An item whose store link the extension can read again for its photo or price, or to check its price (src/lib/item-details.ts). */
