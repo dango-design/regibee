@@ -191,6 +191,14 @@ function shownValue(field: DetailField, value: string | number | null) {
   return String(value);
 }
 
+/** A value as a screen reader says it, in a choice's name. */
+function spokenValue(field: DetailField, value: string | number | null): string {
+  if (value === null) return "none";
+  if (field === "price") return formatPrice(Number(value));
+  if (field === "image_url") return "a photo";
+  return String(value);
+}
+
 interface ChangeRowProps {
   review: ListPageDetailReview;
   change: ListPageDetailChange;
@@ -260,6 +268,7 @@ function ChangeRow({ review, change, saving, disabled, onChoose }: ChangeRowProp
               value={option.side}
               checked={picked}
               onChange={() => onChoose(option.side)}
+              aria-label={`${option.label} ${lowerName}: ${spokenValue(change.field, option.value)}`}
               className="sr-only"
             />
             <span
