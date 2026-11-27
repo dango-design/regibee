@@ -64,9 +64,17 @@ import { createGroupFor, getGroupForOwner, getGroupMembers, listGroupEvents } fr
 import { listFollowedAccounts } from "@/lib/follows";
 import { displayName } from "@/lib/profile-link";
 import { getSessionUser } from "@/lib/viewer";
-import { confirmRsvpToGuest, notifyHostOfRsvp, rsvpHeadline, sendEventChangeEmails, sendEventInvitations } from "@/lib/email";
+import {
+  confirmRsvpToGuest,
+  notifyHostOfRsvp,
+  rsvpHeadline,
+  sendEventCancelledEmails,
+  sendEventChangeEmails,
+  sendEventInvitations,
+} from "@/lib/email";
 import { sendPush } from "@/lib/push-server";
 import {
+  cancellationRecipients,
   changeNotice,
   changeRecipients,
   changeSummary,
@@ -640,9 +648,31 @@ export async function deleteEvent(eventId: string): Promise<{ error: string } | 
   if (access.error !== null) return { error: access.error };
   if (!access.isOwner) return { error: "Only the person who made this event can delete it." };
 
-  const registries = await getEventRegistries(eventId);
+  // Guests who were invited and haven't said no hear it's cancelled. Read
+  // them first: deleting the event deletes the guest list.
+  const [registries, guests, hostName] = await Promise.all([
+    getEventRegistries(eventId),
+    getEventGuests(eventId),
+    hostNameFor(access.event, access.user.id),
+  ]);
+  const toTell = cancellationRecipients(access.event, guests);
+
   const { error } = await supabaseAdmin.from("events").delete().eq("id", eventId);
   if (error) return { error: "The event wasn't deleted. Try again." };
+
+  if (toTell.length > 0) {
+    // These are addresses the host typed, so they count against the host's
+    // daily allowance. Past it, the event is still deleted.
+    const reservation = await reserveEmails(access.user.id, "cancellation", toTell.length);
+    const recipients = toTell.slice(0, reservation.granted).map((g) => ({ name: g.name, email: g.email! }));
+    const { sent } = await sendEventCancelledEmails({
+      event: access.event,
+      hostName,
+      replyTo: access.user.email ?? null,
+      guests: recipients,
+    });
+    await settleEmails(reservation, sent);
+  }
 
   revalidateEvent(access.event);
   for (const registry of registries) revalidatePath(`/dashboard/registry/${registry.id}`);

@@ -18,6 +18,7 @@ import {
   notifyItemGiven,
   notifyItemReservationEnded,
   remindItemReservation,
+  sendGiftRemovedEmail,
 } from "@/lib/email";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -369,4 +370,80 @@ export async function processGiftReservations(now = new Date()) {
   }
 
   return { released, reminded };
+}
+
+/** A guest's gift on an item that's about to be deleted, read before the delete takes it. */
+export interface GiftOnDeletedItem {
+  buyerName: string;
+  buyerEmail: string;
+  bought: boolean;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  /** The list's link, or null for a private list. */
+  listUrl: string | null;
+}
+
+/**
+ * The open gifts with an email address on these items: reservations and
+ * gifts guests said they bought. Call it before deleting the items, since a
+ * database trigger deletes their gifts with them.
+ */
+export async function giftsOnItems(itemIds: string[]): Promise<GiftOnDeletedItem[]> {
+  if (itemIds.length === 0) return [];
+  const { data: purchases } = await supabaseAdmin
+    .from("purchases")
+    .select("id, registry_item_id, buyer_name, buyer_email, status, hide_giver")
+    .in("registry_item_id", itemIds)
+    .in("status", ["reserved", "purchased"]);
+  if (!purchases || purchases.length === 0) return [];
+
+  // A hidden giver's real name and address are kept apart (secret_givers).
+  const hidden = purchases.filter((p) => p.hide_giver).map((p) => p.id);
+  const secrets = new Map<string, { buyer_name: string; buyer_email: string | null }>();
+  if (hidden.length > 0) {
+    const { data } = await supabaseAdmin.from("secret_givers").select("purchase_id, buyer_name, buyer_email").in("purchase_id", hidden);
+    for (const row of data ?? []) secrets.set(row.purchase_id as string, row as { buyer_name: string; buyer_email: string | null });
+  }
+
+  const { data: items } = await supabaseAdmin
+    .from("registry_items")
+    .select("id, title, registry_id")
+    .in("id", [...new Set(purchases.map((p) => p.registry_item_id as string))]);
+  const itemById = new Map((items ?? []).map((i) => [i.id as string, i]));
+  const registryIds = [...new Set((items ?? []).map((i) => i.registry_id as string))];
+  const { data: registries } = await supabaseAdmin
+    .from("registries")
+    .select("id, title, slug, is_private, honoree_names, parent_names")
+    .in("id", registryIds);
+  const registryById = new Map((registries ?? []).map((r) => [r.id as string, r]));
+
+  const gifts: GiftOnDeletedItem[] = [];
+  for (const p of purchases) {
+    const secret = secrets.get(p.id as string);
+    const email = (secret?.buyer_email ?? p.buyer_email) as string | null;
+    const item = itemById.get(p.registry_item_id as string);
+    const registry = item ? registryById.get(item.registry_id as string) : undefined;
+    if (!email || !item || !registry) continue;
+    gifts.push({
+      buyerName: (secret?.buyer_name ?? p.buyer_name) as string,
+      buyerEmail: email,
+      bought: p.status === "purchased",
+      itemTitle: item.title as string,
+      parentName: ((registry.honoree_names || registry.parent_names) as string | null) || "The list's owner",
+      registryTitle: registry.title as string,
+      listUrl: registry.is_private ? null : `${siteUrl()}/r/${registry.slug}`,
+    });
+  }
+  return gifts;
+}
+
+/**
+ * Tells each guest their gift went with a deleted item. `listGone` leaves the
+ * link out, for when the whole list was deleted.
+ */
+export async function sendGiftRemovedEmails(gifts: GiftOnDeletedItem[], { listGone = false } = {}) {
+  for (const gift of gifts) {
+    await sendGiftRemovedEmail({ ...gift, listUrl: listGone ? null : gift.listUrl });
+  }
 }

@@ -188,3 +188,42 @@ export function nextDate(date: string): string {
 export function isTomorrowFor(event: { event_date: string | null; time_zone: string | null }, now: Date = new Date()): boolean {
   return Boolean(event.event_date) && event.event_date === nextDate(dateIn(event.time_zone, now));
 }
+
+/** A YYYY-MM-DD date moved by `days`, which can be negative. */
+export function addDays(date: string, days: number): string {
+  const moved = new Date(`${date}T00:00:00Z`);
+  moved.setUTCDate(moved.getUTCDate() + days);
+  return moved.toISOString().slice(0, 10);
+}
+
+/** Whether today, in the event's time zone, is `days` before `date`. */
+export function isDaysBefore(
+  date: string | null,
+  days: number,
+  timeZone: string | null,
+  now: Date = new Date(),
+): boolean {
+  return Boolean(date) && addDays(date!, -days) === dateIn(timeZone, now);
+}
+
+// ── Cancelling an event ─────────────────────────────────────
+
+/**
+ * Who gets the "cancelled" email when the owner deletes an event: guests who
+ * were sent the invitation, still have an email address, and haven't said no.
+ * Nobody, for an event whose day has passed.
+ */
+export function cancellationRecipients<
+  G extends { email: string | null; invited_at: string | null; rsvp_status: string },
+>(event: { event_date: string | null; time_zone: string | null }, guests: G[], now: Date = new Date()): G[] {
+  if (event.event_date && event.event_date < dateIn(event.time_zone, now)) return [];
+  return guests.filter((g) => g.email && g.invited_at && g.rsvp_status !== "no");
+}
+
+/** The line the delete dialog adds when guests will be emailed, or "". */
+export function cancellationNotice(count: number): string {
+  if (count === 0) return "";
+  return count === 1
+    ? "The guest you invited gets an email saying it's cancelled."
+    : `The ${count} guests you invited get an email saying it's cancelled.`;
+}

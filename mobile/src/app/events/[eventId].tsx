@@ -3,6 +3,7 @@
 // loader (src/lib/events-page.ts), section by section.
 
 import * as Clipboard from "expo-clipboard";
+import { cancellationNotice, cancellationRecipients } from "@shared/event-updates";
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -300,11 +301,15 @@ export default function EventScreen() {
         visible={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}
         title="Delete this event?"
-        message={
+        message={[
           data.guests.length > 0
-            ? `The event page stops working and the guest list of ${data.guests.length} is deleted. This can't be undone.`
-            : "The event page stops working. This can't be undone."
-        }
+            ? `The event page stops working and the guest list of ${data.guests.length} is deleted.`
+            : "The event page stops working.",
+          cancellationNotice(cancellationRecipients(data.event, data.guests).length),
+          "This can't be undone.",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         // An event with guests asks the owner to type a sentence first.
         phrase={data.guests.length > 0 ? deletePhrase("event") : null}
         confirmLabel="Delete event"

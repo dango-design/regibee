@@ -945,3 +945,56 @@ export function dayBeforeReminderHtml(opts: {
     footer: `You're getting this because you said you're going to ${escapeHtml(event.title)} on Regibee.`,
   });
 }
+
+/** Sent to invited guests when the host deletes an event that hasn't happened yet. */
+export function eventCancelledHtml(opts: {
+  guestName: string;
+  hostName: string;
+  eventTitle: string;
+  /** "Saturday, March 14, 2026", when the event had a date. */
+  date?: string | null;
+}): string {
+  const when = opts.date ? ` on ${escapeHtml(opts.date)}` : "";
+  return emailLayout({
+    preheader: `${opts.hostName} cancelled it. Reply to this email to reach them.`,
+    eyebrow: `From ${opts.hostName}`,
+    heading: `${opts.eventTitle} is cancelled`,
+    body: `
+      <p>${escapeHtml(opts.hostName)} cancelled <strong>${escapeHtml(opts.eventTitle)}</strong>${when}. The invitation link no longer works.</p>
+      <p>If you have questions, reply to this email to reach ${escapeHtml(opts.hostName)}.</p>`,
+    footer: `You're getting this because you were on the guest list for ${escapeHtml(opts.eventTitle)} on Regibee.`,
+  });
+}
+
+/**
+ * Sent to a guest whose gift was on an item the owners deleted. Deleting the
+ * item deletes the gift, so this is the guest's only word of it.
+ */
+export function giftRemovedBuyerHtml(opts: {
+  buyerName: string;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  /** The guest had said they bought it, rather than only reserving it. */
+  bought: boolean;
+  /** The list, when guests can still open it. */
+  listUrl?: string | null;
+}): string {
+  const parent = escapeHtml(opts.parentName);
+  return emailLayout({
+    preheader: opts.bought
+      ? `You'd already bought it, so tell ${opts.parentName} it's from you.`
+      : "You don't need to buy it.",
+    eyebrow: opts.registryTitle,
+    heading: `${opts.itemTitle} was taken off the list`,
+    body: `
+      <p>${parent} took <strong>${escapeHtml(opts.itemTitle)}</strong> off <em>${escapeHtml(opts.registryTitle)}</em>, so your ${opts.bought ? "gift" : "reservation"} is gone from the list too.</p>
+      <p>${
+        opts.bought
+          ? `You'd already said you bought it. If it's on its way, tell ${parent} it's from you, since the list no longer shows it.`
+          : "You don't need to buy it. You could pick something else."
+      }</p>
+      ${opts.listUrl ? emailButton(opts.listUrl, "See the list") : ""}`,
+    footer: `You're getting this because you ${opts.bought ? "gave" : "reserved"} a gift on ${escapeHtml(opts.registryTitle)}.`,
+  });
+}

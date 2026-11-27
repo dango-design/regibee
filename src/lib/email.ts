@@ -30,6 +30,8 @@ import {
   guestMessageHtml,
   eventChangedHtml,
   dayBeforeReminderHtml,
+  eventCancelledHtml,
+  giftRemovedBuyerHtml,
   type EventEmailDetails,
 } from "./email-templates";
 import { displayName, profilePath } from "./profile-link";
@@ -333,6 +335,31 @@ export async function confirmCashFundContribution(opts: {
 }
 
 export { getRegistryInfoForBuyer };
+
+/**
+ * Tells a guest their gift went with an item the owners deleted. It goes to
+ * an address the guest gave, so it doesn't count against any limit.
+ */
+export async function sendGiftRemovedEmail(opts: {
+  buyerName: string;
+  buyerEmail: string;
+  bought: boolean;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  listUrl: string | null;
+}) {
+  try {
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
+      subject: `"${opts.itemTitle}" was taken off ${opts.registryTitle}`,
+      html: giftRemovedBuyerHtml(opts),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send a gift removed email:", err);
+  }
+}
 
 /** Tells the owners and managers that a guest bought an item. */
 export async function notifyItemGiven(opts: {
@@ -1129,6 +1156,28 @@ export async function sendEventChangeEmails(opts: {
     });
   }
   return sendGuestEmails(emails, opts);
+}
+
+/** Tells invited guests the host deleted the event. Returns how many were sent. */
+export async function sendEventCancelledEmails(opts: {
+  event: EventDetails;
+  hostName: string;
+  replyTo: string | null;
+  guests: { name: string; email: string }[];
+}): Promise<{ sent: number; error: string | null }> {
+  return sendGuestEmails(
+    opts.guests.map((guest) => ({
+      to: guest.email,
+      subject: `Cancelled: ${opts.event.title}`,
+      html: eventCancelledHtml({
+        guestName: guest.name,
+        hostName: opts.hostName,
+        eventTitle: opts.event.title,
+        date: opts.event.event_date ? formatEventDate(opts.event.event_date) : null,
+      }),
+    })),
+    opts,
+  );
 }
 
 /** The day before the event, to everyone going. Returns how many were sent. */
