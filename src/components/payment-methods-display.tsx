@@ -14,7 +14,7 @@ function hasPaymentMethod(paymentMethods?: PaymentMethods): paymentMethods is Pa
   return !!paymentMethods && !!(paymentMethods.venmo || paymentMethods.paypal || paymentMethods.zelle);
 }
 
-/** The owners' handles as plain text, for gifts to a cash fund. */
+/** The owners' handles as plain text, in a gift fund's form before the guest says how much. */
 export function PaymentMethodsDisplay({
   paymentMethods,
 }: PaymentMethodsDisplayProps) {

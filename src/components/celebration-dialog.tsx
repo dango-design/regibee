@@ -9,7 +9,8 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PaymentMethodsDisplay } from "@/components/payment-methods-display";
+import { PaymentOptions } from "@/components/payment-methods-display";
+import { paymentNote } from "@/lib/payment-links";
 import { formatPrice } from "@/lib/money";
 import type { PaymentMethods } from "@/lib/types";
 
@@ -24,6 +25,8 @@ interface CelebrationDialogProps {
   shippingAddress?: string;
   paymentMethods?: PaymentMethods;
   shopUrl?: string;
+  /** The demo registry: pay buttons don't open anything. */
+  demo?: boolean;
 }
 
 function getMessage(
@@ -48,6 +51,7 @@ export function CelebrationDialog({
   shippingAddress,
   paymentMethods,
   shopUrl,
+  demo,
 }: CelebrationDialogProps) {
   const [copied, setCopied] = useState(false);
 
@@ -119,11 +123,23 @@ export function CelebrationDialog({
           )}
 
           {paymentMethods && (paymentMethods.venmo || paymentMethods.paypal || paymentMethods.zelle) ? (
+            // The gift is saved, but the guest still sends the money. A button
+            // per app opens it with the amount and the fund's name filled in,
+            // as covering a bought item does.
             <div
-              className="w-full rounded-lg border border-primary bg-secondary p-4 text-left"
+              className="w-full space-y-2 text-left"
               style={{ animation: "celebration-fade-in 0.5s ease-out 0.5s both" }}
             >
-              <PaymentMethodsDisplay paymentMethods={paymentMethods} />
+              <p className="text-sm font-medium text-primary">
+                {amount ? `Send ${formatPrice(amount)} to ${parentName}` : `Send it to ${parentName}`}
+              </p>
+              <PaymentOptions
+                paymentMethods={paymentMethods}
+                amount={amount}
+                note={paymentNote(itemTitle)}
+                parentName={parentName}
+                demo={demo}
+              />
             </div>
           ) : shippingAddress ? (
             <div
