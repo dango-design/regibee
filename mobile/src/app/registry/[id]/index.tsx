@@ -5,9 +5,10 @@
 // a tinted, dotted band with the title, and a card hanging off its edge. The
 // card holds how much has been gifted and one short row for each thing that
 // needs the owner, such as a linked event or suggestions. Each row opens its
-// own screen, so the items start within the first screen. Hidden gifts are a
-// setting people rarely change, so they get a small icon next to the access
-// pill instead of a row.
+// own screen, so the items start within the first screen. The owner's tools
+// are in the header, as on the website's band: Share, a crossed-out gift when
+// gifts are hidden from the owner, and the "…" menu, which starts with who can
+// open the list.
 
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -142,6 +143,10 @@ export default function RegistryScreen() {
   const shareUrl = registryShareUrl(r.slug);
   const selfPurchaseButton = copyForRegistry(r).selfPurchaseButton;
   const visibility = listVisibility(r);
+  const access =
+    visibility === "private"
+      ? listAccess(visibility).label
+      : `${listAccess(visibility).short} · ${PROFILE_AUDIENCE[profileAudience(r)].short}`;
   const addItem = () => router.push({ pathname: "/add", params: { registryId: r.id } });
   const addFund = () => router.push({ pathname: "/fund", params: { registryId: r.id } });
   const openSettings = () => router.push({ pathname: "/registry/[id]/settings", params: { id: r.id } });
@@ -193,6 +198,8 @@ export default function RegistryScreen() {
 
   // The tools that don't need a row on the card live here.
   const moreChoices: HeaderMenuChoice[] = [
+    // Who can open the list, which the website's Share panel shows. Opens Settings.
+    { label: access, icon: visibility === "private" ? "lock" : visibility === "public" ? "public" : "link", onPress: openSettings },
     { label: "Preview", icon: "eye", onPress: () => openSite(`/r/${r.slug}`) },
     { label: "Add a gift fund", icon: "fund", onPress: addFund },
     // Once the card's "Planning a party?" is dismissed, or the list has an
@@ -246,7 +253,6 @@ export default function RegistryScreen() {
         detail={data}
         categoryFilter={categoryFilter}
         onCategory={setCategoryFilter}
-        onSettings={openSettings}
         bandTop={insets.top}
       />
       {fundsAt === "top" ? funds : null}
@@ -275,6 +281,7 @@ export default function RegistryScreen() {
           headerRight: () => (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <IconButton icon="share" accessibilityLabel="Share registry link" onPress={shareRegistry} />
+              {data.reservationsHidden ? <HiddenGiftsButton detail={data} onSettings={openSettings} /> : null}
               <HeaderMenu accessibilityLabel="More" title={r.title} choices={moreChoices} />
             </View>
           ),
@@ -430,13 +437,11 @@ function ListHeader({
   detail,
   categoryFilter,
   onCategory,
-  onSettings,
   bandTop,
 }: {
   detail: RegistryDetail;
   categoryFilter: string;
   onCategory: (id: string) => void;
-  onSettings: () => void;
   /** How far the band reaches up behind the header and status bar. */
   bandTop: number;
 }) {
@@ -444,10 +449,6 @@ function ListHeader({
   const r = detail.registry;
   const copy = copyForRegistry(r);
   const usedCategories = detail.categories.filter((c) => detail.items.some((i) => i.category_id === c.id));
-  const visibility = listVisibility(r);
-  const audience = profileAudience(r);
-  const access =
-    visibility === "private" ? listAccess(visibility).label : `${listAccess(visibility).short} · ${PROFILE_AUDIENCE[audience].short}`;
   const itemCount = detail.items.length;
   // The color and pattern the owner chose on the website (@shared/list-headers).
   const header = listHeader(headerChoice(r.settings));
@@ -478,27 +479,6 @@ function ListHeader({
               <Pill label={`${copy.eventDateLabel}: ${formatEventDate(r.event_date)}`} tone="tint" icon="calendar" />
             ) : null}
             {detail.role === "manager" ? <Pill label="Manager" icon="people" /> : null}
-          </View>
-          <View style={styles.accessRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${access}. Opens Settings`}
-              onPress={onSettings}
-              style={({ pressed }) => [
-                styles.access,
-                { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <Icon
-                name={visibility === "private" ? "lock" : visibility === "public" ? "public" : "link"}
-                size={12}
-                color={theme.textSecondary}
-              />
-              <Text variant="caption" tone="secondary" numberOfLines={1} style={{ flexShrink: 1, fontWeight: "500" }}>
-                {access}
-              </Text>
-            </Pressable>
-            {detail.reservationsHidden ? <HiddenGiftsButton detail={detail} onSettings={onSettings} /> : null}
           </View>
         </View>
       </DottedBand>
@@ -580,9 +560,10 @@ function DottedBand({ bleed, header, children }: { bleed: number; header: BandHe
 }
 
 /**
- * A small eye icon beside the access pill, shown when the owner hides what's
- * been reserved from themselves. A tap explains it in the gifts screen's
- * words and offers Gift activity and Settings.
+ * A grayed gift with a line through it, in the header beside Share, shown
+ * when the owner hides what's been reserved from themselves. A tap explains
+ * it in the gifts screen's words and offers Gift activity and Settings. The
+ * website's band has the same icon (src/components/owner-list-top.tsx).
  */
 function HiddenGiftsButton({ detail, onSettings }: { detail: RegistryDetail; onSettings: () => void }) {
   const theme = useTheme();
@@ -605,17 +586,18 @@ function HiddenGiftsButton({ detail, onSettings }: { detail: RegistryDetail; onS
       accessibilityRole="button"
       accessibilityLabel="Gifts hidden from you"
       accessibilityHint="Explains what's hidden"
-      hitSlop={8}
+      hitSlop={10}
       onPress={() => {
         haptic();
         explain();
       }}
-      style={({ pressed }) => [
-        styles.hiddenButton,
-        { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
-      ]}
+      style={({ pressed }) => ({ padding: 6, opacity: pressed ? 0.5 : 1 })}
     >
-      <Icon name="eyeSlash" size={13} color={theme.textSecondary} />
+      {/* Neither SF Symbols nor Material has a crossed-out gift, so a line goes over it. */}
+      <View style={styles.giftOff}>
+        <Icon name="gift" size={20} color={theme.textTertiary} />
+        <View style={[styles.giftOffLine, { backgroundColor: theme.textTertiary }]} />
+      </View>
     </Pressable>
   );
 }
@@ -660,6 +642,8 @@ function SummaryCard({ detail }: { detail: RegistryDetail }) {
     rows.push({
       key: `event-${event.id}`,
       icon: "party",
+      // Says how the list and the event are linked, as on the website.
+      caption: event.guestList ? "Your wishlist for" : "On the invitation for",
       label: event.title,
       detail: when ?? undefined,
       onPress:
@@ -775,6 +759,8 @@ function checkLabel(review: number, missing: number, plain: number) {
 interface RowProps {
   key: string;
   icon: IconName;
+  /** A small line above the label that says what it is, such as "On the invitation for". */
+  caption?: string;
   label: string;
   detail?: string;
   badge?: number;
@@ -783,12 +769,18 @@ interface RowProps {
   onDismiss?: () => void;
 }
 
-function SummaryRow({ icon, label, detail, badge, onPress, onDismiss }: Omit<RowProps, "key">) {
+function SummaryRow({ icon, caption, label, detail, badge, onPress, onDismiss }: Omit<RowProps, "key">) {
   const theme = useTheme();
+  const line = (
+    <Text variant="subhead" numberOfLines={1} style={{ flex: 1 }}>
+      {label}
+      {detail ? <Text variant="subhead" tone="tertiary">{` · ${detail}`}</Text> : null}
+    </Text>
+  );
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}${detail ? `, ${detail}` : ""}${badge ? `, ${badge} new` : ""}`}
+      accessibilityLabel={`${caption ? `${caption} ` : ""}${label}${detail ? `, ${detail}` : ""}${badge ? `, ${badge} new` : ""}`}
       onPress={() => {
         haptic();
         onPress();
@@ -798,10 +790,16 @@ function SummaryRow({ icon, label, detail, badge, onPress, onDismiss }: Omit<Row
       <View style={[styles.rowIcon, { backgroundColor: theme.surfaceAlt }]}>
         <Icon name={icon} size={15} color={theme.textSecondary} />
       </View>
-      <Text variant="subhead" numberOfLines={1} style={{ flex: 1 }}>
-        {label}
-        {detail ? <Text variant="subhead" tone="tertiary">{` · ${detail}`}</Text> : null}
-      </Text>
+      {caption ? (
+        <View style={{ flex: 1, paddingVertical: spacing.sm }}>
+          <Text variant="caption" tone="tertiary" numberOfLines={1}>
+            {caption}
+          </Text>
+          {line}
+        </View>
+      ) : (
+        line
+      )}
       {badge ? (
         <View style={[styles.badge, { backgroundColor: theme.tint }]}>
           <Text variant="caption" style={{ color: theme.onTint, fontWeight: "700" }}>
@@ -914,25 +912,8 @@ const styles = StyleSheet.create({
   photo: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, marginBottom: 2 },
   eyebrow: { fontWeight: "600", letterSpacing: 0.9, fontSize: 11 },
   pills: { flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "center" },
-  accessRow: { flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%" },
-  hiddenButton: {
-    width: 27,
-    height: 27,
-    borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  access: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexShrink: 1,
-  },
+  giftOff: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
+  giftOffLine: { position: "absolute", width: 26, height: 2, borderRadius: 1, transform: [{ rotate: "45deg" }] },
   card: {
     marginTop: -CARD_OVERLAP,
     marginHorizontal: spacing.lg,

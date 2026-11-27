@@ -383,20 +383,19 @@ export function ListPageSkeleton() {
   return (
     <div aria-busy="true">
       <LoadingMessage>Loading your list</LoadingMessage>
-      <div className="bg-brand-primary px-4 pt-8 pb-20 sm:pt-10 sm:pb-24">
+      <div className="relative bg-brand-primary px-4 pt-20 pb-20 sm:pb-24">
+        <div className="absolute top-3 right-3 flex gap-1 sm:top-4 sm:right-4">
+          <Skeleton className="h-9 w-20 rounded-lg" />
+          <Skeleton className="size-9 rounded-lg" />
+          <Skeleton className="size-9 rounded-lg" />
+        </div>
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="h-10 w-72 max-w-full" />
-          <Skeleton className="h-6 w-56 max-w-full rounded-full" />
-          <div className="mt-2 flex flex-wrap justify-center gap-2">
-            <Skeleton className="h-10 w-28 rounded-full" />
-            <Skeleton className="h-10 w-28 rounded-full" />
-            <Skeleton className="h-10 w-28 rounded-full" />
-          </div>
         </div>
       </div>
       <div className="container mx-auto px-4">
-        <div className="relative -mt-14 rounded-[20px] border border-secondary bg-primary px-5 py-4 shadow-[0_8px_24px_rgba(35,27,24,0.06)] sm:-mt-16">
+        <div className="relative mx-auto -mt-14 max-w-sm rounded-[20px] border border-secondary bg-primary px-5 py-4 shadow-[0_8px_24px_rgba(35,27,24,0.06)] sm:-mt-16">
           <Skeleton className="h-3 w-32" />
           <Skeleton className="mt-3 h-2 w-full" />
         </div>

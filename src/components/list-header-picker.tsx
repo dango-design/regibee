@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button as AriaButton } from "react-aria-components";
 import { Check, Loader2, Paintbrush } from "lucide-react";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { setListHeader } from "@/lib/actions/registry";
@@ -30,7 +32,8 @@ export interface ListHeaderPickerProps {
 }
 
 /**
- * The "Header" button on a list's band, and the dialog it opens: a preview of
+ * The Header button among the tools in a list's band (a paintbrush, named
+ * "Header" for screen readers and in its tooltip), and the dialog it opens: a preview of
  * the band, its colors and its patterns. Saving reloads the page's data, so
  * the band changes behind the dialog.
  */
@@ -67,14 +70,16 @@ export function ListHeaderPicker({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openPicker}
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-secondary bg-primary/80 px-3 py-1.5 text-xs font-medium text-secondary backdrop-blur-sm transition outline-none hover:bg-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-brand-solid max-sm:min-h-11"
-      >
-        <Paintbrush aria-hidden="true" className="size-3.5 shrink-0" />
-        Header
-      </button>
+      {/* Sized and styled like OwnerListTop's other tools beside it. */}
+      <Tooltip title="Header" placement="bottom">
+        <AriaButton
+          aria-label="Header"
+          onPress={openPicker}
+          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-secondary transition outline-none hover:bg-primary/80 hover:text-primary focus-visible:ring-2 focus-visible:ring-brand-solid max-sm:size-11"
+        >
+          <Paintbrush aria-hidden="true" className="size-[18px]" />
+        </AriaButton>
+      </Tooltip>
 
       <Dialog open={open} onOpenChange={(next) => !saving && setOpen(next)}>
         <DialogContent>

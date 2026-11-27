@@ -1,6 +1,5 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, within } from "storybook/test";
-import { Button } from "@/components/ui/button";
 import { NavBar } from "./nav-bar";
 import { listHeader } from "@/lib/list-headers";
 import { ListHeaderPicker } from "./list-header-picker";
@@ -26,12 +25,14 @@ const withListPage: Decorator = (Story) => (
   </div>
 );
 
-const actions = (
-  <>
-    <Button variant="outline">Share Link</Button>
-    <Button variant="outline">Preview</Button>
-    <Button variant="outline">Settings</Button>
-  </>
+const picker = (title: string, header = listHeader(), occasion: "baby" | null = null) => (
+  <ListHeaderPicker
+    registryId="reg-1"
+    title={title}
+    header={header}
+    occasion={occasion}
+    saveAction={fn(async () => ({ error: null }))}
+  />
 );
 
 const meta: Meta<typeof OwnerListTop> = {
@@ -44,8 +45,10 @@ const meta: Meta<typeof OwnerListTop> = {
     title: "Dorothy's Wishlist",
     occasion: "Wishlist",
     itemCount: 6,
-    access: { visibility: "link", label: "Link only · friends see it on your profile", href: "#settings" },
-    actions,
+    access: { visibility: "link", audience: "friends", href: "#settings" },
+    sharePath: "/r/dorothys-wishlist-k2m9x4p7q1zw",
+    links: { preview: "/r/dorothys-wishlist-k2m9x4p7q1zw", settings: "#settings", plan: "#plan" },
+    customize: picker("Dorothy's Wishlist"),
     progress: { gifted: 1, total: 6 },
     events: [],
     unlinkAction: fn(async () => ({ error: null })),
@@ -55,7 +58,7 @@ const meta: Meta<typeof OwnerListTop> = {
 export default meta;
 type Story = StoryObj<typeof OwnerListTop>;
 
-/** A wishlist with one event the owner hosts. */
+/** A wishlist with one event the owner hosts. The card is only as wide as that one part. */
 export const Wishlist: Story = {
   args: {
     events: [{ id: "e1", title: "Dorothy's 60th", event_date: "2026-12-14", event_type: "birthday", canManage: true }],
@@ -63,8 +66,87 @@ export const Wishlist: Story = {
 };
 
 /**
- * Every part at once: hidden gifts (so no progress), an event the owner
- * hosts, one someone else hosts with an Unlink button, and the checklist.
+ * Gifts hidden from the owner: no progress, and a grayed, crossed-out gift
+ * among the band's tools. A click explains it.
+ */
+export const HiddenGifts: Story = {
+  args: {
+    progress: null,
+    hidden: {
+      revealed: 0,
+      href: "?tab=purchases",
+      settingsHref: "#reservations",
+      next: { date: "Dec 15", eventTitle: "Dorothy's 60th" },
+    },
+    events: [{ id: "e1", title: "Dorothy's 60th", event_date: "2026-12-14", event_type: "birthday", canManage: true }],
+  },
+};
+
+export const HiddenGiftsExplained: Story = {
+  ...HiddenGifts,
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Gifts hidden from you" }));
+    // The panel opens outside the story.
+    const body = within(document.body);
+    await expect(await body.findByRole("heading", { name: "What's been reserved is hidden from you" })).toBeVisible();
+    await expect(body.getByText("Gifts reserved before Dorothy's 60th show on Dec 15.")).toBeVisible();
+    await expect(body.getByRole("link", { name: "Gift activity" })).toHaveAttribute("href", "?tab=purchases");
+  },
+};
+
+/** Share copies the link and says who can open the list. */
+export const ShareOpen: Story = {
+  ...Wishlist,
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Share" }));
+    const dialog = within(await within(document.body).findByRole("dialog", { name: "Share" }));
+    await expect(dialog.getByText("Anyone with the link")).toBeVisible();
+    await expect(dialog.getByText("Friends")).toBeVisible();
+    await expect(dialog.getByRole("textbox", { name: "List link" })).toHaveValue(
+      `${window.location.origin}/r/dorothys-wishlist-k2m9x4p7q1zw`,
+    );
+  },
+};
+
+/** A private list has no link to hand out, so Share says so. */
+export const SharePrivate: Story = {
+  args: { access: { visibility: "private", audience: "hidden", href: "#settings" } },
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Share" }));
+    const dialog = within(await within(document.body).findByRole("dialog", { name: "Share" }));
+    await expect(dialog.getByText("This list is private")).toBeVisible();
+    await expect(dialog.queryByRole("textbox")).not.toBeInTheDocument();
+  },
+};
+
+/** Preview, Plan an event and Settings live in the ⋯ menu. */
+export const MoreMenu: Story = {
+  ...Wishlist,
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "More" }));
+    const menu = within(await within(document.body).findByRole("menu"));
+    // The menu fades in, so check what the items open, not that they're visible yet.
+    await expect(menu.getByRole("menuitem", { name: "Preview as a guest" })).toHaveAttribute(
+      "href",
+      "/r/dorothys-wishlist-k2m9x4p7q1zw",
+    );
+    await expect(menu.getByRole("menuitem", { name: "Plan an event" })).toHaveAttribute("href", "#plan");
+    await expect(menu.getByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "#settings");
+  },
+};
+
+/**
+ * Every part at once: gifts revealed after an event (hidden, so no
+ * progress), an event the owner hosts, one someone else hosts with an Unlink
+ * button, and the checklist.
  */
 export const EverythingShowing: Story = {
   args: {
@@ -72,9 +154,10 @@ export const EverythingShowing: Story = {
     occasion: "Baby registry",
     itemCount: 32,
     dateLabel: "Due date: February 4, 2027",
-    access: { visibility: "public", label: "Public · anyone sees it on your profile", href: "#settings" },
+    access: { visibility: "public", audience: "everyone", href: "#settings" },
+    customize: picker("Remi & Max's Baby Registry", listHeader(), "baby"),
     progress: null,
-    hidden: { revealed: 2, href: "?tab=purchases" },
+    hidden: { revealed: 2, href: "?tab=purchases", settingsHref: "#reservations" },
     events: [
       { id: "e2", title: "Baby Shower", event_date: "2026-12-05", event_type: "baby_shower", canManage: true },
       {
@@ -97,7 +180,7 @@ export const OnPhone: Story = {
 
 /** No events yet: a small "Planning a party?" part that goes away when dismissed. */
 export const PlanPrompt: Story = {
-  args: { planPrompt: true },
+  args: { planPrompt: true, links: { preview: "/r/x", settings: "#settings", plan: null } },
   parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -113,20 +196,12 @@ export const Dark: Story = {
   parameters: { theme: "dark", chromatic: { disableSnapshot: true } },
 };
 
-/** A baby registry with a header the owner picked, and the Header button in its corner. */
+/** A baby registry with a header the owner picked. */
 export const BabyHeader: Story = {
   args: {
     ...EverythingShowing.args,
     header: listHeader({ color: "blush", pattern: "feet" }),
-    customize: (
-      <ListHeaderPicker
-        registryId="reg-1"
-        title="Remi & Max's Baby Registry"
-        header={listHeader({ color: "blush", pattern: "feet" })}
-        occasion="baby"
-        saveAction={fn(async () => ({ error: null }))}
-      />
-    ),
+    customize: picker("Remi & Max's Baby Registry", listHeader({ color: "blush", pattern: "feet" }), "baby"),
   },
 };
 

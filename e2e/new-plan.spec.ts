@@ -230,12 +230,14 @@ test("a baby registry on its own asks nothing about an event, and its party prom
     await page.getByRole("button", { name: "Dismiss" }).click();
     await expect(page.getByText("Planning a party?")).toBeHidden({ timeout: 1000 });
   }).toPass();
-  // Planning one stays a click away, in the header.
-  const planLink = page.getByRole("link", { name: "Plan an event" });
+  // Planning one stays in the band's ⋯ menu.
+  const planLink = page.getByRole("menuitem", { name: "Plan an event" });
+  await page.getByRole("button", { name: "More", exact: true }).click();
   await expect(planLink).toHaveAttribute("href", `/dashboard/events/new?registry=${registryId}`);
 
   // It stays dismissed.
   await page.reload();
+  await page.getByRole("button", { name: "More", exact: true }).click();
   await expect(planLink).toBeVisible();
   await expect(page.getByText("Planning a party?")).toHaveCount(0);
   const { data: saved } = await db.from("registries").select("settings").eq("id", registryId).single();
