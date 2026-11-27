@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { parseGiftEmails } from "@/lib/gift-emails";
 import { isUuid } from "@/lib/extension";
 import { parseGiftProfile } from "@/lib/gift-profile";
 import { requireAccount } from "@/lib/require-account";
@@ -50,6 +51,24 @@ export async function setBirthdayEmails(on: boolean) {
     .eq("id", user.id);
   if (error) {
     console.error("[gift profile] Failed to save birthday emails:", error);
+    return { error: SAVE_FAILED };
+  }
+
+  revalidatePath("/dashboard/account");
+  return { success: true };
+}
+
+/** The Account page choice for gift emails: each gift, once a day, or off. */
+export async function setGiftEmails(choice: string) {
+  const { user, error: authError } = await requireAccount();
+  if (!user) return { error: authError };
+
+  const { error } = await supabaseAdmin
+    .from("profiles")
+    .update({ gift_emails: parseGiftEmails(choice) })
+    .eq("id", user.id);
+  if (error) {
+    console.error("[gift profile] Failed to save gift emails:", error);
     return { error: SAVE_FAILED };
   }
 

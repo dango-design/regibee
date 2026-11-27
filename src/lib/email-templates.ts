@@ -253,8 +253,9 @@ export function cashFundContributionBuyerHtml(opts: {
 
 // ── Owner Notifications ──────────────────────────────────────
 
-function managerFooter(registryTitle: string): string {
-  return `You're getting this because you manage ${escapeHtml(registryTitle)} on Regibee.`;
+function managerFooter(registryTitle: string, settingsUrl?: string | null): string {
+  const choose = settingsUrl ? ` ${emailLink(settingsUrl, "Get one email a day, or none")}` : "";
+  return `You're getting this because you manage ${escapeHtml(registryTitle)} on Regibee.${choose}`;
 }
 
 /** Sent to the owners and managers when a guest says they bought an item. */
@@ -267,6 +268,8 @@ export function itemGivenOwnerHtml(opts: {
   itemImageUrl?: string | null;
   itemPrice?: number | null;
   message?: string | null;
+  /** The Account page's gift emails choice. */
+  settingsUrl?: string | null;
   dashboardLink: string;
   /** Set when this is the first gift from a store registry whose welcome box needs one. */
   welcomeBox?: { storeName: string; boxName: string; perksLink: string } | null;
@@ -288,7 +291,7 @@ export function itemGivenOwnerHtml(opts: {
       ${opts.message ? emailQuote(opts.message, opts.buyerName) : ""}
       ${welcomeBlock}
       ${emailButton(opts.dashboardLink, "See your gifts")}`,
-    footer: managerFooter(opts.registryTitle),
+    footer: managerFooter(opts.registryTitle, opts.settingsUrl),
   });
 }
 
@@ -303,6 +306,8 @@ export function itemCoveredOwnerHtml(opts: {
   amount: number | null;
   itemImageUrl?: string | null;
   message?: string | null;
+  /** The Account page's gift emails choice. */
+  settingsUrl?: string | null;
   dashboardLink: string;
 }): string {
   const sent = opts.amount != null ? formatPrice(opts.amount) : "money";
@@ -316,7 +321,7 @@ export function itemCoveredOwnerHtml(opts: {
       <p>It's for something you bought yourself. It went straight to you, so look for it in Venmo, PayPal or Zelle.</p>
       ${opts.message ? emailQuote(opts.message, opts.buyerName) : ""}
       ${emailButton(opts.dashboardLink, "See your gifts")}`,
-    footer: managerFooter(opts.registryTitle),
+    footer: managerFooter(opts.registryTitle, opts.settingsUrl),
   });
 }
 
@@ -328,6 +333,8 @@ export function cashFundContributionOwnerHtml(opts: {
   fundTitle: string;
   amount: number;
   message?: string | null;
+  /** The Account page's gift emails choice. */
+  settingsUrl?: string | null;
   dashboardLink: string;
 }): string {
   const formatted = formatPrice(opts.amount);
@@ -340,7 +347,7 @@ export function cashFundContributionOwnerHtml(opts: {
       <p>It's for your gift fund <strong>${escapeHtml(opts.fundTitle)}</strong>. Look for it in Venmo, PayPal or Zelle.</p>
       ${opts.message ? emailQuote(opts.message, opts.buyerName) : ""}
       ${emailButton(opts.dashboardLink, "See your gifts")}`,
-    footer: managerFooter(opts.registryTitle),
+    footer: managerFooter(opts.registryTitle, opts.settingsUrl),
   });
 }
 
@@ -1037,5 +1044,84 @@ export function followApprovedHtml(opts: {
       <p>You can now see the lists ${escapeHtml(opts.followeeName)} shows to followers on their profile, and you'll hear about their birthday if they share it.</p>
       ${emailButton(opts.profileUrl, `See ${opts.followeeName}'s profile`)}`,
     footer: "You're getting this because you asked to follow someone on Regibee.",
+  });
+}
+
+// ── Gift summaries ───────────────────────────────────────────
+
+/** One gift in the daily summary or the thank-you reminder. */
+export interface GiftSummaryRow {
+  /** "Auntie Glinda", or "Secret Santa". */
+  shownName: string;
+  title: string;
+  kind: "given" | "covered" | "fund";
+  quantity: number;
+  amount: number | null;
+  message: string | null;
+  imageUrl: string | null;
+}
+
+function giftSummaryRow(gift: GiftSummaryRow): string {
+  const what =
+    gift.kind === "fund"
+      ? `gave ${gift.amount != null ? formatPrice(gift.amount) : "money"}`
+      : gift.kind === "covered"
+        ? `sent you ${gift.amount != null ? formatPrice(gift.amount) : "money"}`
+        : gift.quantity > 1
+          ? `got you ${gift.quantity}`
+          : "got you this";
+  const details = `${gift.shownName} ${what}`;
+  return `${emailItemCard({ title: gift.title, imageUrl: gift.imageUrl, details })}${
+    gift.message ? emailQuote(gift.message, gift.shownName) : ""
+  }`;
+}
+
+/** Once a day, to a manager who chose one summary instead of an email per gift. */
+export function giftDigestHtml(opts: {
+  lists: { title: string; url: string; gifts: GiftSummaryRow[] }[];
+  settingsUrl: string;
+}): string {
+  const count = opts.lists.reduce((sum, l) => sum + l.gifts.length, 0);
+  const one = opts.lists.length === 1;
+  const sections = opts.lists
+    .map(
+      (list) => `
+      ${one ? "" : `<h2 style="margin:24px 0 12px;font-size:17px;">${escapeHtml(list.title)}</h2>`}
+      ${list.gifts.map(giftSummaryRow).join("\n")}
+      ${emailButton(list.url, one ? "See your gifts" : `See ${list.title}`)}`,
+    )
+    .join(`<hr style="border:0;border-top:1px solid #E6ECEE;margin:24px 0;" />`);
+  return emailLayout({
+    preheader: opts.lists
+      .flatMap((l) => l.gifts.map((g) => g.shownName))
+      .filter((name, i, all) => all.indexOf(name) === i)
+      .join(", "),
+    eyebrow: one ? opts.lists[0].title : "Since yesterday",
+    heading: count === 1 ? "1 new gift" : `${count} new gifts`,
+    body: sections,
+    footer: `You're getting one email a day because you chose that for gift emails. ${emailLink(opts.settingsUrl, "Change it")}`,
+  });
+}
+
+/** A few days after a list's date, to its managers: who gave what, so they can say thanks. */
+export function thanksReminderHtml(opts: {
+  registryTitle: string;
+  gifts: GiftSummaryRow[];
+  listUrl: string;
+  settingsUrl: string;
+}): string {
+  const givers = opts.gifts
+    .map((g) => g.shownName)
+    .filter((name, i, all) => all.indexOf(name) === i && name);
+  const count = opts.gifts.length;
+  return emailLayout({
+    preheader: `${givers.slice(0, 4).join(", ")}${givers.length > 4 ? " and more" : ""}.`,
+    eyebrow: opts.registryTitle,
+    heading: count === 1 ? "1 gift to say thanks for" : `${count} gifts to say thanks for`,
+    body: `
+      <p>Here's who gave what, so you can thank them.</p>
+      ${opts.gifts.map(giftSummaryRow).join("\n")}
+      ${emailButton(opts.listUrl, "See your gifts")}`,
+    footer: `You're getting this because you manage ${escapeHtml(opts.registryTitle)} on Regibee. ${emailLink(opts.settingsUrl, "Turn off gift emails")}`,
   });
 }

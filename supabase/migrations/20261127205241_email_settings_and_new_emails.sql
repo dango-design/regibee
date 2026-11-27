@@ -34,9 +34,9 @@
 -- Access:
 -- - gift_email_digest has no access rules for the API: only the website's
 --   server reads and writes it, with the service-role key.
--- - The new profiles columns follow the table's existing rules. An account
---   can change its own gift_emails. Changing its own welcome_emailed_at only
---   stops its own welcome email.
+-- - The new profiles columns follow the table's existing rules: a signed-in
+--   session can read its own row but only update full_name and avatar_url,
+--   so the server saves gift_emails (setGiftEmails) and welcome_emailed_at.
 -- - The new events, registries and group_gifts columns follow those tables'
 --   existing rules. Only the server writes the "sent" columns.
 --

@@ -4,6 +4,7 @@
 // the phone app (src/app/api/app/data) both load them here.
 
 import { listFollowingFeed, listFollows } from "@/lib/follows";
+import { parseGiftEmails } from "./gift-emails";
 import { listUpcomingBirthdays } from "@/lib/birthdays-server";
 import { listRegistriesSharedWithViewer } from "@/lib/groups-server";
 import { cleanPublicNote, parseGiftProfile } from "@/lib/gift-profile";
@@ -56,6 +57,9 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
     // has run, which counts as no note.
     supabase.from("profiles").select("public_note").eq("id", user.id).maybeSingle(),
   ]);
+  // Separate too: it errors until 20261127205241_email_settings_and_new_emails.sql
+  // has run, which counts as one email per gift.
+  const { data: giftEmailsRow } = await supabase.from("profiles").select("gift_emails").eq("id", user.id).maybeSingle();
   const gift = giftRow.error ? null : giftRow.data;
 
   const accountRegistries: AccountRegistry[] = (registries || []).map(({ settings, ...registry }) => ({
@@ -77,5 +81,6 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
     follows,
     giftProfile: parseGiftProfile(gift?.gift_profile),
     birthdayEmails: gift?.email_birthday_reminders ?? true,
+    giftEmails: parseGiftEmails(giftEmailsRow?.gift_emails),
   };
 }

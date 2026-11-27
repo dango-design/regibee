@@ -1691,6 +1691,7 @@ export async function contributeToCashFund(formData: FormData) {
         await notifyCashFundContribution({
           allow,
           fundId,
+          purchaseId: (data as string | null) ?? undefined,
           fundTitle: fund.title,
           buyerName,
           hideGiver,

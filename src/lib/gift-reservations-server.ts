@@ -179,6 +179,7 @@ export async function sendGiftConfirmedEmails(purchaseId: string, by: "visitor" 
     notifyItemGiven({
       allow,
       itemId: item.id,
+      purchaseId,
       itemTitle: item.title,
       buyerName: purchase.buyer_name,
       hideGiver: !!purchase.hide_giver,
@@ -240,6 +241,7 @@ export async function sendCoverGiftEmails(purchaseId: string) {
     notifyItemCovered({
       allow: gift.visitorAllowance,
       itemId: item.id,
+      purchaseId,
       itemTitle: item.title,
       buyerName: purchase.buyer_name,
       hideGiver: !!purchase.hide_giver,

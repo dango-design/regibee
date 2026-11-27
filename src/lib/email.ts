@@ -1,5 +1,6 @@
 import { getMailer, sendEmail } from "./mailer";
 import { eventIcs } from "./event-ics";
+import { parseGiftEmails, type GiftEmails } from "./gift-emails";
 import { sendPush } from "./push-server";
 import { supabaseAdmin } from "./supabase-admin";
 import { formatPrice } from "./money";
@@ -87,6 +88,8 @@ interface ManagerEmailInfo {
   registryTitle: string;
   registryId: string;
   parentNames: string;
+  /** How they hear about gifts by email (profiles.gift_emails). */
+  giftEmails: GiftEmails;
 }
 
 async function getRegistryManagerEmails(opts: {
@@ -156,7 +159,7 @@ async function getRegistryManagerEmails(opts: {
   for (const uid of userIds) {
     const [{ data: userData }, { data: profile }] = await Promise.all([
       supabaseAdmin.auth.admin.getUserById(uid),
-      supabaseAdmin.from("profiles").select("full_name").eq("id", uid).single(),
+      supabaseAdmin.from("profiles").select("full_name, gift_emails").eq("id", uid).single(),
     ]);
     if (userData?.user?.email) {
       results.push({
@@ -166,11 +169,21 @@ async function getRegistryManagerEmails(opts: {
         registryTitle: registry.title,
         registryId,
         parentNames,
+        giftEmails: parseGiftEmails(profile?.gift_emails),
       });
     }
   }
 
   return results.length > 0 ? results : null;
+}
+
+/**
+ * A list's managers, with each one's address, name and gift email choice,
+ * for the daily gift emails (src/lib/gift-digest-server.ts). Owners who hide
+ * what's been reserved are left out.
+ */
+export async function giftNewsManagers(registryId: string) {
+  return (await getRegistryManagerEmails({ registryId, giftNews: true })) ?? [];
 }
 
 interface PaymentMethods {
@@ -363,9 +376,43 @@ export async function sendGiftRemovedEmail(opts: {
   }
 }
 
+/**
+ * Splits a gift's managers by how they want to hear about it. Those who
+ * chose a daily summary get a row in gift_email_digest for the daily job
+ * (src/lib/gift-digest-server.ts); those who turned gift emails off get
+ * nothing. Returns the ones to email now. Without a purchase id there's
+ * nothing to queue, so everyone but "off" is emailed now.
+ */
+async function managersToEmailNow(
+  managers: ManagerEmailInfo[],
+  gift: { purchaseId?: string; kind: "given" | "covered" | "fund"; shownName: string },
+): Promise<ManagerEmailInfo[]> {
+  const daily = gift.purchaseId ? managers.filter((m) => m.giftEmails === "daily") : [];
+  if (daily.length > 0) {
+    const { error } = await supabaseAdmin.from("gift_email_digest").upsert(
+      daily.map((m) => ({
+        user_id: m.userId,
+        registry_id: m.registryId,
+        purchase_id: gift.purchaseId,
+        kind: gift.kind,
+        shown_name: gift.shownName.slice(0, 120),
+      })),
+      { onConflict: "user_id,purchase_id", ignoreDuplicates: true },
+    );
+    // Not queued, so better to email them now than not at all.
+    if (error) {
+      console.error("[email] Failed to queue gifts for the daily summary:", error);
+      return managers.filter((m) => m.giftEmails !== "off");
+    }
+  }
+  return managers.filter((m) => m.giftEmails === "instant" || (m.giftEmails === "daily" && !gift.purchaseId));
+}
+
 /** Tells the owners and managers that a guest bought an item. */
 export async function notifyItemGiven(opts: {
   itemId: string;
+  /** The gift, so a manager who chose a daily summary gets it there. */
+  purchaseId?: string;
   itemTitle: string;
   buyerName: string;
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
@@ -381,9 +428,9 @@ export async function notifyItemGiven(opts: {
   try {
     const managers = await getRegistryManagerEmails({ itemId: opts.itemId, giftNews: true });
     if (!managers) return;
-    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
-
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
+    const now = await managersToEmailNow(managers, { purchaseId: opts.purchaseId, kind: "given", shownName: buyerName });
+    const allowed = now.slice(0, await allowedCount(opts.allow, now.length));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.itemId}`;
@@ -409,7 +456,9 @@ export async function notifyItemGiven(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject: `🎁 ${buyerName} bought "${opts.itemTitle}"`,
+          ...unsubscribeHeaders(`${siteUrl}/dashboard/account#gift-emails`),
           html: itemGivenOwnerHtml({
+            settingsUrl: `${siteUrl}/dashboard/account#gift-emails`,
             ownerName: m.name,
             registryTitle: m.registryTitle,
             buyerName,
@@ -468,6 +517,8 @@ export async function notifyCompletionDiscounts(opts: {
 
 export async function notifyCashFundContribution(opts: {
   fundId: string;
+  /** The gift, so a manager who chose a daily summary gets it there. */
+  purchaseId?: string;
   fundTitle: string;
   buyerName: string;
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
@@ -478,9 +529,9 @@ export async function notifyCashFundContribution(opts: {
   try {
     const managers = await getRegistryManagerEmails({ fundId: opts.fundId, giftNews: true });
     if (!managers) return;
-    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
-
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
+    const now = await managersToEmailNow(managers, { purchaseId: opts.purchaseId, kind: "fund", shownName: buyerName });
+    const allowed = now.slice(0, await allowedCount(opts.allow, now.length));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.fundId}`;
@@ -503,7 +554,9 @@ export async function notifyCashFundContribution(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject: `💵 ${buyerName} contributed ${formatted} to "${opts.fundTitle}"`,
+          ...unsubscribeHeaders(`${siteUrl}/dashboard/account#gift-emails`),
           html: cashFundContributionOwnerHtml({
+            settingsUrl: `${siteUrl}/dashboard/account#gift-emails`,
             ownerName: m.name,
             registryTitle: m.registryTitle,
             buyerName,
@@ -523,6 +576,8 @@ export async function notifyCashFundContribution(opts: {
 /** Tells the owners and managers that a guest sent them the money for an item they bought. */
 export async function notifyItemCovered(opts: {
   itemId: string;
+  /** The gift, so a manager who chose a daily summary gets it there. */
+  purchaseId?: string;
   itemTitle: string;
   buyerName: string;
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
@@ -537,9 +592,9 @@ export async function notifyItemCovered(opts: {
   try {
     const managers = await getRegistryManagerEmails({ itemId: opts.itemId, giftNews: true });
     if (!managers) return;
-    const allowed = managers.slice(0, await allowedCount(opts.allow, managers.length));
-
     const buyerName = opts.hideGiver ? SECRET_GIVER_NAME : opts.buyerName;
+    const now = await managersToEmailNow(managers, { purchaseId: opts.purchaseId, kind: "covered", shownName: buyerName });
+    const allowed = now.slice(0, await allowedCount(opts.allow, now.length));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const dashboardLink = `${siteUrl}/dashboard/registry/${managers[0].registryId}?highlight=${opts.itemId}`;
@@ -562,7 +617,9 @@ export async function notifyItemCovered(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject: `🎉 ${buyerName} sent you ${sent} for "${opts.itemTitle}"`,
+          ...unsubscribeHeaders(`${siteUrl}/dashboard/account#gift-emails`),
           html: itemCoveredOwnerHtml({
+            settingsUrl: `${siteUrl}/dashboard/account#gift-emails`,
             ownerName: m.name,
             registryTitle: m.registryTitle,
             buyerName,

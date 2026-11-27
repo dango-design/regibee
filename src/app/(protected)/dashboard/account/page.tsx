@@ -27,6 +27,7 @@ export default async function AccountPage() {
       follows={data.follows}
       giftProfile={data.giftProfile}
       birthdayEmails={data.birthdayEmails}
+      giftEmails={data.giftEmails ?? "instant"}
     />
   );
 }
