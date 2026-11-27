@@ -86,7 +86,25 @@ function PayLink({ href, service, demo }: { href: string; service: string; demo?
   );
 }
 
-function CopyHandle({ service, handle, hint }: { service: string; handle: string; hint: string }) {
+/**
+ * One payment method: its name, the handle with a Copy button, and a Pay
+ * button when we can build a link. The handle is always there to copy, in
+ * case the link doesn't open the app on the guest's phone.
+ */
+function PaymentMethodCard({
+  service,
+  handle,
+  href,
+  hint,
+  demo,
+}: {
+  service: string;
+  handle: string;
+  href: string | null;
+  /** Shown only when there's no Pay button. */
+  hint: string;
+  demo?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard
@@ -98,23 +116,26 @@ function CopyHandle({ service, handle, hint }: { service: string; handle: string
       .catch(() => {});
   };
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary px-3 py-2">
-      <div className="min-w-0 text-sm">
-        <p className="font-medium text-primary">{service}</p>
-        <p className="break-all text-secondary">{handle}</p>
-        <p className="text-xs text-tertiary">{hint}</p>
+    <div className="space-y-2 rounded-lg border border-primary px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 text-sm">
+          <p className="font-medium text-primary">{service}</p>
+          <p className="break-all text-secondary">{handle}</p>
+          {!href && <p className="text-xs text-tertiary">{hint}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={copy}
+          aria-label={copied ? `Copied ${service} handle` : `Copy ${service} handle`}
+          className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            {copied ? <Check className="h-4 w-4 shrink-0" /> : <Copy className="h-4 w-4 shrink-0" />}
+            {copied ? "Copied" : "Copy"}
+          </span>
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={copied ? `Copied ${service} handle` : `Copy ${service} handle`}
-        className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
-      >
-        <span className="inline-flex items-center gap-1.5">
-          {copied ? <Check className="h-4 w-4 shrink-0" /> : <Copy className="h-4 w-4 shrink-0" />}
-          {copied ? "Copied" : "Copy"}
-        </span>
-      </button>
+      {href && <PayLink href={href} service={service} demo={demo} />}
     </div>
   );
 }
@@ -131,9 +152,9 @@ interface PaymentOptionsProps {
 }
 
 /**
- * A button per payment method that opens it with the amount filled in. A
- * handle we can't build a link for, like a PayPal email or any Zelle handle,
- * gets a Copy button instead.
+ * A card per payment method with a Copy button for the handle. Venmo, and
+ * PayPal with a PayPal.Me name, also get a button that opens the app with the
+ * amount filled in. A PayPal email or a Zelle handle can only be copied.
  */
 export function PaymentOptions({ paymentMethods, amount, note, parentName, demo }: PaymentOptionsProps) {
   if (!hasPaymentMethod(paymentMethods)) {
@@ -149,20 +170,31 @@ export function PaymentOptions({ paymentMethods, amount, note, parentName, demo 
 
   return (
     <div className="grid gap-2">
-      {paymentMethods.venmo &&
-        (venmoUrl ? (
-          <PayLink href={venmoUrl} service="Venmo" demo={demo} />
-        ) : (
-          <CopyHandle service="Venmo" handle={paymentMethods.venmo} hint="Send it in the Venmo app." />
-        ))}
-      {paymentMethods.paypal &&
-        (paypalUrl ? (
-          <PayLink href={paypalUrl} service="PayPal" demo={demo} />
-        ) : (
-          <CopyHandle service="PayPal" handle={paymentMethods.paypal} hint="Send it in PayPal." />
-        ))}
+      {paymentMethods.venmo && (
+        <PaymentMethodCard
+          service="Venmo"
+          handle={paymentMethods.venmo}
+          href={venmoUrl}
+          hint="Send it in the Venmo app."
+          demo={demo}
+        />
+      )}
+      {paymentMethods.paypal && (
+        <PaymentMethodCard
+          service="PayPal"
+          handle={paymentMethods.paypal}
+          href={paypalUrl}
+          hint="Send it in PayPal."
+          demo={demo}
+        />
+      )}
       {paymentMethods.zelle && (
-        <CopyHandle service="Zelle" handle={paymentMethods.zelle} hint="Send it from your bank's app." />
+        <PaymentMethodCard
+          service="Zelle"
+          handle={paymentMethods.zelle}
+          href={null}
+          hint="Send it from your bank's app."
+        />
       )}
       {demo && (venmoUrl || paypalUrl) && (
         <p className="text-xs text-tertiary">In the demo, these buttons don&apos;t open Venmo or PayPal.</p>
