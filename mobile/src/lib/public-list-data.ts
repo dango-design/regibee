@@ -226,8 +226,12 @@ export interface SuggestInput {
   suggestedByEmail: string;
 }
 
-/** Suggests an item to the list's owner. */
-export function useSuggestItem() {
+/**
+ * Suggests an item to the list's owner. From an invitation's gift link, the
+ * event and token let the website show a Secret Santa's suggestion as
+ * "Secret Santa".
+ */
+export function useSuggestItem(link: EventLink | null) {
   return useMutation({
     mutationFn: (input: SuggestInput) =>
       act(
@@ -240,6 +244,7 @@ export function useSuggestItem() {
           notes: input.notes,
           suggestedByName: input.suggestedByName,
           suggestedByEmail: input.suggestedByEmail,
+          ...rsvpFields(link),
         }),
       ),
   });

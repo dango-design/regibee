@@ -351,9 +351,11 @@ export function GroupGiftPage({
                 <ExternalLink aria-hidden="true" className="size-3.5" />
               </a>
             )}
-            <Link href={`${basePath}/r/${view.listSlug}`} className={linkClass}>
-              {view.recipientName}&apos;s list
-            </Link>
+            {view.listSlug && (
+              <Link href={`${basePath}/r/${view.listSlug}`} className={linkClass}>
+                {view.recipientName}&apos;s list
+              </Link>
+            )}
           </p>
           <p className="text-sm text-tertiary">
             Started by {isOrganizer ? "you" : view.organizerName}

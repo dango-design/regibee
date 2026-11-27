@@ -22,12 +22,6 @@ type Story = StoryObj<typeof SuggestItemDialog>;
 export const Default: Story = {
   args: {
     registryId: "registry-1",
-    categories: [
-      { id: "cat-1", name: "Nursery" },
-      { id: "cat-2", name: "Feeding" },
-      { id: "cat-3", name: "Travel" },
-      { id: "cat-4", name: "Clothing" },
-    ],
   },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole("button", { name: /suggest an item/i }));

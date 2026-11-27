@@ -118,11 +118,46 @@ test("an owner removes an item a guest reserved, and the guest's gift goes with 
   expect(itemRow).toBeNull();
   expect(await giftRow(gift!.id)).toBeNull();
 
+  // Glinda hears it's off the list, so she doesn't buy it (#205).
+  const removed = await waitForEmail(guestEmail, `"${item.title}" was taken off the list`);
+  expect(removed.html).toContain("Maya took");
+  expect(removed.html).toContain("so you don't need to get it");
+
   // The link in Glinda's email still opens the list, without the gift.
   await guestPage.goto(linkIn(reserved, /\/gift\/[0-9a-f-]+\?step=confirm$/));
   await guestPage.waitForURL(new RegExp(`/r/${registry.slug}$`));
   await expect(guestPage.getByRole("dialog")).toHaveCount(0);
   await guestContext.close();
+});
+
+test("the phone app cancels a guest's reservation, and the guest gets an email", async ({ request }) => {
+  const maya = await createAccount("Maya Owner");
+  const { registry, item } = await createWishlist(maya.id);
+  const guestEmail = uniqueEmail("glinda");
+  const guest = await asGuest();
+  const { data: giftId, error } = await guest.rpc("reserve_registry_item", {
+    p_item_id: item.id,
+    p_buyer_name: "Glinda",
+    p_buyer_email: guestEmail,
+    p_message: null,
+    p_hold_days: 2,
+  });
+  if (error) throw error;
+
+  // The app runs the website's action with Maya's access token.
+  const app = await asAccount(maya);
+  const { data: session } = await app.auth.getSession();
+  const response = await request.post("/api/app/action", {
+    headers: { Authorization: `Bearer ${session.session!.access_token}` },
+    data: { action: "registry.cancelReservation", args: [giftId, registry.id] },
+  });
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toEqual({ result: { success: true } });
+
+  const { data: cancelled } = await db.from("purchases").select("status").eq("id", giftId).single();
+  expect(cancelled?.status).toBe("cancelled");
+  const email = await waitForEmail(guestEmail, `Your reservation of "${item.title}" was cancelled`);
+  expect(email.html).toContain("Maya cancelled your reservation");
 });
 
 test("an item that moves to another list keeps its gifts, and one that goes loses them", async () => {

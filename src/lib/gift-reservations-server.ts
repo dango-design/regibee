@@ -5,7 +5,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
-import { GIFT_HOLD_DAYS, giftLinkUrl } from "@/lib/gifts";
+import { GIFT_HOLD_DAYS, giftLinkUrl, isOpenReservation } from "@/lib/gifts";
 import { classifyStoreLink, parseRetailerRegistries, registryStoreFor } from "@/lib/retailers";
 import { welcomeBoxUnlockedBy } from "@/lib/store-perks-server";
 import { visitorEmailAllowance } from "@/lib/email-budget";
@@ -17,6 +17,7 @@ import {
   notifyItemCovered,
   notifyItemGiven,
   notifyItemReservationEnded,
+  notifyItemReservationRemoved,
   remindItemReservation,
 } from "@/lib/email";
 
@@ -206,6 +207,58 @@ async function sendReservationEndedEmail(purchaseId: string) {
     registryTitle: gift.registry.registryTitle,
     registryUrl: `${siteUrl()}/r/${gift.registry.slug}`,
   });
+}
+
+/**
+ * Open reservations a manager is about to end, read while they still exist:
+ * the guests' gifts on an item about to be deleted (`itemId`), or one gift
+ * about to be cancelled (`purchaseId`). A gift already bought isn't included,
+ * and neither is a group gift's reservation, since its page and emails cover
+ * it. Pass the result to sendReservationRemovedEmails once the change is made.
+ */
+export async function openReservationsToEnd(
+  target: { itemId: string } | { purchaseId: string },
+): Promise<GiftForEmail[]> {
+  try {
+    const query = supabaseAdmin.from("purchases").select("id, status, reserved_until").eq("status", "reserved");
+    const { data: rows } = "itemId" in target
+      ? await query.eq("registry_item_id", target.itemId)
+      : await query.eq("id", target.purchaseId);
+    const open = (rows ?? []).filter(isOpenReservation).map((r) => r.id as string);
+    if (open.length === 0) return [];
+    const { data: groupGifts } = await supabaseAdmin.from("group_gifts").select("purchase_id").in("purchase_id", open);
+    const groupGiftIds = new Set((groupGifts ?? []).map((g) => g.purchase_id as string));
+    const gifts = await Promise.all(open.filter((id) => !groupGiftIds.has(id)).map((id) => loadGift(id)));
+    return gifts.filter((gift): gift is GiftForEmail => Boolean(gift?.purchase.buyer_email));
+  } catch (err) {
+    console.error("[gifts] Failed to read reservations before ending them:", err);
+    return [];
+  }
+}
+
+type GiftForEmail = NonNullable<Awaited<ReturnType<typeof loadGift>>>;
+
+/**
+ * Tells each guest their reservation ended because a manager deleted the item
+ * or cancelled it. The email goes only to the guest, so it tells an owner who
+ * hides what's been reserved nothing. Counts against the list's visitor email
+ * limit, like the other reservation emails, since a visitor typed the address.
+ */
+export async function sendReservationRemovedEmails(gifts: GiftForEmail[], reason: "deleted" | "cancelled") {
+  await Promise.all(
+    gifts.map((gift) =>
+      notifyItemReservationRemoved({
+        allow: gift.visitorAllowance,
+        buyerEmail: gift.purchase.buyer_email!,
+        buyerName: gift.purchase.buyer_name,
+        itemTitle: gift.item.title,
+        parentName: gift.registry.parentName,
+        registryTitle: gift.registry.registryTitle,
+        reason,
+        registryUrl: `${siteUrl()}/r/${gift.registry.slug}`,
+      }),
+    ),
+  );
 }
 
 /**

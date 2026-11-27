@@ -8,6 +8,7 @@ import {
   itemReservedBuyerHtml,
   itemReservationReminderBuyerHtml,
   itemReservationEndedBuyerHtml,
+  itemReservationRemovedBuyerHtml,
   itemGivenBuyerHtml,
   itemCoveredBuyerHtml,
   cashFundContributionBuyerHtml,
@@ -262,6 +263,26 @@ export async function notifyItemReservationEnded(
     });
   } catch (err) {
     console.error("[email] Failed to send reservation ended email:", err);
+  }
+}
+
+/** Tells a guest the item they reserved was taken off the list, or their reservation was cancelled. */
+export async function notifyItemReservationRemoved(
+  opts: Parameters<typeof itemReservationRemovedBuyerHtml>[0] & { buyerEmail: string } & Limited
+) {
+  try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
+      subject:
+        opts.reason === "deleted"
+          ? `"${opts.itemTitle}" was taken off the list`
+          : `Your reservation of "${opts.itemTitle}" was cancelled`,
+      html: itemReservationRemovedBuyerHtml(opts),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send reservation removed email:", err);
   }
 }
 

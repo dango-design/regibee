@@ -20,6 +20,10 @@
 //   deletes them with their items and funds now
 //   (20261116012811_delete_gifts_with_items.sql); this covers a database that
 //   hasn't run that file.
+// - Group gifts the account organized go with it, but their reservations
+//   don't. Each one still collecting is called off as if the organizer had
+//   done it: the item is open to gifts again, and everyone who chipped in
+//   gets an email.
 // - Uploaded photos and invitation pictures live in Storage, in folders named
 //   for each registry and event, and the profile photo in a folder named for
 //   the profile's public id. Those folders are emptied.
@@ -30,6 +34,8 @@ import { PROFILE_PHOTOS_BUCKET } from "@/lib/profile-photos";
 import { REGISTRY_PHOTOS_BUCKET } from "@/lib/registry-photos";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { deleteAnalyticsPerson } from "@/lib/analytics-server";
+import { endGroupGiftReservation, openGroupGiftsOrganizedBy } from "@/lib/group-gifts-server";
+import { sendCalledOffEmails } from "@/lib/group-gift-email";
 
 export interface AccountDeletionPlan {
   userId: string;
@@ -206,10 +212,12 @@ export function summarizeAccountDeletion(plan: AccountDeletionPlan): AccountDele
  * after putting back any registries it had started to hand over.
  */
 export async function deleteAccount(userId: string): Promise<void> {
-  const [plan, { data: profile }] = await Promise.all([
+  const [plan, { data: profile }, groupGifts] = await Promise.all([
     planAccountDeletion(userId),
     // Read now: the profile goes with the account.
     supabaseAdmin.from("profiles").select("public_id").eq("id", userId).maybeSingle(),
+    // Read now too: the group gifts and their pledges go with the account.
+    openGroupGiftsOrganizedBy(userId),
   ]);
   const profileFolder = (profile?.public_id as string | undefined) ?? null;
 
@@ -239,6 +247,10 @@ export async function deleteAccount(userId: string): Promise<void> {
     ...plan.deleted.map((r) => emptyFolder(REGISTRY_PHOTOS_BUCKET, r.id)),
     ...plan.eventIds.map((id) => emptyFolder(EVENT_IMAGES_BUCKET, id)),
     ...(profileFolder ? [emptyFolder(PROFILE_PHOTOS_BUCKET, profileFolder)] : []),
+    ...groupGifts.map(async (loaded) => {
+      if (!(await endGroupGiftReservation(loaded.gift.purchase_id!))) fail("ending a group gift's reservation", null);
+      await sendCalledOffEmails(loaded, { accountClosed: true });
+    }),
     // The account's analytics: its person and events in PostHog.
     deleteAnalyticsPerson(userId),
   ]);

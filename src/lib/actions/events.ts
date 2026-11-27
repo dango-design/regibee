@@ -407,6 +407,41 @@ async function saveExchange(eventId: string, form: ExchangeForm): Promise<{ erro
   return { error: null };
 }
 
+/**
+ * On an everyone-gives-everyone event, the lists linked to it start hiding
+ * what's been reserved from their owners, the same as a guest's own wishlist
+ * (hideReservationsOnOwnWishlist). Guests are told nobody sees what's been
+ * reserved from their own list until the day after. Only lists `userId` owns
+ * change: whoever links a list, or switches the event to everyone gives
+ * everyone, decides only for their own lists. Run it after the links and the
+ * exchange are saved.
+ */
+async function hideReservationsOnLinkedLists(eventId: string, userId: string) {
+  const exchange = await getGiftExchange(eventId);
+  if (!exchange || exchangeKind(exchange) !== "everyone") return;
+  const { data: links } = await supabaseAdmin.from("event_registries").select("registry_id").eq("event_id", eventId);
+  const ids = (links || []).map((l) => l.registry_id as string);
+  if (ids.length === 0) return;
+  const { data: lists } = await supabaseAdmin
+    .from("registries")
+    .select("id, registry_type, settings")
+    .in("id", ids)
+    .eq("owner_id", userId);
+  let changed = false;
+  for (const list of lists || []) {
+    const settings = settingsAfterJoiningExchange(list);
+    if (!settings) continue;
+    const { error } = await supabaseAdmin.from("registries").update({ settings }).eq("id", list.id);
+    if (error) {
+      console.error("[events] Failed to hide reservations on a linked list:", error);
+      continue;
+    }
+    changed = true;
+    revalidatePath(`/dashboard/registry/${list.id}`);
+  }
+  if (changed) revalidatePath("/dashboard");
+}
+
 /** Finds a registry from a pasted link, so the event form can show its name before saving. */
 export async function lookupRegistryLink(
   link: string,
@@ -500,6 +535,7 @@ export async function createEvent(formData: FormData): Promise<Result<{ id: stri
   // which beats a second copy of the event from trying again.
   if (links.ids && links.ids.length > 0) await saveRegistryLinks(data, links.ids, user.id);
   if (exchange?.enabled) await saveExchange(data.id, exchange);
+  await hideReservationsOnLinkedLists(data.id, user.id);
   // A potluck or a meal train starts with its sign-up sheet.
   const signupPreset = occasionSignupPreset(form.fields.event_type);
   if (signupPreset) await insertSignupSheet(data.id, signupPreset);
@@ -559,6 +595,7 @@ export async function updateEvent(eventId: string, formData: FormData): Promise<
     const saved = await saveRegistryLinks(access.event, links.ids, access.user.id);
     if (saved.error) return { error: saved.error };
   }
+  await hideReservationsOnLinkedLists(eventId, access.user.id);
 
   revalidateEvent(access.event);
   return { error: null };
@@ -1805,6 +1842,8 @@ async function copyEventForNextYear(
     }
   }
 
+  await hideReservationsOnLinkedLists(copy.id, ownerId);
+
   revalidatePath("/dashboard/events");
   return { error: null, id: copy.id };
 }
@@ -2254,6 +2293,7 @@ export async function startPlan(input: PlanInput): Promise<Result<{ href: string
   } else if (input.gifts === "exchange" || defaults?.exchange === "draw") {
     await saveExchange(saved.id, { enabled: true, kind: "draw", budget: null, draw_by: null, mailed: false });
   }
+  await hideReservationsOnLinkedLists(saved.id, user.id);
   // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
   if (input.gifts === "signup" || defaults?.signup) {
     // A meal train with a first day starts with a dinner each day for a week.
@@ -2356,6 +2396,7 @@ export async function acceptListRequest(token: string): Promise<Result<{ registr
     sort_order: count ?? 0,
   });
   await supabaseAdmin.from("event_list_requests").update({ registry_id: made.id }).eq("id", request.id);
+  await hideReservationsOnLinkedLists(event.id, user.id);
 
   revalidateEvent(event);
   revalidatePath("/dashboard");

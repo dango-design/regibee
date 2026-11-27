@@ -123,8 +123,10 @@ export interface GroupGiftView {
   };
   /** Whose list it is, like "Dorothy". */
   recipientName: string;
-  listTitle: string;
-  listSlug: string;
+  /** Null when the list is private. */
+  listTitle: string | null;
+  /** Null when the list is private. */
+  listSlug: string | null;
   organizerName: string;
   goalAmount: number | null;
   paybackNote: string | null;

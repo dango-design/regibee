@@ -30,6 +30,7 @@ import {
   newGroupGiftToken,
   rememberPledge,
   rememberedPledgeToken,
+  endGroupGiftReservation,
   statusOfGroupGift,
   type GroupGiftRow,
 } from "@/lib/group-gifts-server";
@@ -417,20 +418,7 @@ export async function callOffGroupGift(token: string): Promise<Result> {
   if (status === "ended") return { success: true };
   if (status === "bought") return { error: "You've already bought it, so it can't be called off." };
 
-  const { error } = await supabaseAdmin.rpc("release_registry_gift", { p_purchase_id: gift.purchase_id });
-  if (error) {
-    // The item was deleted from the list, so there's nothing to put back.
-    // The reservation just ends.
-    const { error: endError } = await supabaseAdmin
-      .from("purchases")
-      .update({ status: "cancelled" })
-      .eq("id", gift.purchase_id!)
-      .is("registry_item_id", null);
-    if (endError || (await statusOfGroupGift(gift)) !== "ended") {
-      console.error("[group gifts] Failed to call off a group gift:", error, endError);
-      return { error: SOMETHING_WRONG };
-    }
-  }
+  if (!(await endGroupGiftReservation(gift.purchase_id!))) return { error: SOMETHING_WRONG };
 
   after(() => sendGroupGiftCalledOffEmails(gift.token));
   revalidateGift(gift.token, await slugOf(gift.registry_id));

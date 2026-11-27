@@ -104,10 +104,17 @@ export function groupGiftCalledOffHtml(opts: {
   recipientName: string;
   /** The organizer had marked their pledge paid. */
   paid: boolean;
+  /** It ended because the organizer deleted their Regibee account. */
+  accountClosed?: boolean;
 }): string {
+  const what = `the group gift of <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}`;
   return withEmailFont(`
     <p>Hi ${escapeHtml(opts.pledgerName)},</p>
-    <p>${escapeHtml(opts.organizerName)} called off the group gift of <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}, so you don't need to chip in.</p>
+    <p>${
+      opts.accountClosed
+        ? `${escapeHtml(opts.organizerName)} deleted their Regibee account, so ${what} is called off and you don't need to chip in.`
+        : `${escapeHtml(opts.organizerName)} called off ${what}, so you don't need to chip in.`
+    }</p>
     <p>${
       opts.paid
         ? `${escapeHtml(opts.organizerName)} had marked your share as paid. Ask them to send it back.`

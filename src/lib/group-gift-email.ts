@@ -8,8 +8,7 @@ import { visitorEmailAllowance, type EmailAllowance } from "@/lib/email-budget";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { groupGiftUrl } from "@/lib/group-gifts";
 import { formatAmount } from "@/lib/money";
-import { loadGroupGift, type LoadedGroupGift } from "@/lib/group-gifts-server";
-import { honoreeDisplayName } from "@/lib/registry-copy";
+import { groupGiftRecipientName, loadGroupGift, type LoadedGroupGift } from "@/lib/group-gifts-server";
 import {
   groupGiftCalledOffHtml,
   groupGiftNewPledgeHtml,
@@ -34,7 +33,7 @@ async function emailOf(userId: string): Promise<string | null> {
 function detailsOf(loaded: LoadedGroupGift) {
   return {
     itemTitle: loaded.item?.title ?? "the gift",
-    recipientName: honoreeDisplayName(loaded.registry, loaded.registry.title),
+    recipientName: groupGiftRecipientName(loaded.registry),
     goal: loaded.gift.goal_amount != null ? Number(loaded.gift.goal_amount) : null,
     shareUrl: groupGiftUrl(siteUrl(), loaded.gift.token),
   };
@@ -136,7 +135,15 @@ export async function sendPledgeEmails(giftToken: string, pledgeId: string) {
 /** Tells everyone who chipped in that the organizer called it off. */
 export async function sendGroupGiftCalledOffEmails(giftToken: string) {
   const loaded = await loadGroupGift(giftToken);
-  if (!loaded) return;
+  if (loaded) await sendCalledOffEmails(loaded);
+}
+
+/**
+ * The called-off emails for a group gift already loaded. Account deletion
+ * loads it first, since the group gift goes with the organizer's account
+ * (src/lib/account-deletion.ts).
+ */
+export async function sendCalledOffEmails(loaded: LoadedGroupGift, opts: { accountClosed?: boolean } = {}) {
   const { itemTitle, recipientName } = detailsOf(loaded);
   await Promise.all(
     loaded.pledges
@@ -151,6 +158,7 @@ export async function sendGroupGiftCalledOffEmails(giftToken: string) {
             itemTitle,
             recipientName,
             paid: Boolean(p.paid_at),
+            accountClosed: opts.accountClosed,
           }),
           "called off",
         ),

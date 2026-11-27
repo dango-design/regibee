@@ -330,7 +330,7 @@ function otherSheet(
   onClose: () => void,
 ) {
   if (!other) return null;
-  if (other.kind === "suggest") return <SuggestSheet registryId={data.registry.id} onClose={onClose} />;
+  if (other.kind === "suggest") return <SuggestSheet registryId={data.registry.id} link={link} onClose={onClose} />;
   if (other.kind === "fund") {
     const fund = data.cashFunds.find((f) => f.id === other.fundId);
     return fund ? (

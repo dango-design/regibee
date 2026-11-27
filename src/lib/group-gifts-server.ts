@@ -108,6 +108,7 @@ export interface LoadedGroupGift {
     owner_id: string;
     honoree_names: string | null;
     parent_names: string | null;
+    is_private?: boolean | null;
   };
   organizerName: string;
   pledges: PledgeRow[];
@@ -131,6 +132,46 @@ export async function statusOfGroupGift(gift: Pick<GroupGiftRow, "purchase_id">)
   return groupGiftStatus(data);
 }
 
+/**
+ * Ends a group gift's reservation, so the item is open to gifts again.
+ * Returns whether it ended. When the item was deleted from the list, there's
+ * nothing to put back, and the reservation just ends.
+ */
+export async function endGroupGiftReservation(purchaseId: string): Promise<boolean> {
+  const { error } = await supabaseAdmin.rpc("release_registry_gift", { p_purchase_id: purchaseId });
+  if (!error) return true;
+  const { error: endError } = await supabaseAdmin
+    .from("purchases")
+    .update({ status: "cancelled" })
+    .eq("id", purchaseId)
+    .is("registry_item_id", null);
+  if (endError || (await statusOfGroupGift({ purchase_id: purchaseId })) !== "ended") {
+    console.error("[group gifts] Failed to end a group gift's reservation:", error, endError);
+    return false;
+  }
+  return true;
+}
+
+/** The group gifts this account organizes that are still collecting, loaded in full. */
+export async function openGroupGiftsOrganizedBy(userId: string): Promise<LoadedGroupGift[]> {
+  const { data } = await supabaseAdmin
+    .from("group_gifts")
+    .select("token")
+    .eq("organizer_id", userId)
+    .not("purchase_id", "is", null);
+  const loaded = await Promise.all((data ?? []).map((row) => loadGroupGift(row.token)));
+  return loaded.filter((gift): gift is LoadedGroupGift => gift?.status === "open");
+}
+
+/**
+ * Whose list a group gift is on, like "Dorothy". A list with no names falls
+ * back to its title, unless it's private: then the people chipping in no
+ * longer see its name (src/lib/list-access.ts).
+ */
+export function groupGiftRecipientName(registry: LoadedGroupGift["registry"]): string {
+  return registry.is_private ? honoreeDisplayName(registry) : honoreeDisplayName(registry, registry.title);
+}
+
 /** Everything the group gift page needs, by the token in its link. */
 export async function loadGroupGift(token: unknown): Promise<LoadedGroupGift | null> {
   const gift = await findGroupGift(token);
@@ -140,7 +181,7 @@ export async function loadGroupGift(token: unknown): Promise<LoadedGroupGift | n
     await Promise.all([
       supabaseAdmin
         .from("registries")
-        .select("id, slug, title, owner_id, honoree_names, parent_names")
+        .select("id, slug, title, owner_id, honoree_names, parent_names, is_private")
         .eq("id", gift.registry_id)
         .maybeSingle(),
       gift.item_id
@@ -214,9 +255,11 @@ export function groupGiftViewFor(
       price: item?.price != null ? amountOf(item.price) : null,
       onList: Boolean(item),
     },
-    recipientName: honoreeDisplayName(registry, registry.title),
-    listTitle: registry.title,
-    listSlug: registry.slug,
+    recipientName: groupGiftRecipientName(registry),
+    // A private list opens only for its managers, so nobody else gets its
+    // name or a link to it.
+    listTitle: registry.is_private ? null : registry.title,
+    listSlug: registry.is_private ? null : registry.slug,
     organizerName: loaded.organizerName,
     goalAmount: gift.goal_amount != null ? amountOf(gift.goal_amount) : null,
     paybackNote: gift.payback_note,
@@ -372,7 +415,7 @@ export async function groupGiftsForEvent(
       supabaseAdmin.from("registry_items").select("id, title, image_url").in("id", rows.map((g) => g.item_id!)),
       supabaseAdmin
         .from("registries")
-        .select("id, title, honoree_names, parent_names")
+        .select("id, title, honoree_names, parent_names, is_private")
         .in("id", [...new Set(rows.map((g) => g.registry_id))]),
       supabaseAdmin.from("profiles").select("id, full_name").in("id", [...new Set(rows.map((g) => g.organizer_id))]),
       supabaseAdmin.from("group_gift_pledges").select("group_gift_id, amount").in("group_gift_id", rows.map((g) => g.id)),
@@ -388,7 +431,9 @@ export async function groupGiftsForEvent(
     const status = statusById.get(g.purchase_id!);
     const item = itemById.get(g.item_id!);
     const registry = registryById.get(g.registry_id);
-    if (!status || status === "ended" || !item || !registry) continue;
+    // A private list is taken off its events, but a group gift started
+    // before that still points at the event. Leave it out.
+    if (!status || status === "ended" || !item || !registry || registry.is_private) continue;
     const mine = (pledges ?? []).filter((p) => p.group_gift_id === g.id) as Pick<PledgeRow, "amount">[];
     result.push({
       token: g.token,

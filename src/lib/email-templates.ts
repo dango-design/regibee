@@ -143,6 +143,35 @@ export function itemReservationEndedBuyerHtml(opts: {
   `);
 }
 
+/**
+ * Sent when a list's manager deletes an item a guest reserved and hasn't
+ * bought yet, or cancels the guest's reservation. It tells the guest only
+ * what happened to their own reservation.
+ */
+export function itemReservationRemovedBuyerHtml(opts: {
+  buyerName: string;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  /** "deleted": the item is off the list. "cancelled": the reservation is. */
+  reason: "deleted" | "cancelled";
+  registryUrl?: string;
+}): string {
+  const item = `<strong>${escapeHtml(opts.itemTitle)}</strong>`;
+  const list = `<em>${escapeHtml(opts.registryTitle)}</em>`;
+  const what =
+    opts.reason === "deleted"
+      ? `${escapeHtml(opts.parentName)} took ${item} off ${list}, so you don't need to get it.`
+      : `${escapeHtml(opts.parentName)} cancelled your reservation of ${item} on ${list}, so you don't need to get it.`;
+  return withEmailFont(`
+    <p>Hi ${escapeHtml(opts.buyerName)},</p>
+    <p>${what}</p>
+    <p>If you already bought it, you could pick another gift from the list instead, or give it anyway.</p>
+    ${textLinks([{ href: opts.registryUrl, label: "View Registry" }])}
+    <p style="color:#888;font-size:13px;">You're receiving this because you reserved a gift on a Regibee registry.</p>
+  `);
+}
+
 /** Sent when a guest says they bought the item. */
 export function itemGivenBuyerHtml(opts: {
   buyerName: string;

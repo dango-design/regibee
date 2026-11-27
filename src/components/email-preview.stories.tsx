@@ -4,6 +4,7 @@ import {
   itemReservedBuyerHtml,
   itemReservationReminderBuyerHtml,
   itemReservationEndedBuyerHtml,
+  itemReservationRemovedBuyerHtml,
   itemGivenBuyerHtml,
   itemCoveredBuyerHtml,
   cashFundContributionBuyerHtml,
@@ -120,6 +121,22 @@ export const BuyerItemReservationEnded: Story = {
       buyerName: "Glinda",
       itemTitle: "Hatch Rest+ Sound Machine",
       registryTitle: "Remi & Max's Baby Registry",
+      registryUrl: "https://regibee.com/r/remi-and-max",
+    }),
+  },
+};
+
+// Sent when a manager deletes an item a guest reserved and hasn't bought yet.
+export const BuyerReservationRemoved: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: '"Hatch Rest+ Sound Machine" was taken off the list',
+    html: itemReservationRemovedBuyerHtml({
+      buyerName: "Glinda",
+      itemTitle: "Hatch Rest+ Sound Machine",
+      parentName: "Remi & Max",
+      registryTitle: "Remi & Max's Baby Registry",
+      reason: "deleted",
       registryUrl: "https://regibee.com/r/remi-and-max",
     }),
   },

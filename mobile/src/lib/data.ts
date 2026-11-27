@@ -443,17 +443,14 @@ export function removeItemWording(item: Pick<Item, "title" | "otherLists">) {
 }
 
 export function useCancelGift(registryId: string) {
-  const { session } = useSession();
   return useListChange<Gift>(
     () => registryId,
     async (gift) => {
       if (isDemo()) return demo.cancelGift(registryId, gift.id);
-      // The database checks that the caller manages the registry (016_rpc_caller_from_auth_uid.sql).
-      const { error } = await supabase.rpc("cancel_reservation", {
-        p_purchase_id: gift.id,
-        p_owner_id: session?.user.id,
-      });
-      if (error) throw error;
+      // The website's action, so the guest gets the same email as when the
+      // website cancels it. The database checks that the caller manages the
+      // registry (016_rpc_caller_from_auth_uid.sql).
+      await act("registry.cancelReservation", gift.id, registryId);
     },
     (detail, gift) => ({
       ...detail,
