@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAccount } from "@/lib/require-account";
 import { getBlockState } from "@/lib/follows";
-import { notifyFollowRequest } from "@/lib/email";
+import { notifyFollowApproved, notifyFollowRequest } from "@/lib/email";
 import { isValidPublicId } from "@/lib/profile-link";
 import { looksLikeEmail, normalizeEmail } from "@/lib/email-address";
 import { track } from "@/lib/analytics-server";
@@ -127,6 +127,7 @@ export async function approveFollower(publicId: string) {
     return { error: "That request was withdrawn or already handled." };
   }
 
+  after(() => notifyFollowApproved({ followerId: follower.id, followeeId: user.id }));
   revalidateFollowPages();
   return { success: true };
 }

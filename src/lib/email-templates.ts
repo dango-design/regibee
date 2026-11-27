@@ -998,3 +998,44 @@ export function giftRemovedBuyerHtml(opts: {
     footer: `You're getting this because you ${opts.bought ? "gave" : "reserved"} a gift on ${escapeHtml(opts.registryTitle)}.`,
   });
 }
+
+// ── Accounts ─────────────────────────────────────────────────
+
+/** Sent once, right after someone confirms their new account's email address. */
+export function welcomeHtml(opts: {
+  name: string | null;
+  /** The New page, where a list starts. */
+  newListUrl: string;
+  /** The Events tab. */
+  eventsUrl: string;
+}): string {
+  const step = (title: string, text: string) =>
+    `<p style="margin:0 0 12px;"><strong>${escapeHtml(title)}</strong><br/>${text}</p>`;
+  return emailLayout({
+    preheader: "Make a list, add things from any store, and share the link.",
+    heading: opts.name ? `Welcome to Regibee, ${opts.name}` : "Welcome to Regibee",
+    body: `
+      <p>Here's how to get started.</p>
+      ${step("Make a list", "A baby registry, a birthday wishlist, a Christmas list or anything else.")}
+      ${step("Add things from any store", "Paste a product's link, or add it from the store's page with the Regibee extension for Chrome.")}
+      ${step("Share the link", "Guests reserve gifts without making an account, so nobody gets two of the same thing.")}
+      ${emailButton(opts.newListUrl, "Make a list")}
+      <p>Planning a party? ${emailLink(opts.eventsUrl, "Make an event")} to send invitations and collect RSVPs.</p>`,
+    footer: "You're getting this because you made a Regibee account. We only email you about your lists, your events and people you follow.",
+  });
+}
+
+/** Tells someone their request to follow was approved. */
+export function followApprovedHtml(opts: {
+  followeeName: string;
+  profileUrl: string;
+}): string {
+  return emailLayout({
+    preheader: "You can see the lists they show to followers.",
+    heading: `${opts.followeeName} approved your follow request`,
+    body: `
+      <p>You can now see the lists ${escapeHtml(opts.followeeName)} shows to followers on their profile, and you'll hear about their birthday if they share it.</p>
+      ${emailButton(opts.profileUrl, `See ${opts.followeeName}'s profile`)}`,
+    footer: "You're getting this because you asked to follow someone on Regibee.",
+  });
+}

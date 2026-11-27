@@ -24,6 +24,10 @@ export const SUPABASE_LINK = "{{ .ConfirmationURL }}";
 // 3600 seconds both locally and on production.
 const LINK_LIFETIME = "1 hour";
 
+// Notices get no link from Supabase, so theirs is the live site's, even when
+// the local stack sends one in tests.
+const PRODUCTION_SITE = "https://regibee.com";
+
 function copyLink(link: string): string {
   return `<p style="${EMAIL_SMALL_STYLE}margin:16px 0 0;">This link works for ${LINK_LIFETIME}. If the button doesn't work, copy this link into your browser:<br /><span style="word-break:break-all;">${link}</span></p>`;
 }
@@ -65,3 +69,28 @@ export const AUTH_EMAILS = {
 } satisfies Record<string, AuthEmail>;
 
 export type AuthEmailName = keyof typeof AUTH_EMAILS;
+
+/**
+ * Notices Supabase sends after something changed on an account. They carry no
+ * link of Supabase's. The keys are Supabase's names for them, under
+ * [auth.email.notification] in supabase/config.toml, and each file is
+ * <key>_notification.html.
+ */
+export const AUTH_NOTIFICATIONS = {
+  password_changed: {
+    subject: "Your Regibee password was changed",
+    html: () =>
+      emailLayout({
+        preheader: "If this wasn't you, reset your password now.",
+        heading: "Your password was changed",
+        body: [
+          `<p style="margin:0;">The password for your Regibee account was just changed. If you did this, there's nothing else to do.</p>`,
+          `<p>If you didn't, someone else may have your password. Reset it now.</p>`,
+          emailButton(`${PRODUCTION_SITE}/forgot-password`, "Reset your password"),
+        ].join("\n"),
+        footer: "You're getting this because the password changed on your Regibee account.",
+      }),
+  },
+} satisfies Record<string, { subject: string; html: () => string }>;
+
+export type AuthNotificationName = keyof typeof AUTH_NOTIFICATIONS;

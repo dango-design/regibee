@@ -32,6 +32,8 @@ import {
   dayBeforeReminderHtml,
   eventCancelledHtml,
   giftRemovedBuyerHtml,
+  followApprovedHtml,
+  welcomeHtml,
   type EventEmailDetails,
 } from "./email-templates";
 import { displayName, profilePath } from "./profile-link";
@@ -743,6 +745,64 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
     ]);
   } catch (err) {
     console.error("[email] Failed to send follow request email:", err);
+  }
+}
+
+/**
+ * Tells the person who asked to follow that the request was approved. It
+ * goes to their own account's address, so it doesn't count against a limit.
+ * Off when they turned off follow request emails, since it's the other half
+ * of the same exchange.
+ */
+export async function notifyFollowApproved(opts: { followerId: string; followeeId: string }) {
+  try {
+    const [{ data: userData }, { data: follower }, { data: followee }] = await Promise.all([
+      supabaseAdmin.auth.admin.getUserById(opts.followerId),
+      supabaseAdmin.from("profiles").select("email_follow_requests").eq("id", opts.followerId).single(),
+      supabaseAdmin.from("profiles").select("public_id, full_name").eq("id", opts.followeeId).single(),
+    ]);
+    const email = userData?.user?.email;
+    if (!email || !followee || follower?.email_follow_requests === false) return;
+    const name = displayName(followee).slice(0, 60);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || email,
+      subject: `${name} approved your follow request`,
+      ...unsubscribeHeaders(`${siteUrl}/dashboard/account#profile`),
+      html: followApprovedHtml({ followeeName: name, profileUrl: `${siteUrl}${profilePath(followee)}` }),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send follow approved email:", err);
+  }
+}
+
+/**
+ * The welcome email, once per account, right after its address is confirmed.
+ * welcome_emailed_at is claimed first, so two confirmation clicks send one.
+ */
+export async function sendWelcomeEmail(userId: string) {
+  try {
+    const { data: claimed } = await supabaseAdmin
+      .from("profiles")
+      .update({ welcome_emailed_at: new Date().toISOString() })
+      .eq("id", userId)
+      .is("welcome_emailed_at", null)
+      .select("full_name");
+    if (!claimed || claimed.length === 0) return;
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = userData?.user?.email;
+    if (!email) return;
+    const firstName = (claimed[0].full_name as string | null)?.trim().split(/\s+/)[0] || null;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || email,
+      subject: "Welcome to Regibee",
+      html: welcomeHtml({ name: firstName, newListUrl: `${siteUrl}/dashboard/new`, eventsUrl: `${siteUrl}/dashboard/events` }),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send welcome email:", err);
   }
 }
 
