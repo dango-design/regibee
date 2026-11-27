@@ -1170,6 +1170,9 @@ export function EditItemDialog({
                 </div>
               </div>
 
+              {/* Which baby checklist entry it counts for, beside the item's other details. */}
+              {isBaby && <ChecklistEntryField title={title} saved={item.checklist_entry} />}
+
               <TextArea
                 label="Note for guests (optional)"
                 name="notes"
@@ -1177,8 +1180,6 @@ export function EditItemDialog({
                 defaultValue={item.notes || ""}
                 rows={3}
               />
-
-              {isBaby && <ChecklistEntryField title={title} saved={item.checklist_entry} />}
 
               {/* Owners change these rarely, so they share one row. The info
                   button explains all three: under the pointer on a computer,

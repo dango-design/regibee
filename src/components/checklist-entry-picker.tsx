@@ -1,7 +1,19 @@
 "use client";
 
-import { useId, useState } from "react";
-import { Check } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Check, ChevronDown, ListChecks } from "lucide-react";
+import type { Key } from "react-aria-components";
+import {
+  Button as AriaButton,
+  ComboBox as AriaComboBox,
+  Input as AriaInput,
+  ListBox as AriaListBox,
+} from "react-aria-components";
+import { Label } from "@/components/base/input/label";
+import { Popover } from "@/components/base/select/popover";
+import { SelectContext } from "@/components/base/select/select-context";
+import { SelectItem } from "@/components/base/select/select-item";
+import { useResizeObserver } from "@/hooks/use-resize-observer";
 import { Input } from "@/components/base/input/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -119,49 +131,112 @@ interface ChecklistEntryFieldProps {
 }
 
 /**
- * The entry an item counts for, in the item dialog, with Change to pick
- * another. It sends nothing until the owner picks, so the item keeps matching
- * by its name, as its name changes.
+ * The entry an item counts for, in the item dialog: a dropdown that looks like
+ * the Category field beside it, where typing searches the checklist. It sends
+ * nothing until the owner picks, so the item keeps matching by its name, as
+ * its name changes.
  */
 export function ChecklistEntryField({ title, saved, kind = "item", name = "checklistEntry" }: ChecklistEntryFieldProps) {
   const [choice, setChoice] = useState<string | undefined>(undefined);
-  const [picking, setPicking] = useState(false);
-  const labelId = useId();
   const { key } = countedEntry({ id: "", kind, title, checklist_entry: choice ?? saved });
-  const shown = checklistEntry(key)?.entry.name ?? "Not counted";
+  const selectedKey = key ?? CHECKLIST_NONE;
+  const selectedLabel = checklistEntry(key)?.entry.name ?? NOT_COUNTED;
+
+  const [text, setText] = useState(selectedLabel);
+  // The field shows the counted entry's name, also when the item's name
+  // changes which entry it matches. Text being typed is left alone.
+  const [shown, setShown] = useState(selectedLabel);
+  if (shown !== selectedLabel) {
+    setShown(selectedLabel);
+    if (text === shown) setText(selectedLabel);
+  }
+
+  const typed = text.trim().toLowerCase();
+  // The counted entry's own name isn't a search: the list shows everything then.
+  const searching = typed !== "" && text !== selectedLabel;
+  const items = [
+    ...(searching ? [] : [{ id: CHECKLIST_NONE, label: NOT_COUNTED }]),
+    ...DEFAULT_CHECKLIST.flatMap((category) =>
+      category.items
+        .filter(
+          (entry) =>
+            entryTakes(entry, kind) &&
+            (!searching || entry.name.toLowerCase().includes(typed) || category.name.toLowerCase().includes(typed)),
+        )
+        .map((entry) => ({ id: entry.key, label: entry.name, supportingText: category.name })),
+    ),
+  ];
+
+  const choose = (picked: Key | null) => {
+    if (picked == null) return;
+    const value = String(picked);
+    const label = value === CHECKLIST_NONE ? NOT_COUNTED : (checklistEntry(value)?.entry.name ?? "");
+    setText(label);
+    setShown(label);
+    setChoice(value);
+  };
+
+  // The list is as wide as the whole field, not only its text input.
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState("");
+  const measure = useCallback(() => {
+    if (fieldRef.current) setWidth(`${fieldRef.current.getBoundingClientRect().width}px`);
+  }, []);
+  useResizeObserver({ ref: fieldRef, box: "border-box", onResize: measure });
 
   return (
-    <div className="space-y-1.5">
-      {choice !== undefined && <input type="hidden" name={name} value={choice} />}
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p id={labelId} className="text-sm font-medium text-secondary">
-            Checklist
-          </p>
-          <p className="text-sm text-primary" aria-describedby={labelId}>
-            {shown}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-expanded={picking}
-          onClick={() => setPicking((open) => !open)}
+    <SelectContext.Provider value={{ size: "sm" }}>
+      <AriaComboBox
+        items={items}
+        selectedKey={selectedKey}
+        onSelectionChange={choose}
+        inputValue={text}
+        onInputChange={setText}
+        // Text left behind that picks nothing goes back to the counted entry.
+        onBlur={() => setText(selectedLabel)}
+        menuTrigger="focus"
+        allowsEmptyCollection
+        className="flex flex-col gap-1.5"
+      >
+        <Label>Checklist</Label>
+        <div
+          ref={fieldRef}
+          onPointerEnter={measure}
+          className="relative flex w-full items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset focus-within:ring-2 focus-within:ring-brand"
         >
-          {picking ? "Done" : "Change"}
-        </Button>
-      </div>
-      {picking && (
-        <ChecklistEntryPicker
-          kind={kind}
-          current={key}
-          onChoose={(value) => {
-            setChoice(value);
-            setPicking(false);
-          }}
-        />
-      )}
-    </div>
+          <ListChecks aria-hidden="true" className="ml-3 size-4 shrink-0 text-fg-quaternary" />
+          <AriaInput
+            autoComplete="off"
+            onFocus={(event) => {
+              measure();
+              // The combo box focuses the input again as its list opens, so
+              // a search being typed is left alone. Otherwise the entry's name
+              // is selected, so typing replaces it.
+              if (!searching) event.currentTarget.select();
+            }}
+            className="w-full min-w-0 appearance-none truncate bg-transparent py-2 pr-1 pl-2 text-md font-medium text-primary placeholder:font-normal placeholder:text-placeholder focus:outline-hidden max-sm:py-2.5"
+          />
+          <AriaButton
+            aria-label="Show the checklist"
+            className="flex shrink-0 cursor-pointer items-center self-stretch pr-3 pl-1 outline-hidden"
+          >
+            <ChevronDown aria-hidden="true" className="size-4 stroke-[2.5px] text-fg-quaternary" />
+          </AriaButton>
+        </div>
+        <Popover size="sm" triggerRef={fieldRef} style={{ width }}>
+          <AriaListBox
+            className="size-full outline-hidden"
+            renderEmptyState={() => <p className="px-3 py-2 text-sm text-tertiary">Nothing on the checklist matches.</p>}
+          >
+            {(item: (typeof items)[number]) => (
+              <SelectItem id={item.id} label={item.label} supportingText={"supportingText" in item ? item.supportingText : undefined} />
+            )}
+          </AriaListBox>
+        </Popover>
+        {choice !== undefined && <input type="hidden" name={name} value={choice} />}
+      </AriaComboBox>
+    </SelectContext.Provider>
   );
 }
+
+const NOT_COUNTED = "Not counted";
