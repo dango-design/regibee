@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { StaleDeployReload } from "@/components/stale-deploy-reload";
 import { Toaster } from "@/components/ui/sonner";
 import { fontVariables } from "./fonts";
 import "./globals.css";
@@ -50,6 +51,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <NavigationProgress />
         </Suspense>
+        <StaleDeployReload />
         {children}
         <Toaster />
       </body>
