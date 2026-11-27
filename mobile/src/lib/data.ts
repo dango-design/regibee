@@ -828,6 +828,21 @@ export function useChooseDetailValue(registryId: string) {
   );
 }
 
+/** "Don't check this price again" on the review, and turning the checks back on. */
+export function useSetPriceChecks(registryId: string) {
+  return useListChange<{ itemId: string; on: boolean }>(
+    () => registryId,
+    async ({ itemId, on }) => {
+      if (isDemo()) return demo.setPriceChecks(itemId, on);
+      await act("itemDetails.setPriceChecks", registryId, itemId, on);
+    },
+    (detail, { itemId, on }) => ({
+      ...detail,
+      detailReview: detail.detailReview.map((review) => (review.itemId === itemId ? { ...review, priceChecksOff: !on } : review)),
+    })
+  );
+}
+
 /** "Done" on the review: the items keep what they show now. */
 export function useFinishDetailReview(registryId: string) {
   return useListChange<string[]>(

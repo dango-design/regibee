@@ -86,6 +86,8 @@ export interface ListPageDetailReview {
   title: string;
   imageUrl: string | null;
   changes: ListPageDetailChange[];
+  /** True when a manager turned off this item's price checks ("Don't check this price again"). Missing from older servers' answers. */
+  priceChecksOff?: boolean;
 }
 
 export interface ListPageCategory {

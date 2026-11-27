@@ -10,7 +10,10 @@ import {
   PRICE_CHECK_DAYS,
   priceChanges,
   priceCheckDue,
+  priceChecksOff,
   shownSide,
+  turnedDownBefore,
+  type DetailChange,
   type ItemDetails,
   type LastRead,
   type PriceCheckItem,
@@ -199,14 +202,31 @@ test("an item waiting for review isn't checked again", () => {
   assert.equal(priceCheckDue(complete, waiting, now), false);
 });
 
-test("an item whose owner switched back to their own price isn't checked again", () => {
-  const changes = [{ field: "price", before: 69.99, after: 59.99 }];
-  assert.equal(priceCheckDue(complete, readOf({ read_at: daysAgo(30), changes }), now), false);
-  // Kept the new price: checked again after a week.
-  assert.equal(priceCheckDue({ ...complete, price: 59.99 }, readOf({ read_at: daysAgo(30), changes }), now), true);
-  // Filled in an empty price isn't a price the owner chose, so switching back doesn't stop checks.
-  const filled = [{ field: "price", before: null, after: 59.99 }];
-  assert.equal(priceCheckDue({ ...complete, price: null }, readOf({ read_at: daysAgo(30), changes: filled }), now), true);
+test("switching back to your own price doesn't stop checks, but the same store price changes nothing", () => {
+  // complete shows 69.99, its own price; the last check found 59.99.
+  const changes: DetailChange[] = [{ field: "price", before: 69.99, after: 59.99 }];
+  const last = readOf({ read_at: daysAgo(30), changes });
+  assert.equal(priceCheckDue(complete, last, now), true);
+  // The store still says 59.99: nothing to offer.
+  assert.equal(turnedDownBefore(complete, last, [{ field: "price", before: 69.99, after: 59.99 }]), true);
+  // The store says something else now: offer it.
+  assert.equal(turnedDownBefore(complete, last, [{ field: "price", before: 69.99, after: 54.99 }]), false);
+  // Kept the new price, or the read was of an old link: nothing was turned down.
+  assert.equal(turnedDownBefore({ ...complete, price: 59.99 }, last, [{ field: "price", before: 59.99, after: 64.99 }]), false);
+  assert.equal(turnedDownBefore(complete, { ...last, read_url: "https://www.amazon.com/dp/B0OLDLINK" }, changes), false);
+  // Took out a price that filled an empty one: that's no price the owner chose.
+  const filled = readOf({ changes: [{ field: "price", before: null, after: 59.99 }] });
+  assert.equal(turnedDownBefore({ ...complete, price: null }, filled, [{ field: "price", before: null, after: 59.99 }]), false);
+});
+
+test("turning off an item's price checks lasts until its link changes", () => {
+  const off = readOf({ read_at: daysAgo(30), price_checks_off_url: complete.external_url });
+  assert.equal(priceChecksOff(complete, off), true);
+  assert.equal(priceCheckDue(complete, off, now), false);
+  const newLink = { ...complete, external_url: "https://www.target.com/p/-/A-12345678" };
+  assert.equal(priceChecksOff(newLink, off), false);
+  assert.equal(priceCheckDue(newLink, off, now), true);
+  assert.equal(priceChecksOff(complete, readOf({ price_checks_off_url: null })), false);
 });
 
 test("a review of new prices alone is headed as one", () => {

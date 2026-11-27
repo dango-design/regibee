@@ -14,11 +14,19 @@ import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { DETAIL_FIELD_NAMES, detailReviewHeading, type DetailField, type ShownSide } from "@shared/item-details";
 import type { ListPageDetailChange, ListPageDetailReview, ListPageMissingDetails } from "@shared/list-page-types";
 
+import { Icon } from "@/components/icon";
 import { ItemImage } from "@/components/item-image";
 import { Notice } from "@/components/notice";
 import { ProductReader } from "@/components/product-reader";
 import { Button, haptic, ProgressBar, Text } from "@/components/ui";
-import { errorMessage, saveReadDetails, useChooseDetailValue, useFinishDetailReview, useRefreshList } from "@/lib/data";
+import {
+  errorMessage,
+  saveReadDetails,
+  useChooseDetailValue,
+  useFinishDetailReview,
+  useRefreshList,
+  useSetPriceChecks,
+} from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 import type { ReadProduct } from "@/lib/product";
 import { radius, spacing, useTheme } from "@/lib/theme";
@@ -125,12 +133,15 @@ export function MissingDetailsNotice({ registryId, items }: { registryId: string
 
 /**
  * "Filled in details for 3 items": what filling in changed. A value that
- * replaced another lists the new and the old as a choice of two. A value that filled an empty field has a button to take it out.
+ * replaced another lists the new and the old as a choice of two. A value that
+ * filled an empty field has a button to take it out. A replaced price has
+ * "Don't check this price again", as on the website.
  */
 export function DetailReview({ registryId, reviews }: { registryId: string; reviews: ListPageDetailReview[] }) {
   const theme = useTheme();
   const choose = useChooseDetailValue(registryId);
   const finish = useFinishDetailReview(registryId);
+  const priceChecks = useSetPriceChecks(registryId);
   const [showFilled, setShowFilled] = useState(false);
   // "itemId:field" while one choice saves.
   const [saving, setSaving] = useState<string | null>(null);
@@ -140,7 +151,7 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
   // An item with any replaced value goes in the main list, with all its changes.
   const replaced = reviews.filter((r) => r.changes.some((c) => c.before !== null));
   const filled = reviews.filter((r) => r.changes.every((c) => c.before === null));
-  const busy = saving !== null || finish.isPending;
+  const busy = saving !== null || finish.isPending || priceChecks.isPending;
 
   function pick(review: ListPageDetailReview, change: ListPageDetailChange, side: ShownSide) {
     const key = `${review.itemId}:${change.field}`;
@@ -162,14 +173,28 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
         </Text>
       ) : null}
       {review.changes.map((change) => (
-        <ChangeRow
-          key={change.field}
-          review={review}
-          change={change}
-          saving={saving === `${review.itemId}:${change.field}`}
-          disabled={busy}
-          onChoose={(side) => pick(review, change, side)}
-        />
+        <View key={change.field} style={{ gap: spacing.sm }}>
+          <ChangeRow
+            review={review}
+            change={change}
+            saving={saving === `${review.itemId}:${change.field}`}
+            disabled={busy}
+            onChoose={(side) => pick(review, change, side)}
+          />
+          {change.field === "price" && change.before !== null ? (
+            <PriceChecksBox
+              title={review.title}
+              off={review.priceChecksOff ?? false}
+              disabled={busy}
+              onChange={(off) =>
+                priceChecks.mutate(
+                  { itemId: review.itemId, on: !off },
+                  { onError: (e) => Alert.alert("Couldn't save that", errorMessage(e)) }
+                )
+              }
+            />
+          ) : null}
+        </View>
       ))}
     </View>
   );
@@ -227,6 +252,43 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
         />
       </View>
     </Notice>
+  );
+}
+
+/**
+ * Weekly price checks find a new price each time the store changes it. This
+ * stops them for one item, until its link changes.
+ */
+function PriceChecksBox({
+  title,
+  off,
+  disabled,
+  onChange,
+}: {
+  title: string;
+  off: boolean;
+  disabled: boolean;
+  onChange: (off: boolean) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: off, disabled }}
+      accessibilityLabel={`Don't check this price again, for ${title}`}
+      disabled={disabled}
+      hitSlop={6}
+      onPress={() => {
+        haptic();
+        onChange(!off);
+      }}
+      style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 32, alignSelf: "flex-start" }}
+    >
+      <Icon name={off ? "checkbox" : "checkboxEmpty"} size={22} color={off ? theme.tint : theme.textTertiary} />
+      <Text variant="footnote" tone="secondary">
+        Don&apos;t check this price again
+      </Text>
+    </Pressable>
   );
 }
 
