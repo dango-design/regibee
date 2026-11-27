@@ -256,8 +256,11 @@ test("a follower is one tap from following back, and approving offers it too", a
   await signInAs(page, glinda);
   await page.goto("/dashboard/account");
 
-  // Max already follows Glinda: one tap sends a request back.
-  await page.getByRole("button", { name: "Follow back Max Mutual" }).click();
+  // Max already follows Glinda: one tap sends a request back. The page
+  // compiles on first visit, so wait until React handles the button.
+  const followBack = page.getByRole("button", { name: "Follow back Max Mutual" });
+  await waitForReact(followBack);
+  await followBack.click();
   await expect(page.getByText("Requested").first()).toBeVisible();
   await expect
     .poll(async () => {
