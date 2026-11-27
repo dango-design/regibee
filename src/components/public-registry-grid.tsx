@@ -233,6 +233,7 @@ export function PublicRegistryGrid({
                       previousAmount={fundPrevAmount}
                       shippingAddress={shippingAddress}
                       action={actions?.contribute}
+                      demo={demo}
                     />
                   </div>
                 </CardContent>
