@@ -5,14 +5,14 @@
 // already chosen. An event asks what it is, who it's for and how gifts work,
 // then the website's own startPlan makes it. Change both together.
 
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { BackHandler, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   AUDIENCE_LABELS,
-  OCCASIONS,
+  OCCASION_GROUPS,
   giftPlanLabel,
   giftPlanRows,
   listTitleFor,
@@ -122,6 +122,8 @@ const TINT_DOTS: Record<OccasionTint, string> = {
 export default function NewPlanScreen() {
   const { demo } = useSession();
   const query = usePlanPicker();
+  // The Events tab's New button sends first=events, so events show before gift lists.
+  const { first } = useLocalSearchParams<{ first?: string }>();
 
   let body;
   if (demo) {
@@ -135,7 +137,7 @@ export default function NewPlanScreen() {
       />
     );
   } else if (query.data) {
-    body = <PlanPicker myName={query.data.myName} myLists={query.data.myLists} />;
+    body = <PlanPicker myName={query.data.myName} myLists={query.data.myLists} eventsFirst={first === "events"} />;
   } else if (query.error) {
     body = <ErrorState message={errorMessage(query.error)} onRetry={() => query.refetch()} />;
   } else {
@@ -236,6 +238,48 @@ function StepSection({ children }: { children: ReactNode }) {
   return <View style={{ gap: spacing.lg }}>{children}</View>;
 }
 
+/** Splits a group's occasions into rows of two. */
+function pairs<T>(items: readonly T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  return rows;
+}
+
+/** One occasion on the first step, with its color dot. */
+function OccasionButton({ id, selected, onPress }: { id: OccasionId; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  const o = occasionFor(id);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={() => {
+        haptic();
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 56,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.sm,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: selected ? theme.tint : theme.border,
+        backgroundColor: theme.surface,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: TINT_DOTS[o.tint] }} />
+      <Text variant="subhead" style={{ fontWeight: "500", flexShrink: 1 }}>
+        {o.label}
+      </Text>
+    </Pressable>
+  );
+}
+
 /**
  * The picker. It starts with two kinds of thing to make:
  *
@@ -244,7 +288,16 @@ function StepSection({ children }: { children: ReactNode }) {
  *   name, then startPlan makes the event, with a gift list if the host wants
  *   one.
  */
-function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string; title: string }[] }) {
+function PlanPicker({
+  myName,
+  myLists,
+  eventsFirst,
+}: {
+  myName: string;
+  myLists: { id: string; title: string }[];
+  /** Put events before gift lists. */
+  eventsFirst: boolean;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const keyboardFooter = useKeyboardFooter();
@@ -447,6 +500,25 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
     }
   }
 
+  // Gift lists on their own. They come first, or after events from the Events tab.
+  const listsSection = (
+    <StepSection>
+      <Heading title={eventsFirst ? "Or make a gift list" : "Make a gift list"} />
+      <View style={{ gap: spacing.sm }}>
+        {LISTS_ON_THEIR_OWN.map((list) => (
+          <Choice
+            key={list.label}
+            selected={false}
+            icon={list.icon}
+            label={list.label}
+            hint={list.hint}
+            onPress={() => router.replace({ pathname: "/new-registry", params: list.params })}
+          />
+        ))}
+      </View>
+    </StepSection>
+  );
+
   return (
     <>
       <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
@@ -492,61 +564,30 @@ function PlanPicker({ myName, myLists }: { myName: string; myLists: { id: string
 
         {state.step === "what" ? (
           <>
+            {eventsFirst ? null : listsSection}
+
             <StepSection>
-              <Heading title="Make a gift list" />
-              <View style={{ gap: spacing.sm }}>
-                {LISTS_ON_THEIR_OWN.map((list) => (
-                  <Choice
-                    key={list.label}
-                    selected={false}
-                    icon={list.icon}
-                    label={list.label}
-                    hint={list.hint}
-                    onPress={() => router.replace({ pathname: "/new-registry", params: list.params })}
-                  />
+              <Heading title={eventsFirst ? "Plan an event" : "Or plan an event"} />
+              <View style={{ gap: spacing.lg }}>
+                {OCCASION_GROUPS.map((group) => (
+                  <View key={group.label} style={{ gap: spacing.sm }}>
+                    <Text variant="footnote" tone="tertiary" style={{ fontWeight: "600" }} accessibilityRole="header">
+                      {group.label}
+                    </Text>
+                    {pairs(group.ids).map((row) => (
+                      <View key={row.join()} style={{ flexDirection: "row", gap: spacing.sm }}>
+                        {row.map((id) => (
+                          <OccasionButton key={id} id={id} selected={state.occasion === id} onPress={() => chooseOccasion(id)} />
+                        ))}
+                        {/* Keeps a lone last button half width. */}
+                        {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+                      </View>
+                    ))}
+                  </View>
                 ))}
               </View>
             </StepSection>
-
-            <StepSection>
-              <Heading title="Or plan an event" />
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                {OCCASIONS.map((o) => {
-                  const selected = state.occasion === o.id;
-                  return (
-                    <Pressable
-                      key={o.id}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      onPress={() => {
-                        haptic();
-                        chooseOccasion(o.id);
-                      }}
-                      style={({ pressed }) => ({
-                        flexBasis: "47%",
-                        flexGrow: 1,
-                        minHeight: 56,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: spacing.sm,
-                        paddingHorizontal: spacing.md,
-                        paddingVertical: spacing.sm,
-                        borderRadius: radius.lg,
-                        borderWidth: 1,
-                        borderColor: selected ? theme.tint : theme.border,
-                        backgroundColor: theme.surface,
-                        opacity: pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: TINT_DOTS[o.tint] }} />
-                      <Text variant="subhead" style={{ fontWeight: "500", flexShrink: 1 }}>
-                        {o.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </StepSection>
+            {eventsFirst ? listsSection : null}
           </>
         ) : null}
 

@@ -31,13 +31,14 @@ export interface EventsOverviewProps {
 }
 
 /**
- * The New button: "Start something new" (/dashboard/new). The demo has no
- * picker, so with a base path it opens the demo's event form.
+ * The New button: "Start something new" (/dashboard/new), with events shown
+ * before gift lists. The demo has no picker, so with a base path it opens the
+ * demo's event form.
  */
 export function NewEventButton({ basePath = "" }: { basePath?: string }) {
   return (
     <Button asChild>
-      <Link href={basePath ? `${basePath}/dashboard/events/new` : "/dashboard/new"}>
+      <Link href={basePath ? `${basePath}/dashboard/events/new` : "/dashboard/new?first=events"}>
         <span className="inline-flex items-center gap-1.5">
           <Plus className="h-4 w-4 shrink-0" />
           New

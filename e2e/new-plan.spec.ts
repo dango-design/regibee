@@ -35,6 +35,16 @@ async function linkedRegistries(eventId: string) {
   return (data ?? []).map((row) => row.registries as unknown as Record<string, unknown>);
 }
 
+test("the Events tab's New button shows events before gift lists", async ({ page }) => {
+  const host = await createAccount("Hal Host");
+  await signIn(page, host);
+  await page.goto("/dashboard/events");
+  // With no events yet, the empty card has a second New button.
+  await page.getByRole("link", { name: "New", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Plan an event" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Plan an event", "Or make a gift list"]);
+});
+
 test("a friend's baby shower links the parents' registry", async ({ page }) => {
   const host = await createAccount("Hal Host");
   const parent = await createAccount("Remi Parent");
