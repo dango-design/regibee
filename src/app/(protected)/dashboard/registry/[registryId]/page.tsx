@@ -8,6 +8,7 @@ import { AddItemDialog } from "@/components/add-item-dialog";
 import { ItemCard } from "@/components/item-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
 import { MissingDetailsNotice } from "@/components/missing-details-notice";
+import { PriceCheck } from "@/components/price-check";
 import { SortIntoCategoriesButton } from "@/components/sort-into-categories-button";
 import { DetailReview } from "@/components/detail-review";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -76,6 +77,7 @@ export default async function RegistryManagePage({
     eventPromptDismissed,
     pendingSuggestionCount,
     missingDetails = [],
+    priceChecks = [],
     detailReview = [],
   } = data;
   const registryLinkStores = data.storesWithRegistryLinks;
@@ -285,6 +287,9 @@ export default async function RegistryManagePage({
 
             {/* Always there, so it keeps reading while the page refreshes after each item. */}
             <MissingDetailsNotice registryId={registryId} items={missingDetails} className="mb-6" />
+
+            {/* Always there too, so a page refresh after a new price doesn't start it again. */}
+            <PriceCheck registryId={registryId} items={priceChecks} className="mb-6" />
 
             {plainLinkGroups.length > 0 && (
               <div className="mb-6">

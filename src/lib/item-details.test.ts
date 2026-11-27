@@ -4,10 +4,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   detailChanges,
+  detailReviewHeading,
   isMissingDetails,
   parseDetailChanges,
+  PRICE_CHECK_DAYS,
+  priceChanges,
+  priceCheckDue,
   shownSide,
   type ItemDetails,
+  type LastRead,
+  type PriceCheckItem,
   type ReadDetails,
 } from "./item-details.ts";
 
@@ -135,4 +141,78 @@ test("saved changes are read back, and anything else is left out", () => {
   ]);
   assert.deepEqual(parseDetailChanges({ field: "title" }), []);
   assert.deepEqual(parseDetailChanges(null), []);
+});
+
+// ── Checking prices ────────────────────────────────────────────────────
+
+const now = new Date("2026-11-27T12:00:00Z");
+const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+
+// An item added with all its details, two weeks ago.
+const complete: PriceCheckItem = {
+  title: "Hatch Rest Sound Machine",
+  price: 69.99,
+  image_url: "https://example.com/rest.jpg",
+  is_parent_purchased: false,
+  external_url: "https://www.amazon.com/dp/B0EXAMPLE1",
+  created_at: daysAgo(14),
+  quantity_needed: 1,
+  quantity_fulfilled: 0,
+};
+
+const readOf = (overrides: Partial<LastRead>): LastRead => ({
+  read_url: complete.external_url,
+  read_at: daysAgo(1),
+  changes: [],
+  reviewed_at: daysAgo(1),
+  ...overrides,
+});
+
+test("a price check changes the price only, never the name or photo", () => {
+  const changes = priceChanges({ ...complete, image_url: null }, { ...read, title: "Robot Check" });
+  assert.deepEqual(changes, [{ field: "price", before: 69.99, after: 59.99 }]);
+  assert.deepEqual(priceChanges(complete, { ...read, price: 69.99 }), []);
+  assert.deepEqual(priceChanges({ ...complete, is_parent_purchased: true }, read), []);
+});
+
+test("an item is checked a week after it was added or last read", () => {
+  assert.equal(priceCheckDue(complete, undefined, now), true);
+  assert.equal(priceCheckDue({ ...complete, created_at: daysAgo(PRICE_CHECK_DAYS - 1) }, undefined, now), false);
+  assert.equal(priceCheckDue(complete, readOf({ read_at: daysAgo(2) }), now), false);
+  assert.equal(priceCheckDue(complete, readOf({ read_at: daysAgo(PRICE_CHECK_DAYS) }), now), true);
+});
+
+test("a read of the item's old link doesn't count as a check", () => {
+  const oldLink = readOf({ read_url: "https://www.amazon.com/dp/B0OLDLINK", read_at: daysAgo(1) });
+  assert.equal(priceCheckDue(complete, oldLink, now), true);
+  assert.equal(priceCheckDue({ ...complete, created_at: daysAgo(1) }, oldLink, now), false);
+});
+
+test("bought and fully given items aren't checked", () => {
+  assert.equal(priceCheckDue({ ...complete, is_parent_purchased: true }, undefined, now), false);
+  assert.equal(priceCheckDue({ ...complete, quantity_fulfilled: 1 }, undefined, now), false);
+  assert.equal(priceCheckDue({ ...complete, quantity_needed: 3, quantity_fulfilled: 1 }, undefined, now), true);
+});
+
+test("an item waiting for review isn't checked again", () => {
+  const waiting = readOf({ read_at: daysAgo(30), reviewed_at: null, changes: [{ field: "price", before: 79.99, after: 69.99 }] });
+  assert.equal(priceCheckDue(complete, waiting, now), false);
+});
+
+test("an item whose owner switched back to their own price isn't checked again", () => {
+  const changes = [{ field: "price", before: 69.99, after: 59.99 }];
+  assert.equal(priceCheckDue(complete, readOf({ read_at: daysAgo(30), changes }), now), false);
+  // Kept the new price: checked again after a week.
+  assert.equal(priceCheckDue({ ...complete, price: 59.99 }, readOf({ read_at: daysAgo(30), changes }), now), true);
+  // Filled in an empty price isn't a price the owner chose, so switching back doesn't stop checks.
+  const filled = [{ field: "price", before: null, after: 59.99 }];
+  assert.equal(priceCheckDue({ ...complete, price: null }, readOf({ read_at: daysAgo(30), changes: filled }), now), true);
+});
+
+test("a review of new prices alone is headed as one", () => {
+  const price = { field: "price" as const, before: 69.99 };
+  assert.equal(detailReviewHeading([{ changes: [price] }]), "New price for 1 item");
+  assert.equal(detailReviewHeading([{ changes: [price] }, { changes: [price] }]), "New prices for 2 items");
+  assert.equal(detailReviewHeading([{ changes: [price] }, { changes: [{ field: "title", before: "A" }] }]), "Filled in details for 2 items");
+  assert.equal(detailReviewHeading([{ changes: [{ field: "price", before: null }] }]), "Filled in details for 1 item");
 });

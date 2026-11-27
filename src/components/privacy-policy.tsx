@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 26, 2026",
+  effectiveDate: "November 27, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -476,10 +476,12 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 them with your Regibee registry and adds the ones you pick.
               </li>
               <li>
-                <strong className="font-semibold text-primary">Store links on regibee.com, when you ask.</strong> When
+                <strong className="font-semibold text-primary">Store links on regibee.com.</strong> When
                 you paste a link from one of those stores while adding an item, or click &ldquo;Fill them in&rdquo; on
                 a list whose items are missing a photo or price, the extension may open each link in a background tab,
-                read the product, and close the tab.
+                read the product, and close the tab. When you open one of your lists, it also checks the prices of a
+                few items whose price hasn&apos;t been checked for a week, the same way. The list shows when it&apos;s
+                checking, and you can stop it.
               </li>
             </List>
             <P>
