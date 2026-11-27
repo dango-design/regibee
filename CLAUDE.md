@@ -161,9 +161,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 - On a computer with the extension, a list's page checks a few prices each time a manager opens it (`PriceCheck`, `src/components/price-check.tsx`). A few seconds after the page opens, the extension reads up to 5 items' links in background tabs, one at a time. A line on the page says so while it reads, with a Stop button.
 - The rules and their tests are in `src/lib/item-details.ts` (`priceCheckDue`). An item is checked when its price hasn't been checked for 7 days: since its last read of the same link, or since it was added. The longest unchecked go first. Items the owner bought, items every one of which has been given, items missing a photo or price (the fill-in notice handles those) and items waiting for review are skipped.
-- A check changes only the price, never the name or photo (`savePriceCheck`). The new price shows to guests straight away, and `DetailReview` shows it with the old one, headed "New prices". If the owner switches back to their own price, that item isn't checked again until its link changes.
+- A check changes only the price, never the name or photo (`savePriceCheck`). The new price shows to guests straight away, and `DetailReview` shows it with the old one, headed "New prices".
+- If the owner switches back to their own price, checks go on. A later check that finds the price they turned down changes nothing (`turnedDownBefore`). One that finds a different price offers it.
+- Each replaced price on the review has "Don't check this price again" (`setPriceChecks`), on the website and in the app. It saves the item's link in `item_detail_reads.price_checks_off_url`, and checks stay off while the item has that link. Nothing else shows it yet, so after Done the only way to turn checks back on is a new link.
+- Names change only on the one fill-in read of each link, never on a price check. So the review has no such box for names.
 - Each check saves its time in `item_detail_reads`, even when the price was the same.
-- The phone app has no extension, so it doesn't check prices.
+- The phone app has no extension, so it doesn't check prices. It shows the review and the checkbox.
 
 ## Gift ideas
 

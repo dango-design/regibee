@@ -21,8 +21,10 @@
 // opens the list's page on a computer with the extension, the page reads a few
 // items whose price hasn't been checked for a week (PriceCheck). A price check
 // changes only the price, never the name or photo, and the review shows it
-// like any other change. An item whose new price the owner switched back isn't
-// checked again until its link changes.
+// like any other change. If the owner switches back to their own price, a
+// later check that finds the same store price leaves it alone, and one that
+// finds another price offers that. "Don't check this price again" on the
+// review stops the checks until the item's link changes.
 //
 // No imports, so the unit tests (item-details.test.ts) and later the phone app
 // can use it.
@@ -134,6 +136,13 @@ export interface LastRead {
   read_at: string;
   changes: unknown;
   reviewed_at: string | null;
+  /** The item's link when a manager turned off its price checks. Null or missing while they're on. */
+  price_checks_off_url?: string | null;
+}
+
+/** Whether a manager turned off this item's price checks, for the link it has now. */
+export function priceChecksOff(item: Pick<PriceCheckItem, "external_url">, read: LastRead | undefined): boolean {
+  return Boolean(read?.price_checks_off_url) && read?.price_checks_off_url === item.external_url;
 }
 
 /**
@@ -154,17 +163,31 @@ export function priceCheckDue(item: PriceCheckItem, read: LastRead | undefined, 
   if (item.is_parent_purchased) return false;
   // Every one wanted has been given, so guests aren't looking at its price.
   if (item.quantity_fulfilled >= item.quantity_needed) return false;
-  if (read && read.read_url === item.external_url) {
-    const changes = parseDetailChanges(read.changes);
-    // The last read is still waiting for review. Another would replace it.
-    if (!read.reviewed_at && changes.length > 0) return false;
-    // The owner switched back to their own price. Keep it.
-    const price = changes.find((change) => change.field === "price");
-    if (price && price.before !== null && shownSide(price, item) === "before") return false;
+  if (priceChecksOff(item, read)) return false;
+  // The last read is still waiting for review. Another would replace it.
+  if (read && read.read_url === item.external_url && !read.reviewed_at && parseDetailChanges(read.changes).length > 0) {
+    return false;
   }
   const checked = Date.parse(lastPriceCheck(item, read));
   if (Number.isNaN(checked)) return true;
   return now.getTime() - checked >= PRICE_CHECK_DAYS * DAY_MS;
+}
+
+/**
+ * True when a price check found the same new price the owner already turned
+ * down: their last read of this link changed the price, and they switched back
+ * to their own. The check then changes nothing and keeps that read for next time.
+ */
+export function turnedDownBefore(
+  item: Pick<PriceCheckItem, DetailField | "external_url">,
+  read: Pick<LastRead, "read_url" | "changes"> | undefined,
+  changes: DetailChange[],
+): boolean {
+  const next = changes.find((change) => change.field === "price");
+  if (!next || !read || read.read_url !== item.external_url) return false;
+  const last = parseDetailChanges(read.changes).find((change) => change.field === "price");
+  if (!last || last.before === null || shownSide(last, item) !== "before") return false;
+  return sameValue("price", last.after, next.after);
 }
 
 function isEmpty(value: string | number | null): boolean {

@@ -105,6 +105,17 @@ test("the list page fills in missing details and lets the owner put an old value
   await expect(names.getByRole("radio", { name: /^Old name/ })).toBeChecked();
   await expect(names.getByRole("radio", { name: /^New name/ })).not.toBeChecked();
 
+  // The swaddle's price replaced the one the owner typed: stop checking it.
+  const stopChecks = review.getByRole("checkbox", { name: "Don't check this price again, for Halo Sleepsack Swaddle" });
+  // Its input is hidden inside its label, so click the label.
+  await stopChecks.locator("xpath=ancestor::label[1]").click();
+  await expect(stopChecks).toBeChecked();
+  await expect
+    .poll(async () => (await db.from("item_detail_reads").select("price_checks_off_url").eq("item_id", ids[1]).single()).data?.price_checks_off_url)
+    .toBe(LINK("B0E2ETEST2"));
+  // A price that only filled an empty one has no such box.
+  await expect(review.getByRole("checkbox")).toHaveCount(1);
+
   await review.getByRole("button", { name: "Done" }).click();
   await expect(review).toBeHidden();
   const { data: reads } = await db.from("item_detail_reads").select("item_id, reviewed_at").in("item_id", ids);
