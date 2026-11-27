@@ -9,6 +9,9 @@ import {
   guestItemStatus,
   hidesReservations,
   itemAsUnreserved,
+  itemProgress,
+  listProgress,
+  ownerItemStatus,
   readReservationPrivacy,
   reservationsHiddenFrom,
   settingsAfterJoiningExchange,
@@ -129,6 +132,26 @@ test("an item the owners bought counts what guests covered", () => {
   assert.equal(guestItemStatus(bought, { cookieValue: "cover" }).itemPurchased, true);
 });
 
+test("an item the owners won't let guests cover is done for guests", () => {
+  const bought = { ...open, is_parent_purchased: true, guests_can_cover: false };
+  const s = guestItemStatus(bought, { selfPurchasedLabel: "Already bought" });
+  assert.equal(s.availableToGift, 0);
+  assert.equal(s.quantity, "0 of 2 still needed");
+  assert.deepEqual(s.tag, { kind: "parent-purchased", label: "Already bought" });
+  assert.equal(s.showsActions, false);
+  assert.equal(s.looksDone, true);
+  // A guest who covered it before still sees their gift.
+  const mine = guestItemStatus(bought, { gift: { purchaseId: "p", status: "purchased", reservedUntil: null, quantity: 1 } });
+  assert.equal(mine.showsActions, true);
+});
+
+test("an item the owners marked as gifted reads as gifted to guests", () => {
+  const s = guestItemStatus({ ...open, is_parent_purchased: true, marked_gifted: true });
+  assert.deepEqual(s.tag, { kind: "gifted", label: "Gifted" });
+  assert.equal(s.availableToGift, 0);
+  assert.equal(s.showsActions, false);
+});
+
 test("the guest's group gift replaces the reserve buttons", () => {
   const s = guestItemStatus({ ...open, quantity_fulfilled: 2 }, { groupGift: { token: "t", organizer: true }, groupGiftsOn: true });
   assert.deepEqual(s.tag, { kind: "reserved", label: "Your group gift" });
@@ -141,4 +164,51 @@ test("gift funds stay at the top unless the list moved them to the bottom", () =
   assert.equal(fundsPosition({}), "top");
   assert.equal(fundsPosition({ funds_position: "bottom" }), "bottom");
   assert.equal(fundsPosition({ funds_position: "middle" }), "top");
+});
+
+// ── Progress and the owner's item status ────────────────────────────────
+
+const item = { quantity_needed: 2, quantity_fulfilled: 0 };
+const cover = (quantity: number, buyer_name = "Ana") => ({ status: "purchased", quantity, buyer_name });
+
+test("an item the owner bought isn't gifted until guests cover all of it", () => {
+  const bought = { ...item, quantity_fulfilled: 2, is_parent_purchased: true };
+  assert.equal(itemProgress(bought, 0), "bought-by-you");
+  assert.equal(itemProgress(bought, 1), "bought-by-you");
+  assert.equal(itemProgress(bought, 2), "covered");
+  assert.equal(itemProgress({ ...bought, marked_gifted: true }, 0), "covered");
+  assert.equal(itemProgress({ ...item, quantity_fulfilled: 2 }), "gifted");
+  assert.equal(itemProgress({ ...item, quantity_fulfilled: 1 }), "to-buy");
+});
+
+test("a list counts covered items as gifted, and bought ones apart", () => {
+  const items = [
+    { id: "a", ...item },
+    { id: "b", ...item, quantity_fulfilled: 2 },
+    { id: "c", ...item, quantity_fulfilled: 2, is_parent_purchased: true },
+    { id: "d", ...item, quantity_fulfilled: 2, is_parent_purchased: true },
+    { id: "e", ...item, quantity_fulfilled: 2, is_parent_purchased: true, marked_gifted: true },
+  ];
+  const covers: Record<string, number> = { c: 1, d: 2 };
+  assert.deepEqual(listProgress(items, (i) => covers[i.id] ?? 0), {
+    total: 5,
+    toBuy: 1,
+    boughtByYou: 1,
+    gifted: 3,
+    covered: 2,
+  });
+});
+
+test("the owner sees what they chose for an item they bought", () => {
+  const bought = { ...item, quantity_fulfilled: 2, is_parent_purchased: true };
+  assert.deepEqual(ownerItemStatus(bought, [cover(1)]), {
+    tag: { kind: "purchased-by-you", label: "Purchased by you" },
+    quantity: "1 of 2 available to gift",
+  });
+  assert.equal(ownerItemStatus({ ...bought, guests_can_cover: false }).quantity, "Guests can't cover it");
+  assert.deepEqual(ownerItemStatus({ ...bought, marked_gifted: true }).tag, { kind: "gifted", label: "Marked as gifted" });
+  assert.deepEqual(ownerItemStatus(bought, [cover(1), cover(1, "Bo")]).tag, {
+    kind: "gifted",
+    label: "Covered by Ana + 1 other",
+  });
 });

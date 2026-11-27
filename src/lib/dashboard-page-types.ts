@@ -3,6 +3,7 @@
 // imports of shareable files, so the app can share it through @shared/*.
 
 import type { EventType, RsvpStatus, RsvpSummary } from "./events";
+import type { ListProgress } from "./gifts";
 import type { PersonalEventType, RegistryType } from "./types";
 
 /** One list's card. */
@@ -24,7 +25,13 @@ export interface DashboardCard {
   /** "owner" for the user's own lists, "manager" for lists shared with them. */
   role: "owner" | "manager";
   totalItems: number;
+  /**
+   * How many items are gifted. An item a manager bought counts only once
+   * guests cover it or they mark it as gifted (src/lib/gifts.ts).
+   */
   fulfilledItems: number;
+  /** Where each item stands. Missing from older servers' answers. */
+  progress?: ListProgress;
   totalValue: number;
   /** The newest three gifts: "Ana reserved an item". Empty while reservations are hidden. */
   recentActivity: { id: string; name: string; action: string }[];

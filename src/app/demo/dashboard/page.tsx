@@ -7,6 +7,7 @@ import { demoEvents, isDemoHost } from "@/lib/demo-events";
 import { formatEventTime, summarizeRsvps } from "@/lib/events";
 import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { addDays } from "@/lib/demo-data";
+import { coveredQuantity, listProgress } from "@/lib/gifts";
 import { useDemoToday } from "../demo-today";
 import { DemoOwnerShell } from "../_components/demo-shell";
 import { DemoTour } from "../_components/demo-tour";
@@ -62,7 +63,7 @@ export default function DemoDashboardPage() {
     photo_url: null,
     is_private: false,
     totalItems: registry.items.length,
-    fulfilledItems: registry.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length,
+    ...demoProgress(registry),
     // Item gifts only, as the real loader counts them: chip-ins to a fund aren't items.
     giftsThisWeek: registry.purchases.filter(
       (p) => p.status !== "cancelled" && !p.cash_fund_id && p.created_at >= weekAgo,
@@ -87,4 +88,12 @@ export default function DemoDashboardPage() {
       />
     </DemoOwnerShell>
   );
+}
+
+/** A demo list's progress, counted as the real loader does (listProgress in src/lib/gifts.ts). */
+function demoProgress(registry: ReturnType<typeof demoOwnRegistries>[number]) {
+  const progress = listProgress(registry.items, (i) =>
+    coveredQuantity(registry.purchases.filter((p) => p.registry_item_id === i.id)),
+  );
+  return { fulfilledItems: progress.gifted, progress };
 }

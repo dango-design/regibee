@@ -102,16 +102,123 @@ export function maskGiverForOwner<T extends GiverLike & { buyer_email?: string |
   };
 }
 
+// ── An item a list's manager bought themselves ──────────────────────────
+//
+// A manager can mark an item as bought by them (is_parent_purchased). It isn't
+// a gift: nobody gave it to them. Guests stop reserving it. What happens next
+// is the manager's choice, and they can change it at any time
+// (supabase/migrations/20261127093601_bought_item_choices.sql):
+//
+// - Guests can cover it, by sending its price. Once guests cover every one
+//   the manager bought, it counts as gifted. This is the default.
+// - Guests can't cover it. It stays bought by the manager.
+// - The manager marks it as gifted, such as when someone paid them back
+//   outside Regibee. Guests can't cover it then.
+
+interface BoughtItem {
+  is_parent_purchased?: boolean | null;
+  /** Missing from older servers' answers, which means guests can cover it. */
+  guests_can_cover?: boolean | null;
+  /** Missing from older servers' answers, which means it isn't. */
+  marked_gifted?: boolean | null;
+}
+
+/** True when guests can still send money toward an item the manager bought. */
+export function canBeCovered(item: BoughtItem): boolean {
+  return Boolean(item.is_parent_purchased) && item.guests_can_cover !== false && !item.marked_gifted;
+}
+
+/**
+ * How many guests covered, from an item's gifts, cancelled ones included. On
+ * an item the manager bought, every gift that isn't cancelled counts, the same
+ * as cover_parent_item's cap.
+ */
+export function coveredQuantity(purchases: { status: string; quantity?: number | null }[] = []): number {
+  return purchases.filter((p) => p.status !== "cancelled").reduce((sum, p) => sum + (p.quantity || 1), 0);
+}
+
+// ── How far along a list is ─────────────────────────────────────────────
+//
+// Each item is in one of four places. An item the manager bought isn't
+// counted as gifted until guests cover it or the manager marks it as gifted.
+// The owner's progress bar (src/components/list-progress-bar.tsx and the
+// app's list screen), the dashboard cards and the guest page's count all use
+// this.
+
+export type ItemProgress =
+  /** Nobody has given or bought it yet, or not all of them. */
+  | "to-buy"
+  /** The manager bought it, and it isn't covered yet. */
+  | "bought-by-you"
+  /** Guests gave or reserved every one. */
+  | "gifted"
+  /** The manager bought it, then guests covered every one or the manager marked it as gifted. */
+  | "covered";
+
+interface ProgressItem extends BoughtItem {
+  quantity_needed: number;
+  quantity_fulfilled: number;
+}
+
+/** Where one item stands. `coveredQty` is coveredQuantity of its gifts. */
+export function itemProgress(item: ProgressItem, coveredQty = 0): ItemProgress {
+  if (item.is_parent_purchased) {
+    return item.marked_gifted || coveredQty >= item.quantity_needed ? "covered" : "bought-by-you";
+  }
+  return item.quantity_fulfilled >= item.quantity_needed ? "gifted" : "to-buy";
+}
+
+export interface ListProgress {
+  total: number;
+  toBuy: number;
+  boughtByYou: number;
+  /** Every gifted item, covered ones included. */
+  gifted: number;
+  /** The part of `gifted` that the manager bought first. */
+  covered: number;
+}
+
+/** How many of a list's items are in each place. `coveredQty` gives each item's. */
+export function listProgress<T extends ProgressItem>(items: T[], coveredQty: (item: T) => number = () => 0): ListProgress {
+  const progress: ListProgress = { total: items.length, toBuy: 0, boughtByYou: 0, gifted: 0, covered: 0 };
+  for (const item of items) {
+    const place = itemProgress(item, item.is_parent_purchased ? coveredQty(item) : 0);
+    if (place === "to-buy") progress.toBuy++;
+    else if (place === "bought-by-you") progress.boughtByYou++;
+    else {
+      progress.gifted++;
+      if (place === "covered") progress.covered++;
+    }
+  }
+  return progress;
+}
+
+export type ListProgressPart = "gifted" | "covered" | "bought-by-you" | "to-buy";
+
+/**
+ * The parts of a progress bar, in order, with the words its key shows. Parts
+ * with nothing in them are left out. "gifted" here is only what guests gave
+ * outright, so the counts add up to the total.
+ */
+export function listProgressParts(p: ListProgress): { part: ListProgressPart; count: number; label: string }[] {
+  const direct = p.gifted - p.covered;
+  return [
+    { part: "gifted" as const, count: direct, label: `${direct} gifted` },
+    { part: "covered" as const, count: p.covered, label: `${p.covered} covered` },
+    { part: "bought-by-you" as const, count: p.boughtByYou, label: `${p.boughtByYou} bought by you` },
+    { part: "to-buy" as const, count: p.toBuy, label: `${p.toBuy} to buy` },
+  ].filter((x) => x.count > 0);
+}
+
 // ── An item's status on its owner's list ────────────────────────────────
 //
 // The website's item card (src/components/item-card.tsx) and the app's item
 // row (mobile/src/components/item-row.tsx) both show this, so the owner reads
 // the same words in both.
 
-interface OwnerItem {
+interface OwnerItem extends BoughtItem {
   quantity_needed: number;
   quantity_fulfilled: number;
-  is_parent_purchased?: boolean | null;
 }
 
 type OwnerItemPurchase = PurchaseLike & GiverLike & { quantity?: number | null };
@@ -134,11 +241,17 @@ export function ownerItemStatus(item: OwnerItem, purchases: OwnerItemPurchase[] 
   const needed = item.quantity_needed;
 
   if (item.is_parent_purchased) {
-    // Guests can still pay toward an item the owner bought.
-    const covered = active.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    const covered = coveredQuantity(active);
+    const done = `0 of ${needed} still needed`;
+    if (item.marked_gifted) return { tag: { kind: "gifted", label: "Marked as gifted" }, quantity: done };
+    if (covered >= needed) {
+      const others = active.length - 1;
+      const more = others > 0 ? ` + ${others} other${others > 1 ? "s" : ""}` : "";
+      return { tag: { kind: "gifted", label: `Covered by ${giverNameForOwner(active[0])}${more}` }, quantity: done };
+    }
     return {
       tag: { kind: "purchased-by-you", label: "Purchased by you" },
-      quantity: `${needed - covered} of ${needed} available to gift`,
+      quantity: canBeCovered(item) ? `${needed - covered} of ${needed} available to gift` : "Guests can't cover it",
     };
   }
 
@@ -166,7 +279,7 @@ export function ownerItemStatus(item: OwnerItem, purchases: OwnerItemPurchase[] 
 // (mobile/src/app/r/[slug].tsx) both show this, so a guest reads the same
 // words in both.
 
-interface GuestItem {
+interface GuestItem extends BoughtItem {
   quantity_needed: number;
   quantity_fulfilled: number;
   is_essential: boolean;
@@ -239,15 +352,21 @@ export function guestItemStatus(
   const itemPurchased = item.is_parent_purchased ? !!gift || opts.cookieValue === "cover" : gift?.status === "purchased";
   const myReservation = !item.is_parent_purchased && gift?.status === "reserved";
   const coveredQty = opts.coveredQty ?? 0;
-  const availableToGift = item.is_parent_purchased ? item.quantity_needed - coveredQty : remaining;
-  const isFullyCovered = item.is_parent_purchased && coveredQty >= item.quantity_needed;
+  // An item the owners bought takes covers only while they allow it.
+  const availableToGift = item.is_parent_purchased
+    ? canBeCovered(item)
+      ? Math.max(0, item.quantity_needed - coveredQty)
+      : 0
+    : remaining;
+  const nothingToCover = item.is_parent_purchased && availableToGift === 0;
   const myGroupGift = item.is_parent_purchased ? undefined : opts.groupGift;
-  const looksDone = (isFulfilled && !item.is_parent_purchased && !myReservation && !myGroupGift) || isFullyCovered;
+  const looksDone = (isFulfilled && !item.is_parent_purchased && !myReservation && !myGroupGift) || nothingToCover;
   // Anyone but the list's managers can start a group gift on an open item.
   const canStartGroupGift = Boolean(opts.groupGiftsOn) && !item.is_parent_purchased && remaining > 0 && !gift && !myGroupGift;
 
   let tag: GuestItemStatus["tag"] = null;
-  if (item.is_parent_purchased) tag = { kind: "parent-purchased", label: opts.selfPurchasedLabel ?? "Purchased by parent" };
+  if (item.is_parent_purchased && item.marked_gifted) tag = { kind: "gifted", label: "Gifted" };
+  else if (item.is_parent_purchased) tag = { kind: "parent-purchased", label: opts.selfPurchasedLabel ?? "Purchased by parent" };
   else if (myGroupGift) tag = { kind: "reserved", label: myGroupGift.organizer ? "Your group gift" : "You're chipping in" };
   else if (myReservation) {
     tag = {
@@ -268,9 +387,11 @@ export function guestItemStatus(
     isFulfilled,
     remaining,
     availableToGift,
-    quantity: item.is_parent_purchased
-      ? `${availableToGift} of ${item.quantity_needed} available to gift`
-      : `${remaining} of ${item.quantity_needed} still needed`,
+    quantity: !item.is_parent_purchased
+      ? `${remaining} of ${item.quantity_needed} still needed`
+      : canBeCovered(item)
+        ? `${availableToGift} of ${item.quantity_needed} available to gift`
+        : `0 of ${item.quantity_needed} still needed`,
     itemPurchased,
     myReservation,
     myGroupGift,

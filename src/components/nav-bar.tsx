@@ -1,13 +1,22 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { lazy } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 
 // Only signed-in people see the account menu, so it's a separate download.
-// It still renders on the server, and its code is preloaded with the page.
-const AccountMenu = dynamic(() => import("@/components/account-menu").then((m) => m.AccountMenu));
+// It still renders on the server.
+//
+// Use React's lazy here, not next/dynamic. In the browser, the lazy menu
+// pauses hydration until its code arrives. If React picks up again by
+// replaying the paused component, it drops that component's place in a list
+// of siblings, and every react-aria id inside comes out different from the
+// server's HTML. next/dynamic renders the lazy component as the second of two
+// siblings, so the menu button got the wrong id: a hydration warning, and an
+// open menu labelled by an id that wasn't on the page. Here it's an only
+// child, with no place in a list to lose. Keep it that way.
+const AccountMenu = lazy(() => import("@/components/account-menu").then((m) => ({ default: m.AccountMenu })));
 
 export interface NavAccount {
   name: string;

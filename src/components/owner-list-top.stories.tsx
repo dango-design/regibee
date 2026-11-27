@@ -49,7 +49,7 @@ const meta: Meta<typeof OwnerListTop> = {
     sharePath: "/r/dorothys-wishlist-k2m9x4p7q1zw",
     links: { preview: "/r/dorothys-wishlist-k2m9x4p7q1zw", settings: "#settings", plan: "#plan" },
     customize: picker("Dorothy's Wishlist"),
-    progress: { gifted: 1, total: 6 },
+    progress: { total: 6, toBuy: 5, boughtByYou: 0, gifted: 1, covered: 0 },
     events: [],
     unlinkAction: fn(async () => ({ error: null })),
     dismissAction: fn(async () => ({ error: null })),
@@ -141,6 +141,23 @@ export const MoreMenu: Story = {
     await expect(menu.getByRole("menuitem", { name: "Plan an event" })).toHaveAttribute("href", "#plan");
     await expect(menu.getByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "#settings");
   },
+};
+
+/**
+ * Items in every place: gifted by guests, covered by guests after the owner
+ * bought them, bought by the owner, and still to buy. Only gifted ones count
+ * toward "items gifted".
+ */
+export const BoughtAndCovered: Story = {
+  args: {
+    itemCount: 12,
+    progress: { total: 12, toBuy: 5, boughtByYou: 2, gifted: 5, covered: 1 },
+  },
+};
+
+export const BoughtAndCoveredDark: Story = {
+  ...BoughtAndCovered,
+  parameters: { theme: "dark", chromatic: { disableSnapshot: true } },
 };
 
 /**

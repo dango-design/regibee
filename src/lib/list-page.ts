@@ -269,10 +269,10 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
   const turnedOnByExchange = readReservationPrivacy(registry.settings).hide_reservations_source === "exchange";
 
   const listItems = items || [];
-  const [{ purchases: placedPurchases, otherListsByItem, otherListIdsByItem, hiddenItemIds }, { missingDetails, detailReview }] =
+  const [{ purchases: placedPurchases, otherListsByItem, otherListIdsByItem, hiddenItemIds }, { missingDetails, priceChecks, detailReview }] =
     await Promise.all([
       loadPlacementDetails(listItems, registryId, viewer.hiddenItemsFor),
-      // Items the extension can fill in, and what it filled in (src/lib/item-details.ts).
+      // Items the extension can fill in or check the price of, and what it changed (src/lib/item-details.ts).
       loadItemDetailsState(listItems, { canEditPlaced: viewer.isOwner }),
     ]);
   // A gift belongs to the item. If another list it's on hides what's been
@@ -387,6 +387,7 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
     storesWithRegistryLinks: registryLinkStores,
     plainLinkGroups,
     missingDetails,
+    priceChecks,
     detailReview,
     perkRows,
     perkEmails: parseStorePerksState(settings).emails,

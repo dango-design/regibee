@@ -26,14 +26,14 @@ import {
 } from "lucide-react";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
-import { Progress } from "@/components/ui/progress";
+import { ListProgressBar, ListProgressKey } from "@/components/list-progress-bar";
 import { RegistryAvatar } from "@/components/registry-avatar";
 import { UnlinkEventButton } from "@/components/unlink-event-button";
 import type { BannerEvent } from "@/components/registry-events-banner";
 import { dismissEventPrompt } from "@/lib/actions/registry";
 import { trackClick } from "@/lib/analytics-client";
 import { eventTypeLabel, formatShortEventDate } from "@/lib/events";
-import { reservationsHiddenText } from "@/lib/gifts";
+import { reservationsHiddenText, type ListProgress } from "@/lib/gifts";
 import { LIST_ACCESS, PROFILE_AUDIENCE, type ListVisibility, type ProfileAudience } from "@/lib/list-access";
 import { listHeader, type ListHeader } from "@/lib/list-headers";
 import { HEADER_BAND, HEADER_INK, listHeaderVars } from "@/lib/list-header-style";
@@ -56,8 +56,8 @@ export interface OwnerListTopProps {
   links: { preview: string; settings: string; plan?: string | null };
   /** The viewer co-manages the list instead of owning it. */
   manager?: boolean;
-  /** How much has been gifted. Null while reservations are hidden, since the count would be wrong. */
-  progress: { gifted: number; total: number } | null;
+  /** Where the items stand (listProgress in src/lib/gifts.ts). Null while reservations are hidden, since the count would be wrong. */
+  progress: ListProgress | null;
   /**
    * Reservations are hidden from the owner. `href` opens the Gift Activity
    * tab and `settingsHref` the setting. `next` and `turnedOnByExchange` fill
@@ -143,7 +143,8 @@ export function OwnerListTop({
             </span>
             <span className="tabular-nums">{Math.round(percent)}%</span>
           </div>
-          <Progress value={percent} aria-label="Items gifted" />
+          <ListProgressBar progress={progress} label="Items gifted" />
+          <ListProgressKey progress={progress} />
         </div>
       ),
     });

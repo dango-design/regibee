@@ -38,6 +38,7 @@ import {
   type RegistriesResult,
   type Result,
 } from "../messages";
+import { dropdown } from "./dropdown";
 
 // ── Tiny DOM helpers ─────────────────────────────────────────────────────
 
@@ -107,6 +108,12 @@ function openTab(url: string) {
   window.close();
 }
 
+/** Makes a textarea as tall as its text, up to its CSS max-height. */
+function growTextarea(box: HTMLTextAreaElement) {
+  box.style.height = "auto";
+  box.style.height = `${box.scrollHeight + 2}px`;
+}
+
 // ── Shared pieces ────────────────────────────────────────────────────────
 
 function header(user: { name: string } | null) {
@@ -138,12 +145,8 @@ function storeRow(store: StoreInfo, detail: string) {
 }
 
 function registrySelect(registries: ExtensionRegistry[], selected: string, label: string, onChange: (id: string) => void) {
-  const select = h(
-    "select",
-    { id: "registry", onchange: (e: Event) => onChange((e.target as HTMLSelectElement).value) },
-    ...registries.map((r) => h("option", { value: r.id, selected: r.id === selected }, r.title))
-  );
-  return h("div", { className: "field" }, h("label", { for: "registry" }, label), select);
+  const select = dropdown("registry", [{ options: registries.map((r) => ({ value: r.id, label: r.title })) }], selected, onChange);
+  return h("div", { className: "field" }, h("label", { for: "registry" }, label), select.button);
 }
 
 function showError(user: { name: string } | null, message: string, retry: () => void) {
@@ -955,18 +958,26 @@ function showProduct(ctx: ProductContext) {
   };
   qty.addEventListener("change", () => setQuantity(Number(qty.value)));
 
-  const category = h("select", { id: "category" }) as HTMLSelectElement;
+  const category = dropdown("category", [], "");
   // A guessed category the registry doesn't have yet, such as "Food & Drink".
   // It's chosen in the menu and made when the item is added, as on the site's
   // add-item dialog.
   let newCategoryName: string | null = null;
   const fillCategories = () => {
-    const categories = registry()?.categories ?? [];
-    category.replaceChildren(
-      h("option", { value: "" }, "No category"),
-      ...categories.map((c) => h("option", { value: c.id }, c.name))
-    );
     newCategoryName = null;
+    showCategories();
+  };
+  const showCategories = () => {
+    const categories = registry()?.categories ?? [];
+    category.setGroups([
+      {
+        options: [
+          { value: "", label: "No category" },
+          ...categories.map((c) => ({ value: c.id, label: c.name })),
+          ...(newCategoryName ? [{ value: NEW_CATEGORY_VALUE, label: `${newCategoryName} (new)` }] : []),
+        ],
+      },
+    ]);
   };
   /** Chooses the category that fits the product best (src/lib/item-categories.ts). */
   const guessCategory = () => {
@@ -977,7 +988,7 @@ function showProduct(ctx: ProductContext) {
       return;
     }
     newCategoryName = guess.name;
-    category.append(h("option", { value: NEW_CATEGORY_VALUE }, `${guess.name} (new)`));
+    showCategories();
     category.value = NEW_CATEGORY_VALUE;
   };
   fillCategories();
@@ -997,9 +1008,13 @@ function showProduct(ctx: ProductContext) {
   const categoryPicker = h(
     "div",
     { className: "field" },
-    h("label", { for: "category" }, "Category"),
-    category,
-    h("button", { type: "button", className: "link-button new-category", onclick: () => openNewCategory() }, "+ New category")
+    h(
+      "div",
+      { className: "label-row" },
+      h("label", { for: "category" }, "Category"),
+      h("button", { type: "button", className: "link-button new-category", onclick: () => openNewCategory() }, "+ New category")
+    ),
+    category.button
   );
   const newCategoryForm = h(
     "div",
@@ -1126,18 +1141,14 @@ function showProduct(ctx: ProductContext) {
   price.addEventListener("change", () => void addTax());
   fillBought();
   const openToUsed = h("input", { type: "checkbox", id: "used" }) as HTMLInputElement;
-  const condition = h(
-    "select",
-    { id: "condition" },
-    ...USED_CONDITIONS.map((c) => h("option", { value: c.id }, c.label))
-  ) as HTMLSelectElement;
-  const conditionField = h("div", { className: "field", hidden: true }, h("label", { for: "condition" }, "Minimum condition"), condition);
+  const condition = dropdown("condition", [{ options: USED_CONDITIONS.map((c) => ({ value: c.id, label: c.label })) }], USED_CONDITIONS[0].id);
+  const conditionField = h("div", { className: "field", hidden: true }, h("label", { for: "condition" }, "Minimum condition"), condition.button);
   openToUsed.addEventListener("change", () => {
     conditionField.hidden = !openToUsed.checked;
   });
   const notes = h("textarea", {
     id: "notes",
-    rows: 2,
+    rows: 1,
     maxlength: 1000,
     placeholder: "For example, which size or color you'd like.",
   }) as HTMLTextAreaElement;
@@ -1174,10 +1185,12 @@ function showProduct(ctx: ProductContext) {
   recipient.addEventListener("input", syncChips);
   const ideaNotes = h("textarea", {
     id: "idea-notes",
-    rows: 2,
+    rows: 1,
     maxlength: 1000,
     placeholder: "Their size, the color they liked, when to get it…",
   }) as HTMLTextAreaElement;
+  // The notes start one line tall, so the form fits the popup, and grow as they're typed.
+  for (const box of [notes, ideaNotes]) box.addEventListener("input", () => growTextarea(box));
 
   // ── Notices: the registry link, and whether it's already on Regibee ──
   let linkNote: HTMLElement | null = null;
@@ -1243,20 +1256,15 @@ function showProduct(ctx: ProductContext) {
 
   // Where it goes: one of the owner's registries, or their gift ideas, which
   // the picker offers like one more list.
-  const listSelect = h(
-    "select",
-    {
-      id: "list",
-      onchange: (e: Event) => void chooseList((e.target as HTMLSelectElement).value),
-    },
-    canAddToList &&
-      h(
-        "optgroup",
-        { label: "For you" },
-        ...registries.map((r) => h("option", { value: r.id, selected: mode === "list" && r.id === registryId }, r.title))
-      ),
-    h("optgroup", { label: "For someone else" }, h("option", { value: IDEAS_CHOICE, selected: mode === "idea" }, "Gift ideas"))
-  ) as HTMLSelectElement;
+  const listSelect = dropdown(
+    "list",
+    [
+      { label: "For you", options: canAddToList ? registries.map((r) => ({ value: r.id, label: r.title })) : [] },
+      { label: "For someone else", options: [{ value: IDEAS_CHOICE, label: "Gift ideas" }] },
+    ],
+    mode === "idea" ? IDEAS_CHOICE : registryId,
+    (value) => void chooseList(value)
+  );
 
   async function chooseList(value: string) {
     if (value === IDEAS_CHOICE) {
@@ -1413,7 +1421,7 @@ function showProduct(ctx: ProductContext) {
 
   // ── The fields that go with each kind of list ──
   const heading = h("h1", { className: "sr-only" });
-  const listField = field("list", "Add to", listSelect);
+  const listField = field("list", "Add to", listSelect.button);
 
   const quantityField = field(
     "quantity",

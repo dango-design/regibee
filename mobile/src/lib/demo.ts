@@ -15,7 +15,7 @@ import {
   demoSuggestions,
 } from "@shared/demo-data";
 import type { RegistryDeletionSummary } from "@shared/delete-confirmation";
-import { GIFT_HOLD_DAYS, giftActivityAction, giverNameForOwner } from "@shared/gifts";
+import { coveredQuantity, GIFT_HOLD_DAYS, giftActivityAction, giverNameForOwner, listProgress } from "@shared/gifts";
 import { detailChanges, isMissingDetails, shownSide, type DetailChange, type DetailField, type ShownSide } from "@shared/item-details";
 import { visibilityColumns, type ListVisibility } from "@shared/list-access";
 import { copyForRegistry } from "@shared/registry-copy";
@@ -169,6 +169,8 @@ function giftsFor(id: string) {
 function card(list: DemoList): DashboardCard {
   const r = list.registry;
   const active = giftsFor(r.id).filter((g) => g.status !== "cancelled" && g.kind === "item");
+  // Counted as the website's loader does (src/lib/gifts.ts).
+  const progress = listProgress(list.items, (i) => coveredQuantity(active.filter((g) => g.registry_item_id === i.id)));
   return {
     id: r.id,
     owner_id: r.owner_id,
@@ -186,7 +188,8 @@ function card(list: DemoList): DashboardCard {
     created_at: r.created_at,
     role: "owner",
     totalItems: list.items.length,
-    fulfilledItems: list.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length,
+    fulfilledItems: progress.gifted,
+    progress,
     totalValue: list.items.reduce((sum, i) => sum + (i.price ?? 0), 0),
     recentActivity: active.slice(0, 3).map((g) => ({ id: g.id, name: giverNameForOwner(g), action: giftActivityAction(g) })),
     giftsThisWeek: active.filter((g) => Date.parse(g.created_at) >= Date.now() - 7 * 24 * 60 * 60 * 1000).length,

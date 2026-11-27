@@ -11,7 +11,7 @@
 import { useRef, useState } from "react";
 import { Alert, View } from "react-native";
 
-import { DETAIL_FIELD_NAMES, type DetailField, type ShownSide } from "@shared/item-details";
+import { DETAIL_FIELD_NAMES, detailReviewHeading, type DetailField, type ShownSide } from "@shared/item-details";
 import type { ListPageDetailChange, ListPageDetailReview, ListPageMissingDetails } from "@shared/list-page-types";
 
 import { ItemImage } from "@/components/item-image";
@@ -141,7 +141,6 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
   // An item with any replaced value goes in the main list, with all its changes.
   const replaced = reviews.filter((r) => r.changes.some((c) => c.before !== null));
   const filled = reviews.filter((r) => r.changes.every((c) => c.before === null));
-  const total = reviews.length;
   const busy = saving !== null || finish.isPending;
 
   function pick(review: ListPageDetailReview, change: ListPageDetailChange, side: ShownSide) {
@@ -180,7 +179,7 @@ export function DetailReview({ registryId, reviews }: { registryId: string; revi
     <Notice
       icon="checkCircle"
       tone="success"
-      title={total === 1 ? "Filled in details for 1 item" : `Filled in details for ${total} items`}
+      title={detailReviewHeading(reviews)}
       message={
         replaced.length === 0
           ? undefined

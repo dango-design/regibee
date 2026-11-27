@@ -22,6 +22,10 @@ export interface PublicListItem {
   quantity_fulfilled: number;
   is_essential: boolean;
   is_parent_purchased: boolean;
+  /** For an item its managers bought: guests can cover it (src/lib/gifts.ts). Missing from older servers' answers. */
+  guests_can_cover?: boolean;
+  /** For an item its managers bought: they count it as gifted. Missing from older servers' answers. */
+  marked_gifted?: boolean;
   is_open_to_used: boolean;
   minimum_condition: string | null;
   notes: string | null;
@@ -149,6 +153,10 @@ export interface PublicListPageData {
     /** The event the viewer came from, whose guests will see a new group gift. */
     eventTitle: string | null;
   } | null;
+  /**
+   * How many items are gifted. An item the owners bought counts only once
+   * guests cover it or the owners mark it as gifted (src/lib/gifts.ts).
+   */
   fulfilledItems: number;
   totalItems: number;
 }

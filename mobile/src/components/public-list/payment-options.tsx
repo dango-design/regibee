@@ -2,10 +2,11 @@
 // handles from the list's settings. The website shows the same in
 // src/components/payment-methods-display.tsx:
 //
-// - PaymentHandles lists the handles as text, for a gift fund.
+// - PaymentHandles lists the handles as text, in a gift fund's form, before
+//   the guest has said how much.
 // - PaymentOptions gives a button per handle that opens the payment app with
 //   the amount filled in, or a Copy button where no link can be built, for
-//   covering an item the owners bought.
+//   covering an item the owners bought and on a gift fund's thank-you.
 
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";

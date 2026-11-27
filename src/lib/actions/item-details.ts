@@ -13,6 +13,7 @@ import { revalidateLists } from "@/lib/item-placements";
 import {
   detailChanges,
   parseDetailChanges,
+  priceChanges,
   shownSide,
   type DetailChange,
   type DetailField,
@@ -72,6 +73,30 @@ export async function saveReadDetails(
   readUrl: string,
   read: unknown,
 ): Promise<{ error?: string; changes?: DetailChange[] }> {
+  return saveRead(registryId, itemId, readUrl, read, "details");
+}
+
+/**
+ * Saves the price the extension read when the list's page checked it
+ * (PriceCheck). Changes only the price, on the same rules as saveReadDetails,
+ * and leaves an item alone while its last read waits for review.
+ */
+export async function savePriceCheck(
+  registryId: string,
+  itemId: string,
+  readUrl: string,
+  read: unknown,
+): Promise<{ error?: string; changes?: DetailChange[] }> {
+  return saveRead(registryId, itemId, readUrl, read, "price");
+}
+
+async function saveRead(
+  registryId: string,
+  itemId: string,
+  readUrl: string,
+  read: unknown,
+  kind: "details" | "price",
+): Promise<{ error?: string; changes?: DetailChange[] }> {
   const product = parseReadProduct(read);
   if (!product) return { error: "Nothing was read from the store." };
   const access = await itemAccess(registryId, itemId);
@@ -81,7 +106,18 @@ export async function saveReadDetails(
     return { error: "The item's link changed while it was being read." };
   }
 
-  const changes = detailChanges(item, product);
+  if (kind === "price") {
+    // Another read's changes are waiting for review. Saving this one would
+    // replace them, and the old values with them.
+    const { data: last } = await supabaseAdmin
+      .from("item_detail_reads")
+      .select("changes, reviewed_at")
+      .eq("item_id", itemId)
+      .maybeSingle();
+    if (last && !last.reviewed_at && parseDetailChanges(last.changes).length > 0) return { changes: [] };
+  }
+
+  const changes = kind === "price" ? priceChanges(item, product) : detailChanges(item, product);
   const update: Record<string, string | number> = {};
   for (const change of changes) update[change.field] = change.after;
   // A barcode belongs to the link it was read from (src/lib/gtin.ts), which is
@@ -97,6 +133,7 @@ export async function saveReadDetails(
   }
 
   // A read that changed nothing needs no review, and isn't offered again.
+  // Its time still counts as the item's last price check.
   const now = new Date().toISOString();
   const { error: readError } = await supabaseAdmin.from("item_detail_reads").upsert({
     item_id: itemId,
@@ -107,7 +144,8 @@ export async function saveReadDetails(
   });
   if (readError) return { error: readError.message };
 
-  revalidateLists(lists);
+  // Nothing on the page changes after a check that found the same price.
+  if (Object.keys(update).length > 0 || kind === "details") revalidateLists(lists);
   return { changes };
 }
 

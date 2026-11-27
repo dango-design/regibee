@@ -7,6 +7,7 @@ import { AddItemDialog } from "@/components/add-item-dialog";
 import { ItemCard } from "@/components/item-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
 import { MissingDetailsNotice } from "@/components/missing-details-notice";
+import { PriceCheck } from "@/components/price-check";
 import { SortIntoCategoriesButton } from "@/components/sort-into-categories-button";
 import { DetailReview } from "@/components/detail-review";
 import { RegistryTabs } from "@/components/registry-tabs";
@@ -19,7 +20,7 @@ import { ProgressCircle } from "@/components/ui/progress-circle";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { FundsPositionMenu } from "@/components/funds-position-menu";
-import { fundsPosition } from "@/lib/gifts";
+import { coveredQuantity, fundsPosition, listProgress } from "@/lib/gifts";
 import type { PaymentMethods } from "@/lib/types";
 import { PandaMark } from "@/components/panda-mark";
 import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
@@ -73,6 +74,7 @@ export default async function RegistryManagePage({
     eventPromptDismissed,
     pendingSuggestionCount,
     missingDetails = [],
+    priceChecks = [],
     detailReview = [],
   } = data;
   const registryLinkStores = data.storesWithRegistryLinks;
@@ -101,9 +103,9 @@ export default async function RegistryManagePage({
   }
 
   const totalItems = allItems.length;
-  const fulfilledItems = allItems.filter(
-    (i) => i.quantity_fulfilled >= i.quantity_needed
-  ).length;
+  // An item a manager bought counts as gifted only once guests cover it or
+  // they mark it as gifted (src/lib/gifts.ts).
+  const progress = listProgress(allItems, (i) => coveredQuantity(purchasesByItemId.get(i.id)));
 
   // Group items by category
   const itemsByCategory = new Map<string | null, ListPageItem[]>();
@@ -213,7 +215,7 @@ export default async function RegistryManagePage({
             occasion={headerOccasion(registry.registry_type, registry.event_type)}
           />
         }
-        progress={hideReservations ? null : { gifted: fulfilledItems, total: totalItems }}
+        progress={hideReservations ? null : progress}
         hidden={
           hideReservations
             ? {
@@ -266,6 +268,9 @@ export default async function RegistryManagePage({
 
             {/* Always there, so it keeps reading while the page refreshes after each item. */}
             <MissingDetailsNotice registryId={registryId} items={missingDetails} className="mb-6" />
+
+            {/* Always there too, so a page refresh after a new price doesn't start it again. */}
+            <PriceCheck registryId={registryId} items={priceChecks} className="mb-6" />
 
             {plainLinkGroups.length > 0 && (
               <div className="mb-6">
