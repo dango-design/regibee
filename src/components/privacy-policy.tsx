@@ -494,20 +494,29 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
 
           <Section id="emails">
             <P>
-              We send account emails, such as confirming your address and resetting your password. We also send
-              emails from notifications@regibee.com about things people do on Regibee:
+              We send account emails, such as confirming your address, resetting your password, telling you when
+              your password changed, and one welcome email when you make an account. We also send emails from
+              notifications@regibee.com about things people do on Regibee:
             </P>
             <List>
-              <li>to owners, when someone gives a gift, sends money to a fund, suggests an item, or RSVPs;</li>
+              <li>
+                to owners, when someone gives a gift, sends money to a fund, suggests an item, or RSVPs, either one
+                at a time or in one email a day, and a few days after a list&apos;s date, with who gave what;
+              </li>
               <li>
                 to guests, to confirm a gift or an RSVP, to remind them before a reservation ends, to invite them to
-                an event, with the host&apos;s messages and any changes to it, and to remind them the day before;
+                an event, with the host&apos;s messages and any changes to it, to remind them before the reply-by
+                date and the day before, if the event is cancelled, and if an item they gave or reserved is taken off
+                a list;
               </li>
               <li>
-                to people invited to help manage a registry or co-host an event, and to people someone asks to
-                follow;
+                to people invited to help manage a registry or co-host an event, to people someone asks to follow,
+                and to people whose follow request is approved;
               </li>
-              <li>to gift exchange members, with the name they drew;</li>
+              <li>
+                to gift exchange members, with the name they drew, when that person adds a wishlist, and before the
+                event;
+              </li>
               <li>
                 to followers, 10 days before the birthday of someone they follow who approved them and added a
                 birthday to their gift profile;
@@ -518,7 +527,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
               <li>
                 to the person who starts a group gift, with its link and when someone chips in, and to people who
-                chip in, with their own link to change it and if it&apos;s called off;
+                chip in, with their own link to change it and when it&apos;s bought or called off, and to the person
+                who started it when it reaches its goal;
               </li>
               <li>to the person an event is for, when its host asks them to make a gift list;</li>
               <li>
@@ -527,8 +537,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               </li>
             </List>
             <P>
-              You can turn off follow request emails and birthday emails on your Account page, and RSVP emails for
-              each event you host.
+              You can choose how you get gift emails, and turn off follow request emails and birthday emails, on
+              your Account page. You can turn off RSVP emails and the reply-by reminder for each event you host.
             </P>
             <P>
               Our email service, Resend, records when one of our emails is opened and which of its links are
