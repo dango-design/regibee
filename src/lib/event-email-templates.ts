@@ -102,6 +102,13 @@ export function exchangeAssignmentHtml(opts: {
   redraw?: boolean;
   /** The giver is the host, taking part too. */
   giverIsHost?: boolean;
+  /**
+   * Why it's sent again after the draw: a reminder before the event, or
+   * because their person just added a wishlist or gift ideas.
+   */
+  reason?: "reminder" | "wishlist";
+  /** For a reminder: days until the event. */
+  daysLeft?: number;
 }): string {
   const facts: string[] = [];
   if (opts.budget) facts.push(`<strong>Budget:</strong> ${escapeHtml(opts.budget)}`);
@@ -120,13 +127,31 @@ export function exchangeAssignmentHtml(opts: {
       ? `<p>${escapeHtml(opts.gifteeName)} hasn't added a wishlist or gift ideas yet. Your link below shows them as soon as they do.</p>`
       : "";
 
+  const days = opts.daysLeft === 1 ? "1 day" : `${opts.daysLeft} days`;
   return emailLayout({
-    preheader: "Keep it a secret!",
-    eyebrow: opts.redraw ? `${opts.eventTitle} · names drawn again` : opts.eventTitle,
-    heading: `You're getting a gift for ${opts.gifteeName}`,
+    preheader:
+      opts.reason === "reminder"
+        ? opts.mailed
+          ? "Mail it soon so it arrives in time."
+          : "Their latest wishlist is in here."
+        : opts.reason === "wishlist"
+          ? "See what they'd like. Keep it a secret!"
+          : "Keep it a secret!",
+    eyebrow:
+      opts.reason === "reminder" && opts.daysLeft
+        ? `${opts.eventTitle} is in ${days}`
+        : opts.redraw && !opts.reason
+          ? `${opts.eventTitle} · names drawn again`
+          : opts.eventTitle,
+    heading:
+      opts.reason === "reminder"
+        ? `Time to get a gift for ${opts.gifteeName}`
+        : opts.reason === "wishlist"
+          ? `${opts.gifteeName} added a wishlist`
+          : `You're getting a gift for ${opts.gifteeName}`,
     body: `
       ${
-        opts.redraw
+        opts.redraw && !opts.reason
           ? `<p>${escapeHtml(opts.hostName)} drew names again, so this replaces the name you got before.</p>`
           : ""
       }

@@ -98,6 +98,8 @@ export function groupGiftCalledOffHtml(opts: {
   recipientName: string;
   /** The organizer had marked their pledge paid. */
   paid: boolean;
+  /** The list, when guests can open it, so they can pick something else. */
+  listUrl?: string | null;
 }): string {
   return emailLayout({
     preheader: "You don't need to chip in.",
@@ -109,7 +111,59 @@ export function groupGiftCalledOffHtml(opts: {
         opts.paid
           ? `${escapeHtml(opts.organizerName)} had marked your share as paid. Ask them to send it back.`
           : `If you already sent ${escapeHtml(opts.organizerName)} money for it, ask them to send it back.`
-      }</p>`,
+      }</p>
+      ${opts.listUrl ? emailButton(opts.listUrl, `See ${opts.recipientName}'s list`) : ""}`,
     footer: "You're getting this because you chipped in on a Regibee group gift.",
+  });
+}
+
+/** Tells the organizer the pledges reached the goal, once. */
+export function groupGiftFundedHtml(opts: {
+  organizerName: string;
+  itemTitle: string;
+  recipientName: string;
+  /** Like "$240 of $240". */
+  progress: string;
+  shareUrl: string;
+}): string {
+  return emailLayout({
+    preheader: "Time to buy it. Mark it bought on the group gift page.",
+    eyebrow: `${opts.itemTitle} for ${opts.recipientName}`,
+    heading: "You've reached your goal",
+    body: `
+      <p style="${EMAIL_BOX_STYLE}"><strong>${escapeHtml(opts.progress)}</strong></p>
+      <p>Everyone's chipped in enough for <strong>${escapeHtml(opts.itemTitle)}</strong>. Once you've bought it, mark it bought on the group gift page, and ${escapeHtml(opts.recipientName)} hears about it.</p>
+      <p>Mark each share paid as the money comes in, so you know who still owes you.</p>
+      ${emailButton(opts.shareUrl, "Open the group gift")}`,
+    footer: "You're getting this because you started a group gift on Regibee.",
+  });
+}
+
+/** Tells someone who chipped in that the organizer bought the gift. */
+export function groupGiftBoughtHtml(opts: {
+  pledgerName: string;
+  organizerName: string;
+  itemTitle: string;
+  recipientName: string;
+  /** Like "$40". */
+  amount: string;
+  /** The organizer marked their share paid. */
+  paid: boolean;
+  paybackNote?: string | null;
+  pledgeUrl: string;
+}): string {
+  return emailLayout({
+    preheader: opts.paid ? "Thanks for chipping in." : `Your ${opts.amount} goes to ${opts.organizerName}.`,
+    eyebrow: `${opts.itemTitle} for ${opts.recipientName}`,
+    heading: "The group gift is bought",
+    body: `
+      <p>${escapeHtml(opts.organizerName)} bought <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}. Thanks for chipping in!</p>
+      ${
+        opts.paid
+          ? `<p>${escapeHtml(opts.organizerName)} marked your ${escapeHtml(opts.amount)} as paid, so you're all set.</p>`
+          : `<p>If you haven't yet, send ${escapeHtml(opts.organizerName)} your ${escapeHtml(opts.amount)}.</p>${paybackBox(opts.organizerName, opts.paybackNote)}`
+      }
+      ${emailButton(opts.pledgeUrl, "See the group gift")}`,
+    footer: "You're getting this because you chipped in on a Regibee group gift. Regibee never handles the money.",
   });
 }

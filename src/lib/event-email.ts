@@ -142,6 +142,9 @@ export async function sendExchangeAssignments(opts: {
   replyTo: string | null;
   redraw: boolean;
   pairs: { giver: EventGuest & { email: string }; giftee: EventGuest }[];
+  /** Sent again after the draw: see exchangeAssignmentHtml. */
+  reason?: "reminder" | "wishlist";
+  daysLeft?: number;
 }) {
   // A Regibee wishlist is looked up for its title and slug. Its link then goes
   // through the event's gift route with the giver's own token, the same way
@@ -166,9 +169,14 @@ export async function sendExchangeAssignments(opts: {
     from: fromHost(opts.hostName),
     to: TEST_RECIPIENT_OVERRIDE || giver.email,
     ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
-    subject: opts.redraw
-      ? `New Secret Santa name for ${opts.event.title}`
-      : `Your Secret Santa name for ${opts.event.title}`,
+    subject:
+      opts.reason === "reminder"
+        ? `Reminder: your Secret Santa gift for ${opts.event.title}`
+        : opts.reason === "wishlist"
+          ? `${giftee.name} added a wishlist for ${opts.event.title}`
+          : opts.redraw
+            ? `New Secret Santa name for ${opts.event.title}`
+            : `Your Secret Santa name for ${opts.event.title}`,
     html: exchangeAssignmentHtml({
       giverName: giver.name,
       gifteeName: giftee.name,
@@ -182,6 +190,8 @@ export async function sendExchangeAssignments(opts: {
       shippingAddress: giftee.shipping_address,
       pageUrl: `${siteUrl()}/e/${opts.event.slug}?g=${encodeURIComponent(giver.token)}`,
       redraw: opts.redraw,
+      reason: opts.reason,
+      daysLeft: opts.daysLeft,
       giverIsHost: Boolean(opts.replyTo && giver.email.toLowerCase() === opts.replyTo.toLowerCase()),
     }),
   }));
@@ -193,5 +203,44 @@ export async function sendExchangeAssignments(opts: {
     } catch (err) {
       console.error("[email] Failed to send Secret Santa names:", err);
     }
+  }
+}
+
+/**
+ * After names are drawn, tells a guest's giver that the guest added a
+ * wishlist or gift ideas, when they had neither before. `before` is the
+ * guest's row as it was before the change. The giver gave their own address
+ * and the guest set it off, so it counts against nothing.
+ */
+export async function notifyGiverOfWishlist(
+  eventId: string,
+  guestId: string,
+  before: { wishlist_url: string | null; gift_ideas: string | null } | null,
+) {
+  try {
+    if (!before || before.wishlist_url || before.gift_ideas) return;
+    const [{ data: event }, { data: exchange }, { data: giftee }, { data: giver }] = await Promise.all([
+      supabaseAdmin.from("events").select("*").eq("id", eventId).maybeSingle(),
+      supabaseAdmin.from("gift_exchanges").select("*").eq("event_id", eventId).maybeSingle(),
+      supabaseAdmin.from("event_guests").select("*").eq("id", guestId).maybeSingle(),
+      supabaseAdmin.from("event_guests").select("*").eq("event_id", eventId).eq("giftee_id", guestId).maybeSingle(),
+    ]);
+    // Only for drawn names: when everyone gives everyone, the lists are on the invitation.
+    if (!event || !exchange?.drawn_at || (exchange as GiftExchange).kind === "everyone") return;
+    if (!giftee || !(giftee.wishlist_url || giftee.gift_ideas)) return;
+    if (!giver?.email || !giver.in_exchange) return;
+    const owner = await supabaseAdmin.auth.admin.getUserById(event.owner_id as string);
+    const hostName = (event.hosted_by as string | null) || (await nameOf(event.owner_id as string));
+    await sendExchangeAssignments({
+      event: event as EventDetails,
+      exchange: exchange as GiftExchange,
+      hostName,
+      replyTo: owner.data.user?.email ?? null,
+      redraw: false,
+      reason: "wishlist",
+      pairs: [{ giver: giver as EventGuest & { email: string }, giftee: giftee as EventGuest }],
+    });
+  } catch (err) {
+    console.error("[email] Failed to tell a Secret Santa about a new wishlist:", err);
   }
 }

@@ -89,7 +89,13 @@ import {
   storedQuestions,
   type RsvpAnswers,
 } from "@/lib/rsvp-questions";
-import { notifyRegistryLinked, sendCoHostInvite, sendExchangeAssignments, sendListRequest } from "@/lib/event-email";
+import {
+  notifyGiverOfWishlist,
+  notifyRegistryLinked,
+  sendCoHostInvite,
+  sendExchangeAssignments,
+  sendListRequest,
+} from "@/lib/event-email";
 import {
   NO_GIFTS_NOTE,
   giftPlansFor,
@@ -183,6 +189,8 @@ function readEventForm(formData: FormData): { fields: EventFields } | { error: s
     questions = cleaned.questions;
   }
   const rawRemind = formData.get("remindDayBefore");
+  // Missing, as from an older app, keeps what's saved.
+  const rawAutoRsvp = formData.get("autoRsvpReminder");
   // The invitation's color: "" for none. Missing, as from an older app, keeps it.
   const rawTheme = formData.get("themeColor");
   const themeColor = rawTheme === null || String(rawTheme).trim() === "" ? null : normalizeThemeColor(rawTheme);
@@ -228,6 +236,7 @@ function readEventForm(formData: FormData): { fields: EventFields } | { error: s
       ask_kids: formData.get("askKids") === "true",
       ...(questions !== undefined && { rsvp_questions: questions }),
       ...(rawRemind !== null && { remind_day_before: rawRemind !== "false" }),
+      ...(rawAutoRsvp !== null && { auto_rsvp_reminder: rawAutoRsvp !== "false" }),
       ...(rawTheme !== null && { theme_color: themeColor }),
     },
   };
@@ -1196,11 +1205,11 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
   };
 
   // The guest as they are now, for the exchange rules below.
-  let existing: Pick<EventGuest, "id" | "in_exchange"> | null = null;
+  let existing: Pick<EventGuest, "id" | "in_exchange" | "wishlist_url" | "gift_ideas"> | null = null;
   if (input.token) {
     const { data } = await supabaseAdmin
       .from("event_guests")
-      .select("id, in_exchange")
+      .select("id, in_exchange, wishlist_url, gift_ideas")
       .eq("event_id", event.id)
       .eq("token", input.token)
       .maybeSingle();
@@ -1327,6 +1336,13 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
     newGuest = true;
   }
 
+  // A Secret Santa whose person just added a wishlist or gift ideas hears so.
+  if (existing && guest.in_exchange && (guest.wishlist_url || guest.gift_ideas)) {
+    const before = existing;
+    const guestId = guest.id;
+    after(() => notifyGiverOfWishlist(event.id, guestId, before));
+  }
+
   if (guest.in_exchange && typeof response.wishlist_url === "string") {
     await hideReservationsOnOwnWishlist(response.wishlist_url, guest.email).catch((err) =>
       console.error("[events] Failed to hide reservations on a wishlist:", err),
@@ -1443,7 +1459,7 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
   const { data: guest } = input.token
     ? await supabaseAdmin
         .from("event_guests")
-        .select("id, name, email, in_exchange, wishlist_registry_id")
+        .select("id, name, email, in_exchange, wishlist_registry_id, wishlist_url, gift_ideas")
         .eq("event_id", event.id)
         .eq("token", input.token)
         .maybeSingle()
@@ -1559,6 +1575,9 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
     console.error("[events] Failed to save a guest's wishlist:", error);
     return { error: "Your wishlist wasn't saved. Try again." };
   }
+  // Only sends for drawn names, when this is the guest's first wishlist.
+  const before = { wishlist_url: guest.wishlist_url as string | null, gift_ideas: guest.gift_ideas as string | null };
+  after(() => notifyGiverOfWishlist(event.id, guest.id as string, before));
   // A list that's now the wishlist isn't also one of their other lists.
   if (registryId) {
     await supabaseAdmin.from("event_guest_lists").delete().eq("guest_id", guest.id).eq("registry_id", registryId);
@@ -1755,6 +1774,7 @@ async function copyEventForNextYear(
       ask_kids: old.ask_kids,
       rsvp_questions: storedQuestions(old.rsvp_questions),
       remind_day_before: old.remind_day_before ?? true,
+      auto_rsvp_reminder: old.auto_rsvp_reminder ?? true,
       theme_color: old.theme_color ?? null,
       repeated_from: old.id,
       group_id: groupId,
