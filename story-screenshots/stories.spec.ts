@@ -11,7 +11,13 @@ type IndexEntry = { type: string; id: string; title: string; name: string };
 
 // A made-up host. Every request to it is answered from storybook-static, so
 // the tests need no server and no port.
-const ORIGIN = "http://storybook.test";
+//
+// It must be https. The browser only gives an https page (or localhost)
+// navigator.clipboard, and Storybook only gives a play function the
+// `userEvent` in its context when navigator.clipboard exists. Over http,
+// `async ({ userEvent }) => userEvent.click(...)` throws, and the story was
+// pictured as if it had no play function.
+const ORIGIN = "https://storybook.test";
 
 // Stories load the site's fonts from here (next/font/google in Storybook).
 const FONT_HOST = "fonts.gstatic.com";
@@ -51,6 +57,8 @@ type StoryState = {
   phase?: string;
   failed: boolean;
   error: string;
+  // Errors thrown by the play function, or left unhandled while it ran.
+  playErrors: string[];
   disableSnapshot: boolean;
   viewport?: string;
 };
@@ -101,6 +109,29 @@ async function settledScreenshot(page: Page): Promise<Buffer> {
   throw new Error("The story kept changing for several seconds, so no screenshot of it would be stable.");
 }
 
+// Runs in the page before Storybook loads. When a play function throws,
+// Storybook logs the error and goes on to finish the story as usual
+// (`throwPlayFunctionExceptions` is off by default), so the render phase ends
+// as "finished", not "errored". It does send the error on its channel, so
+// catch the channel as Storybook creates it and keep what it sends.
+function recordPlayErrors() {
+  type Channel = { on: (event: string, listener: (payload: unknown) => void) => void };
+  type SentError = { message?: string } | undefined;
+  const errors: string[] = [];
+  const message = (error: SentError) => error?.message ?? String(error);
+  let channel: Channel | undefined;
+  Object.assign(window, { __PLAY_ERRORS__: errors });
+  Object.defineProperty(window, "__STORYBOOK_ADDONS_CHANNEL__", {
+    configurable: true,
+    get: () => channel,
+    set: (value: Channel) => {
+      channel = value;
+      value.on("playFunctionThrewException", (error) => errors.push(message(error as SentError)));
+      value.on("unhandledErrorsWhilePlaying", (list) => errors.push(...(list as SentError[]).map(message)));
+    },
+  });
+}
+
 // Opens a story and waits until Storybook has rendered it and run its play
 // function, or shown an error.
 async function openStory(page: Page, id: string): Promise<StoryState> {
@@ -128,6 +159,7 @@ async function openStory(page: Page, id: string): Promise<StoryState> {
       phase: render?.phase,
       failed: failed || render?.phase === "errored",
       error: document.querySelector(".sb-errordisplay")?.textContent?.trim().slice(0, 2000) ?? "",
+      playErrors: [...((window as unknown as { __PLAY_ERRORS__?: string[] }).__PLAY_ERRORS__ ?? [])],
       disableSnapshot: render?.story?.parameters?.chromatic?.disableSnapshot === true,
       viewport: typeof viewport === "string" ? viewport : viewport?.value,
     };
@@ -156,6 +188,7 @@ for (const story of stories()) {
       return route.abort();
     });
     await page.clock.setFixedTime(NOW);
+    await page.addInitScript(recordPlayErrors);
 
     let state = await openStory(page, story.id);
 
@@ -172,6 +205,9 @@ for (const story of stories()) {
     }
 
     expect(state.failed, `The story did not render (${state.phase ?? "no story"}). ${state.error}`).toBe(false);
+    expect(state.playErrors, "The story's play function failed, so the picture would not show what it sets up").toEqual(
+      [],
+    );
 
     test.skip(story.id in UNSTABLE, UNSTABLE[story.id]);
 

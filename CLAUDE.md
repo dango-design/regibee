@@ -244,7 +244,7 @@ Keep text on screens short. People learn the app by using it, not by reading it.
 
 - `.github/workflows/story-screenshots.yml` takes a screenshot of every story with Playwright and compares it with its baseline, a PNG in `story-screenshots/baselines`. It does what Chromatic's UI Tests do, with no snapshot limit, so it keeps testing while Chromatic is paused. [story-screenshots/README.md](story-screenshots/README.md) covers how it works.
 - The check is called **Story screenshots**. It runs on pull requests that change `src/`, `public/`, `.storybook/`, `story-screenshots/` or `package.json`. It isn't required yet, so read its result before merging.
-- It fails when a story looks different, has no baseline yet, or doesn't render. The run's summary page lists the stories, and its `story-screenshots-report` artifact shows each one before and after.
+- It fails when a story looks different, has no baseline yet, doesn't render, or its play function throws. Storybook only logs a play function's error and shows the story without it, so this is how the check notices a story that never reached the state it pictures. The run's summary page lists the stories, and its `story-screenshots-report` artifact shows each one before and after.
 - To accept changes, run `npm run screenshots:accept` on the branch, then commit and push `story-screenshots/baselines`. It downloads the new pictures from the check's run for the commit you are on. Accept only after looking at the pictures. A new story needs this once.
 - Baselines come only from GitHub's runner. Never commit a screenshot taken on a Mac: it draws text differently, so it would never match.
 - It snapshots the same stories as Chromatic: a story with `chromatic: { disableSnapshot: true }` is skipped here too.

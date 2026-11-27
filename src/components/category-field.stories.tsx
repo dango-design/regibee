@@ -60,6 +60,11 @@ export const AddingTheFirst: Story = {
   play: async ({ canvasElement }) => {
     const field = within(canvasElement).getByRole("combobox", { name: "Category" });
     await userEvent.click(field);
+    // A frame after focus, the field selects its text, so a new name replaces
+    // the old one. Typing before that frame, as a busy test machine sometimes
+    // did, got the first letters selected and replaced. Wait one frame: the
+    // field asked for its frame first, so it runs first.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
     await userEvent.type(field, "Kitchen", { skipClick: true });
     await userEvent.click(await within(document.body).findByRole("option", { name: "Add “Kitchen”" }));
     await expect(field).toHaveValue("Kitchen");
