@@ -4,7 +4,7 @@
 // don't answer is refused. Calls to Regibee's API get canned answers, so the
 // tests never touch the production database.
 
-import { test as base, chromium, type BrowserContext, type Page, type Worker } from "@playwright/test";
+import { test as base, chromium, expect, type BrowserContext, type Locator, type Page, type Worker } from "@playwright/test";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type {
@@ -93,6 +93,23 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect } from "@playwright/test";
+
+// The popup's dropdowns (extension/src/popup/dropdown.ts) open their own list,
+// so Playwright's selectOption can't pick from them, and the button holds the
+// chosen value in data-value.
+
+/** Checks the labels a dropdown offers, in order. Opens it and closes it again. */
+export async function expectOptions(dropdown: Locator, labels: string[]) {
+  await dropdown.click();
+  await expect(dropdown.page().getByRole("listbox").getByRole("option")).toHaveText(labels);
+  await dropdown.page().keyboard.press("Escape");
+}
+
+/** Picks an option from a dropdown by its label. */
+export async function chooseOption(dropdown: Locator, label: string) {
+  await dropdown.click();
+  await dropdown.page().getByRole("listbox").getByRole("option", { name: label, exact: true }).click();
+}
 
 /** Opens a saved page in a new tab, served at the address it was saved from. */
 export async function openSavedPage(context: BrowserContext, saved: SavedPage): Promise<Page> {
