@@ -6,7 +6,7 @@
 
 import type { BrowserContext } from "@playwright/test";
 import type { ExtensionRegistry } from "../../src/lib/extension";
-import { connect, expect, NEW_CATEGORY_ID, REGISTRY, tabIdFor, test } from "./extension";
+import { connect, expect, expectOptions, NEW_CATEGORY_ID, REGISTRY, tabIdFor, test } from "./extension";
 
 const PRODUCT_URL = "https://www.target.com/p/snuggle-bundle/-/A-23456789";
 // A name no category guess matches (src/lib/item-categories.ts), so the menu
@@ -55,7 +55,7 @@ test("makes a new category and adds the product to it", async ({ context, worker
   const { popup, tabId } = await openForm(context, worker, extensionId);
 
   const category = popup.getByLabel("Category", { exact: true });
-  await expect(category.locator("option")).toHaveText(["No category", "Feeding"]);
+  await expectOptions(category, ["No category", "Feeding"]);
 
   // Cancel goes back to the picker.
   await popup.getByRole("button", { name: "+ New category" }).click();
@@ -72,8 +72,8 @@ test("makes a new category and adds the product to it", async ({ context, worker
 
   // It's made on the registry, then picked.
   await expect(category).toBeVisible();
-  await expect(category.locator("option")).toHaveText(["No category", "Feeding", "Bath time"]);
-  await expect(category).toHaveValue(NEW_CATEGORY_ID);
+  await expectOptions(category, ["No category", "Feeding", "Bath time"]);
+  await expect(category).toHaveAttribute("data-value", NEW_CATEGORY_ID);
   const made = calls.filter((call) => call.path === "/api/extension/categories");
   expect(made).toHaveLength(1);
   expect(made[0].body).toEqual({ registryId: REGISTRY.id, name: "Bath time" });
@@ -87,11 +87,7 @@ test("makes a new category and adds the product to it", async ({ context, worker
   // The popup offers it next time without asking Regibee for the lists again.
   const again = await context.newPage();
   await again.goto(`chrome-extension://${extensionId}/popup.html?tab=${tabId}`);
-  await expect(again.getByLabel("Category", { exact: true }).locator("option")).toHaveText([
-    "No category",
-    "Feeding",
-    "Bath time",
-  ]);
+  await expectOptions(again.getByLabel("Category", { exact: true }), ["No category", "Feeding", "Bath time"]);
   expect(calls.filter((call) => call.path === "/api/extension/me")).toHaveLength(1);
 });
 
@@ -119,8 +115,8 @@ test("a name the registry already has picks that category", async ({ context, wo
   await popup.getByLabel("New category").press("Enter");
 
   const category = popup.getByLabel("Category", { exact: true });
-  await expect(category).toHaveValue(FEEDING.id);
-  await expect(category.locator("option")).toHaveText(["No category", "Feeding"]);
+  await expect(category).toHaveAttribute("data-value", FEEDING.id);
+  await expectOptions(category, ["No category", "Feeding"]);
 });
 
 test("a guessed category the registry doesn't have yet is made when the product is added", async ({ context, worker, extensionId }) => {
@@ -128,8 +124,8 @@ test("a guessed category the registry doesn't have yet is made when the product 
   const { popup } = await openForm(context, worker, extensionId, "Lindt Milk Chocolate Truffles");
 
   const category = popup.getByLabel("Category", { exact: true });
-  await expect(category.locator("option")).toHaveText(["No category", "Feeding", "Food & Drink (new)"]);
-  await expect(category.locator("option:checked")).toHaveText("Food & Drink (new)");
+  await expectOptions(category, ["No category", "Feeding", "Food & Drink (new)"]);
+  await expect(category).toHaveText("Food & Drink (new)");
   // Nothing is made until the product is added.
   expect(calls.filter((call) => call.path === "/api/extension/categories")).toHaveLength(0);
 
@@ -152,5 +148,5 @@ test("the store's breadcrumbs pick a category the registry has", async ({ contex
         {"@type":"ListItem","position":3,"name":"Feeding"}]}
     </script>`;
   const { popup } = await openForm(context, worker, extensionId, PRODUCT_NAME, breadcrumbs);
-  await expect(popup.getByLabel("Category", { exact: true })).toHaveValue(FEEDING.id);
+  await expect(popup.getByLabel("Category", { exact: true })).toHaveAttribute("data-value", FEEDING.id);
 });

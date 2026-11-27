@@ -203,6 +203,7 @@ Keep text on screens short. People learn the app by using it, not by reading it.
 
 - Never use a plain `<select>` on the website. The browser draws its menu itself, and it looks out of place. Use `SelectField` (`src/components/base/select/select-field.tsx`), which opens a styled list. In a price field, use `CurrencySelect`. For a small filter or sort pill, use `TightSelect`.
 - In tests, Playwright's `selectOption` can't pick from these. Use `chooseOption` in `e2e/fixtures.ts`. In a story, click the field's button, then the option in `document.body`, since the list opens outside the story.
+- The extension's popup has no React, so it has its own: `dropdown()` in `extension/src/popup/dropdown.ts`. Its button holds the chosen value in `data-value`. Its tests use `chooseOption` and `expectOptions` in `extension/test/extension.ts`.
 
 ## Visual tests (Chromatic)
 
