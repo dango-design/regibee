@@ -18,6 +18,7 @@ import {
   type LinkResponse,
   type ProductItem,
   type StoreItem,
+  type TaxResponse,
 } from "@/lib/extension";
 import { categoryName, MAX_CATEGORY_NAME_LENGTH, suggestCategory } from "@/lib/item-categories";
 import { classifyStoreLink, EXTENSION_STORES, getStore, storeItemKey, type StoreId, type StoreInfo } from "@/lib/retailers";
@@ -1069,6 +1070,61 @@ function showProduct(ctx: ProductContext) {
   }
 
   const essential = h("input", { type: "checkbox", id: "essential" }) as HTMLInputElement;
+
+  // "Mark as bought by parent": guests can then cover the item's cost. With a
+  // zip code on the list, estimated sales tax goes on the price, as in the
+  // site's add-item dialog.
+  const bought = h("input", { type: "checkbox", id: "bought" }) as HTMLInputElement;
+  const boughtText = h("span", {});
+  const boughtCheck = h("label", { className: "check" }, bought, boughtText);
+  const taxNote = h("p", { className: "tax-note", hidden: true });
+  /** The price before tax, while the price field holds the price with tax. */
+  let beforeTax: string | null = null;
+  let taxing: Promise<void> | null = null;
+  const priceNumber = () => Number(price.value.replace(/[$,\s]/g, ""));
+  const fillBought = () => {
+    const label = registry()?.boughtLabel;
+    boughtText.textContent = label ?? "";
+    boughtCheck.hidden = !label;
+    if (!label) bought.checked = false;
+  };
+  const removeTax = () => {
+    if (beforeTax !== null) price.value = beforeTax;
+    beforeTax = null;
+    taxNote.hidden = true;
+  };
+  const addTax = () => {
+    const before = taxing;
+    const run = (async () => {
+      // One at a time, so a price never gets tax twice.
+      await before;
+      if (mode !== "list" || !bought.checked || !registry()?.addsTax || beforeTax !== null) return;
+      const amount = priceNumber();
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      const forRegistry = registryId;
+      const result = await ask<TaxResponse>({ type: "estimate-tax", registryId, price: amount });
+      // Skip it if the owner changed something while it was worked out.
+      const changed = mode !== "list" || !bought.checked || forRegistry !== registryId || priceNumber() !== amount;
+      if (!result.ok || !result.data.tax || changed) return;
+      beforeTax = amount.toFixed(2);
+      price.value = result.data.tax.priceWithTax;
+      taxNote.textContent = `$${beforeTax} + ~${(result.data.tax.taxRate * 100).toFixed(1)}% tax`;
+      taxNote.hidden = false;
+    })();
+    taxing = run;
+    return run;
+  };
+  bought.addEventListener("change", () => {
+    if (bought.checked) void addTax();
+    else removeTax();
+  });
+  // A price the owner types is the price before tax.
+  price.addEventListener("input", () => {
+    beforeTax = null;
+    taxNote.hidden = true;
+  });
+  price.addEventListener("change", () => void addTax());
+  fillBought();
   const openToUsed = h("input", { type: "checkbox", id: "used" }) as HTMLInputElement;
   const condition = h(
     "select",
@@ -1208,6 +1264,9 @@ function showProduct(ctx: ProductContext) {
       return;
     }
     registryId = value;
+    // Each list has its own zip code, so the tax starts over.
+    removeTax();
+    fillBought();
     fillCategories();
     guessCategory();
     closeNewCategory();
@@ -1246,10 +1305,16 @@ function showProduct(ctx: ProductContext) {
       title.focus();
       return;
     }
-    const priceValue = readPrice();
-    if (priceValue === undefined) return;
     button.disabled = true;
     button.textContent = "Adding…";
+    // Tax still being worked out goes on the price first.
+    await taxing;
+    const priceValue = readPrice();
+    if (priceValue === undefined) {
+      button.disabled = false;
+      button.textContent = "Add to Regibee";
+      return;
+    }
     // A guessed category the registry doesn't have yet: make it first.
     if (category.value === NEW_CATEGORY_VALUE && newCategoryName && newCategoryForm.hidden) {
       newCategory.value = newCategoryName;
@@ -1277,6 +1342,7 @@ function showProduct(ctx: ProductContext) {
       minimumCondition: openToUsed.checked ? (condition.value as ProductItem["minimumCondition"]) : null,
       notes: notes.value.trim() || null,
       gtin: product.gtin ?? null,
+      isParentPurchased: bought.checked,
     };
     const result = await ask<AddProductResponse>({ type: "add-product", registryId, item });
     if (!result.ok) {
@@ -1387,7 +1453,8 @@ function showProduct(ctx: ProductContext) {
       "div",
       { className: "checks" },
       h("label", { className: "check" }, essential, "Most wanted"),
-      h("label", { className: "check" }, openToUsed, "Open to hand-me-downs")
+      h("label", { className: "check" }, openToUsed, "Open to hand-me-downs"),
+      boughtCheck
     ),
     conditionField,
     field("notes", "Note for friends and family (optional)", notes)
@@ -1406,6 +1473,9 @@ function showProduct(ctx: ProductContext) {
     quantityField.hidden = idea;
     button.hidden = idea;
     error.hidden = true;
+    // A gift idea keeps the store's price.
+    if (idea) removeTax();
+    else void addTax();
     if (canAddToList) void ask({ type: "set-product-mode", mode });
   }
 
@@ -1428,6 +1498,7 @@ function showProduct(ctx: ProductContext) {
           field("price", "Price", h("div", { className: "money" }, h("span", { "aria-hidden": "true" }, "$"), price)),
           quantityField
         ),
+        taxNote,
         listBottom,
         ideaBottom
       ),

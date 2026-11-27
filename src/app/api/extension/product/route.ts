@@ -52,7 +52,9 @@ export async function POST(request: Request) {
       image_url: item.imageUrl,
       price: item.price,
       quantity_needed: item.quantity,
-      quantity_fulfilled: 0,
+      // What the owner bought counts as given, as in the site's add-item dialog.
+      quantity_fulfilled: item.isParentPurchased ? item.quantity : 0,
+      is_parent_purchased: item.isParentPurchased === true,
       is_essential: item.isEssential,
       is_open_to_used: item.isOpenToUsed,
       minimum_condition: item.minimumCondition,

@@ -4,6 +4,7 @@ import { parseRetailerRegistries, plainLinksByStore, type StoreId } from "@/lib/
 import type { MeResponse } from "@/lib/extension";
 import { LINK_COLUMNS, loadItemsForLists, type LinkRow } from "@/lib/list-items";
 import { recentRecipients } from "@/lib/gift-ideas";
+import { copyForRegistry } from "@/lib/registry-copy";
 
 // GET → who the extension is signed in as, the registries they manage, and
 // the people they've saved gift ideas for.
@@ -21,10 +22,12 @@ export async function GET(request: Request) {
     ids.length > 0
       ? supabase
           .from("registries")
-          .select("id, title, settings")
+          .select("id, title, settings, registry_type, event_type")
           .in("id", ids)
           .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [] as { id: string; title: string; settings: unknown }[] }),
+      : Promise.resolve({
+          data: [] as { id: string; title: string; settings: unknown; registry_type: null; event_type: null }[],
+        }),
     ids.length > 0
       ? supabase
           .from("categories")
@@ -72,16 +75,20 @@ export async function GET(request: Request) {
       name: (profile?.full_name as string | null)?.trim() || user.email || "You",
       email: user.email ?? null,
     },
-    // Only the linked store registries leave the server. Settings also holds
-    // the shipping address and payment details.
+    // Only the linked store registries, and whether there's a zip code, leave
+    // the server. Settings also holds the shipping address and payment details.
     registries: (registries ?? []).map((r) => {
       const storeRegistries = parseRetailerRegistries(r.settings);
+      const settings = r.settings as { tax_enabled?: unknown; zip_code?: unknown } | null;
       return {
         id: r.id as string,
         title: r.title as string,
         storeRegistries,
         categories: categoriesByRegistry.get(r.id as string) ?? [],
         plainLinks: plainLinks(r.id as string, storeRegistries.map((s) => s.store)),
+        boughtLabel: copyForRegistry(r).selfPurchaseButton,
+        // As on the list's own page (src/lib/list-page.ts).
+        addsTax: settings?.tax_enabled !== false && Boolean(settings?.zip_code),
       };
     }),
     ideaRecipients: recentRecipients(ideas.map((row) => ({ recipient: row.recipient, createdAt: row.created_at }))),
