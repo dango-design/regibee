@@ -300,7 +300,11 @@ export function useUpdateItem() {
 
 async function setBoughtMyself(item: Item, bought: boolean) {
   if (isDemo()) {
-    demo.updateItem(item.id, { is_parent_purchased: bought, quantity_fulfilled: bought ? item.quantity_needed : 0 });
+    demo.updateItem(item.id, {
+      is_parent_purchased: bought,
+      quantity_fulfilled: bought ? item.quantity_needed : 0,
+      ...(bought ? {} : { guests_can_cover: true, marked_gifted: false }),
+    });
     return;
   }
   // A database trigger corrects quantity_fulfilled, so unmarking keeps guests'
@@ -331,10 +335,42 @@ export function useToggleItem() {
         if (i.id !== item.id) return i;
         if (field === "is_essential") return { ...i, is_essential: !i.is_essential };
         const bought = !i.is_parent_purchased;
-        return { ...i, is_parent_purchased: bought, quantity_fulfilled: bought ? i.quantity_needed : 0 };
+        // Unmarking puts the choices back, as the database does.
+        return {
+          ...i,
+          is_parent_purchased: bought,
+          quantity_fulfilled: bought ? i.quantity_needed : 0,
+          ...(bought ? {} : { guests_can_cover: true, marked_gifted: false }),
+        };
       }),
     })
   );
+}
+
+/**
+ * For an item the owner bought: whether guests can cover it, and whether it
+ * counts as gifted, as the website's item card sets them (@shared/gifts).
+ */
+export function useSetBoughtChoice() {
+  return useListChange<{ item: Item; choice: { guestsCanCover?: boolean; markedGifted?: boolean } }>(
+    ({ item }) => item.registry_id,
+    async ({ item, choice }) => {
+      const patch = boughtChoicePatch(choice);
+      if (isDemo()) return demo.updateItem(item.id, patch);
+      await act("registry.setBoughtItemChoice", item.id, item.registry_id, choice);
+    },
+    (detail, { item, choice }) => ({
+      ...detail,
+      items: detail.items.map((i) => (i.id === item.id ? { ...i, ...boughtChoicePatch(choice) } : i)),
+    })
+  );
+}
+
+function boughtChoicePatch(choice: { guestsCanCover?: boolean; markedGifted?: boolean }): Partial<Item> {
+  return {
+    ...(choice.guestsCanCover === undefined ? {} : { guests_can_cover: choice.guestsCanCover }),
+    ...(choice.markedGifted === undefined ? {} : { marked_gifted: choice.markedGifted }),
+  };
 }
 
 /**

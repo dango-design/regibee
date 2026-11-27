@@ -12,18 +12,27 @@ import { formatEventTime, summarizeRsvps } from "@/lib/events";
 import { listEventsForUser, listInvitedEventsForUser, listLinkedEventsForUser } from "@/lib/events-server";
 import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { getSessionUser } from "@/lib/viewer";
-import { giftActivityAction, giverNameForOwner, itemAsUnreserved, reservationsHiddenFrom } from "@/lib/gifts";
+import { coveredQuantity, giftActivityAction, giverNameForOwner, itemAsUnreserved, listProgress, reservationsHiddenFrom } from "@/lib/gifts";
 import { itemsHiddenFromOwner, loadPlacements } from "@/lib/list-items";
 import type { DashboardCard, DashboardData, DashboardEvent } from "@/lib/dashboard-page-types";
 
 export type * from "@/lib/dashboard-page-types";
 
-type CardPurchase = { id: string; status: string; created_at: string; buyer_name: string; hide_giver?: boolean | null };
+type CardPurchase = {
+  id: string;
+  status: string;
+  created_at: string;
+  buyer_name: string;
+  hide_giver?: boolean | null;
+  quantity?: number | null;
+};
 type CardItem = {
   id: string;
   quantity_needed: number;
   quantity_fulfilled: number;
   is_parent_purchased: boolean;
+  guests_can_cover?: boolean;
+  marked_gifted?: boolean;
   price: number | null;
   purchases: CardPurchase[] | null;
 };
@@ -51,6 +60,10 @@ function toCard(
   const visiblePurchases = hidden
     ? []
     : activePurchases({ registry_items: allItems.filter((item) => !hiddenItemIds.has(item.id)) });
+  // Covers on an item hidden from the owner stay hidden too.
+  const progress = listProgress(items, (item) =>
+    hidden || hiddenItemIds.has(item.id) ? 0 : coveredQuantity(item.purchases ?? []),
+  );
   const recentPurchases = [...visiblePurchases].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 3);
 
   return {
@@ -70,7 +83,8 @@ function toCard(
     created_at: registry.created_at,
     role,
     totalItems: items.length,
-    fulfilledItems: items.filter((item) => item.quantity_fulfilled >= item.quantity_needed).length,
+    fulfilledItems: progress.gifted,
+    progress,
     totalValue: items.reduce((sum, item) => sum + (item.price || 0), 0),
     recentActivity: recentPurchases.map((p) => ({ id: p.id, name: giverNameForOwner(p), action: giftActivityAction(p) })),
     giftsThisWeek: visiblePurchases.filter((p) => Date.parse(p.created_at) >= weekAgo).length,
@@ -81,7 +95,7 @@ function toCard(
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const CARD_ITEM_FIELDS =
-  "id, quantity_needed, quantity_fulfilled, is_parent_purchased, price, purchases(id, status, reserved_until, created_at, buyer_name, hide_giver)";
+  "id, quantity_needed, quantity_fulfilled, is_parent_purchased, guests_can_cover, marked_gifted, price, purchases(id, status, reserved_until, created_at, buyer_name, hide_giver, quantity)";
 
 /**
  * Adds the items placed on each list from its owner's other lists

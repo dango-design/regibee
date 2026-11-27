@@ -109,6 +109,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
 
+## Items a manager bought
+
+- A list's manager can mark an item as bought by them (`is_parent_purchased`). That isn't a gift: nobody gave it to them. Guests can't reserve it.
+- The manager then chooses, and can change at any time: guests can cover it by sending its price (`guests_can_cover`, on by default), guests can't, or it counts as gifted (`marked_gifted`, which also stops covers). `setBoughtItemChoice` saves it on the website and in the phone app. Unmarking the item as bought puts both back (`20261127093601_bought_item_choices.sql`).
+- An item a manager bought counts as gifted only once guests cover every one, or the manager marks it as gifted. Until then it counts as "bought by you". `quantity_fulfilled` still equals `quantity_needed` for it, since nothing is left for guests to reserve, so never count gifts from `quantity_fulfilled` alone. Use `listProgress` and `itemProgress` in `src/lib/gifts.ts`, as the managers' progress bar, the dashboard cards and the guest page's count do.
+
 ## Baby checklist
 
 - A baby registry has a checklist of what most new parents need (`src/lib/checklist-data.ts`). The website's page is `src/components/checklist-manager.tsx`, loaded by `src/lib/checklist-page.ts`. The phone app's screen is `mobile/src/app/registry/[id]/checklist.tsx`.
@@ -135,6 +141,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - On a computer with the extension, the list's page offers to fill those in (`MissingDetailsNotice`). The extension reads each link in a background tab, and `saveReadDetails` (`src/lib/actions/item-details.ts`) saves what it found.
 - The rules are in `src/lib/item-details.ts`: a read replaces the name and price when the store's are different, fills in a photo only when there's none, and never changes the price of an item the owner marked as bought.
 - `item_detail_reads` keeps each item's last read and the value before each change, so `DetailReview` can show the new and old values and switch back. Only the server reads it, with the service-role client. An item is offered again only when its link changes.
+
+## Checking prices
+
+- On a computer with the extension, a list's page checks a few prices each time a manager opens it (`PriceCheck`, `src/components/price-check.tsx`). A few seconds after the page opens, the extension reads up to 5 items' links in background tabs, one at a time. A line on the page says so while it reads, with a Stop button.
+- The rules and their tests are in `src/lib/item-details.ts` (`priceCheckDue`). An item is checked when its price hasn't been checked for 7 days: since its last read of the same link, or since it was added. The longest unchecked go first. Items the owner bought, items every one of which has been given, items missing a photo or price (the fill-in notice handles those) and items waiting for review are skipped.
+- A check changes only the price, never the name or photo (`savePriceCheck`). The new price shows to guests straight away, and `DetailReview` shows it with the old one, headed "New prices". If the owner switches back to their own price, that item isn't checked again until its link changes.
+- Each check saves its time in `item_detail_reads`, even when the price was the same.
+- The phone app has no extension, so it doesn't check prices.
 
 ## Gift ideas
 

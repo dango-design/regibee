@@ -65,6 +65,8 @@ export interface RegistryItem {
   quantity_fulfilled: number;
   is_essential: boolean;
   is_parent_purchased: boolean;
+  guests_can_cover?: boolean;
+  marked_gifted?: boolean;
   notes: string | null;
   sort_order: number;
   version: number;

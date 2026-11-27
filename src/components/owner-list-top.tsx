@@ -15,12 +15,13 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { ListProgressBar, ListProgressKey } from "@/components/list-progress-bar";
 import { RegistryAvatar } from "@/components/registry-avatar";
 import { UnlinkEventButton } from "@/components/unlink-event-button";
 import type { BannerEvent } from "@/components/registry-events-banner";
 import { dismissEventPrompt } from "@/lib/actions/registry";
 import { eventTypeLabel, formatShortEventDate } from "@/lib/events";
+import type { ListProgress } from "@/lib/gifts";
 import type { ListVisibility } from "@/lib/list-access";
 import { listHeader, type ListHeader } from "@/lib/list-headers";
 import { HEADER_BAND, HEADER_INK, listHeaderVars } from "@/lib/list-header-style";
@@ -41,8 +42,8 @@ export interface OwnerListTopProps {
   manager?: boolean;
   /** Share, Preview, Settings and the rest, under the title. */
   actions: ReactNode;
-  /** How much has been gifted. Null while reservations are hidden, since the count would be wrong. */
-  progress: { gifted: number; total: number } | null;
+  /** Where the items stand (listProgress in src/lib/gifts.ts). Null while reservations are hidden, since the count would be wrong. */
+  progress: ListProgress | null;
   /** Reservations are hidden from the owner. `href` opens the Gift Activity tab, which explains it. */
   hidden?: { revealed: number; href: string } | null;
   /** Events this list is on. */
@@ -120,7 +121,8 @@ export function OwnerListTop({
             </span>
             <span className="tabular-nums">{Math.round(percent)}%</span>
           </div>
-          <Progress value={percent} aria-label="Items gifted" />
+          <ListProgressBar progress={progress} label="Items gifted" />
+          <ListProgressKey progress={progress} />
         </div>
       ),
     });

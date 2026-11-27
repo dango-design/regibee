@@ -8,7 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { createAccount, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
+import { createAccount, db, signIn, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
 import { emailsTo, waitForEmail } from "./mailbox";
 import { DAILY_EMAILS } from "../src/lib/account-levels";
 
@@ -49,7 +49,10 @@ test("a basic account's invitations stop at the daily limit, and the rest wait",
 
     await signIn(page, host);
     await page.goto(`/dashboard/events/${event.id}`);
-    await page.getByRole("button", { name: "Send invitations" }).click();
+    // A click before React takes over the page opens nothing.
+    const sendInvitations = page.getByRole("button", { name: "Send invitations" });
+    await waitForReact(sendInvitations);
+    await sendInvitations.click();
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(
       page.getByText("Sent to 2 guests. You've reached today's limit for emails, so send to the other 1 tomorrow."),
@@ -71,7 +74,8 @@ test("a basic account's invitations stop at the daily limit, and the rest wait",
 
     // With nothing left, the button sends nothing.
     await page.reload();
-    await page.getByRole("button", { name: "Send invitations" }).click();
+    await waitForReact(sendInvitations);
+    await sendInvitations.click();
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page.getByText("You've reached today's limit for emails. Try again tomorrow.")).toBeVisible();
     expect(await emailsTo(waiting)).toHaveLength(0);
@@ -88,7 +92,10 @@ test("a star account isn't held to the basic limit", async ({ page }) => {
 
     await signIn(page, host);
     await page.goto(`/dashboard/events/${event.id}`);
-    await page.getByRole("button", { name: "Send invitations" }).click();
+    // A click before React takes over the page opens nothing.
+    const sendInvitations = page.getByRole("button", { name: "Send invitations" });
+    await waitForReact(sendInvitations);
+    await sendInvitations.click();
     await page.getByRole("button", { name: "Send", exact: true }).click();
     for (const guest of guests) await waitForEmail(guest.email, `You're invited: ${event.title}`);
     expect(await sentToday(host.id)).toBe(DAILY_EMAILS.basic + 1);

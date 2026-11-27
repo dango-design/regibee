@@ -14,6 +14,7 @@ import { countdownLabel, listTint } from "@shared/occasions";
 
 import { Icon, type IconName } from "@/components/icon";
 import { useTintColors } from "@/components/invitation/colors";
+import { ListProgressBar } from "@/components/list-progress";
 import { ProgressBar, Text } from "@/components/ui";
 import { occasionLabel } from "@/lib/occasion";
 import { radius, spacing, useTheme } from "@/lib/theme";
@@ -55,7 +56,11 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
   const isPrivate = listVisibility(registry) === "private";
   const progress = registry.totalItems > 0 ? registry.fulfilledItems / registry.totalItems : 0;
   const newThisWeek = registry.giftsThisWeek ?? 0;
-  const allDone = registry.totalItems > 0 && registry.fulfilledItems >= registry.totalItems;
+  // Done once nothing is left to buy, whether guests gave it or the owner
+  // bought it, as on the website's card. Older servers send no progress.
+  const allDone =
+    registry.totalItems > 0 &&
+    (registry.progress ? registry.progress.toBuy === 0 : registry.fulfilledItems >= registry.totalItems);
   // A finished list celebrates instead of counting new gifts, as on the website.
   const newText = allDone ? null : newThisWeek > 0 ? `${newThisWeek} new this week` : null;
 
@@ -120,7 +125,13 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
           </View>
         ) : (
           <>
-            {registry.totalItems > 0 ? <ProgressBar value={progress} /> : null}
+            {registry.totalItems > 0 ? (
+              registry.progress ? (
+                <ListProgressBar progress={registry.progress} />
+              ) : (
+                <ProgressBar value={progress} />
+              )
+            ) : null}
             <View style={styles.giftLine}>
               <Text variant="footnote" tone="secondary">
                 {giftedText(registry)}

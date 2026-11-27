@@ -90,3 +90,25 @@ export const ReplacedAndFilled: Story = {
 export const OnlyFilled: Story = {
   render: () => <Interactive initial={[reviews[2]]} />,
 };
+
+// Prices the list's page checked found changed (PriceCheck). One kept, one switched back.
+export const NewPrices: Story = {
+  render: () => (
+    <Interactive
+      initial={[
+        {
+          itemId: "p1",
+          title: "Hatch Rest Baby Sound Machine",
+          imageUrl: PHOTO,
+          changes: [{ field: "price", before: 69.99, after: 59.99, shown: "after" }],
+        },
+        {
+          itemId: "p2",
+          title: "Halo Sleepsack Swaddle",
+          imageUrl: PHOTO,
+          changes: [{ field: "price", before: 24.99, after: 29.99, shown: "before" }],
+        },
+      ]}
+    />
+  ),
+};

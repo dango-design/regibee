@@ -32,7 +32,7 @@ import { LIST_ACCESS, PROFILE_AUDIENCE, listAccess, listVisibility, profileAudie
 import { headerChoice, listHeader, type ListHeader as BandHeader } from "@shared/list-headers";
 import { copyForRegistry } from "@shared/registry-copy";
 import { getStore } from "@shared/retailers";
-import { fundsPosition, reservationsHiddenText, type FundsPosition } from "@shared/gifts";
+import { coveredQuantity, fundsPosition, listProgress, reservationsHiddenText, type FundsPosition } from "@shared/gifts";
 
 import { Icon, type IconName } from "@/components/icon";
 import { ItemRow, type ItemActions } from "@/components/item-row";
@@ -50,12 +50,14 @@ import {
   ProgressBar,
   Text,
 } from "@/components/ui";
+import { ListProgressBar, ListProgressKey } from "@/components/list-progress";
 import {
   errorMessage,
   removeItemWording,
   useDeleteItem,
   useDismissEventPrompt,
   useRegistry,
+  useSetBoughtChoice,
   useSetFundsPosition,
   useSortIntoCategories,
   useToggleItem,
@@ -89,6 +91,7 @@ export default function RegistryScreen() {
   const undoSort = useUndoCategorySort(id);
 
   const { mutate: toggleItem } = useToggleItem();
+  const { mutate: setBoughtChoice } = useSetBoughtChoice();
   const { mutate: removeItem } = useDeleteItem();
 
   const actions: ItemActions = useMemo(
@@ -100,6 +103,10 @@ export default function RegistryScreen() {
       toggleBought: (item) => {
         haptic("success");
         toggleItem({ item, field: "is_parent_purchased" }, { onError: (e) => Alert.alert("Couldn't change it", errorMessage(e)) });
+      },
+      setBoughtChoice: (item, choice) => {
+        haptic("success");
+        setBoughtChoice({ item, choice }, { onError: (e) => Alert.alert("Couldn't change it", errorMessage(e)) });
       },
       remove: (item) => {
         // The website's edit dialog asks the same (src/components/edit-item-dialog.tsx).
@@ -115,7 +122,7 @@ export default function RegistryScreen() {
       },
     }),
     // mutate is stable, so the rows don't all redraw while a change saves.
-    [toggleItem, removeItem]
+    [toggleItem, setBoughtChoice, removeItem]
   );
 
   const data = registry.data;
@@ -630,9 +637,10 @@ function SummaryCard({ detail }: { detail: RegistryDetail }) {
   const id = r.id;
   const dismiss = useDismissEventPrompt(id);
   const unlink = useUnlinkEvent(id);
-  // The same numbers as the guest page.
-  const gifted = detail.items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
-  const total = detail.items.length;
+  // An item the owner bought counts as gifted only once guests cover it or the
+  // owner marks it as gifted, as on the website (@shared/gifts).
+  const progress = listProgress(detail.items, (i) => coveredQuantity(i.purchases));
+  const { gifted, total } = progress;
   const completion = total > 0 ? gifted / total : 0;
   const reviewCount = detail.detailReview.length;
   const missingCount = detail.missingDetails.length;
@@ -750,7 +758,8 @@ function SummaryCard({ detail }: { detail: RegistryDetail }) {
               {Math.round(completion * 100)}%
             </Text>
           </View>
-          <ProgressBar value={completion} color={theme.success} />
+          <ListProgressBar progress={progress} />
+          <ListProgressKey progress={progress} />
         </View>
       ) : null}
       {rows.map(({ key, ...row }, index) => (

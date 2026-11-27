@@ -66,6 +66,10 @@ export interface Item {
   is_essential: boolean;
   /** "I bought it myself": guests can still give it by sending the money. */
   is_parent_purchased: boolean;
+  /** For an item the owner bought: guests can cover it (@shared/gifts). Missing from older servers' answers. */
+  guests_can_cover?: boolean;
+  /** For an item the owner bought: the owner counts it as gifted. Missing from older servers' answers. */
+  marked_gifted?: boolean;
   is_open_to_used: boolean;
   minimum_condition: UsedCondition | null;
   notes: string | null;

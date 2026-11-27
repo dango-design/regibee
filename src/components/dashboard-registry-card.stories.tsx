@@ -112,3 +112,12 @@ export const Private: Story = {
     isPrivate: true,
   },
 };
+
+// Items the owner bought show in yellow, and covered ones in a lighter green.
+// Only gifted ones count in "gifted".
+export const BoughtAndCovered: Story = {
+  args: {
+    fulfilledItems: 9,
+    progress: { total: 32, toBuy: 19, boughtByYou: 4, gifted: 9, covered: 2 },
+  },
+};

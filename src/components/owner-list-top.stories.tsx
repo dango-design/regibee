@@ -46,7 +46,7 @@ const meta: Meta<typeof OwnerListTop> = {
     itemCount: 6,
     access: { visibility: "link", label: "Link only · friends see it on your profile", href: "#settings" },
     actions,
-    progress: { gifted: 1, total: 6 },
+    progress: { total: 6, toBuy: 5, boughtByYou: 0, gifted: 1, covered: 0 },
     events: [],
     unlinkAction: fn(async () => ({ error: null })),
     dismissAction: fn(async () => ({ error: null })),
@@ -60,6 +60,23 @@ export const Wishlist: Story = {
   args: {
     events: [{ id: "e1", title: "Dorothy's 60th", event_date: "2026-12-14", event_type: "birthday", canManage: true }],
   },
+};
+
+/**
+ * Items in every place: gifted by guests, covered by guests after the owner
+ * bought them, bought by the owner, and still to buy. Only gifted ones count
+ * toward "items gifted".
+ */
+export const BoughtAndCovered: Story = {
+  args: {
+    itemCount: 12,
+    progress: { total: 12, toBuy: 5, boughtByYou: 2, gifted: 5, covered: 1 },
+  },
+};
+
+export const BoughtAndCoveredDark: Story = {
+  ...BoughtAndCovered,
+  parameters: { theme: "dark", chromatic: { disableSnapshot: true } },
 };
 
 /**

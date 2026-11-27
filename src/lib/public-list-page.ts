@@ -38,6 +38,7 @@ import {
   isExpiredReservation,
   isOpenReservation,
   itemAsUnreserved,
+  listProgress,
   readReservationPrivacy,
   reservationsHiddenFrom,
   toMyItemGift,
@@ -401,6 +402,8 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
     quantity_fulfilled: i.quantity_fulfilled,
     is_essential: i.is_essential,
     is_parent_purchased: i.is_parent_purchased,
+    guests_can_cover: i.guests_can_cover ?? true,
+    marked_gifted: i.marked_gifted ?? false,
     is_open_to_used: i.is_open_to_used,
     minimum_condition: i.minimum_condition,
     notes: i.notes,
@@ -675,7 +678,7 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
     santaFor,
     guestPrefill,
     groupGifts: viewerManages ? null : { mine: myGroupGifts, eventTitle: guestEventTitle },
-    fulfilledItems: shownItems.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length,
+    fulfilledItems: listProgress(shownItems, (i) => coverCounts[i.id] || 0).gifted,
     totalItems: shownItems.length,
   };
 }

@@ -5,7 +5,7 @@ import { CheckCircle2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ItemImage } from "@/components/item-image";
 import { chooseDetailValue, finishDetailReview } from "@/lib/actions/item-details";
-import { DETAIL_FIELD_NAMES, type DetailField, type ShownSide } from "@/lib/item-details";
+import { DETAIL_FIELD_NAMES, detailReviewHeading, type DetailField, type ShownSide } from "@/lib/item-details";
 import type { ListPageDetailChange, ListPageDetailReview } from "@/lib/list-page-types";
 import { formatPrice } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ interface DetailReviewProps {
 
 /**
  * Shown above the items on a list's page after the extension filled in
- * details (MissingDetailsNotice). Where a read replaced something, such as a
+ * details (MissingDetailsNotice) or found new prices (PriceCheck). Where a read replaced something, such as a
  * name guessed from the link, it shows the new value and the old one, and
  * either can be picked. What only filled an empty field is folded away below,
  * since it rarely needs a look. Done hides it all; the items keep what they
@@ -70,7 +70,6 @@ export function DetailReview({
     else setFinishedFor(itemsKey);
   };
 
-  const total = reviews.length;
   const changeRow = (review: ListPageDetailReview, change: ListPageDetailChange) => (
     <ChangeRow
       key={change.field}
@@ -91,7 +90,7 @@ export function DetailReview({
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-700 dark:text-success-300" aria-hidden="true" />
         <div className="min-w-0 flex-1 space-y-1">
           <h3 id="detail-review-heading" className="text-sm font-semibold text-primary">
-            {total === 1 ? "Filled in details for 1 item" : `Filled in details for ${total} items`}
+            {detailReviewHeading(reviews)}
           </h3>
           {replaced.length > 0 && (
             <p className="text-sm text-secondary">
