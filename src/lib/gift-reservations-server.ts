@@ -5,7 +5,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
-import { GIFT_HOLD_DAYS, giftLinkUrl } from "@/lib/gifts";
+import { GIFT_HOLD_DAYS, giftLinkUrl, isOpenReservation } from "@/lib/gifts";
 import { classifyStoreLink, parseRetailerRegistries, registryStoreFor } from "@/lib/retailers";
 import { welcomeBoxUnlockedBy } from "@/lib/store-perks-server";
 import { visitorEmailAllowance } from "@/lib/email-budget";
@@ -17,6 +17,7 @@ import {
   notifyItemCovered,
   notifyItemGiven,
   notifyItemReservationEnded,
+  notifyItemReservationCancelled,
   remindItemReservation,
   sendGiftRemovedEmail,
 } from "@/lib/email";
@@ -220,6 +221,54 @@ async function sendReservationEndedEmail(purchaseId: string) {
     buyerEmail: gift.purchase.buyer_email,
     buyerName: gift.purchase.buyer_name,
     itemTitle: gift.item.title,
+    registryTitle: gift.registry.registryTitle,
+    registryUrl: `${siteUrl()}/r/${gift.registry.slug}`,
+  });
+}
+
+/**
+ * A guest's open reservation, read before a manager cancels it, for the email
+ * that tells them. Null for a gift already bought, a gift fund's gift, a group
+ * gift's reservation (its own page and emails cover it), or a guest with no
+ * email address.
+ */
+export async function reservationToCancel(purchaseId: string): Promise<GiftForEmail | null> {
+  try {
+    const { data: row } = await supabaseAdmin
+      .from("purchases")
+      .select("id, status, reserved_until")
+      .eq("id", purchaseId)
+      .maybeSingle();
+    if (!row || !isOpenReservation(row)) return null;
+    const { data: groupGift } = await supabaseAdmin
+      .from("group_gifts")
+      .select("id")
+      .eq("purchase_id", purchaseId)
+      .maybeSingle();
+    if (groupGift) return null;
+    const gift = await loadGift(purchaseId);
+    return gift?.purchase.buyer_email ? gift : null;
+  } catch (err) {
+    console.error("[gifts] Failed to read a reservation before cancelling it:", err);
+    return null;
+  }
+}
+
+type GiftForEmail = NonNullable<Awaited<ReturnType<typeof loadGift>>>;
+
+/**
+ * Tells a guest a manager cancelled their reservation. The email goes only to
+ * the guest, so it tells an owner who hides what's been reserved nothing.
+ * Counts against the list's visitor email limit, like the other reservation
+ * emails, since a visitor typed the address.
+ */
+export async function sendReservationCancelledEmail(gift: GiftForEmail) {
+  await notifyItemReservationCancelled({
+    allow: gift.visitorAllowance,
+    buyerEmail: gift.purchase.buyer_email!,
+    buyerName: gift.purchase.buyer_name,
+    itemTitle: gift.item.title,
+    parentName: gift.registry.parentName,
     registryTitle: gift.registry.registryTitle,
     registryUrl: `${siteUrl()}/r/${gift.registry.slug}`,
   });

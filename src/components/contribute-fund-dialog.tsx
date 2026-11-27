@@ -6,7 +6,6 @@ import { Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -45,15 +44,6 @@ interface ContributeFundDialogProps {
   demo?: boolean;
 }
 
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
-
 export function ContributeFundDialog({
   fund,
   paymentMethods,
@@ -74,7 +64,6 @@ export function ContributeFundDialog({
   // The last gift, for the thank-you, and everything this guest gave, for the card.
   const [contributedAmount, setContributedAmount] = useState<number>(previousAmount ?? 0);
   const [totalGiven, setTotalGiven] = useState<number>(previousAmount ?? 0);
-  const [currency, setCurrency] = useState("USD");
 
   const remaining =
     fund.goal_amount != null
@@ -180,13 +169,12 @@ export function ContributeFundDialog({
           </div>
   
           <form action={handleSubmit} className="space-y-4">
-            <InputGroup
-              label="Amount"
-              prefix={currencySymbols[currency] || "$"}
-              isRequired
-              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} name="currency" />}
-            >
+            {/* Amounts are saved in dollars, like every amount on Regibee. An
+                icon, not InputGroup's prefix: the prefix only sits inside the
+                field's border when the group also holds a select. */}
+            <InputGroup label="Amount" isRequired>
               <InputBase
+                icon={DollarSign}
                 name="amount"
                 type="number"
                 inputMode="decimal"

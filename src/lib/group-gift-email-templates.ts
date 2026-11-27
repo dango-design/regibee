@@ -100,13 +100,19 @@ export function groupGiftCalledOffHtml(opts: {
   paid: boolean;
   /** The list, when guests can open it, so they can pick something else. */
   listUrl?: string | null;
+  /** It ended because the organizer deleted their Regibee account. */
+  accountClosed?: boolean;
 }): string {
   return emailLayout({
     preheader: "You don't need to chip in.",
     eyebrow: `${opts.itemTitle} for ${opts.recipientName}`,
     heading: "The group gift was called off",
     body: `
-      <p>${escapeHtml(opts.organizerName)} called off the group gift, so you don't need to chip in.</p>
+      <p>${
+        opts.accountClosed
+          ? `${escapeHtml(opts.organizerName)} deleted their Regibee account, so the group gift is called off and you don't need to chip in.`
+          : `${escapeHtml(opts.organizerName)} called off the group gift, so you don't need to chip in.`
+      }</p>
       <p>${
         opts.paid
           ? `${escapeHtml(opts.organizerName)} had marked your share as paid. Ask them to send it back.`

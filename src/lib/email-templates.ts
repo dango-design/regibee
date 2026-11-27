@@ -174,6 +174,29 @@ export function itemReservationEndedBuyerHtml(opts: {
   });
 }
 
+/**
+ * Sent when a list's manager cancels a guest's reservation before the guest
+ * bought it. Deleting the item sends giftRemovedBuyerHtml instead.
+ */
+export function itemReservationCancelledBuyerHtml(opts: {
+  buyerName: string;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  registryUrl?: string;
+}): string {
+  return emailLayout({
+    preheader: "You don't need to buy it.",
+    eyebrow: opts.registryTitle,
+    heading: "Your reservation was cancelled",
+    body: `
+      <p>${escapeHtml(opts.parentName)} cancelled your reservation of <strong>${escapeHtml(opts.itemTitle)}</strong>, so you don't need to buy it.</p>
+      <p>If you already bought it, tell ${escapeHtml(opts.parentName)} it's from you, or pick something else from the list.</p>
+      ${opts.registryUrl ? emailButton(opts.registryUrl, "See the list") : ""}`,
+    footer: `You're getting this because you reserved a gift on ${escapeHtml(opts.registryTitle)}.`,
+  });
+}
+
 /** Sent when a guest says they bought the item. */
 export function itemGivenBuyerHtml(opts: {
   buyerName: string;

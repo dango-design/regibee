@@ -12,8 +12,10 @@ import {
   reserveGift,
   signIn,
   uniqueEmail,
+  waitForReact,
 } from "./fixtures";
 import { localSupabase } from "./local-supabase";
+import { waitForEmail } from "./mailbox";
 
 test("deleting an account removes its own lists and guests' gifts, and hands a shared list to its co-manager", async ({ page, browser }) => {
   // A registry of their own, with a guest's gift on it.
@@ -70,4 +72,63 @@ test("deleting an account removes its own lists and guests' gifts, and hands a s
   });
   const { error: signInError } = await anon.auth.signInWithPassword({ email: owner.email, password: owner.password });
   expect(signInError?.message).toBe("Invalid login credentials");
+});
+
+test("deleting an account calls off the group gifts it organized and emails who chipped in", async ({ page }) => {
+  const maya = await createAccount("Maya Owner");
+  const oz = await createAccount("Oz Organizer");
+  const { registry, item } = await createWishlist(maya.id);
+
+  // A group gift Oz started, as src/lib/actions/group-gifts.ts starts one: a
+  // reservation in his name, and someone chipping in. The action holds it for
+  // a year, which the reserve function itself doesn't allow.
+  const guest = createClient(localSupabase().apiUrl, localSupabase().anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { error: anonError } = await guest.auth.signInAnonymously();
+  if (anonError) throw anonError;
+  const { data: reservationId, error: reserveError } = await guest.rpc("reserve_registry_item", {
+    p_item_id: item.id,
+    p_buyer_name: "Oz and others",
+    p_buyer_email: oz.email,
+    p_message: null,
+    p_hold_days: 30,
+  });
+  if (reserveError) throw reserveError;
+  const token = crypto.randomUUID().replace(/-/g, "");
+  const { data: groupGift, error: giftError } = await db
+    .from("group_gifts")
+    .insert({ token, registry_id: registry.id, item_id: item.id, purchase_id: reservationId, organizer_id: oz.id })
+    .select("id")
+    .single();
+  if (giftError) throw giftError;
+  const pledgerEmail = uniqueEmail("scarecrow");
+  const { error: pledgeError } = await db.from("group_gift_pledges").insert({
+    group_gift_id: groupGift.id,
+    token: crypto.randomUUID().replace(/-/g, ""),
+    name: "Scarecrow",
+    email: pledgerEmail,
+    amount: 10,
+  });
+  if (pledgeError) throw pledgeError;
+
+  // Oz has nothing of his own, so two buttons are enough.
+  await signIn(page, oz);
+  await page.goto("/dashboard/account");
+  const open = page.getByRole("button", { name: "Delete account" });
+  await waitForReact(open);
+  await open.click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete account" }).click();
+  await page.waitForURL((url) => url.pathname === "/");
+
+  // The item is open to gifts again, not held for a year (#149).
+  await expect
+    .poll(async () => (await db.from("purchases").select("status").eq("id", reservationId).single()).data?.status)
+    .not.toBe("reserved");
+  const { data: itemRow } = await db.from("registry_items").select("quantity_fulfilled").eq("id", item.id).single();
+  expect(itemRow?.quantity_fulfilled).toBe(0);
+
+  // Scarecrow hears it's called off, and why.
+  const email = await waitForEmail(pledgerEmail, `The group gift of "${item.title}" was called off`);
+  expect(email.html).toContain("Oz Organizer deleted their Regibee account");
 });

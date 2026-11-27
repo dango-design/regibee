@@ -229,7 +229,6 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
           suggestButton={
             <SuggestItemDialog
               registryId={registry.id}
-              categories={registry.categories.map((c) => ({ id: c.id, name: c.name }))}
               action={async () => undefined}
             />
           }

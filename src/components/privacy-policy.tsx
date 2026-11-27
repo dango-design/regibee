@@ -506,8 +506,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
               <li>
                 to guests, to confirm a gift or an RSVP, to remind them before a reservation ends, to invite them to
                 an event, with the host&apos;s messages and any changes to it, to remind them before the reply-by
-                date and the day before, if the event is cancelled, and if an item they gave or reserved is taken off
-                a list;
+                date and the day before, if the event is cancelled, if an item they gave or reserved is taken off a
+                list, and if the list&apos;s owner cancels their reservation;
               </li>
               <li>
                 to people invited to help manage a registry or co-host an event, to people someone asks to follow,

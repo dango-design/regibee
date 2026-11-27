@@ -10,6 +10,7 @@ import {
   itemReservedBuyerHtml,
   itemReservationReminderBuyerHtml,
   itemReservationEndedBuyerHtml,
+  itemReservationCancelledBuyerHtml,
   itemGivenBuyerHtml,
   itemCoveredBuyerHtml,
   cashFundContributionBuyerHtml,
@@ -289,6 +290,23 @@ export async function notifyItemReservationEnded(
     });
   } catch (err) {
     console.error("[email] Failed to send reservation ended email:", err);
+  }
+}
+
+/** Tells a guest a list's manager cancelled their reservation. */
+export async function notifyItemReservationCancelled(
+  opts: Parameters<typeof itemReservationCancelledBuyerHtml>[0] & { buyerEmail: string } & Limited
+) {
+  try {
+    if ((await allowedCount(opts.allow, 1)) < 1) return;
+    await sendEmail({
+      from: FROM,
+      to: TEST_RECIPIENT_OVERRIDE || opts.buyerEmail,
+      subject: `Your reservation of "${opts.itemTitle}" was cancelled`,
+      html: itemReservationCancelledBuyerHtml(opts),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send reservation cancelled email:", err);
   }
 }
 

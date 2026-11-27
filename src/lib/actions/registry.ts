@@ -55,6 +55,8 @@ import {
   sendGiftConfirmedEmails,
   sendReservationEmail,
   sendReservationEndedEmails,
+  reservationToCancel,
+  sendReservationCancelledEmail,
 } from "@/lib/gift-reservations-server";
 import crypto from "crypto";
 import { storeDomain, track } from "@/lib/analytics-server";
@@ -167,6 +169,21 @@ async function recordEventGuestOnGift(
   } catch (err) {
     console.error("[gifts] Failed to record the event guest on a gift:", err);
     return { hideGiver: false };
+  }
+}
+
+/**
+ * Whether the visitor came from a gift exchange in which they drew this
+ * list's owner: from the event guest cookie on the website, or the event and
+ * RSVP token the phone app sends (`link`). A failure counts as no.
+ */
+async function isSecretSantaFor(registryId: string, link: { eventSlug: string; token: string } | null): Promise<boolean> {
+  try {
+    const guest = link ? await eventGuestFromToken(link.eventSlug, link.token, [registryId]) : await readEventGuestCookie();
+    return guest?.santa?.registryId === registryId;
+  } catch (err) {
+    console.error("[suggestions] Failed to read the event guest:", err);
+    return false;
   }
 }
 
@@ -1611,6 +1628,10 @@ export async function cancelReservation(
     redirect("/login");
   }
 
+  // Read first, for the guest's email. The RPC checks that the caller
+  // manages the list, so nothing is sent unless it succeeds.
+  const reservation = isUuid(purchaseId) ? await reservationToCancel(purchaseId) : null;
+
   const { error } = await supabase.rpc("cancel_reservation", {
     p_purchase_id: purchaseId,
     p_owner_id: user.id,
@@ -1620,6 +1641,7 @@ export async function cancelReservation(
     return { error: error.message };
   }
 
+  if (reservation) after(() => sendReservationCancelledEmail(reservation));
   revalidatePath(`/dashboard/registry/${registryId}`);
   return { success: true };
 }
@@ -1730,8 +1752,15 @@ export async function suggestItem(formData: FormData) {
   const externalUrl = formData.get("externalUrl") as string;
   const price = formData.get("price") as string;
   const notes = formData.get("notes") as string;
-  const suggestedByName = formData.get("suggestedByName") as string;
-  const suggestedByEmail = formData.get("suggestedByEmail") as string;
+  let suggestedByName = formData.get("suggestedByName") as string;
+  let suggestedByEmail = formData.get("suggestedByEmail") as string;
+
+  // A Secret Santa suggesting something for the person they drew shows as
+  // "Secret Santa", the same as their gifts do (recordEventGuestOnGift).
+  if (isUuid(registryId) && (await isSecretSantaFor(registryId, eventLinkFromForm(formData)))) {
+    suggestedByName = SECRET_GIVER_NAME;
+    suggestedByEmail = "";
+  }
 
   // Ensure the guest has at least an anonymous session
   const {

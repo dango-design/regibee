@@ -513,15 +513,36 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
   };
   type CoverRow = { registry_item_id: string | null; quantity: number | null };
   const noRows = Promise.resolve({ data: [] as PurchaseRow[] });
-  const buyerPurchases = (column: "registry_item_id" | "cash_fund_id", ids: string[]) =>
-    isVerifiedBuyer && buyer && ids.length > 0
-      ? supabaseAdmin
-          .from("purchases")
-          .select("id, registry_item_id, cash_fund_id, amount, status, reserved_until, quantity")
-          .eq("buyer_email", buyer.email.toLowerCase())
-          .neq("status", "cancelled")
-          .in(column, ids)
-      : noRows;
+  // Emails are saved as the guest typed them, so match that and lowercase.
+  const buyerEmails = isVerifiedBuyer && buyer ? [...new Set([buyer.email, buyer.email.toLowerCase()])] : null;
+  // A Secret Santa's gift row holds no email, so the list's owners can't read
+  // it (recordEventGuestOnGift in src/lib/actions/registry.ts). Their email is
+  // in secret_givers, which only the server reads.
+  const secretPurchaseIds: Promise<string[]> = buyerEmails
+    ? Promise.resolve(
+        supabaseAdmin.from("secret_givers").select("purchase_id").in("buyer_email", buyerEmails),
+      ).then(({ data }) => (data || []).map((row) => row.purchase_id as string))
+    : Promise.resolve([]);
+  const buyerPurchases = async (
+    column: "registry_item_id" | "cash_fund_id",
+    ids: string[],
+  ): Promise<{ data: PurchaseRow[] | null }> => {
+    if (!buyerEmails || ids.length === 0) return { data: [] };
+    const columns = "id, registry_item_id, cash_fund_id, amount, status, reserved_until, quantity";
+    const secretIds = await secretPurchaseIds;
+    const [byEmail, bySecretGiver] = await Promise.all([
+      supabaseAdmin
+        .from("purchases")
+        .select(columns)
+        .in("buyer_email", buyerEmails)
+        .neq("status", "cancelled")
+        .in(column, ids),
+      secretIds.length > 0
+        ? supabaseAdmin.from("purchases").select(columns).in("id", secretIds).neq("status", "cancelled").in(column, ids)
+        : noRows,
+    ]);
+    return { data: [...((byEmail.data as PurchaseRow[] | null) || []), ...((bySecretGiver.data as PurchaseRow[] | null) || [])] };
+  };
 
   // These lookups only need the items, so they run at the same time.
   const parentPurchasedIds = allItems.filter((i) => i.is_parent_purchased).map((i) => i.id);

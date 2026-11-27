@@ -23,9 +23,7 @@ export default meta;
 type Story = StoryObj<typeof PublicRegistryGrid>;
 
 // The stories never send a suggestion.
-const suggestButton = (categories: { id: string; name: string }[]) => (
-  <SuggestItemDialog registryId="registry-1" categories={categories} action={async () => undefined} />
-);
+const suggestButton = () => <SuggestItemDialog registryId="registry-1" action={async () => undefined} />;
 
 // Items from several stores, using each store's real link shapes with
 // made-up ids. The Amazon, Target and Walmart links are registry links, so
@@ -41,7 +39,7 @@ export const ItemsFromStores: Story = {
     cashFunds: [],
     myGifts: {},
     coverCounts: {},
-    suggestButton: suggestButton([{ id: "nursery", name: "Nursery" }]),
+    suggestButton: suggestButton(),
     linkedStores: ["amazon", "target"],
     showStoreRegistries: true,
     items: [
@@ -275,7 +273,7 @@ export const NoItemsYet: Story = {
     ...ItemsFromStores.args,
     categories: [],
     items: [],
-    suggestButton: suggestButton([]),
+    suggestButton: suggestButton(),
   },
 };
 

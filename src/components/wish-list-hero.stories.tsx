@@ -58,7 +58,6 @@ const withListPage: Decorator = (Story) => (
           suggestButton={
             <SuggestItemDialog
               registryId="registry-1"
-              categories={categories.map(({ id, name }) => ({ id, name }))}
               action={async () => undefined}
             />
           }

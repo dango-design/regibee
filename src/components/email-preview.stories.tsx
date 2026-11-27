@@ -4,6 +4,7 @@ import {
   itemReservedBuyerHtml,
   itemReservationReminderBuyerHtml,
   itemReservationEndedBuyerHtml,
+  itemReservationCancelledBuyerHtml,
   itemGivenBuyerHtml,
   itemCoveredBuyerHtml,
   cashFundContributionBuyerHtml,
@@ -129,6 +130,21 @@ export const BuyerItemReservationEnded: Story = {
     html: itemReservationEndedBuyerHtml({
       buyerName: "Glinda",
       itemTitle: "Glass Baby Bottles, 4 Pack",
+      registryTitle: "Remi & Max's Baby Registry",
+      registryUrl: "https://regibee.com/r/remi-and-max",
+    }),
+  },
+};
+
+// Sent when a list's manager cancels a guest's reservation.
+export const BuyerReservationCancelled: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: 'Your reservation of "Hatch Rest+ Sound Machine" was cancelled',
+    html: itemReservationCancelledBuyerHtml({
+      buyerName: "Glinda",
+      itemTitle: "Hatch Rest+ Sound Machine",
+      parentName: "Remi & Max",
       registryTitle: "Remi & Max's Baby Registry",
       registryUrl: "https://regibee.com/r/remi-and-max",
     }),

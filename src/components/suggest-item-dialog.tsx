@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Lightbulb, Loader2 } from "lucide-react";
+import { DollarSign, Lightbulb, Loader2 } from "lucide-react";
 import { Link01, Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
 import { TextArea } from "@/components/base/textarea/textarea";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Select } from "@/components/base/select/select";
 import {
   Dialog,
   DialogContent,
@@ -25,27 +22,20 @@ import { toWebUrl } from "@/lib/web-url";
 
 type DialogAction = (formData: FormData) => Promise<{ error: string } | undefined>;
 
+/**
+ * It asks only for what suggestItem saves: the name, link, price, why, and
+ * who's suggesting it. Prices are in dollars, like everything on Regibee.
+ */
 interface SuggestItemDialogProps {
   registryId: string;
-  categories?: { id: string; name: string }[];
   action?: DialogAction;
 }
 
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
-
-export function SuggestItemDialog({ registryId, categories = [], action }: SuggestItemDialogProps) {
+export function SuggestItemDialog({ registryId, action }: SuggestItemDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [currency, setCurrency] = useState("USD");
   const [externalUrl, setExternalUrl] = useState("");
   const openableUrl = toWebUrl(externalUrl);
 
@@ -73,7 +63,6 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
     if (!open) {
       setSuccess(false);
       setError("");
-      setCurrency("USD");
       setExternalUrl("");
     }
   };
@@ -115,12 +104,6 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
                 isRequired
               />
 
-              <Checkbox
-                name="isAvailableToGift"
-                value="true"
-                label="Mark as available to gift"
-              />
-
               <div className="space-y-1.5">
                 <Label>Product URL (optional)</Label>
                 <div className="flex items-center gap-4">
@@ -152,42 +135,19 @@ export function SuggestItemDialog({ registryId, categories = [], action }: Sugge
                 </div>
               </div>
 
-              {categories.length > 0 && (
-                <Select
-                  name="categoryId"
-                  label="Category"
-                  placeholder="No category"
-                  items={categories.map((cat) => ({ id: cat.id, label: cat.name }))}
-                >
-                  {(item) => <Select.Item id={item.id} label={item.label} />}
-                </Select>
-              )}
-
-              {/* On phones the price gets most of the row, so there's room to type. */}
-              <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-4 sm:grid-cols-2">
-                <InputGroup
-                  label="Estimated price (optional)"
-                  prefix={currencySymbols[currency] || "$"}
-                  trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} name="currency" />}
-                >
-                  <InputBase
-                    name="price"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min={0}
-                    placeholder="0.00"
-                  />
-                </InputGroup>
-                <Input
-                  label="Quantity"
-                  name="quantity"
+              {/* An icon, not InputGroup's prefix: the prefix only sits inside
+                  the field's border when the group also holds a select. */}
+              <InputGroup label="Estimated price (optional)">
+                <InputBase
+                  icon={DollarSign}
+                  name="price"
                   type="number"
-                  inputMode="numeric"
-                  min={1}
-                  defaultValue="1"
+                  inputMode="decimal"
+                  step="0.01"
+                  min={0}
+                  placeholder="0.00"
                 />
-              </div>
+              </InputGroup>
 
               <TextArea
                 label="Why do you recommend this? (optional)"

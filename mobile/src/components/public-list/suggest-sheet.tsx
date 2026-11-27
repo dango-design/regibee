@@ -3,8 +3,7 @@
 // email and can add it to the list.
 //
 // It asks only for what suggestItem saves: the name, link, price, why, and
-// who's suggesting it. The website's dialog also shows a currency, quantity,
-// category and "available to gift", which the server doesn't read.
+// who's suggesting it, the same as the website's dialog.
 
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
@@ -16,15 +15,23 @@ import { Button, Field, haptic, IconButton, Text } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { parsePrice } from "@/lib/format";
-import { useSuggestItem } from "@/lib/public-list-data";
+import { type EventLink, useSuggestItem } from "@/lib/public-list-data";
 import { spacing, useTheme } from "@/lib/theme";
 
 import { ErrorLine, SheetFrame } from "./sheet-frame";
 
-export function SuggestSheet({ registryId, onClose }: { registryId: string; onClose: () => void }) {
+export function SuggestSheet({
+  registryId,
+  link,
+  onClose,
+}: {
+  registryId: string;
+  link: EventLink | null;
+  onClose: () => void;
+}) {
   const theme = useTheme();
   const { session } = useSession();
-  const suggest = useSuggestItem();
+  const suggest = useSuggestItem(link);
   const accountName = typeof session?.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name : "";
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");

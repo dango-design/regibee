@@ -250,10 +250,7 @@ export default async function PublicRegistryPage({
                   : undefined
               }
               suggestButton={
-                <SuggestItemDialog
-                  registryId={registry.id}
-                  categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
-                />
+                <SuggestItemDialog registryId={registry.id} />
               }
             />
           </GuestPrefillProvider>
