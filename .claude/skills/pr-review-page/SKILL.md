@@ -234,7 +234,8 @@ Sections, in this order:
 10. Footer: which builds and commits were compared, and how.
 
 Embed the images as files published next to the page (the Artifact `files`
-map). Never put a Chromatic image URL in the page, signed or not. Links to the
+map). Keep the example's script whole: a click on any picture opens it full
+size, and Show changes swaps the marked picture in. Never put a Chromatic image URL in the page, signed or not. Links to the
 build and its tests are fine. Title the page `PR <n> Review`. Publish it as an
 Artifact, then give the user the link, the verdict and any **Check** items in
 two or three lines.
