@@ -1,4 +1,5 @@
 import { getMailer, sendEmail } from "./mailer";
+import { eventIcs } from "./event-ics";
 import { sendPush } from "./push-server";
 import { supabaseAdmin } from "./supabase-admin";
 import { formatPrice } from "./money";
@@ -47,6 +48,15 @@ import type { ChangedPart } from "./event-updates";
 import type { EmailAllowance } from "./email-budget";
 
 const FROM = "Regibee <notifications@regibee.com>";
+
+/**
+ * The List-Unsubscribe header for an email the person can turn off. Mail apps
+ * show an Unsubscribe link next to the sender that opens `settingsUrl`, the
+ * page with the switch.
+ */
+function unsubscribeHeaders(settingsUrl: string): { headers: Record<string, string> } {
+  return { headers: { "List-Unsubscribe": `<${settingsUrl}>` } };
+}
 
 /**
  * Set on the emails a visitor sets off on a list, event or group gift, so
@@ -412,6 +422,7 @@ export async function notifyCompletionDiscounts(opts: {
           from: FROM,
           to: TEST_RECIPIENT_OVERRIDE || m.email,
           subject,
+          ...unsubscribeHeaders(perksLink),
           html: completionDiscountOwnerHtml({
             ownerName: m.name,
             registryTitle: m.registryTitle,
@@ -694,6 +705,7 @@ export async function notifyFollowRequest(opts: { followerId: string; followeeId
         from: FROM,
         to: TEST_RECIPIENT_OVERRIDE || user.email,
         subject: `${followerName} wants to follow you on Regibee`,
+        ...unsubscribeHeaders(`${siteUrl}/dashboard/account#profile`),
         html: followRequestHtml({
           followerName,
           profileUrl: `${siteUrl}${profilePath(follower)}`,
@@ -750,6 +762,7 @@ export async function sendBirthdayReminder(opts: {
         opts.birthdays.map((b) => ({ name: b.name.slice(0, 60) })),
         opts.days,
       ),
+      ...unsubscribeHeaders(opts.settingsUrl),
       html: birthdayReminderHtml(opts),
     });
     return true;
@@ -907,6 +920,7 @@ export async function confirmRsvpToGuest(opts: {
       : opts.status === "yes"
         ? `You're going to ${opts.event.title}`
         : `Your RSVP for ${opts.event.title}`;
+    const ics = opts.status === "no" ? null : eventIcs(event, eventUrl);
     await sendEmail({
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || opts.guest.email,
@@ -918,11 +932,14 @@ export async function confirmRsvpToGuest(opts: {
         event: eventEmailDetails(event, opts.registries, opts.exchange, opts.signups?.title ?? null),
         rsvpUrl: guestRsvpUrl(opts.event.slug, opts.guest.token),
         calendarUrl: googleCalendarUrl(event, eventUrl),
+        icsUrl: `${eventUrl}/calendar`,
         inExchange: opts.inExchange,
         hasWishlist: opts.hasWishlist,
         signups: opts.signups?.claims ?? [],
         answers: opts.answers,
       }),
+      // The event as a calendar file: one tap adds it in Apple Mail and Outlook.
+      ...(ics ? { attachments: [{ filename: "invite.ics", content: ics, contentType: "text/calendar; charset=utf-8" }] } : {}),
     });
   } catch (err) {
     console.error("[email] Failed to send RSVP confirmation:", err);
@@ -974,6 +991,7 @@ export async function notifyHostOfRsvp(opts: {
       from: FROM,
       to: TEST_RECIPIENT_OVERRIDE || email,
       subject: rsvpHeadline(opts.event, opts.guestName, opts.status),
+      ...unsubscribeHeaders(`${siteUrl()}/dashboard/events/${opts.event.id}/edit`),
       html: rsvpHostNotificationHtml({
         hostName: profile?.full_name?.trim() || "there",
         guestName: opts.guestName,
@@ -1106,6 +1124,7 @@ export async function sendEventChangeEmails(opts: {
         })),
         rsvpUrl: guestRsvpUrl(opts.after.slug, guest.token),
         calendarUrl: parts.includes("date") || parts.includes("time") ? googleCalendarUrl(after, siteEventUrl) : null,
+        icsUrl: parts.includes("date") || parts.includes("time") ? `${siteEventUrl}/calendar` : null,
       }),
     });
   }
@@ -1134,6 +1153,7 @@ export async function sendDayBeforeReminders(opts: {
           event: eventEmailDetails(event, opts.registries),
           rsvpUrl: guestRsvpUrl(opts.event.slug, guest.token),
           calendarUrl: googleCalendarUrl(event, eventUrl),
+          icsUrl: `${eventUrl}/calendar`,
           signups: guest.signups,
         }),
       };

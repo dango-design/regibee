@@ -643,6 +643,19 @@ function signupLine(event: EventEmailDetails): string {
   return `<p><strong>${escapeHtml(event.signup.title)}:</strong> ${what}</p>`;
 }
 
+/**
+ * Links that add the event to a calendar: Google's, and the event's .ics file
+ * for Apple Calendar and Outlook. Empty when there's neither.
+ */
+function calendarLinks(googleUrl?: string | null, icsUrl?: string | null, label = "Add to calendar"): string {
+  if (!googleUrl && !icsUrl) return "";
+  const links = [
+    googleUrl ? emailLink(googleUrl, "Google") : "",
+    icsUrl ? emailLink(icsUrl, "Apple or Outlook") : "",
+  ].filter(Boolean);
+  return `<p style="margin:12px 0;">${escapeHtml(label)}: ${links.join(" &nbsp;·&nbsp; ")}</p>`;
+}
+
 function answersBlock(heading: string, answers: { label: string; value: string }[] | undefined): string {
   if (!answers || answers.length === 0) return "";
   const rows = answers
@@ -731,6 +744,8 @@ export function rsvpGuestConfirmationHtml(opts: {
   /** The guest's own link, to change the answer. */
   rsvpUrl: string;
   calendarUrl?: string | null;
+  /** The event's .ics file, for Apple Calendar and Outlook. */
+  icsUrl?: string | null;
   /** Whether the guest is in the event's gift exchange. */
   inExchange?: boolean;
   /** When everyone gives everyone: whether the guest has added a wishlist or gift ideas yet. */
@@ -760,8 +775,7 @@ export function rsvpGuestConfirmationHtml(opts: {
       : opts.status === "maybe"
         ? "Thanks for letting the host know. If your plans firm up, change your answer anytime."
         : "Thanks for letting the host know. See you there!";
-  const calendar =
-    opts.status !== "no" && opts.calendarUrl ? emailLinks([{ href: opts.calendarUrl, label: "Add to Google Calendar" }]) : "";
+  const calendar = opts.status !== "no" ? calendarLinks(opts.calendarUrl, opts.icsUrl) : "";
   const heading = mealTrain
     ? opts.status === "no"
       ? "You can't help this time"
@@ -877,6 +891,8 @@ export function eventChangedHtml(opts: {
   changes: { label: string; before: string; after: string }[];
   rsvpUrl: string;
   calendarUrl?: string | null;
+  /** The event's .ics file, for Apple Calendar and Outlook. */
+  icsUrl?: string | null;
 }): string {
   const { event } = opts;
   const rows = opts.changes
@@ -885,7 +901,7 @@ export function eventChangedHtml(opts: {
         `<li><strong>${escapeHtml(c.label)}:</strong> ${multiline(c.after)} <span style="color:${EMAIL_MUTED};">(was ${escapeHtml(c.before.replace(/\n/g, ", "))})</span></li>`,
     )
     .join("");
-  const calendar = opts.calendarUrl ? emailLinks([{ href: opts.calendarUrl, label: "Add the new time to Google Calendar" }]) : "";
+  const calendar = calendarLinks(opts.calendarUrl, opts.icsUrl, "Add the new time to your calendar");
   return emailLayout({
     preheader: opts.changes.map((c) => `${c.label}: ${c.after.replace(/\n/g, ", ")}`).join(" · "),
     eyebrow: event.title,
@@ -907,12 +923,14 @@ export function dayBeforeReminderHtml(opts: {
   event: EventEmailDetails;
   rsvpUrl: string;
   calendarUrl?: string | null;
+  /** The event's .ics file, for Apple Calendar and Outlook. */
+  icsUrl?: string | null;
   /** What the guest signed up to bring, as "Side (Mac and cheese)". */
   signups?: string[];
 }): string {
   const { event } = opts;
   const signups = opts.signups ?? [];
-  const calendar = opts.calendarUrl ? emailLinks([{ href: opts.calendarUrl, label: "Add to Google Calendar" }]) : "";
+  const calendar = calendarLinks(opts.calendarUrl, opts.icsUrl);
   const bringing =
     signups.length > 0 ? `<p style="margin-bottom:0;"><strong>You're bringing:</strong></p>${signupList(signups)}` : "";
   return emailLayout({
