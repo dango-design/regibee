@@ -41,6 +41,8 @@ interface ContributeFundDialogProps {
   /** What this guest gave to the fund so far, in all. */
   previousAmount?: number;
   shippingAddress?: string;
+  /** The demo registry: pay buttons don't open anything. */
+  demo?: boolean;
 }
 
 const currencySymbols: Record<string, string> = {
@@ -60,6 +62,7 @@ export function ContributeFundDialog({
   alreadyPurchased,
   previousAmount,
   shippingAddress,
+  demo,
 }: ContributeFundDialogProps) {
   // A guest from an event invitation: their name and email start filled in.
   const prefill = useGuestPrefill();
@@ -144,6 +147,7 @@ export function ContributeFundDialog({
         variant="contribute"
         amount={contributedAmount}
         paymentMethods={paymentMethods}
+        demo={demo}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent showCloseButton={false}>

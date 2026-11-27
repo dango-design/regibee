@@ -9,6 +9,7 @@ import { Image } from "expo-image";
 import { useState } from "react";
 import { View } from "react-native";
 
+import { paymentNote } from "@shared/payment-links";
 import type { PublicListFund, PublicListPageData } from "@shared/public-list-page-types";
 
 import { Button, Field, haptic, ProgressBar, Text } from "@/components/ui";
@@ -16,9 +17,9 @@ import { useSession } from "@/lib/auth";
 import { errorMessage } from "@/lib/data";
 import { formatDollars, formatPrice, parsePrice } from "@/lib/format";
 import { useContributeToFund, type EventLink } from "@/lib/public-list-data";
-import { radius, spacing, useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/theme";
 
-import { PaymentHandles } from "./payment-options";
+import { PaymentHandles, PaymentOptions } from "./payment-options";
 import { ErrorLine, SheetFrame } from "./sheet-frame";
 
 export function FundSheet({
@@ -35,7 +36,6 @@ export function FundSheet({
   link: EventLink | null;
   onClose: () => void;
 }) {
-  const theme = useTheme();
   const { session } = useSession();
   const contribute = useContributeToFund(link);
 
@@ -94,9 +94,14 @@ export function FundSheet({
         <Text variant="callout" tone="secondary" style={{ textAlign: "center" }}>
           You contributed {formatPrice(contributed)} to “{fund.title}”! {page.parentName} will really appreciate it. ❤️
         </Text>
+        {/* The gift is saved, but the guest still sends the money: a button
+            per app opens it with the amount and the fund's name filled in. */}
         {hasMethods ? (
-          <View style={{ borderRadius: radius.md, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surfaceAlt, padding: spacing.lg }}>
-            <PaymentHandles methods={page.paymentMethods} />
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="subhead" style={{ fontWeight: "600" }}>
+              {contributed > 0 ? `Send ${formatPrice(contributed)} to ${page.parentName}` : `Send it to ${page.parentName}`}
+            </Text>
+            <PaymentOptions methods={page.paymentMethods} amount={contributed > 0 ? contributed : null} note={paymentNote(fund.title)} parentName={page.parentName} />
           </View>
         ) : null}
         <Button title="Done" onPress={onClose} />
