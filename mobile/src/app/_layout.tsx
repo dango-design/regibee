@@ -96,7 +96,8 @@ function RootNavigator({ ready }: { ready: boolean }) {
               and back from it would go to that tab's own first screen. */}
           <Stack.Screen name="registry/[id]/index" options={{ title: "", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="registry/[id]/settings" options={{ title: "Settings", headerBackButtonDisplayMode: "minimal" }} />
-          <Stack.Screen name="registry/[id]/checklist" options={{ title: "Registry Checklist", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/checklist" options={{ title: "Checklist", headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="registry/[id]/checklist-entry" options={{ presentation: "modal", title: "Checklist" }} />
           <Stack.Screen name="registry/[id]/suggestions" options={{ title: "Suggestions Inbox", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="registry/[id]/perks" options={{ title: "Store perks", headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="registry/[id]/gifts" options={{ title: "Gift activity", headerBackButtonDisplayMode: "minimal" }} />

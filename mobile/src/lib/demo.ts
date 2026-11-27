@@ -288,7 +288,7 @@ export const demo = {
       linkedEvents: [],
       showChecklist: copyForRegistry(r).checklistAvailable,
       checklistProgress: getChecklistProgress(
-        items.map((i) => i.title),
+        items.map((i) => ({ id: i.id, kind: "item" as const, title: i.title })),
         (settings?.checklist_dismissed as string[] | undefined) ?? undefined
       ),
       linkedRegistries,
@@ -499,11 +499,16 @@ export const demo = {
       items: l.items.map((i) => (i.category_id === categoryId ? { ...i, category_id: null } : i)),
     }));
   },
-  saveFund(registryId: string, fundId: string | null, input: { title: string; description: string; goalAmount: number | null }) {
+  saveFund(
+    registryId: string,
+    fundId: string | null,
+    input: { title: string; description: string; goalAmount: number | null; checklistEntry?: string },
+  ) {
     const values = {
       title: input.title.trim(),
       description: input.description.trim() || null,
       goal_amount: input.goalAmount && input.goalAmount > 0 ? input.goalAmount : null,
+      ...(input.checklistEntry && !fundId ? { checklist_entry: input.checklistEntry } : {}),
     };
     setList(registryId, (l) => ({
       ...l,
@@ -511,6 +516,9 @@ export const demo = {
         ? l.funds.map((f) => (f.id === fundId ? { ...f, ...values } : f))
         : [...l.funds, { id: newId("fund"), registry_id: registryId, current_amount: 0, ...values }],
     }));
+  },
+  setFundChecklistEntry(registryId: string, fundId: string, entry: string | null) {
+    setList(registryId, (l) => ({ ...l, funds: l.funds.map((f) => (f.id === fundId ? { ...f, checklist_entry: entry } : f)) }));
   },
   deleteFund(registryId: string, fundId: string) {
     setList(registryId, (l) => ({ ...l, funds: l.funds.filter((f) => f.id !== fundId) }));

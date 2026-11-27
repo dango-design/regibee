@@ -12,6 +12,7 @@ import { Label } from "@/components/base/input/label";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CategoryField } from "@/components/category-field";
+import { ChecklistEntryField } from "@/components/checklist-entry-picker";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Select } from "@/components/base/select/select";
 import {
@@ -69,6 +70,8 @@ interface EditItemDialogProps {
     minimum_condition: string | null;
     notes: string | null;
     category_id: string | null;
+    /** The baby checklist entry it counts for (src/lib/checklist-matching.ts). */
+    checklist_entry?: string | null;
   };
   registryId: string;
   categories: Category[];
@@ -1166,6 +1169,9 @@ export function EditItemDialog({
                   />
                 </div>
               </div>
+
+              {/* Which baby checklist entry it counts for, beside the item's other details. */}
+              {isBaby && <ChecklistEntryField title={title} saved={item.checklist_entry} />}
 
               <TextArea
                 label="Note for guests (optional)"

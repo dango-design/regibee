@@ -33,6 +33,7 @@ interface ItemCardProps {
     minimum_condition: string | null;
     notes: string | null;
     category_id: string | null;
+    checklist_entry?: string | null;
   };
   registryId: string;
   isOwner?: boolean;

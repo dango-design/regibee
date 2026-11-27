@@ -20,7 +20,14 @@ import { spacing } from "@/lib/theme";
 import type { PaymentMethods } from "@shared/types";
 
 export default function FundScreen() {
-  const params = useLocalSearchParams<{ registryId: string; fundId?: string; title?: string; description?: string }>();
+  const params = useLocalSearchParams<{
+    registryId: string;
+    fundId?: string;
+    title?: string;
+    description?: string;
+    // From the baby checklist, such as Diaper Fund: the entry the new fund counts for.
+    checklistEntry?: string;
+  }>();
   const { registryId, fundId } = params;
   const insets = useSafeAreaInsets();
   const keyboardFooter = useKeyboardFooter();
@@ -71,6 +78,7 @@ export default function FundScreen() {
           title,
           description,
           goalAmount: parsePrice(goalText),
+          ...(!fund && params.checklistEntry ? { checklistEntry: params.checklistEntry } : {}),
           // Sent only when the fields showed, as the website's dialog does.
           ...(!fund && methodsKnown && editingMethods ? { paymentMethods: { venmo, paypal, zelle } } : {}),
         },

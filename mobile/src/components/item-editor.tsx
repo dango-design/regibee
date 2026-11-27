@@ -58,6 +58,8 @@ import {
 } from "@/lib/data";
 import { formatGiftDate, giftActivityTag } from "@shared/gifts";
 import { suggestCategory } from "@shared/item-categories";
+import { checklistEntry, countedEntry } from "@shared/checklist-matching";
+import { NavRow } from "@/components/nav-row";
 import { formatPrice, parsePrice } from "@/lib/format";
 import { pickPhoto, uploadListPhoto } from "@/lib/photos";
 import { itemMatchKey, normalizeLink, parseSharedText, storeLabel, type ReadProduct } from "@/lib/product";
@@ -100,6 +102,11 @@ interface Props {
   initialTitle?: string | null;
   /** Already read in Safari by the share extension, so there's nothing to load. */
   initialProduct?: ReadProduct | null;
+  /**
+   * From the baby checklist's "Yes, add its link": the entry's category,
+   * quantity and description, and the entry the item counts for.
+   */
+  fromChecklist?: { categoryId: string | null; quantity: number; notes: string; entry: string } | null;
   onDone: (result: EditorResult) => void;
   /** Shown above the form, e.g. what was shared. */
   header?: ReactNode;
@@ -133,6 +140,7 @@ export function ItemEditor({
   initialLink,
   initialTitle,
   initialProduct,
+  fromChecklist,
   onDone,
   header,
 }: Props) {
@@ -172,17 +180,17 @@ export function ItemEditor({
     item?.price != null ? String(item.price) : initialProduct?.price != null ? String(initialProduct.price) : ""
   );
   const [priceTouched, setPriceTouched] = useState(mode === "edit");
-  const [quantity, setQuantity] = useState(item?.quantity_needed ?? 1);
-  const [categoryId, setCategoryId] = useState<string | null>(item?.category_id ?? null);
+  const [quantity, setQuantity] = useState(item?.quantity_needed ?? fromChecklist?.quantity ?? 1);
+  const [categoryId, setCategoryId] = useState<string | null>(item?.category_id ?? fromChecklist?.categoryId ?? null);
   const [mostWanted, setMostWanted] = useState(item?.is_essential ?? false);
   const [bought, setBought] = useState(item?.is_parent_purchased ?? false);
   const [openToUsed, setOpenToUsed] = useState(item?.is_open_to_used ?? false);
   const [condition, setCondition] = useState<UsedCondition>(item?.minimum_condition ?? "like-new");
-  const [notes, setNotes] = useState(item?.notes ?? "");
+  const [notes, setNotes] = useState(item?.notes ?? fromChecklist?.notes ?? "");
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
-  const [categoryTouched, setCategoryTouched] = useState(mode === "edit");
+  const [categoryTouched, setCategoryTouched] = useState(mode === "edit" || Boolean(fromChecklist?.categoryId));
   // A guessed category the list doesn't have yet, such as "Food & Drink". It
   // shows as chosen and is made when the item is saved, as on the website.
   const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
@@ -213,6 +221,16 @@ export function ItemEditor({
   const filledFrom = useRef<string | null>(null);
 
   const categories = detail.data?.categories ?? [];
+  // Baby lists have the checklist. The list's copy of the item has the entry
+  // as it is now, after the checklist screen changed it.
+  const checklistShown = detail.data?.registry.registry_type === "baby";
+  const listItem = item ? (detail.data?.items.find((i) => i.id === item.id) ?? item) : null;
+  const checklistItem = {
+    id: listItem?.id ?? "",
+    kind: "item" as const,
+    title: title || listItem?.title || "",
+    checklist_entry: listItem?.checklist_entry,
+  };
   // Store registries are for baby registries only, as on the website.
   const linkedRegistries = detail.data?.linkedRegistries ?? null;
   // A list with a zip code adds estimated sales tax to what the owner bought.
@@ -482,6 +500,7 @@ export function ItemEditor({
       minimum_condition: openToUsed ? condition : null,
       notes,
       gtin: readGtin?.gtin && link === readGtin.url ? readGtin.gtin : null,
+      ...(mode === "add" && fromChecklist ? { checklist_entry: fromChecklist.entry } : {}),
     };
   }
 
@@ -1003,6 +1022,21 @@ export function ItemEditor({
           placeholder="Size, color, or anything else that helps"
           multiline
         />
+
+        {/* Which baby checklist entry it counts for, as in the website's edit
+            dialog. Choosing saves at once, apart from the form. */}
+        {mode === "edit" && item && registryId && checklistShown ? (
+          <Section>
+            <NavRow
+              icon="checklist"
+              label="Checklist"
+              detail={checklistEntry(countedEntry(checklistItem).key)?.entry.name ?? "Not counted"}
+              onPress={() =>
+                router.push({ pathname: "/registry/[id]/checklist-entry", params: { id: registryId, thing: item.id, kind: "item" } })
+              }
+            />
+          </Section>
+        ) : null}
 
         {mode === "edit" && item ? <ItemGifts item={item} /> : null}
 

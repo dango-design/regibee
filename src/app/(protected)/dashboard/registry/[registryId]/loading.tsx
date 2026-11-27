@@ -1,7 +1,7 @@
 import { ListPageSkeleton } from "@/components/page-skeletons";
 
-// Settings and Checklist, below this folder, load their own data in the
-// browser and never wait on the server, so they don't show this skeleton.
+// Settings loads its own data in the browser and never waits on the server,
+// so it doesn't show this skeleton. Checklist has its own.
 export default function Loading() {
   return <ListPageSkeleton />;
 }

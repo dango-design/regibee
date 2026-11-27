@@ -28,7 +28,7 @@ interface AddCashFundDialogProps {
    */
   paymentMethods?: PaymentMethods | null;
   /** What the fields start with, such as a checklist entry's name and description. */
-  defaults?: { title?: string; description?: string };
+  defaults?: { title?: string; description?: string; checklistEntry?: string };
   /** Opens the dialog from outside, with no button of its own. Pass with onOpenChange. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -119,6 +119,7 @@ export function AddCashFundDialog({
           <DialogTitle>Create gift fund</DialogTitle>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
+          {defaults?.checklistEntry && <input type="hidden" name="checklistEntry" value={defaults.checklistEntry} />}
           <Input
             label="Fund Name"
             name="title"
