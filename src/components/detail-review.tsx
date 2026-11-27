@@ -4,7 +4,8 @@ import { useState } from "react";
 import { CheckCircle2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ItemImage } from "@/components/item-image";
-import { chooseDetailValue, finishDetailReview } from "@/lib/actions/item-details";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { chooseDetailValue, finishDetailReview, setPriceChecks } from "@/lib/actions/item-details";
 import { DETAIL_FIELD_NAMES, detailReviewHeading, type DetailField, type ShownSide } from "@/lib/item-details";
 import type { ListPageDetailChange, ListPageDetailReview } from "@/lib/list-page-types";
 import { formatPrice } from "@/lib/money";
@@ -17,6 +18,7 @@ interface DetailReviewProps {
   /** Stories pass stand-ins for these, so nothing is saved. */
   chooseAction?: typeof chooseDetailValue;
   finishAction?: typeof finishDetailReview;
+  priceChecksAction?: typeof setPriceChecks;
   className?: string;
 }
 
@@ -24,7 +26,7 @@ interface DetailReviewProps {
  * Shown above the items on a list's page after the extension filled in
  * details (MissingDetailsNotice) or found new prices (PriceCheck). Where a read replaced something, such as a
  * name guessed from the link, it shows the new value and the old one, and
- * either can be picked. What only filled an empty field is folded away below,
+ * either can be picked. A replaced price has "Don't check this price again". What only filled an empty field is folded away below,
  * since it rarely needs a look. Done hides it all; the items keep what they
  * show.
  */
@@ -33,12 +35,15 @@ export function DetailReview({
   reviews,
   chooseAction = chooseDetailValue,
   finishAction = finishDetailReview,
+  priceChecksAction = setPriceChecks,
   className,
 }: DetailReviewProps) {
   const [saving, setSaving] = useState<string | null>(null);
   // The items Done was clicked for. Filling in more items later shows the review again.
   const [finishedFor, setFinishedFor] = useState<string | null>(null);
   const [error, setError] = useState("");
+  // "Don't check this price again", by item, as changed here since the page loaded.
+  const [checksOff, setChecksOff] = useState<Record<string, boolean>>({});
   const itemsKey = reviews.map((r) => r.itemId).join(",");
 
   if (reviews.length === 0 || finishedFor === itemsKey) return null;
@@ -58,6 +63,21 @@ export function DetailReview({
     if (result?.error) setError(result.error);
   };
 
+  const togglePriceChecks = async (review: ListPageDetailReview, off: boolean) => {
+    const key = `${review.itemId}:checks`;
+    setSaving(key);
+    setError("");
+    setChecksOff((current) => ({ ...current, [review.itemId]: off }));
+    const result = await priceChecksAction(registryId, review.itemId, !off).catch(() => ({
+      error: "Couldn't save that. Try again.",
+    }));
+    setSaving(null);
+    if (result?.error) {
+      setError(result.error);
+      setChecksOff((current) => ({ ...current, [review.itemId]: !off }));
+    }
+  };
+
   const finish = async () => {
     setSaving("finish");
     setError("");
@@ -70,16 +90,34 @@ export function DetailReview({
     else setFinishedFor(itemsKey);
   };
 
-  const changeRow = (review: ListPageDetailReview, change: ListPageDetailChange) => (
-    <ChangeRow
-      key={change.field}
-      review={review}
-      change={change}
-      saving={saving === `${review.itemId}:${change.field}`}
-      disabled={saving !== null}
-      onChoose={(side) => choose(review, change, side)}
-    />
-  );
+  const changeRow = (review: ListPageDetailReview, change: ListPageDetailChange) => {
+    const row = (
+      <ChangeRow
+        key={change.field}
+        review={review}
+        change={change}
+        saving={saving === `${review.itemId}:${change.field}`}
+        disabled={saving !== null}
+        onChoose={(side) => choose(review, change, side)}
+      />
+    );
+    if (change.field !== "price" || change.before === null) return row;
+    // Weekly price checks find a new price each time the store changes it.
+    // This stops them for this item, until its link changes. A price that only
+    // filled an empty one doesn't get it, to keep the filled-in list short.
+    return (
+      <div key={change.field} className="space-y-2">
+        {row}
+        <Checkbox
+          isSelected={checksOff[review.itemId] ?? review.priceChecksOff ?? false}
+          isReadOnly={saving !== null}
+          onChange={(off) => togglePriceChecks(review, off)}
+          label="Don't check this price again"
+          aria-label={`Don't check this price again, for ${review.title}`}
+        />
+      </div>
+    );
+  };
 
   return (
     <section

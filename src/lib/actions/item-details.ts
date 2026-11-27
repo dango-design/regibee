@@ -15,6 +15,7 @@ import {
   parseDetailChanges,
   priceChanges,
   shownSide,
+  turnedDownBefore,
   type DetailChange,
   type DetailField,
   type ShownSide,
@@ -106,18 +107,28 @@ async function saveRead(
     return { error: "The item's link changed while it was being read." };
   }
 
+  const changes = kind === "price" ? priceChanges(item, product) : detailChanges(item, product);
+
   if (kind === "price") {
-    // Another read's changes are waiting for review. Saving this one would
-    // replace them, and the old values with them.
     const { data: last } = await supabaseAdmin
       .from("item_detail_reads")
-      .select("changes, reviewed_at")
+      .select("read_url, changes, reviewed_at")
       .eq("item_id", itemId)
       .maybeSingle();
+    // Another read's changes are waiting for review. Saving this one would
+    // replace them, and the old values with them.
     if (last && !last.reviewed_at && parseDetailChanges(last.changes).length > 0) return { changes: [] };
+    // The store has the price the owner already switched back from. Keep that
+    // read, so the next check knows it too, and count this one as a check.
+    if (last && turnedDownBefore({ ...item, external_url: readUrl }, last, changes)) {
+      const { error } = await supabaseAdmin
+        .from("item_detail_reads")
+        .update({ read_at: new Date().toISOString() })
+        .eq("item_id", itemId);
+      if (error) return { error: error.message };
+      return { changes: [] };
+    }
   }
-
-  const changes = kind === "price" ? priceChanges(item, product) : detailChanges(item, product);
   const update: Record<string, string | number> = {};
   for (const change of changes) update[change.field] = change.after;
   // A barcode belongs to the link it was read from (src/lib/gtin.ts), which is
@@ -185,6 +196,28 @@ export async function chooseDetailValue(
   if (!updated || updated.length === 0) return { error: "Only the list's owner can change this item." };
 
   revalidateLists(lists);
+  return {};
+}
+
+/**
+ * "Don't check this price again" on the review. Turns the item's price checks
+ * off for the link it has now, or back on. A new link turns them on again.
+ */
+export async function setPriceChecks(registryId: string, itemId: string, on: boolean): Promise<{ error?: string }> {
+  if (typeof on !== "boolean") return { error: "Unknown value" };
+  const access = await itemAccess(registryId, itemId);
+  if ("error" in access) return { error: access.error };
+  const { item } = access;
+  if (!item.external_url) return { error: "This item has no link to check." };
+
+  const { data: updated, error } = await supabaseAdmin
+    .from("item_detail_reads")
+    .update({ price_checks_off_url: on ? null : item.external_url })
+    .eq("item_id", itemId)
+    .select("item_id");
+  if (error) return { error: error.message };
+  // Only an item that has been read shows the checkbox.
+  if (!updated || updated.length === 0) return { error: "There's nothing to change here anymore." };
   return {};
 }
 

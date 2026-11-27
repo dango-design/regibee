@@ -70,6 +70,7 @@ function Interactive({ initial }: { initial: ListPageDetailReview[] }) {
           return {};
         }}
         finishAction={async () => ({})}
+        priceChecksAction={async () => ({})}
       />
     </div>
   );
@@ -91,7 +92,8 @@ export const OnlyFilled: Story = {
   render: () => <Interactive initial={[reviews[2]]} />,
 };
 
-// Prices the list's page checked found changed (PriceCheck). One kept, one switched back.
+// Prices the list's page checked found changed (PriceCheck). One kept, one
+// switched back with its checks turned off.
 export const NewPrices: Story = {
   render: () => (
     <Interactive
@@ -107,8 +109,15 @@ export const NewPrices: Story = {
           title: "Halo Sleepsack Swaddle",
           imageUrl: PHOTO,
           changes: [{ field: "price", before: 24.99, after: 29.99, shown: "before" }],
+          priceChecksOff: true,
         },
       ]}
     />
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const swaddle = await canvas.findByRole("checkbox", { name: /Halo Sleepsack Swaddle$/ });
+    await expect(swaddle).toBeChecked();
+    await expect(canvas.getByRole("checkbox", { name: /Hatch Rest Baby Sound Machine$/ })).not.toBeChecked();
+  },
 };
