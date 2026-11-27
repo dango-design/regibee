@@ -6,6 +6,7 @@ import { Clipboard, DotsHorizontal, Link01 } from "@untitledui/icons";
 import { Button as AriaButton, SubmenuTrigger } from "react-aria-components";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputGroup } from "@/components/base/input/input-group";
 import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
@@ -30,6 +31,7 @@ import {
   updateRegistryItem,
 } from "@/lib/actions/registry";
 import { addItemsToList, moveItemToList } from "@/lib/actions/saved";
+import { setPriceChecks } from "@/lib/actions/item-details";
 import { fetchProductDetails } from "@/lib/fetch-product";
 import { gtinForLink, type ReadGtin } from "@/lib/gtin";
 import { estimateTax } from "@/lib/actions/tax";
@@ -72,6 +74,8 @@ interface EditItemDialogProps {
     category_id: string | null;
     /** The baby checklist entry it counts for (src/lib/checklist-matching.ts). */
     checklist_entry?: string | null;
+    /** Whether the list's page checks its price weekly. Missing when that doesn't apply (src/lib/item-details.ts). */
+    priceChecks?: "on" | "off";
   };
   registryId: string;
   categories: Category[];
@@ -265,6 +269,7 @@ export function EditItemDialog({
   const [openToUsed, setOpenToUsed] = useState(item.is_open_to_used);
   const [condition, setCondition] = useState(item.minimum_condition || "like-new");
   const [parentPurchased, setParentPurchased] = useState(item.is_parent_purchased);
+  const [priceChecksOn, setPriceChecksOn] = useState(item.priceChecks === "on");
   const [guestInfoOpen, setGuestInfoOpen] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [title, setTitle] = useState(item.title);
@@ -296,6 +301,14 @@ export function EditItemDialog({
   const urlRef = useRef<HTMLInputElement>(null);
   const openUrl = openableLink(externalUrl);
   const savedLink = item.external_url ? withScheme(item.external_url.trim()) : null;
+  // Weekly price checks, for the saved link. A new link starts with checks on,
+  // and a bought item's price is what the owner paid, so neither shows it.
+  const showPriceChecks =
+    item.priceChecks !== undefined &&
+    !parentPurchased &&
+    savedLink !== null &&
+    externalUrl.trim() !== "" &&
+    withScheme(externalUrl.trim()) === savedLink;
   // Reading a link can take many seconds, and the owner may close the dialog
   // meanwhile. Each read takes the next number. Closing the dialog moves the
   // number on, so a read that finishes after that leaves the form alone.
@@ -620,6 +633,15 @@ export function EditItemDialog({
     if (parentPurchased !== item.is_parent_purchased) {
       await toggleParentPurchased(item.id, registryId, parentPurchased);
     }
+    if (showPriceChecks && priceChecksOn !== (item.priceChecks === "on")) {
+      const checks = await setPriceChecks(registryId, item.id, priceChecksOn).catch(() => ({
+        error: "Couldn't save the price check setting. Try again.",
+      }));
+      if (checks?.error) {
+        setError(checks.error);
+        return;
+      }
+    }
     closeWithNewPage(() => setScrapeStatus(""));
   };
 
@@ -671,6 +693,7 @@ export function EditItemDialog({
     setOpenToUsed(item.is_open_to_used);
     setCondition(item.minimum_condition || "like-new");
     setParentPurchased(item.is_parent_purchased);
+    setPriceChecksOn(item.priceChecks === "on");
     setGuestInfoOpen(false);
     setCurrency("USD");
     setError("");
@@ -1169,6 +1192,14 @@ export function EditItemDialog({
                   />
                 </div>
               </div>
+
+              {showPriceChecks && (
+                <Checkbox
+                  isSelected={priceChecksOn}
+                  onChange={setPriceChecksOn}
+                  label="Check the store's price weekly"
+                />
+              )}
 
               {/* Which baby checklist entry it counts for, beside the item's other details. */}
               {isBaby && <ChecklistEntryField title={title} saved={item.checklist_entry} />}

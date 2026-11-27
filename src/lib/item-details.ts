@@ -174,6 +174,21 @@ export function priceCheckDue(item: PriceCheckItem, read: LastRead | undefined, 
 }
 
 /**
+ * The price check setting the item's edit dialog shows, or null to leave it
+ * out. It shows once the extension has read the item's link, which says the
+ * owner uses the extension, and while checks are off, so they can be turned
+ * back on. Call it only for items the extension can read.
+ */
+export function priceCheckSetting(
+  item: Pick<PriceCheckItem, "external_url" | "is_parent_purchased">,
+  read: LastRead | undefined,
+): "on" | "off" | null {
+  if (item.is_parent_purchased || !read) return null;
+  if (priceChecksOff(item, read)) return "off";
+  return read.read_url === item.external_url ? "on" : null;
+}
+
+/**
  * True when a price check found the same new price the owner already turned
  * down: their last read of this link changed the price, and they switched back
  * to their own. The check then changes nothing and keeps that read for next time.
