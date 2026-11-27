@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ExternalLink, ListChecks, Plus, Settings } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { MissingDetailsNotice } from "@/components/missing-details-notice";
 import { PriceCheck } from "@/components/price-check";
 import { SortIntoCategoriesButton } from "@/components/sort-into-categories-button";
 import { DetailReview } from "@/components/detail-review";
-import { CopyLinkButton } from "@/components/copy-link-button";
 import { RegistryTabs } from "@/components/registry-tabs";
 import { StorePerksCard } from "@/components/store-perks-card";
 import { SuggestionInbox } from "./suggestion-inbox";
@@ -29,11 +28,10 @@ import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
 import { formatPrice } from "@/lib/money";
 import { formatGiftDate, giftActivityFor, giftActivityTag } from "@/lib/gifts";
 import { ReservationsHiddenNotice } from "@/components/reservations-hidden-notice";
-import { PlanEventButton } from "@/components/registry-events-banner";
 import { OwnerListTop } from "@/components/owner-list-top";
 import { ListHeaderPicker } from "@/components/list-header-picker";
 import { headerChoice, headerOccasion, listHeader } from "@/lib/list-headers";
-import { LIST_ACCESS, PROFILE_AUDIENCE, listVisibility, profileAudience } from "@/lib/list-access";
+import { listVisibility, profileAudience } from "@/lib/list-access";
 import { findSharedLink } from "@/lib/shared-link";
 import { getSessionUser } from "@/lib/viewer";
 import { loadListPage, type ListPageItem } from "@/lib/list-page";
@@ -196,13 +194,17 @@ export default async function RegistryManagePage({
               })}`
             : null
         }
-        access={{
-          visibility,
-          label:
-            visibility === "private"
-              ? LIST_ACCESS.private.label
-              : `${LIST_ACCESS[visibility].short} · ${PROFILE_AUDIENCE[audience].short}`,
-          href: registrySettingsHref(registryId, "sharing"),
+        access={{ visibility, audience, href: registrySettingsHref(registryId, "sharing") }}
+        sharePath={registryUrl}
+        links={{
+          preview: registryUrl,
+          settings: `/dashboard/registry/${registryId}/settings`,
+          // Once the card's "Planning a party?" is dismissed, or the list has
+          // an event, planning one is still in the ⋯ menu.
+          plan:
+            canPlanEvents && (eventPromptDismissed || linkedEvents.length > 0)
+              ? `/dashboard/events/new?registry=${registryId}`
+              : null,
         }}
         manager={!data.isOwner}
         header={listHeader(headerChoice(registry.settings))}
@@ -214,36 +216,16 @@ export default async function RegistryManagePage({
             occasion={headerOccasion(registry.registry_type, registry.event_type)}
           />
         }
-        actions={
-          <>
-            <CopyLinkButton path={`/r/${registry.slug}`} />
-            <Button variant="outline" asChild>
-              <a href={registryUrl} target="_blank" rel="noopener noreferrer">
-                <span className="inline-flex items-center gap-1.5">
-                  <ExternalLink className="h-4 w-4 shrink-0" />
-                  Preview
-                </span>
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/registry/${registryId}/settings`}>
-                <span className="inline-flex items-center gap-1.5">
-                  <Settings className="h-4 w-4 shrink-0" />
-                  Settings
-                </span>
-              </Link>
-            </Button>
-            {/* Once the card's "Planning a party?" is dismissed, or the list
-                has an event, planning one is still a click away here. */}
-            {canPlanEvents && (eventPromptDismissed || linkedEvents.length > 0) && (
-              <PlanEventButton registryId={registryId} />
-            )}
-          </>
-        }
         progress={hideReservations ? null : progress}
         hidden={
           hideReservations
-            ? { revealed: revealInfo?.revealedCount ?? 0, href: `/dashboard/registry/${registryId}?tab=purchases` }
+            ? {
+                revealed: revealInfo?.revealedCount ?? 0,
+                href: `/dashboard/registry/${registryId}?tab=purchases`,
+                settingsHref,
+                next: revealInfo?.next,
+                turnedOnByExchange,
+              }
             : null
         }
         events={linkedEvents}

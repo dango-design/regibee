@@ -107,7 +107,8 @@ test("a list shows its events to its owner, and to guests invited with the owner
   const ownerRows = olivePage.getByRole("list", { name: "About this list" }).locator("li", { hasText: id });
   await expect(ownerRows).toHaveCount(6);
   const swapRow = ownerRows.filter({ hasText: `Gift Swap ${id}` });
-  await expect(swapRow).toContainText("added by a guest");
+  // Olive added her list to the swap as a guest, and the part says so.
+  await expect(swapRow).toContainText("Your wishlist for");
   await expect(swapRow.getByRole("button", { name: /Unlink/ })).toHaveCount(0);
   await expect(ownerRows.filter({ hasText: `Pool Party ${id}` }).getByRole("button", { name: /Unlink/ })).toHaveCount(1);
 

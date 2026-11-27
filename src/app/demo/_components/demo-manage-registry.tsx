@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Baby,
   ExternalLink,
-  Settings,
   ClipboardList,
   Share2,
   Check,
@@ -59,11 +58,10 @@ import { getCategorySectionId } from "@/lib/category-section-id";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { formatPrice } from "@/lib/money";
 import { RegistryTabs } from "@/components/registry-tabs";
-import { PlanEventButton } from "@/components/registry-events-banner";
 import { OwnerListTop } from "@/components/owner-list-top";
 import { ListHeaderPicker } from "@/components/list-header-picker";
 import { headerChoice, headerOccasion, listHeader, type HeaderChoice } from "@/lib/list-headers";
-import { LIST_ACCESS, PROFILE_AUDIENCE, listVisibility, profileAudience } from "@/lib/list-access";
+import { listVisibility, profileAudience } from "@/lib/list-access";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
@@ -84,7 +82,6 @@ import {
   type DemoItem,
 } from "@/lib/demo-registries";
 import { DemoOwnerShell } from "./demo-shell";
-import { CopyLinkButton } from "@/components/copy-link-button";
 
 interface DemoPurchase {
   id: string;
@@ -1281,36 +1278,16 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
         }
         access={{
           visibility: listVisibility(registry),
-          label:
-            listVisibility(registry) === "private"
-              ? LIST_ACCESS.private.label
-              : `${LIST_ACCESS[listVisibility(registry)].short} · ${PROFILE_AUDIENCE[profileAudience(registry)].short}`,
+          audience: profileAudience(registry),
           href: `/demo/dashboard/registry/${registry.id}/settings`,
         }}
-        actions={
-          <>
-            <CopyLinkButton path={publicPath} />
-            <Button variant="outline" asChild>
-              <a href={publicPath} target="_blank" rel="noopener noreferrer">
-                <span className="inline-flex items-center gap-1.5">
-                  <ExternalLink className="h-4 w-4 shrink-0" />
-                  Preview
-                </span>
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/demo/dashboard/registry/${registry.id}/settings`}>
-                <span className="inline-flex items-center gap-1.5">
-                  <Settings className="h-4 w-4 shrink-0" />
-                  Settings
-                </span>
-              </Link>
-            </Button>
-            {(eventPromptDismissed || linkedEvents.length > 0) && (
-              <PlanEventButton registryId={registry.id} basePath="/demo" />
-            )}
-          </>
-        }
+        sharePath={publicPath}
+        links={{
+          preview: publicPath,
+          settings: `/demo/dashboard/registry/${registry.id}/settings`,
+          plan:
+            eventPromptDismissed || linkedEvents.length > 0 ? `/demo/dashboard/events/new?registry=${registry.id}` : null,
+        }}
         progress={progress}
         events={linkedEvents}
         planPrompt={!eventPromptDismissed}
