@@ -180,6 +180,8 @@ function cleanInput(input: ItemInput) {
     minimum_condition: input.is_open_to_used ? (input.minimum_condition ?? "like-new") : null,
     notes: input.notes?.trim() || null,
     gtin: input.gtin ?? null,
+    // Only when adding from the checklist, so saving an edit leaves it alone.
+    ...(input.checklist_entry ? { checklist_entry: input.checklist_entry } : {}),
   };
 }
 
@@ -199,6 +201,9 @@ function itemForm(values: ReturnType<typeof cleanInput>, bought?: boolean) {
     notes: values.notes ?? "",
     // Without one, the server keeps the saved barcode if the link stays.
     gtin: values.gtin ?? "",
+    // Only when adding from the baby checklist. Editing changes it with
+    // useSetChecklistEntry instead.
+    ...(values.checklist_entry ? { checklistEntry: values.checklist_entry } : {}),
   });
 }
 
@@ -582,6 +587,8 @@ export interface FundInput {
   goalAmount: number | null;
   /** On a new fund only: the list's payment methods, saved with it, replacing all three. */
   paymentMethods?: { venmo: string; paypal: string; zelle: string };
+  /** On a new fund from the baby checklist, such as Diaper Fund: the entry it counts for. */
+  checklistEntry?: string;
 }
 
 function fundForm(input: FundInput) {
@@ -590,6 +597,7 @@ function fundForm(input: FundInput) {
     title: input.title.trim(),
     description: input.description.trim(),
     goalAmount: input.goalAmount != null && input.goalAmount > 0 ? String(input.goalAmount) : "",
+    ...(input.checklistEntry ? { checklistEntry: input.checklistEntry } : {}),
     ...(methods
       ? { savePaymentMethods: "1", venmo: methods.venmo.trim(), paypal: methods.paypal.trim(), zelle: methods.zelle.trim() }
       : {}),
@@ -836,11 +844,14 @@ export function useFinishDetailReview(registryId: string) {
 // The baby checklist
 // ---------------------------------------------------------------------------
 
-/** "Add to registry" on the checklist: the item, in the category of the same name. */
+/**
+ * "No, guests can choose" on the checklist: the entry as an item with no
+ * product, in the category of the same name, counting for that entry.
+ */
 export function useAddChecklistItem(registryId: string) {
-  return useListChange<{ name: string; categoryId: string | null; quantity: number; essential: boolean; description?: string }>(
+  return useListChange<{ name: string; key: string; categoryId: string | null; quantity: number; description?: string }>(
     () => registryId,
-    async ({ name, categoryId, quantity, essential, description }) => {
+    async ({ name, key, categoryId, quantity, description }) => {
       if (isDemo()) {
         demo.addItem(registryId, {
           title: name,
@@ -850,11 +861,12 @@ export function useAddChecklistItem(registryId: string) {
           quantity_needed: quantity,
           quantity_fulfilled: 0,
           category_id: categoryId,
-          is_essential: essential,
+          is_essential: false,
           is_parent_purchased: false,
           is_open_to_used: false,
           minimum_condition: null,
           notes: description ?? null,
+          checklist_entry: key,
         });
         return;
       }
@@ -865,11 +877,33 @@ export function useAddChecklistItem(registryId: string) {
           title: name,
           categoryId: categoryId ?? "",
           quantityNeeded: String(quantity),
-          isEssential: String(essential),
           notes: description ?? "",
+          checklistEntry: key,
         })
       );
     }
+  );
+}
+
+/**
+ * Chooses which checklist entry an item or gift fund counts for: an entry's
+ * key, or "none". The checklist screen and the item editor use it.
+ */
+export function useSetChecklistEntry(registryId: string) {
+  return useListChange<{ kind: "item" | "fund"; id: string; entry: string }>(
+    () => registryId,
+    async ({ kind, id, entry }) => {
+      if (isDemo()) {
+        if (kind === "fund") demo.setFundChecklistEntry(registryId, id, entry);
+        else demo.updateItem(id, { checklist_entry: entry });
+        return;
+      }
+      await act("registry.setChecklistEntry", registryId, kind === "fund" ? { fundId: id } : { itemId: id }, entry);
+    },
+    (detail, { kind, id, entry }) =>
+      kind === "fund"
+        ? { ...detail, funds: detail.funds.map((f) => (f.id === id ? { ...f, checklist_entry: entry } : f)) }
+        : { ...detail, items: detail.items.map((i) => (i.id === id ? { ...i, checklist_entry: entry } : i)) }
   );
 }
 

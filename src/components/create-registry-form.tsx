@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { ProfileListingField } from "@/components/profile-listing-field";
+import { arriveAtTop, cancelArriveAtTop } from "@/components/arrive-at-top";
 import {
   ChoiceCard,
   ChoiceChip,
@@ -200,8 +201,11 @@ export function CreateRegistryForm({
     }
     setLoading(true);
     setError("");
+    // The new list's page opens at its top, not as far down as this form was.
+    arriveAtTop();
     const result = await createAction(formData);
     if (result?.error) {
+      cancelArriveAtTop();
       setError(result.error);
       setLoading(false);
     }

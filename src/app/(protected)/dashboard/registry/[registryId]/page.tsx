@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { ListChecks, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import { SuggestionInbox } from "./suggestion-inbox";
 import { CategoryNav, type CategoryNavItem } from "@/components/category-nav";
 import { getCategorySectionId } from "@/lib/category-section-id";
 import { ScrollToTop } from "@/components/scroll-to-top";
-import { ProgressCircle } from "@/components/ui/progress-circle";
+import { ArriveAtTop } from "@/components/arrive-at-top";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { FundsPositionMenu } from "@/components/funds-position-menu";
@@ -230,7 +231,9 @@ export default async function RegistryManagePage({
         events={linkedEvents}
         planPrompt={canPlanEvents && !eventPromptDismissed}
         checklist={
-          showChecklist ? { ...checklistProgress, href: `/dashboard/registry/${registryId}/checklist` } : null
+          showChecklist
+            ? { ...checklistProgress, essentials: data.checklistEssentials, href: `/dashboard/registry/${registryId}/checklist` }
+            : null
         }
       />
 
@@ -245,20 +248,6 @@ export default async function RegistryManagePage({
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
               <h2 className="text-xl font-semibold">Registry Items</h2>
               <div className="flex flex-wrap items-center gap-2">
-                {showChecklist && (
-                  <Button variant="outline" asChild>
-                    <Link href={`/dashboard/registry/${registryId}/checklist`}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <ProgressCircle
-                          value={checklistProgress.total > 0 ? (checklistProgress.matched / checklistProgress.total) * 100 : 0}
-                          size={20}
-                          strokeWidth={2}
-                        />
-                        Checklist
-                      </span>
-                    </Link>
-                  </Button>
-                )}
                 <AddCashFundDialog registryId={registryId} paymentMethods={paymentMethods} />
                 <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} openWithLink={sharedLink ?? undefined} />
               </div>
@@ -282,15 +271,42 @@ export default async function RegistryManagePage({
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <PandaMark className="mb-4 h-20 w-auto" />
-                  <p className="text-tertiary">No items yet.</p>
-                  <div className="mt-4 flex gap-2">
-                    <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} />
-                    {showChecklist && (
-                      <Button variant="outline" asChild>
-                        <Link href={`/dashboard/registry/${registryId}/checklist`}>
-                          Browse Checklist
-                        </Link>
-                      </Button>
+                  {/* A baby registry starts from the checklist: what most
+                      new parents need, a tap each to add. */}
+                  <p className="text-tertiary">
+                    {showChecklist ? "No items yet. Start with the essentials on the checklist." : "No items yet."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {showChecklist ? (
+                      <>
+                        <Button asChild>
+                          <Link href={`/dashboard/registry/${registryId}/checklist`}>
+                            <span className="inline-flex items-center gap-1.5">
+                              <ListChecks className="h-4 w-4 shrink-0" />
+                              Open the checklist
+                            </span>
+                          </Link>
+                        </Button>
+                        <AddItemDialog
+                          registryId={registryId}
+                          categories={allCategories}
+                          zipCode={zipCode}
+                          registryType={registry.registry_type}
+                          eventType={registry.event_type}
+                          linkedRegistries={linkedRegistries}
+                          storesWithRegistryLinks={registryLinkStores}
+                          trigger={
+                            <Button variant="outline">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Plus className="h-4 w-4 shrink-0" />
+                                Add item
+                              </span>
+                            </Button>
+                          }
+                        />
+                      </>
+                    ) : (
+                      <AddItemDialog registryId={registryId} categories={allCategories} zipCode={zipCode} registryType={registry.registry_type} eventType={registry.event_type} linkedRegistries={linkedRegistries} storesWithRegistryLinks={registryLinkStores} />
                     )}
                   </div>
                 </CardContent>
@@ -496,6 +512,7 @@ export default async function RegistryManagePage({
       />
 
       <ScrollToTop />
+      <ArriveAtTop />
     </div>
     </>
   );

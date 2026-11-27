@@ -1,9 +1,48 @@
+// The baby checklist: what most new parents need, by category. The website's
+// checklist page and the phone app's show it, and src/lib/checklist-matching.ts
+// works out what on a list counts for each entry. No imports, so the app and
+// Node's test runner can load it.
+//
+// The entries, prices and safety wording were checked against the AAP, CPSC,
+// NHTSA, CDC, FDA, the NHS and registry sites such as Babylist in November
+// 2026. Prices are rough 2026 US prices, for one of whatever the quantity
+// counts.
+
+/** A page a parent can read for more, shown as a small link on the entry. */
+export interface ChecklistSource {
+  /** Who published it, as the link shows it: "AAP", "CPSC". */
+  name: string;
+  /** The page's own title, for the link's tooltip and screen readers. */
+  title: string;
+  url: string;
+}
+
 export interface ChecklistItem {
   name: string;
+  /**
+   * Saved on items and gift funds (checklist_entry) to say which entry they
+   * count for. Never change a key, even when the name changes: saved choices
+   * would stop counting.
+   */
+  key: string;
+  /**
+   * Other words for it in store product names, such as "bodysuit" for
+   * onesies. An item counts when its name has every word of the entry's name,
+   * or of one of these (src/lib/checklist-matching.ts).
+   */
+  aliases?: string[];
+  /** Names it had before, so "Mark as registered" saved under an old name still counts. */
+  formerNames?: string[];
   isEssential: boolean;
+  /** For one of whatever `unit` counts, or for the item when there's no unit. */
   suggestedPrice: string;
   suggestedQuantity: number;
+  /** What the quantity counts, singular and plural: ["box", "boxes"]. */
+  unit?: [string, string];
+  /** Why it matters, for guests too: it becomes the item's note. */
   description?: string;
+  /** Pages to read more, most relevant first. */
+  sources?: ChecklistSource[];
   /** Money toward something, not a thing to buy. Adding it makes a gift fund, not an item. */
   fund?: boolean;
 }
@@ -14,905 +53,1009 @@ export interface ChecklistCategory {
   items: ChecklistItem[];
 }
 
+/** "2 boxes", "1 box", or "6" for an entry with no unit. */
+export function checklistQuantity(entry: Pick<ChecklistItem, "suggestedQuantity" | "unit">): string {
+  const { suggestedQuantity: qty, unit } = entry;
+  return unit ? `${qty} ${qty === 1 ? unit[0] : unit[1]}` : String(qty);
+}
+
+/** "$30-45 per box", or the price as it is for an entry with no unit. */
+export function checklistPrice(entry: Pick<ChecklistItem, "suggestedPrice" | "unit">): string {
+  return entry.unit && entry.suggestedPrice.startsWith("$") ? `${entry.suggestedPrice} per ${entry.unit[0]}` : entry.suggestedPrice;
+}
+
+// Pages the entries link to. Each was opened to check it's there.
+const AAP_SAFE_SLEEP: ChecklistSource = {
+  name: "AAP",
+  title: "A Parent's Guide to Safe Sleep",
+  url: "https://www.healthychildren.org/English/ages-stages/baby/sleep/Pages/a-parents-guide-to-safe-sleep.aspx",
+};
+const AAP_SWADDLING: ChecklistSource = {
+  name: "AAP",
+  title: "Swaddling: Is It Safe?",
+  url: "https://www.healthychildren.org/English/ages-stages/baby/diapers-clothing/Pages/Swaddling-Is-it-Safe.aspx",
+};
+const AAP_CAR_SEATS: ChecklistSource = {
+  name: "AAP",
+  title: "Car Safety Seats: Information for Families",
+  url: "https://www.healthychildren.org/English/safety-prevention/on-the-go/Pages/Car-Safety-Seats-Information-for-Families.aspx",
+};
+const AAP_TEMPERATURE: ChecklistSource = {
+  name: "AAP",
+  title: "How to Take a Child's Temperature",
+  url: "https://www.healthychildren.org/English/health-issues/conditions/fever/Pages/How-to-Take-a-Childs-Temperature.aspx",
+};
+const AAP_CUPS: ChecklistSource = {
+  name: "AAP",
+  title: "Discontinuing the Bottle",
+  url: "https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Discontinuing-the-Bottle.aspx",
+};
+const AAP_SUN: ChecklistSource = {
+  name: "AAP",
+  title: "Sun Safety",
+  url: "https://healthychildren.org/English/safety-prevention/at-play/Pages/Sun-Safety.aspx",
+};
+const NHTSA_CAR_SEATS: ChecklistSource = {
+  name: "NHTSA",
+  title: "Car Seats and Booster Seats",
+  url: "https://www.nhtsa.gov/vehicle-safety/car-seats-and-booster-seats",
+};
+const CPSC_CRIBS: ChecklistSource = {
+  name: "CPSC",
+  title: "The New Crib Standard: Questions and Answers",
+  url: "https://onsafety.cpsc.gov/blog/2011/06/14/the-new-crib-standard-questions-and-answers",
+};
+const CPSC_SAFER_SPACES: ChecklistSource = {
+  name: "CPSC",
+  title: "Top Tips for Safer Spaces for Baby",
+  url: "https://www.cpsc.gov/s3fs-public/TopTipsSaferSpacesforBabyENNSN161.pdf",
+};
+const CPSC_NURSING_PILLOWS: ChecklistSource = {
+  name: "CPSC",
+  title: "Nursing Pillows",
+  url: "https://www.cpsc.gov/Business--Manufacturing/Business-Education/Business-Guidance/Nursing-Pillows",
+};
+const CPSC_WINDOW_CORDS: ChecklistSource = {
+  name: "CPSC",
+  title: "New safety standard for window covering cords",
+  url: "https://www.cpsc.gov/Newsroom/News-Releases/2023/CPSC-Approves-New-Federal-Safety-Standard-for-Custom-Window-Coverings-to-Prevent-Deaths-and-Serious-Injuries-from-Strangulation-Window-Covering-Cords-Now-Deemed-a-Substantial-Product-Hazard",
+};
+const CPSC_ANCHOR_IT: ChecklistSource = {
+  name: "CPSC",
+  title: "Anchor It: preventing furniture and TV tip-overs",
+  url: "https://www.anchorit.gov/",
+};
+const CDC_FEEDING_ITEMS: ChecklistSource = {
+  name: "CDC",
+  title: "How to Clean, Sanitize, and Store Infant Feeding Items",
+  url: "https://www.cdc.gov/hygiene/about/clean-sanitize-store-infant-feeding-items.html",
+};
+const FDA_TEETHING: ChecklistSource = {
+  name: "FDA",
+  title: "Safely Soothing Teething Pain",
+  url: "https://www.fda.gov/consumers/consumer-updates/safely-soothing-teething-pain-infants-and-children",
+};
+const HEALTHCARE_GOV_PUMPS: ChecklistSource = {
+  name: "HealthCare.gov",
+  title: "Breastfeeding benefits",
+  url: "https://www.healthcare.gov/coverage/breast-feeding-benefits/",
+};
+const NHS_WHAT_YOU_NEED: ChecklistSource = {
+  name: "NHS",
+  title: "What you'll need for your baby",
+  url: "https://www.nhs.uk/baby/caring-for-a-newborn/what-you-will-need-for-your-baby/",
+};
+const MAYO_HUMIDIFIERS: ChecklistSource = {
+  name: "Mayo Clinic",
+  title: "Warm-mist versus cool-mist humidifier",
+  url: "https://www.mayoclinic.org/diseases-conditions/common-cold/expert-answers/cool-mist-humidifiers/faq-20058199",
+};
+const SOUND_MACHINE_STUDY: ChecklistSource = {
+  name: "Pediatrics",
+  title: "Infant sleep machines and hazardous sound pressure levels",
+  url: "https://pubmed.ncbi.nlm.nih.gov/24590753/",
+};
+const NATIONWIDE_GATES: ChecklistSource = {
+  name: "Nationwide Children's",
+  title: "Baby Gates",
+  url: "https://www.nationwidechildrens.org/research/areas-of-research/center-for-injury-research-and-policy/injury-topics/home-safety/baby-gates",
+};
+const BABYLIST_DIAPERS: ChecklistSource = {
+  name: "Babylist",
+  title: "How Many Diapers Does a Baby Need?",
+  url: "https://www.babylist.com/hello-baby/how-many-diapers-babys-first-year",
+};
+
 export const DEFAULT_CHECKLIST: ChecklistCategory[] = [
-  // ---------------------------------------------------------------------------
-  // 1. Nursery & Sleep
-  // ---------------------------------------------------------------------------
   {
     name: "Nursery & Sleep",
     icon: "moon",
     items: [
       {
         name: "Crib",
+        key: "crib",
         isEssential: true,
         suggestedPrice: "$150-600",
         suggestedQuantity: 1,
-        description:
-          "A safe, sturdy crib that meets current CPSC safety standards.",
+        description: "A crib that meets current federal safety rules. Skip drop-side cribs and any made before mid-2011.",
+        sources: [CPSC_CRIBS, AAP_SAFE_SLEEP],
       },
       {
         name: "Crib Mattress",
+        key: "crib-mattress",
         isEssential: true,
-        suggestedPrice: "$50-250",
+        suggestedPrice: "$60-300",
         suggestedQuantity: 1,
-        description:
-          "Firm, flat mattress sized to fit the crib snugly with no gaps.",
+        description: "A firm, flat mattress that fits the crib with no gaps around the edges. Buy it new.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Bassinet",
+        key: "bassinet",
         isEssential: true,
-        suggestedPrice: "$100-400",
+        suggestedPrice: "$80-350",
         suggestedQuantity: 1,
         description:
-          "Compact bedside sleeper for the first few months before transitioning to a crib.",
+          "A small bed for your room, since experts advise sharing a room, not a bed, for at least 6 months. It needs its own fitted sheets.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Fitted Crib Sheets",
+        key: "fitted-crib-sheets",
         isEssential: true,
         suggestedPrice: "$15-30",
         suggestedQuantity: 4,
-        description:
-          "Soft, breathable fitted sheets. Have extras on hand for middle-of-the-night changes.",
+        unit: ["sheet", "sheets"],
+        description: "Tight fitted sheets are the only bedding a crib needs. Skip bumpers, pillows and blankets.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Waterproof Mattress Protectors",
+        key: "waterproof-mattress-protectors",
         isEssential: false,
         suggestedPrice: "$10-20",
         suggestedQuantity: 2,
-        description:
-          "Placed between the mattress and sheet to protect against leaks and blowouts.",
+        unit: ["protector", "protectors"],
+        description: "Placed between the mattress and sheet to protect against leaks and blowouts.",
       },
       {
         name: "Swaddles",
+        key: "swaddles",
         isEssential: true,
-        suggestedPrice: "$10-30",
-        suggestedQuantity: 6,
+        suggestedPrice: "$12-35",
+        suggestedQuantity: 4,
+        unit: ["swaddle", "swaddles"],
         description:
-          "Muslin or stretchy swaddle blankets to help newborns feel secure and sleep better.",
+          "Wraps a newborn snugly for sleep on their back. Stop swaddling as soon as baby shows signs of trying to roll, and never use a weighted one.",
+        sources: [AAP_SWADDLING],
       },
       {
         name: "Sleep Sacks",
+        key: "sleep-sacks",
+        aliases: ["sleepsack", "wearable blanket"],
         isEssential: true,
-        suggestedPrice: "$15-35",
-        suggestedQuantity: 3,
-        description:
-          "Wearable blankets that keep baby warm without loose bedding in the crib.",
+        suggestedPrice: "$20-40",
+        suggestedQuantity: 2,
+        unit: ["sleep sack", "sleep sacks"],
+        description: "A wearable blanket that keeps baby warm with no loose bedding in the crib. Choose one that isn't weighted.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Baby Monitor",
-        isEssential: true,
+        key: "baby-monitor",
+        isEssential: false,
         suggestedPrice: "$40-350",
         suggestedQuantity: 1,
-        description:
-          "Audio or video monitor to keep an eye on baby from another room.",
+        description: "Lets you hear or see baby from another room. Keep the camera and its cord at least 3 feet from the crib.",
+        sources: [CPSC_SAFER_SPACES],
       },
       {
         name: "Sound Machine",
+        key: "sound-machine",
+        aliases: ["white noise machine"],
         isEssential: false,
         suggestedPrice: "$20-50",
         suggestedQuantity: 1,
-        description:
-          "White noise or nature sounds to help baby fall asleep and stay asleep.",
+        description: "Steady white noise can help baby sleep. Keep it across the room from the crib, at a low volume.",
+        sources: [SOUND_MACHINE_STUDY],
       },
       {
         name: "Changing Pad",
+        key: "changing-pad",
         isEssential: true,
         suggestedPrice: "$20-40",
         suggestedQuantity: 1,
-        description:
-          "Contoured pad that sits on top of a dresser or changing table.",
+        description: "A contoured pad for the top of a dresser. Use its strap and keep a hand on baby.",
       },
       {
         name: "Changing Pad Covers",
+        key: "changing-pad-covers",
         isEssential: false,
         suggestedPrice: "$10-20",
-        suggestedQuantity: 3,
-        description:
-          "Machine-washable covers for the changing pad. Stock a few for quick swaps.",
+        suggestedQuantity: 2,
+        unit: ["cover", "covers"],
+        description: "Machine-washable covers for the changing pad. Keep a spare for quick swaps.",
       },
       {
         name: "Dresser",
+        key: "dresser",
         isEssential: false,
         suggestedPrice: "$150-500",
         suggestedQuantity: 1,
         description:
-          "Doubles as clothing storage and a changing station when paired with a changing pad.",
+          "Holds clothes and doubles as a changing table with a pad on top. Anchor it to the wall so it can't tip over.",
+        sources: [CPSC_ANCHOR_IT],
       },
       {
         name: "Glider / Rocker",
+        key: "glider-rocker",
+        aliases: ["rocking chair"],
         isEssential: false,
         suggestedPrice: "$150-800",
         suggestedQuantity: 1,
-        description:
-          "Comfortable chair for late-night feedings, rocking, and story time.",
+        description: "Comfortable chair for late-night feedings, rocking, and story time.",
       },
       {
         name: "Nightlight",
+        key: "nightlight",
+        aliases: ["night light"],
         isEssential: false,
         suggestedPrice: "$10-25",
         suggestedQuantity: 1,
-        description:
-          "Dim, warm-toned light for nighttime feedings and diaper changes.",
+        description: "Dim, warm-toned light for nighttime feedings and diaper changes.",
       },
       {
         name: "Blackout Curtains",
+        key: "blackout-curtains",
         isEssential: false,
         suggestedPrice: "$20-50",
         suggestedQuantity: 1,
-        description:
-          "Block out daylight to help baby nap during the day and sleep longer in the morning.",
+        description: "Darkens the room for daytime naps. Choose cordless ones, and keep the crib away from window cords.",
+        sources: [CPSC_WINDOW_CORDS],
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 2. Feeding
-  // ---------------------------------------------------------------------------
   {
     name: "Feeding",
     icon: "utensils",
     items: [
       {
         name: "Bottles",
+        key: "bottles",
         isEssential: true,
-        suggestedPrice: "$5-10",
-        suggestedQuantity: 12,
-        description:
-          "Start with a variety pack to find what baby prefers. Anti-colic options are popular.",
+        suggestedPrice: "$6-15",
+        suggestedQuantity: 6,
+        unit: ["bottle", "bottles"],
+        description: "Start with a few small bottles with slow-flow nipples. Babies can be picky, so try one kind before buying more.",
+        sources: [CDC_FEEDING_ITEMS],
       },
       {
         name: "Bottle Brush",
+        key: "bottle-brush",
         isEssential: true,
         suggestedPrice: "$5-10",
         suggestedQuantity: 1,
-        description:
-          "Dedicated brush for cleaning the inside of bottles and nipples.",
+        description: "Dedicated brush for cleaning the inside of bottles and nipples.",
+        sources: [CDC_FEEDING_ITEMS],
       },
       {
         name: "Burp Cloths",
+        key: "burp-cloths",
         isEssential: true,
-        suggestedPrice: "$10-20",
-        suggestedQuantity: 12,
-        description:
-          "Absorbent cloths to drape over your shoulder during and after feedings.",
+        suggestedPrice: "$12-25",
+        suggestedQuantity: 2,
+        unit: ["pack", "packs"],
+        description: "Soft cloths for your shoulder during burping. You'll use several a day, so a pack of about 5 goes fast.",
       },
       {
         name: "Bibs",
-        isEssential: true,
-        suggestedPrice: "$8-15",
-        suggestedQuantity: 6,
-        description:
-          "Protect baby's clothes from drool and spit-up. Snap or velcro closures work best.",
+        key: "bibs",
+        formerNames: ["Burp-Cloth Bibs"],
+        isEssential: false,
+        suggestedPrice: "$10-20",
+        suggestedQuantity: 2,
+        unit: ["pack", "packs"],
+        description: "Soft bibs for drool, then wipeable ones once solid food starts. Take bibs off before sleep.",
       },
       {
         name: "Breast Pump",
-        isEssential: true,
-        suggestedPrice: "$0-300",
+        key: "breast-pump",
+        isEssential: false,
+        suggestedPrice: "$0-500",
         suggestedQuantity: 1,
-        description:
-          "Electric or manual pump for expressing milk. Many insurance plans cover one at no cost.",
+        description: "For pumping breast milk. Most US health plans must cover one at no cost, so check insurance first.",
+        sources: [HEALTHCARE_GOV_PUMPS],
       },
       {
         name: "Nursing Pillow",
-        isEssential: true,
+        key: "nursing-pillow",
+        isEssential: false,
         suggestedPrice: "$25-65",
         suggestedQuantity: 1,
-        description:
-          "Supportive pillow that wraps around the waist to position baby during breastfeeding.",
+        description: "Props baby up at feeding time. Never use it for sleep or let baby nap on it.",
+        sources: [CPSC_NURSING_PILLOWS],
       },
       {
         name: "Nursing Pads",
+        key: "nursing-pads",
         isEssential: false,
         suggestedPrice: "$8-15",
         suggestedQuantity: 1,
-        description:
-          "Disposable or reusable pads worn inside a bra to absorb leaks.",
+        unit: ["box", "boxes"],
+        description: "Disposable or reusable pads worn inside a bra to absorb leaks.",
       },
       {
         name: "Nipple Cream",
+        key: "nipple-cream",
         isEssential: false,
         suggestedPrice: "$8-12",
         suggestedQuantity: 1,
-        description:
-          "Lanolin-based or organic balm to soothe and protect during breastfeeding.",
+        description: "Lanolin-based or organic balm to soothe and protect during breastfeeding.",
       },
       {
         name: "Breast Milk Storage Bags",
+        key: "breast-milk-storage-bags",
         isEssential: false,
         suggestedPrice: "$10-15",
         suggestedQuantity: 1,
-        description:
-          "Pre-sterilized bags for storing expressed breast milk in the fridge or freezer.",
+        unit: ["box", "boxes"],
+        description: "Pre-sterilized bags for storing expressed breast milk in the fridge or freezer.",
       },
       {
         name: "High Chair",
+        key: "high-chair",
+        aliases: ["highchair"],
         isEssential: true,
-        suggestedPrice: "$30-350",
+        suggestedPrice: "$40-400",
         suggestedQuantity: 1,
-        description:
-          "Needed around 6 months when baby starts solids. Look for easy-to-clean models.",
+        description: "Needed around 6 months, when baby starts solid food. Always use the straps.",
       },
       {
-        name: "Bottle Drying Rack",
+        name: "Bottle Sterilizer",
+        key: "bottle-sterilizer",
+        formerNames: ["Bottle Drying Rack"],
         isEssential: false,
-        suggestedPrice: "$10-20",
+        suggestedPrice: "$30-180",
         suggestedQuantity: 1,
         description:
-          "Countertop rack for air-drying bottles, pump parts, and accessories.",
+          "Steams bottles and pump parts clean. Health officials advise sanitizing feeding items daily for babies under 2 months.",
+        sources: [CDC_FEEDING_ITEMS],
       },
       {
-        name: "Formula Dispenser",
-        isEssential: false,
-        suggestedPrice: "$8-15",
-        suggestedQuantity: 1,
-        description:
-          "Portable container with pre-measured compartments for formula on the go.",
-      },
-      {
-        name: "Sippy Cups",
+        name: "Baby Cups",
+        key: "baby-cups",
+        aliases: ["sippy cup", "straw cup"],
+        formerNames: ["Sippy Cups"],
         isEssential: false,
         suggestedPrice: "$8-15",
-        suggestedQuantity: 3,
-        description:
-          "Transition cups for when baby starts learning to drink independently around 6-9 months.",
+        suggestedQuantity: 2,
+        unit: ["cup", "cups"],
+        description: "A straw cup or open cup for learning to drink, starting around 6 months.",
+        sources: [AAP_CUPS],
       },
       {
-        name: "Baby Spoons",
+        name: "Bowls & Spoons",
+        key: "bowls-spoons",
+        aliases: ["suction bowl", "baby spoon"],
+        formerNames: ["Baby Spoons", "Bowl Set"],
         isEssential: false,
-        suggestedPrice: "$5-10",
+        suggestedPrice: "$15-30",
         suggestedQuantity: 1,
-        description:
-          "Soft-tipped spoons sized for tiny mouths, used when starting solid foods.",
-      },
-      {
-        name: "Bowl Set",
-        isEssential: false,
-        suggestedPrice: "$10-20",
-        suggestedQuantity: 1,
-        description:
-          "Suction-bottom bowls that stick to the highchair tray to prevent spills.",
+        unit: ["set", "sets"],
+        description: "Suction bowls and soft-tipped spoons for starting solid food around 6 months.",
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 3. Diapering
-  // ---------------------------------------------------------------------------
   {
     name: "Diapering",
     icon: "package",
     items: [
       {
         name: "Diapers — Newborn",
+        key: "diapers-newborn",
         isEssential: true,
-        suggestedPrice: "$20-30",
-        suggestedQuantity: 3,
-        description:
-          "Newborn-size diapers with umbilical cord cutout. Stock 2-3 boxes to start.",
+        suggestedPrice: "$30-45",
+        suggestedQuantity: 2,
+        unit: ["box", "boxes"],
+        description: "Newborn size fits for only a few weeks, and bigger babies may skip it. A box holds about 80 to 140 diapers.",
+        sources: [BABYLIST_DIAPERS],
       },
       {
         name: "Diapers — Size 1",
+        key: "diapers-size-1",
         isEssential: true,
-        suggestedPrice: "$25-35",
+        suggestedPrice: "$30-50",
         suggestedQuantity: 3,
-        description:
-          "Most babies move into size 1 within a few weeks. Have plenty on hand.",
+        unit: ["box", "boxes"],
+        description: "Most babies wear size 1 (8–14 lbs) for the first few months. A box holds about 100 to 160.",
+        sources: [BABYLIST_DIAPERS],
       },
       {
         name: "Diapers — Size 2",
+        key: "diapers-size-2",
         isEssential: true,
-        suggestedPrice: "$25-35",
-        suggestedQuantity: 2,
-        description:
-          "Babies typically reach size 2 around 12-18 lbs. Good to stock up early.",
+        suggestedPrice: "$30-50",
+        suggestedQuantity: 3,
+        unit: ["box", "boxes"],
+        description: "Size 2 fits about 12–18 lbs and lasts longer than the smaller sizes.",
+        sources: [BABYLIST_DIAPERS],
       },
       {
         name: "Wipes",
+        key: "wipes",
         isEssential: true,
-        suggestedPrice: "$15-25",
-        suggestedQuantity: 4,
-        description:
-          "Fragrance-free, hypoallergenic wipes. You will go through far more than you expect.",
+        suggestedPrice: "$20-35",
+        suggestedQuantity: 3,
+        unit: ["box", "boxes"],
+        description: "Unscented wipes for every change. A bulk box holds about 500 to 800.",
       },
       {
         name: "Diaper Rash Cream",
+        key: "diaper-rash-cream",
         isEssential: true,
         suggestedPrice: "$8-12",
         suggestedQuantity: 1,
-        description:
-          "Zinc oxide-based cream to treat and prevent diaper rash.",
+        description: "Zinc oxide-based cream to treat and prevent diaper rash.",
       },
       {
         name: "Diaper Pail",
+        key: "diaper-pail",
         isEssential: true,
-        suggestedPrice: "$25-70",
+        suggestedPrice: "$30-90",
         suggestedQuantity: 1,
-        description:
-          "Odor-locking trash can designed specifically for dirty diapers.",
+        description: "Odor-locking trash can designed specifically for dirty diapers.",
       },
       {
         name: "Diaper Bag",
+        key: "diaper-bag",
         isEssential: true,
         suggestedPrice: "$30-200",
         suggestedQuantity: 1,
-        description:
-          "Spacious bag with compartments for diapers, wipes, bottles, and a change of clothes.",
+        description: "Spacious bag with compartments for diapers, wipes, bottles, and a change of clothes.",
       },
       {
         name: "Portable Changing Pad",
+        key: "portable-changing-pad",
         isEssential: false,
         suggestedPrice: "$10-25",
         suggestedQuantity: 1,
-        description:
-          "Foldable, wipeable pad for diaper changes on the go.",
+        description: "Foldable, wipeable pad for diaper changes on the go.",
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 4. Gear & Travel
-  // ---------------------------------------------------------------------------
   {
     name: "Gear & Travel",
     icon: "car",
     items: [
       {
         name: "Infant Car Seat",
+        key: "infant-car-seat",
         isEssential: true,
         suggestedPrice: "$150-500",
         suggestedQuantity: 1,
         description:
-          "Rear-facing car seat required from day one. Must be installed before leaving the hospital.",
+          "A rear-facing seat for every car ride, starting with the trip home. Buy new, since a used seat may be expired or have been in a crash.",
+        sources: [AAP_CAR_SEATS, NHTSA_CAR_SEATS],
       },
       {
         name: "Convertible Car Seat",
+        key: "convertible-car-seat",
         isEssential: false,
-        suggestedPrice: "$150-400",
+        suggestedPrice: "$150-500",
         suggestedQuantity: 1,
         description:
-          "Transitions from rear-facing to forward-facing as baby grows. Can be used from birth.",
+          "The next seat after the infant seat, which most babies outgrow in their first year. Keep it rear-facing as long as the seat allows.",
+        sources: [AAP_CAR_SEATS, NHTSA_CAR_SEATS],
       },
       {
         name: "Full-Size Stroller",
+        key: "full-size-stroller",
+        aliases: ["stroller"],
         isEssential: true,
-        suggestedPrice: "$200-1000",
+        suggestedPrice: "$200-1,200",
         suggestedQuantity: 1,
-        description:
-          "Everyday stroller with good suspension, storage, and recline for naps on the go.",
+        description: "Everyday stroller with good suspension, storage, and recline for naps on the go.",
       },
       {
         name: "Baby Carrier / Wrap",
-        isEssential: true,
+        key: "baby-carrier-wrap",
+        isEssential: false,
         suggestedPrice: "$30-200",
         suggestedQuantity: 1,
-        description:
-          "Hands-free babywearing option for walks, errands, and soothing a fussy baby.",
+        description: "Carries baby hands-free on walks and errands. Keep baby's face in view and chin off their chest.",
       },
       {
-        name: "Play Mat / Activity Gym",
+        name: "Play Yard / Travel Crib",
+        key: "play-yard",
+        aliases: ["pack n play", "playard"],
+        formerNames: ["Travel Crib / Pack 'n Play"],
         isEssential: false,
-        suggestedPrice: "$30-80",
+        suggestedPrice: "$80-300",
         suggestedQuantity: 1,
-        description:
-          "Padded mat with hanging toys to encourage tummy time and reaching.",
-      },
-      {
-        name: "Travel Crib / Pack 'n Play",
-        isEssential: false,
-        suggestedPrice: "$80-200",
-        suggestedQuantity: 1,
-        description:
-          "Portable crib for travel, visits to grandparents, or as a secondary sleep space.",
+        description: "A portable bed for travel or a second room. Use only the mattress that came with it, with no extra padding.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Baby Swing",
+        key: "baby-swing",
         isEssential: false,
-        suggestedPrice: "$80-200",
+        suggestedPrice: "$80-250",
         suggestedQuantity: 1,
-        description:
-          "Motorized swing that soothes baby with gentle rocking motions.",
+        description: "Gently rocks a fussy baby during awake time. If baby falls asleep, move them to their crib or bassinet.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Bouncer",
+        key: "bouncer",
         isEssential: false,
-        suggestedPrice: "$30-100",
+        suggestedPrice: "$30-250",
         suggestedQuantity: 1,
-        description:
-          "Lightweight, portable seat that bounces with baby's movements. Great for supervised awake time.",
+        description: "A low seat that moves with baby during supervised awake time. Keep it on the floor, and don't use it for sleep.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Stroller Organizer",
+        key: "stroller-organizer",
         isEssential: false,
         suggestedPrice: "$15-30",
         suggestedQuantity: 1,
-        description:
-          "Clip-on caddy that holds your phone, keys, water bottle, and snacks.",
+        description: "Clip-on caddy that holds your phone, keys, water bottle, and snacks.",
       },
       {
-        name: "Car Seat Mirror",
+        name: "Car Seat Camera / Mirror",
+        key: "car-seat-camera-mirror",
+        aliases: ["car seat mirror", "baby car mirror", "baby car camera"],
+        formerNames: ["Car Seat Mirror"],
         isEssential: false,
-        suggestedPrice: "$10-20",
+        suggestedPrice: "$15-150",
         suggestedQuantity: 1,
         description:
-          "Attaches to the rear headrest so you can see a rear-facing baby from the driver's seat.",
+          "Lets the driver see a rear-facing baby. Mount it firmly on the headrest, not the car seat, and choose a light one that can't come loose.",
+        sources: [AAP_CAR_SEATS],
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 5. Bath
-  // ---------------------------------------------------------------------------
   {
     name: "Bath",
     icon: "bath",
     items: [
       {
         name: "Baby Bathtub",
+        key: "baby-bathtub",
         isEssential: true,
         suggestedPrice: "$15-50",
         suggestedQuantity: 1,
-        description:
-          "Contoured tub or insert that supports baby safely during bath time.",
+        description: "Holds baby securely in a few inches of water. Stay within arm's reach for the whole bath.",
       },
       {
         name: "Hooded Towels",
+        key: "hooded-towels",
         isEssential: true,
         suggestedPrice: "$10-20",
         suggestedQuantity: 3,
-        description:
-          "Soft, absorbent towels with a hood to keep baby's head warm after the bath.",
+        unit: ["towel", "towels"],
+        description: "Soft, absorbent towels with a hood to keep baby's head warm after the bath.",
       },
       {
         name: "Washcloths",
-        isEssential: false,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 10,
-        description:
-          "Small, gentle cloths for washing baby's face, body, and cleaning up messes.",
-      },
-      {
-        name: "Baby Shampoo / Wash",
-        isEssential: false,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 1,
-        description:
-          "Tear-free, gentle cleanser formulated for sensitive baby skin.",
-      },
-      {
-        name: "Baby Lotion",
-        isEssential: false,
-        suggestedPrice: "$6-10",
-        suggestedQuantity: 1,
-        description:
-          "Fragrance-free moisturizer to keep baby's skin soft and hydrated after baths.",
-      },
-      {
-        name: "Bath Toys",
+        key: "washcloths",
         isEssential: false,
         suggestedPrice: "$8-15",
         suggestedQuantity: 1,
-        description:
-          "Floating toys and cups for sensory play once baby can sit up in the tub.",
+        unit: ["pack", "packs"],
+        description: "Small, gentle cloths for washing baby's face, body, and cleaning up messes.",
+      },
+      {
+        name: "Baby Shampoo / Wash",
+        key: "baby-shampoo-wash",
+        isEssential: false,
+        suggestedPrice: "$8-12",
+        suggestedQuantity: 1,
+        description: "Tear-free, gentle cleanser formulated for sensitive baby skin.",
+      },
+      {
+        name: "Baby Lotion",
+        key: "baby-lotion",
+        isEssential: false,
+        suggestedPrice: "$6-10",
+        suggestedQuantity: 1,
+        description: "Fragrance-free moisturizer to keep baby's skin soft and hydrated after baths.",
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 6. Clothing
-  // ---------------------------------------------------------------------------
   {
     name: "Clothing",
     icon: "shirt",
     items: [
       {
-        name: "Onesies (0-3m)",
+        name: "Bodysuits (0-3m)",
+        key: "bodysuits-0-3m",
+        aliases: ["onesies (0-3m)"],
+        formerNames: ["Onesies (0-3m)"],
         isEssential: true,
-        suggestedPrice: "$15-25",
-        suggestedQuantity: 10,
-        description:
-          "Short- and long-sleeve bodysuits — the wardrobe staple for newborns.",
+        suggestedPrice: "$15-30",
+        suggestedQuantity: 2,
+        unit: ["pack", "packs"],
+        description: "Snap bodysuits are what newborns wear most days.",
+        sources: [NHS_WHAT_YOU_NEED],
       },
       {
         name: "Sleepers / Footies (0-3m)",
+        key: "sleepers-footies-0-3m",
         isEssential: true,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 8,
-        description:
-          "Zip-up or snap footed pajamas for easy nighttime changes.",
+        suggestedPrice: "$10-20",
+        suggestedQuantity: 6,
+        unit: ["sleeper", "sleepers"],
+        description: "Zip-up or snap footed pajamas for easy nighttime changes.",
+        sources: [NHS_WHAT_YOU_NEED],
       },
       {
         name: "Pants (0-3m)",
-        isEssential: true,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 5,
-        description:
-          "Soft, stretchy pants to pair with onesies. Elastic waistbands are easiest.",
+        key: "pants-0-3m",
+        isEssential: false,
+        suggestedPrice: "$12-25",
+        suggestedQuantity: 1,
+        unit: ["pack", "packs"],
+        description: "Soft, stretchy pants to pair with bodysuits. Elastic waistbands are easiest.",
       },
       {
-        name: "Socks (0-3m)",
+        name: "Socks",
+        key: "socks",
+        formerNames: ["Socks (0-3m)", "Socks (3-6m)"],
         isEssential: true,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 6,
-        description:
-          "Tiny socks to keep baby's feet warm. They fall off constantly — buy extras.",
+        suggestedPrice: "$8-15",
+        suggestedQuantity: 1,
+        unit: ["pack", "packs"],
+        description: "Keeps feet warm with bodysuits. Socks slip off often, so a multi-pack helps.",
       },
       {
-        name: "Hats (Newborn)",
-        isEssential: true,
+        name: "Hats",
+        key: "hats",
+        formerNames: ["Hats (Newborn)"],
+        isEssential: false,
         suggestedPrice: "$5-10",
-        suggestedQuantity: 3,
-        description:
-          "Soft cotton beanies to help regulate baby's body temperature.",
+        suggestedQuantity: 2,
+        unit: ["hat", "hats"],
+        description: "A soft hat for cool days outside. Don't put a hat on baby indoors or for sleep, since it can cause overheating.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Scratch Mittens",
+        key: "scratch-mittens",
         isEssential: false,
         suggestedPrice: "$5-8",
         suggestedQuantity: 3,
-        description:
-          "Prevent newborns from scratching their face with sharp little nails.",
+        unit: ["pair", "pairs"],
+        description: "Prevent newborns from scratching their face with sharp little nails.",
       },
       {
         name: "Going-Home Outfit",
+        key: "going-home-outfit",
+        formerNames: ["Dress-Up Outfit"],
         isEssential: false,
         suggestedPrice: "$15-30",
         suggestedQuantity: 1,
-        description:
-          "A special outfit for baby's first trip home from the hospital.",
+        description: "A special outfit for the trip home or for photos. Pick something thin enough to fit under car seat straps.",
+        sources: [AAP_CAR_SEATS],
       },
       {
-        name: "Onesies (3-6m)",
+        name: "Bodysuits (3-6m)",
+        key: "bodysuits-3-6m",
+        aliases: ["onesies (3-6m)"],
+        formerNames: ["Onesies (3-6m)"],
         isEssential: false,
-        suggestedPrice: "$15-25",
-        suggestedQuantity: 8,
-        description:
-          "Next-size-up bodysuits. Babies grow fast — have these ready to go.",
+        suggestedPrice: "$15-30",
+        suggestedQuantity: 2,
+        unit: ["pack", "packs"],
+        description: "Babies outgrow the first size fast, so the next size is always useful.",
       },
       {
         name: "Sleepers / Footies (3-6m)",
+        key: "sleepers-footies-3-6m",
         isEssential: false,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 6,
-        description:
-          "Footed pajamas in the next size up for continued nighttime comfort.",
+        suggestedPrice: "$10-20",
+        suggestedQuantity: 4,
+        unit: ["sleeper", "sleepers"],
+        description: "Footed pajamas in the next size up for continued nighttime comfort.",
       },
       {
-        name: "Onesies (6-9m)",
+        name: "Bodysuits (6-9m)",
+        key: "bodysuits-6-9m",
+        aliases: ["onesies (6-9m)"],
+        formerNames: ["Onesies (6-9m)"],
         isEssential: false,
-        suggestedPrice: "$15-25",
-        suggestedQuantity: 6,
-        description:
-          "Bodysuits for when baby is bigger and more active.",
-      },
-      {
-        name: "Pants (3-6m)",
-        isEssential: false,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 5,
-        description:
-          "Stretchy pants in the next size up for growing babies.",
+        suggestedPrice: "$15-30",
+        suggestedQuantity: 1,
+        unit: ["pack", "packs"],
+        description: "Bodysuits for when baby is bigger and more active.",
       },
       {
         name: "Jacket / Sweater",
+        key: "jacket-sweater",
         isEssential: false,
         suggestedPrice: "$15-30",
-        suggestedQuantity: 1,
-        description:
-          "Light layer for cool weather outings. Easy on/off is key.",
+        suggestedQuantity: 2,
+        description: "A light layer for cool days. Take thick jackets off before buckling into the car seat.",
+        sources: [AAP_CAR_SEATS],
       },
       {
         name: "Snowsuit / Bunting",
+        key: "snowsuit-bunting",
         isEssential: false,
         suggestedPrice: "$20-40",
         suggestedQuantity: 1,
-        description:
-          "Warm outer layer for cold-weather babies. Must be removed in the car seat.",
+        description: "Keeps baby warm outside in cold weather. Take it off in the car seat and lay a blanket over the buckled straps.",
+        sources: [AAP_CAR_SEATS],
       },
       {
         name: "Sun Hat",
+        key: "sun-hat",
         isEssential: false,
         suggestedPrice: "$8-15",
         suggestedQuantity: 1,
-        description:
-          "Wide-brim hat with a chin strap to protect baby from the sun.",
-      },
-      {
-        name: "Swimsuit",
-        isEssential: false,
-        suggestedPrice: "$10-20",
-        suggestedQuantity: 1,
-        description:
-          "Rash-guard style swimsuit with UPF protection for pool or beach outings.",
-      },
-      {
-        name: "Shoes / Booties",
-        isEssential: false,
-        suggestedPrice: "$10-20",
-        suggestedQuantity: 1,
-        description:
-          "Soft-soled shoes or booties. Mostly decorative until baby starts walking.",
-      },
-      {
-        name: "Rompers",
-        isEssential: false,
-        suggestedPrice: "$10-20",
-        suggestedQuantity: 5,
-        description:
-          "One-piece outfits that are easy to put on and great for warm weather.",
-      },
-      {
-        name: "Dress-Up Outfit",
-        isEssential: false,
-        suggestedPrice: "$15-30",
-        suggestedQuantity: 1,
-        description:
-          "A nicer outfit for photos, holidays, or special occasions.",
-      },
-      {
-        name: "Socks (3-6m)",
-        isEssential: false,
-        suggestedPrice: "$8-12",
-        suggestedQuantity: 6,
-        description:
-          "Next-size socks. Consider ones with grip dots once baby starts moving.",
-      },
-      {
-        name: "Burp-Cloth Bibs",
-        isEssential: false,
-        suggestedPrice: "$8-15",
-        suggestedQuantity: 6,
-        description:
-          "Bandana-style bibs that double as drool catchers and burp cloths.",
+        description: "A wide-brim hat with a chin strap. Shade and clothing are the main sun protection for babies under 6 months.",
+        sources: [AAP_SUN],
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 7. Health & Safety
-  // ---------------------------------------------------------------------------
   {
     name: "Health & Safety",
     icon: "heart-pulse",
     items: [
       {
         name: "Thermometer",
+        key: "thermometer",
         isEssential: true,
-        suggestedPrice: "$8-25",
+        suggestedPrice: "$10-40",
         suggestedQuantity: 1,
         description:
-          "Digital rectal or forehead thermometer for accurate temperature readings.",
+          "A digital thermometer that can take a rectal reading, the most accurate way for babies under 3 months. A forehead one is a handy extra.",
+        sources: [AAP_TEMPERATURE],
       },
       {
         name: "Nasal Aspirator",
+        key: "nasal-aspirator",
         isEssential: true,
         suggestedPrice: "$10-30",
         suggestedQuantity: 1,
-        description:
-          "Suction device to clear baby's stuffy nose. The NoseFrida is a parent favorite.",
+        description: "Clears a stuffy nose so baby can feed and sleep. Use it with saline drops.",
       },
       {
         name: "Nail Clipper Set",
+        key: "nail-clipper-set",
         isEssential: true,
         suggestedPrice: "$5-10",
         suggestedQuantity: 1,
-        description:
-          "Baby-sized clippers, file, and scissors for tiny, fast-growing nails.",
+        description: "Baby-sized clippers, file, and scissors for tiny, fast-growing nails.",
       },
       {
         name: "Humidifier",
-        isEssential: true,
+        key: "humidifier",
+        isEssential: false,
         suggestedPrice: "$25-60",
         suggestedQuantity: 1,
-        description:
-          "Cool-mist humidifier to keep nursery air comfortable and help with congestion.",
+        description: "Adds moisture to dry air. Choose cool mist, not warm, and clean it often.",
+        sources: [MAYO_HUMIDIFIERS],
       },
       {
         name: "Pacifiers",
+        key: "pacifiers",
         isEssential: true,
         suggestedPrice: "$5-10",
         suggestedQuantity: 4,
-        description:
-          "Orthodontic-style pacifiers for soothing. Try a couple of brands to find a favorite.",
+        unit: ["pacifier", "pacifiers"],
+        description: "Offering a pacifier at sleep time lowers the risk of SIDS. For breastfed babies, wait until feeding is going well.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Teethers",
+        key: "teethers",
+        aliases: ["teething toy"],
+        formerNames: ["Teething Toys"],
         isEssential: false,
         suggestedPrice: "$5-15",
-        suggestedQuantity: 3,
+        suggestedQuantity: 2,
+        unit: ["teether", "teethers"],
         description:
-          "Silicone or rubber teethers to relieve sore gums when teeth start coming in.",
+          "Solid rubber or silicone teethers soothe sore gums. Chill them in the fridge, not the freezer, and skip teething necklaces.",
+        sources: [FDA_TEETHING],
       },
       {
-        name: "Baby-Safe Detergent",
+        name: "Fragrance-Free Detergent",
+        key: "fragrance-free-detergent",
+        aliases: ["laundry detergent", "baby detergent"],
+        formerNames: ["Baby-Safe Detergent"],
         isEssential: false,
-        suggestedPrice: "$10-15",
+        suggestedPrice: "$10-20",
         suggestedQuantity: 1,
-        description:
-          "Fragrance-free, hypoallergenic laundry detergent for washing baby clothes and linens.",
+        description: "Gentle laundry detergent for baby's clothes and bedding. It doesn't need to be a special baby brand.",
+        sources: [NHS_WHAT_YOU_NEED],
       },
       {
         name: "First Aid Kit",
+        key: "first-aid-kit",
         isEssential: false,
         suggestedPrice: "$15-25",
         suggestedQuantity: 1,
+        description: "Kit with infant-safe essentials: saline drops, medicine dropper, bandages, and more.",
+      },
+      {
+        name: "Babyproofing Kit",
+        key: "babyproofing-kit",
+        aliases: ["outlet covers", "cabinet locks", "furniture anchors"],
+        isEssential: false,
+        suggestedPrice: "$20-60",
+        suggestedQuantity: 1,
         description:
-          "Kit with infant-safe essentials: saline drops, medicine dropper, bandages, and more.",
+          "Outlet covers, cabinet latches and furniture anchors for when baby starts to crawl. Anchoring dressers and TVs stops them tipping over.",
+        sources: [CPSC_ANCHOR_IT],
+      },
+      {
+        name: "Baby Gates",
+        key: "baby-gates",
+        aliases: ["safety gate"],
+        isEssential: false,
+        suggestedPrice: "$30-100",
+        suggestedQuantity: 2,
+        unit: ["gate", "gates"],
+        description: "Block stairs and doorways once baby crawls. Use a gate screwed to the wall at the top of stairs.",
+        sources: [NATIONWIDE_GATES],
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 8. Toys & Books
-  // ---------------------------------------------------------------------------
   {
     name: "Toys & Books",
     icon: "book-open",
     items: [
       {
         name: "Board Books",
+        key: "board-books",
         isEssential: false,
-        suggestedPrice: "$5-10",
+        suggestedPrice: "$6-12",
         suggestedQuantity: 10,
-        description:
-          "Sturdy, chewable books with bold images. Great for building an early library.",
+        unit: ["book", "books"],
+        description: "Sturdy, chewable books with bold images. Great for building an early library.",
       },
       {
         name: "Rattles",
+        key: "rattles",
         isEssential: false,
         suggestedPrice: "$5-10",
-        suggestedQuantity: 4,
-        description:
-          "Lightweight rattles that help develop baby's grip and auditory awareness.",
+        suggestedQuantity: 2,
+        unit: ["rattle", "rattles"],
+        description: "Lightweight rattles that help develop baby's grip and auditory awareness.",
       },
       {
         name: "High-Contrast Cards",
+        key: "high-contrast-cards",
         isEssential: false,
         suggestedPrice: "$8-12",
         suggestedQuantity: 1,
-        description:
-          "Black-and-white patterned cards that stimulate a newborn's developing vision.",
+        description: "Black-and-white patterned cards that stimulate a newborn's developing vision.",
       },
       {
         name: "Soft Plush Toys",
+        key: "soft-plush-toys",
         isEssential: false,
         suggestedPrice: "$10-20",
         suggestedQuantity: 2,
-        description:
-          "Cuddly stuffed animals for comfort. Keep out of the crib during sleep.",
+        description: "Cuddly toys for awake time. Keep them out of the crib for the first year.",
+        sources: [AAP_SAFE_SLEEP],
       },
       {
         name: "Play Gym",
+        key: "play-gym",
+        aliases: ["activity gym", "play mat"],
+        formerNames: ["Play Mat / Activity Gym"],
         isEssential: false,
-        suggestedPrice: "$30-80",
+        suggestedPrice: "$35-150",
         suggestedQuantity: 1,
-        description:
-          "Activity gym with arches and dangling toys for tummy time and reaching practice.",
-      },
-      {
-        name: "Teething Toys",
-        isEssential: false,
-        suggestedPrice: "$8-15",
-        suggestedQuantity: 3,
-        description:
-          "Textured, freezer-safe toys that soothe tender gums during teething.",
+        description: "A padded mat with hanging toys for tummy time and reaching.",
       },
       {
         name: "Stacking Toys",
+        key: "stacking-toys",
         isEssential: false,
         suggestedPrice: "$10-15",
         suggestedQuantity: 1,
-        description:
-          "Colorful rings or cups that teach cause-and-effect and fine motor skills.",
-      },
-      {
-        name: "Musical Toys",
-        isEssential: false,
-        suggestedPrice: "$10-20",
-        suggestedQuantity: 1,
-        description:
-          "Toys that play songs or sounds when pressed, encouraging exploration and interaction.",
+        description: "Colorful rings or cups that teach cause-and-effect and fine motor skills.",
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 9. Maternity & Postpartum
-  // ---------------------------------------------------------------------------
   {
     name: "Maternity & Postpartum",
     icon: "heart",
     items: [
       {
         name: "Postpartum Recovery Kit",
+        key: "postpartum-recovery-kit",
         isEssential: false,
         suggestedPrice: "$20-40",
         suggestedQuantity: 1,
-        description:
-          "All-in-one kit with pads, witch hazel, and soothing sprays for postpartum healing.",
+        description: "All-in-one kit with pads, witch hazel, and soothing sprays for postpartum healing.",
       },
       {
         name: "Peri Bottle",
+        key: "peri-bottle",
         isEssential: false,
         suggestedPrice: "$8-15",
         suggestedQuantity: 1,
-        description:
-          "Angled squeeze bottle for gentle cleansing during postpartum recovery.",
+        description: "Angled squeeze bottle for gentle cleansing during postpartum recovery.",
       },
       {
         name: "Postpartum Underwear",
+        key: "postpartum-underwear",
         isEssential: false,
         suggestedPrice: "$15-25",
-        suggestedQuantity: 5,
-        description:
-          "High-waisted, disposable or washable underwear designed for postpartum comfort.",
+        suggestedQuantity: 2,
+        unit: ["pack", "packs"],
+        description: "High-waisted, disposable or washable underwear designed for postpartum comfort.",
       },
       {
         name: "Nursing Bras",
+        key: "nursing-bras",
         isEssential: false,
-        suggestedPrice: "$15-30",
+        suggestedPrice: "$20-45",
         suggestedQuantity: 3,
-        description:
-          "Comfortable, clip-down bras for easy breastfeeding access.",
+        unit: ["bra", "bras"],
+        description: "Clip-down bras for easy feeding. Get fitted late in pregnancy, since your size will change.",
       },
       {
-        name: "Lactation Supplements",
+        name: "Pumping Bra",
+        key: "pumping-bra",
         isEssential: false,
-        suggestedPrice: "$15-25",
+        suggestedPrice: "$20-45",
         suggestedQuantity: 1,
-        description:
-          "Herbal supplements or lactation cookies to help support milk supply.",
+        description: "Holds the pump in place so your hands are free while pumping.",
       },
     ],
   },
-
-  // ---------------------------------------------------------------------------
-  // 10. Gifts & Extras
-  // ---------------------------------------------------------------------------
   {
     name: "Gifts & Extras",
     icon: "gift",
     items: [
       {
-        name: "Gift Cards",
-        isEssential: false,
-        suggestedPrice: "Variable",
-        suggestedQuantity: 1,
-        description:
-          "Gift cards to baby stores, Amazon, or Target let parents buy exactly what they need.",
-      },
-      {
         name: "Diaper Fund",
+        key: "diaper-fund",
         fund: true,
         isEssential: false,
-        suggestedPrice: "Variable",
+        suggestedPrice: "Any amount",
         suggestedQuantity: 1,
-        description:
-          "Cash contribution toward the never-ending diaper supply.",
+        description: "Money toward the never-ending diaper supply.",
+      },
+      {
+        name: "Postpartum Help Fund",
+        key: "postpartum-help-fund",
+        fund: true,
+        isEssential: false,
+        suggestedPrice: "Any amount",
+        suggestedQuantity: 1,
+        description: "Money toward meals, cleaning or extra help in the first weeks home.",
       },
       {
         name: "College Fund",
+        key: "college-fund",
         fund: true,
         isEssential: false,
-        suggestedPrice: "Variable",
+        suggestedPrice: "Any amount",
         suggestedQuantity: 1,
-        description:
-          "Contribution to a 529 plan or savings account for baby's future education.",
+        description: "Contribution to a 529 plan or savings account for baby's future education.",
       },
       {
         name: "Baby Memory Book",
+        key: "baby-memory-book",
         isEssential: false,
         suggestedPrice: "$15-35",
         suggestedQuantity: 1,
-        description:
-          "Journal or scrapbook for recording milestones, firsts, and memories.",
+        description: "Journal or scrapbook for recording milestones, firsts, and memories.",
       },
       {
         name: "Milestone Blanket / Cards",
+        key: "milestone-blanket-cards",
         isEssential: false,
         suggestedPrice: "$15-30",
         suggestedQuantity: 1,
-        description:
-          "Monthly milestone markers for tracking growth and taking adorable photos.",
+        description: "Monthly milestone markers for tracking growth and taking adorable photos.",
       },
     ],
   },

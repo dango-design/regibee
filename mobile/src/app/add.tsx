@@ -13,7 +13,16 @@ import { spacing, useTheme } from "@/lib/theme";
  * the owner picks a registry or Gift ideas, like one more list.
  */
 export default function AddScreen() {
-  const params = useLocalSearchParams<{ registryId?: string; url?: string; title?: string }>();
+  const params = useLocalSearchParams<{
+    registryId?: string;
+    url?: string;
+    title?: string;
+    // From the baby checklist's "Yes, add its link" (src/app/registry/[id]/checklist.tsx).
+    checklistEntry?: string;
+    categoryId?: string;
+    quantity?: string;
+    notes?: string;
+  }>();
   const theme = useTheme();
   const registries = useRegistries();
   const fallback = useDefaultRegistry(registries.data, params.registryId);
@@ -60,6 +69,16 @@ export default function AddScreen() {
           onChooseGiftIdea={params.registryId ? undefined : saveAsGiftIdea}
           initialLink={params.url ?? null}
           initialTitle={params.title ?? null}
+          fromChecklist={
+            params.checklistEntry
+              ? {
+                  entry: params.checklistEntry,
+                  categoryId: params.categoryId || null,
+                  quantity: Math.max(1, Number(params.quantity) || 1),
+                  notes: params.notes ?? "",
+                }
+              : null
+          }
           onDone={(result) => {
             if (result.type === "added") rememberRegistry(result.registryId);
             router.back();

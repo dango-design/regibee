@@ -54,17 +54,22 @@ export function PublicRegistryHero({
     // further when there's no welcome message.
     <section
       className={cx(
-        "relative flex items-center justify-center py-12",
+        "relative flex items-center justify-center overflow-hidden py-12",
         header ? HEADER_BAND : "bg-primary",
         isBabyRegistry ? "min-h-[400px]" : description ? "min-h-[260px]" : "min-h-[200px]",
       )}
       style={header ? listHeaderVars(header) : undefined}
     >
       {/* Decorative illustrations — baby-specific; personal registries keep
-          a clean hero. Pinned to a 1440px canvas. A band the owner chose
-          takes their place. */}
+          a clean hero. Pinned to a 1440px canvas centred on the page, so on a
+          narrower screen the outer ones go off the edges instead of the panda
+          and the bottle moving over the title. A band the owner chose takes
+          their place. */}
       {isBabyRegistry && !header && (
-        <div className="pointer-events-none absolute inset-0 mx-auto hidden max-w-[1440px] lg:block" aria-hidden="true">
+        <div
+          className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-[1440px] -translate-x-1/2 lg:block"
+          aria-hidden="true"
+        >
           {/* Left side */}
           <img src="/hero/star-teal-left.svg" alt="" className="absolute left-[89px] top-[108px] w-[62px] h-[63px]" />
           <img src="/hero/heart-red.svg" alt="" className="absolute left-[174px] top-[33px] w-[70px] h-[57px]" />
