@@ -170,6 +170,109 @@ export function profileAudienceFields(
 }
 
 /**
+ * The columns to save when a manager changes who can open a list, and maybe
+ * who sees it on the profile. The Settings page (updateRegistry) and the
+ * Share panel (updateListSharing) both use this, so they follow the same
+ * rules:
+ * - A private list comes off the profile, whoever makes it private.
+ * - Only the owner chooses who sees it on the profile, since it shows under
+ *   their name. A co-manager's choice is ignored.
+ * - The choice is clamped to what the access allows. A list that stops being
+ *   public with no new choice keeps its saved one: profileAudience reads
+ *   "everyone" as followers then.
+ * - Older phone app builds only send `listedOnProfile`. That turns the
+ *   listing on or off and leaves the saved choice alone.
+ */
+export function sharingColumns(change: {
+  visibility: ListVisibility;
+  isOwner: boolean;
+  audience?: ProfileAudience | null;
+  listedOnProfile?: boolean | null;
+}): {
+  is_private: boolean;
+  is_public: boolean;
+  listed_on_profile?: boolean;
+  profile_audience?: Exclude<ProfileAudience, "hidden"> | null;
+} {
+  const { visibility, isOwner, audience, listedOnProfile } = change;
+  const columns = visibilityColumns(visibility);
+  if (visibility === "private") return { ...columns, listed_on_profile: false };
+  if (isOwner && audience) return { ...columns, ...profileAudienceColumns(audience, visibility) };
+  if (isOwner && listedOnProfile != null) return { ...columns, listed_on_profile: listedOnProfile };
+  return columns;
+}
+
+/**
+ * What to say before changing who can open a list, or null when the change
+ * needs no warning. The change waits until the person presses `confirm`.
+ * - Going private: people with the link can't open it, and it comes off its
+ *   events (and the wishlists guests added it as), its groups and the
+ *   profile. The database does that (20261115084541_private_lists.sql), and
+ *   nothing puts it back if the list is opened again.
+ * - Going public: search engines can show it.
+ */
+export function accessChangeWarning(
+  from: ListVisibility,
+  to: ListVisibility,
+  linked: {
+    /** The names of the events the list is on. */
+    events: string[];
+    /** It shows on the owner's profile now. */
+    onProfile: boolean;
+    /** The person changing it is the owner, so it's "your profile". */
+    isOwner: boolean;
+  },
+): { title: string; text: string; confirm: string } | null {
+  if (from === to) return null;
+  if (to === "private") {
+    const events =
+      linked.events.length > 2
+        ? [linked.events[0], `${linked.events.length - 1} other events`]
+        : linked.events;
+    const places = [
+      ...events,
+      ...(linked.onProfile ? [linked.isOwner ? "your profile" : "the owner's profile"] : []),
+      "any groups it's shared with",
+    ];
+    return {
+      title: "Make this list private?",
+      text: `People with the link won't be able to open it, and it comes off ${joinWords(places)}. Opening it again later won't put it back.`,
+      confirm: "Make private",
+    };
+  }
+  if (to === "public") {
+    return {
+      title: "Make this list public?",
+      text: "Search engines can show it, so anyone can find it and open it.",
+      confirm: "Make public",
+    };
+  }
+  return null;
+}
+
+/**
+ * What to say after a change to who can open a list moved who sees it on the
+ * profile, or null. Only a public list can show to everyone, so one that
+ * stops being public shows to followers instead.
+ */
+export function profileChangeNotice(
+  before: { visibility: ListVisibility; audience: ProfileAudience },
+  after: ListVisibility,
+  isOwner: boolean,
+): string | null {
+  if (before.audience !== "everyone" || after !== "link") return null;
+  return isOwner
+    ? "Now only followers see it on your profile. Only public lists can show to everyone."
+    : "Now only the owner's followers see it on their profile. Only public lists can show to everyone.";
+}
+
+/** "a", "a and b", "a, b and c". */
+function joinWords(words: string[]): string {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+/**
  * How someone looking at a profile relates to its owner.
  * - friend: an approved follower the owner also follows, approved.
  * - follower: an approved follower the owner doesn't follow back.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Button as AriaButton,
@@ -24,17 +24,29 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { SelectField } from "@/components/base/select/select-field";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { ListProgressBar, ListProgressKey } from "@/components/list-progress-bar";
 import { RegistryAvatar } from "@/components/registry-avatar";
 import { UnlinkEventButton } from "@/components/unlink-event-button";
 import type { BannerEvent } from "@/components/registry-events-banner";
-import { dismissEventPrompt } from "@/lib/actions/registry";
+import { dismissEventPrompt, updateListSharing } from "@/lib/actions/registry";
 import { trackClick } from "@/lib/analytics-client";
 import { eventTypeLabel, formatShortEventDate } from "@/lib/events";
 import { reservationsHiddenText, type ListProgress } from "@/lib/gifts";
-import { LIST_ACCESS, PROFILE_AUDIENCE, type ListVisibility, type ProfileAudience } from "@/lib/list-access";
+import {
+  LIST_ACCESS,
+  LIST_VISIBILITIES,
+  PROFILE_AUDIENCE,
+  accessChangeWarning,
+  clampProfileAudience,
+  profileAudienceChoices,
+  profileChangeNotice,
+  type ListVisibility,
+  type ProfileAudience,
+} from "@/lib/list-access";
 import { listHeader, type ListHeader } from "@/lib/list-headers";
 import { HEADER_BAND, HEADER_INK, listHeaderVars } from "@/lib/list-header-style";
 import { cx } from "@/lib/utils/cx";
@@ -48,8 +60,12 @@ export interface OwnerListTopProps {
   itemCount: number;
   /** "Due date: February 4, 2027", for lists with a date. */
   dateLabel?: string | null;
-  /** Who can open the list and who sees it on the profile. `href` is where to change them. */
-  access: { visibility: ListVisibility; audience: ProfileAudience; href: string };
+  /**
+   * Who can open the list and who sees it on the profile. Share changes them.
+   * `href` is the Settings page's sharing section, for the rest.
+   * `noProfile` is for a guest account, which has no profile.
+   */
+  access: { visibility: ListVisibility; audience: ProfileAudience; href: string; noProfile?: boolean };
   /** The list's own link, "/r/<slug>". Share copies it. */
   sharePath: string;
   /** The ⋯ menu's links. `plan` shows "Plan an event" when it's set. */
@@ -91,6 +107,11 @@ export interface OwnerListTopProps {
   /** Stories and the demo pass stand-ins. */
   unlinkAction?: (eventId: string, registryId: string) => Promise<{ error: string | null }>;
   dismissAction?: (registryId: string) => Promise<{ error: string | null }>;
+  /** Saves a change from Share. Defaults to updateListSharing. */
+  shareAction?: (
+    registryId: string,
+    change: { visibility: ListVisibility; profileAudience?: ProfileAudience },
+  ) => Promise<{ error: string } | { error: null; visibility: ListVisibility; audience: ProfileAudience }>;
 }
 
 /**
@@ -99,7 +120,7 @@ export interface OwnerListTopProps {
  * (src/lib/list-headers.ts) with the title, and a card hanging off its edge.
  *
  * The owner's tools sit in the band's top right corner, so nothing but the
- * title sits in the middle: Share (copies the link and says who can open
+ * title sits in the middle: Share (copies the link and changes who can open
  * it), a crossed-out gift when gifts are hidden from the owner, the Header
  * button and a ⋯ menu with Preview, Plan an event and Settings.
  *
@@ -130,6 +151,7 @@ export function OwnerListTop({
   basePath = "",
   unlinkAction,
   dismissAction = dismissEventPrompt,
+  shareAction = updateListSharing,
 }: OwnerListTopProps) {
   // Hide the prompt as soon as it's dismissed. The page then reloads its data.
   const [promptHidden, setPromptHidden] = useState(false);
@@ -254,7 +276,14 @@ export function OwnerListTop({
         style={listHeaderVars(header)}
       >
         <div className="absolute top-3 right-3 flex items-center gap-1 sm:top-4 sm:right-4">
-          <ShareButton path={sharePath} access={access} />
+          <ShareButton
+            registryId={registryId}
+            path={sharePath}
+            access={access}
+            events={events}
+            manager={manager}
+            shareAction={shareAction}
+          />
           {hidden && <HiddenGiftsButton hidden={hidden} />}
           {customize}
           <MoreMenu links={links} />
@@ -361,17 +390,67 @@ function Panel({ className, ...props }: Omit<AriaPopoverProps, "className"> & { 
 }
 
 /**
- * Share: copies the list's link at once, and opens a panel that says so and
- * says who can open the list and who sees it on the profile, with a link to
- * change them. A private list has no link to share, so it says that instead.
+ * Share: copies the list's link at once, and opens a panel that says so. The
+ * panel changes who can open the list and who sees it on the profile, with
+ * the same rules as the Settings page (sharingColumns in
+ * src/lib/list-access.ts). Each change saves as soon as it's picked, except
+ * going private or public, which warn first and wait for a confirm
+ * (accessChangeWarning). A private list has no link to share, so the panel
+ * says that instead of showing one.
+ *
+ * Only the owner chooses who sees it on the profile. A co-manager sees the
+ * owner's choice, and a guest account has no profile, so it shows nothing.
  */
-function ShareButton({ path, access }: { path: string; access: OwnerListTopProps["access"] }) {
+function ShareButton({
+  registryId,
+  path,
+  access,
+  events,
+  manager,
+  shareAction,
+}: {
+  registryId: string;
+  path: string;
+  access: OwnerListTopProps["access"];
+  events: BannerEvent[];
+  manager: boolean;
+  shareAction: NonNullable<OwnerListTopProps["shareAction"]>;
+}) {
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState<boolean | null>(null);
-  const isPrivate = access.visibility === "private";
+  // What's saved. It follows the page's data, which reloads after a save.
+  const [visibility, setVisibility] = useState(access.visibility);
+  const [audience, setAudience] = useState(access.audience);
+  useEffect(() => {
+    setVisibility(access.visibility);
+    setAudience(access.audience);
+  }, [access.visibility, access.audience]);
+  // A change waiting for its warning's confirm.
+  const [pending, setPending] = useState<ListVisibility | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+  }, []);
+
+  const isOwner = !manager;
+  const showProfile = !access.noProfile;
+  const isPrivate = visibility === "private";
+  const shownVisibility = pending ?? visibility;
+  const warning = pending
+    ? accessChangeWarning(visibility, pending, {
+        events: events.map((event) => event.title),
+        onProfile: showProfile && audience !== "hidden",
+        isOwner,
+      })
+    : null;
+
+  const linkFor = () => `${window.location.origin}${path}`;
 
   const copy = async () => {
-    const link = `${window.location.origin}${path}`;
+    const link = linkFor();
     setUrl(link);
     try {
       await navigator.clipboard.writeText(link);
@@ -382,10 +461,60 @@ function ShareButton({ path, access }: { path: string; access: OwnerListTopProps
     }
   };
 
+  const save = async (change: { visibility: ListVisibility; profileAudience?: ProfileAudience }) => {
+    const before = { visibility, audience };
+    setPending(null);
+    setError(null);
+    setNotice(null);
+    setStatus("saving");
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    // Show the choice at once, and put it back if saving fails.
+    setVisibility(change.visibility);
+    if (change.profileAudience) setAudience(change.profileAudience);
+    const result = await shareAction(registryId, change);
+    if (result.error !== null) {
+      setVisibility(before.visibility);
+      setAudience(before.audience);
+      setError(result.error);
+      setStatus("idle");
+      return;
+    }
+    setVisibility(result.visibility);
+    setAudience(result.audience);
+    if (showProfile) setNotice(profileChangeNotice(before, result.visibility, isOwner));
+    // A list that was private had no link in the panel. Show it now; copying
+    // it is one more click, since the browser may refuse a copy this late.
+    if (before.visibility === "private" && result.visibility !== "private") {
+      setUrl(linkFor());
+      setCopied(false);
+    }
+    setStatus("saved");
+    savedTimer.current = setTimeout(() => setStatus("idle"), 2000);
+  };
+
+  const chooseVisibility = (next: ListVisibility) => {
+    if (next === visibility) {
+      setPending(null);
+      return;
+    }
+    const nextWarning = accessChangeWarning(visibility, next, {
+      events: [],
+      onProfile: false,
+      isOwner,
+    });
+    if (nextWarning) setPending(next);
+    else void save({ visibility: next });
+  };
+
   return (
     <DialogTrigger
       onOpenChange={(open) => {
         if (open && !isPrivate) void copy();
+        if (!open) {
+          setPending(null);
+          setError(null);
+          setNotice(null);
+        }
       }}
     >
       <AriaButton className="me-1 inline-flex h-9 cursor-pointer items-center rounded-lg bg-brand-solid px-4 text-sm font-semibold text-primary_on-brand transition outline-none hover:bg-brand-solid_hover focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-2 max-sm:h-11">
@@ -412,35 +541,72 @@ function ShareButton({ path, access }: { path: string; access: OwnerListTopProps
               )}
             </p>
           )}
-          <dl className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-tertiary">Who can open it</dt>
-              <dd className="font-medium text-primary">{LIST_ACCESS[access.visibility].label}</dd>
-            </div>
-            {!isPrivate && (
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-tertiary">On your profile</dt>
-                <dd className="font-medium text-primary">{PROFILE_AUDIENCE[access.audience].label}</dd>
+          <div className="flex flex-col gap-3">
+            <SelectField
+              label="Who can open it"
+              value={shownVisibility}
+              onChange={(value) => chooseVisibility(value as ListVisibility)}
+              options={LIST_VISIBILITIES.map((value) => ({ value, label: LIST_ACCESS[value].label }))}
+              disabled={status === "saving"}
+            />
+            {warning && pending && (
+              <div className="flex flex-col gap-1 rounded-lg bg-warning-primary px-3 py-2.5 text-warning-800 dark:text-warning-300">
+                <p className="font-semibold">{warning.title}</p>
+                <p>{warning.text}</p>
+                <div className="mt-2 flex justify-end gap-2">
+                  <Button size="sm" color="secondary" onClick={() => setPending(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    color={pending === "private" ? "primary-destructive" : "primary"}
+                    onClick={() => void save({ visibility: pending })}
+                  >
+                    {warning.confirm}
+                  </Button>
+                </div>
               </div>
             )}
-          </dl>
-          <div className="flex items-center gap-2 border-t border-secondary pt-4">
+            {showProfile && shownVisibility !== "private" && (
+              isOwner ? (
+                <SelectField
+                  label="On your profile"
+                  value={clampProfileAudience(audience, shownVisibility)}
+                  onChange={(value) => void save({ visibility, profileAudience: value as ProfileAudience })}
+                  options={profileAudienceChoices(shownVisibility).map((value) => ({
+                    value,
+                    label: PROFILE_AUDIENCE[value].label,
+                  }))}
+                  // Who Friends are isn't obvious from the word.
+                  hint={audience === "friends" ? PROFILE_AUDIENCE.friends.description : undefined}
+                  disabled={status === "saving" || pending !== null}
+                />
+              ) : (
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-tertiary">On the owner&apos;s profile</span>
+                  <span className="font-medium text-primary">{PROFILE_AUDIENCE[audience].label}</span>
+                </div>
+              )
+            )}
+            {(status !== "idle" || error || notice) && (
+              <p role="status" className={cx("text-xs", error ? "text-error-primary" : "text-tertiary")}>
+                {error ?? (status === "saving" ? "Saving…" : notice ?? "Saved")}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-3 border-t border-secondary pt-4">
             {!isPrivate && (
               <input
                 aria-label="List link"
                 readOnly
                 value={url}
                 onFocus={(e) => e.currentTarget.select()}
-                className="h-9 min-w-0 flex-1 rounded-lg border border-secondary bg-secondary px-2.5 text-xs text-secondary outline-none focus-visible:ring-2 focus-visible:ring-brand-solid"
+                className="h-9 min-w-0 rounded-lg border border-secondary bg-secondary px-2.5 text-xs text-secondary outline-none focus-visible:ring-2 focus-visible:ring-brand-solid"
               />
             )}
             {/* A link opens its page in place, so the panel closes itself. */}
-            <Link
-              href={access.href}
-              onClick={close}
-              className={cx("font-medium text-brand-tertiary hover:underline", isPrivate ? "" : "shrink-0 px-1")}
-            >
-              Change
+            <Link href={access.href} onClick={close} className="font-medium text-brand-tertiary hover:underline">
+              More sharing settings
             </Link>
           </div>
           </>
