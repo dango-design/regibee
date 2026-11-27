@@ -6,6 +6,8 @@ These tests take a screenshot of every Storybook story and compare it with a sav
 
 - `.github/workflows/story-screenshots.yml` runs on pull requests that change `src/`, `public/`, `.storybook/`, this folder or `package.json`.
 - It builds Storybook, then `stories.spec.ts` opens each story in Chromium with Playwright and takes a picture of the whole page.
+- It waits for each story's play function to finish. A story whose play function throws fails the check. Storybook itself only logs that error and shows the story as it was before the play function, so without this the picture would quietly miss what the play function sets up, such as an open dialog.
+- Stories are served from `https://storybook.test`, a made-up address that Playwright answers from `storybook-static`. It has to be https: Storybook gives a play function the `userEvent` in its context (`async ({ userEvent }) => ...`) only when the browser offers `navigator.clipboard`, and browsers offer that only on https pages and localhost.
 - The baselines are PNG files in `baselines/`, one for each story, named by the story's id. They are committed, so each branch carries its own baselines and a merge brings them to `main`.
 - It skips the stories Chromatic skips: the ones with `parameters: { chromatic: { disableSnapshot: true } }`.
 - A story with `globals: { viewport: { value: "mobile1" } }` is taken at that viewport's size. Every other story is 1200 pixels wide.
