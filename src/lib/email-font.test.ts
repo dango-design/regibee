@@ -36,17 +36,17 @@ test("the emails set the font", () => {
 
 // email-templates.ts imports server code, so Node can't run its templates
 // here. This reads the files instead: each template returns its HTML through
-// withEmailFont.
-test("every template returns its HTML through withEmailFont", () => {
+// emailLayout, which sets the font with withEmailFont.
+test("every template returns its HTML through emailLayout", () => {
   for (const file of ["email-templates.ts", "event-email-templates.ts", "group-gift-email-templates.ts"]) {
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     const templates = source.match(/^export function \w+Html\(/gm) ?? [];
-    const wrapped = source.match(/^  return withEmailFont\(/gm) ?? [];
+    const wrapped = source.match(/^  return emailLayout\(/gm) ?? [];
     assert.ok(templates.length > 0, `${file} has no templates`);
     assert.equal(
       wrapped.length,
       templates.length,
-      `${file} has ${templates.length} templates, and ${wrapped.length} return through withEmailFont`,
+      `${file} has ${templates.length} templates, and ${wrapped.length} return through emailLayout`,
     );
   }
 });

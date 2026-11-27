@@ -4,31 +4,14 @@
  * Storybook previews them. Every value is escaped, because pledgers type
  * their names on a page anyone with the link can open, and the organizer
  * writes the payback note. Every template returns its HTML through
- * withEmailFont, which sets the font.
+ * emailLayout, which sets the font.
  */
 
-import { withEmailFont } from "./email-font.ts";
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
-  );
-}
-
-const BUTTON_STYLE =
-  "background-color:#004659;color:#ffffff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:600;";
-
-const BOX_STYLE = "background:#F0FAFC;border-radius:12px;padding:14px 16px;line-height:1.6;";
-
-const FOOTNOTE_STYLE = "color:#888;font-size:13px;";
-
-function button(href: string, label: string): string {
-  return `<p style="margin:24px 0 8px;"><a href="${escapeHtml(href)}" style="${BUTTON_STYLE}">${escapeHtml(label)}</a></p>`;
-}
+import { EMAIL_BOX_STYLE, EMAIL_SMALL_STYLE, emailButton, emailLayout, escapeHtml } from "./email-font.ts";
 
 function paybackBox(organizerName: string, paybackNote: string | null | undefined): string {
   return paybackNote
-    ? `<p style="${BOX_STYLE}">Pay ${escapeHtml(organizerName)} back: <strong>${escapeHtml(paybackNote)}</strong></p>`
+    ? `<p style="${EMAIL_BOX_STYLE}">Pay ${escapeHtml(organizerName)} back: <strong>${escapeHtml(paybackNote)}</strong></p>`
     : "";
 }
 
@@ -42,18 +25,22 @@ export function groupGiftStartedHtml(opts: {
   paybackNote?: string | null;
   shareUrl: string;
 }): string {
-  return withEmailFont(`
-    <p>Hi ${escapeHtml(opts.organizerName)},</p>
-    <p>Your group gift for ${escapeHtml(opts.recipientName)} is set up: <strong>${escapeHtml(opts.itemTitle)}</strong>${
-      opts.goal ? `, collecting ${escapeHtml(opts.goal)}` : ""
-    }. It's reserved in your name until you buy it, so nobody else will.</p>
-    <p>Send this link to the people chipping in. They don't need an account.</p>
-    <p style="${BOX_STYLE}"><a href="${escapeHtml(opts.shareUrl)}" style="color:#004659;word-break:break-all;">${escapeHtml(opts.shareUrl)}</a></p>
-    ${opts.paybackNote ? `<p>They'll see how to pay you back: <strong>${escapeHtml(opts.paybackNote)}</strong></p>` : ""}
-    ${button(opts.shareUrl, "Open the group gift")}
-    <p>When you've bought it, mark it bought on that page, and ${escapeHtml(opts.recipientName)} hears about it the usual way. ${escapeHtml(opts.recipientName)} only sees it's from you and others, never who chipped in.</p>
-    <p style="${FOOTNOTE_STYLE}">Anyone with the link can see the group gift and chip in, so only share it with people you trust. You're receiving this because you started a group gift on Regibee.</p>
-  `);
+  return emailLayout({
+    preheader: "Send the link to the people chipping in. They don't need an account.",
+    eyebrow: `For ${opts.recipientName}`,
+    heading: "Your group gift is set up",
+    body: `
+      <p><strong>${escapeHtml(opts.itemTitle)}</strong>${
+        opts.goal ? `, collecting ${escapeHtml(opts.goal)}` : ""
+      }. It's reserved in your name until you buy it, so nobody else will.</p>
+      <p>Send this link to the people chipping in. They don't need an account.</p>
+      <p style="${EMAIL_BOX_STYLE}"><a href="${escapeHtml(opts.shareUrl)}" style="color:#004659;word-break:break-all;">${escapeHtml(opts.shareUrl)}</a></p>
+      ${opts.paybackNote ? `<p>They'll see how to pay you back: <strong>${escapeHtml(opts.paybackNote)}</strong></p>` : ""}
+      ${emailButton(opts.shareUrl, "Open the group gift")}
+      <p>When you've bought it, mark it bought on that page, and ${escapeHtml(opts.recipientName)} hears about it the usual way. ${escapeHtml(opts.recipientName)} only sees it's from you and others, never who chipped in.</p>
+      <p style="${EMAIL_SMALL_STYLE}">Anyone with the link can see the group gift and chip in, so only share it with people you trust.</p>`,
+    footer: "You're getting this because you started a group gift on Regibee.",
+  });
 }
 
 /** Sent to someone who chipped in, with their own link to change it. */
@@ -67,13 +54,17 @@ export function groupGiftPledgedHtml(opts: {
   paybackNote?: string | null;
   pledgeUrl: string;
 }): string {
-  return withEmailFont(`
-    <p>Hi ${escapeHtml(opts.pledgerName)},</p>
-    <p>You're chipping in <strong>${escapeHtml(opts.amount)}</strong> toward <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}. ${escapeHtml(opts.organizerName)} is buying it, so send the money to them.</p>
-    ${paybackBox(opts.organizerName, opts.paybackNote)}
-    ${button(opts.pledgeUrl, "See the group gift")}
-    <p style="${FOOTNOTE_STYLE}">Use that link to change your amount or take it back. It's yours, so don't forward this email. You're receiving this because you chipped in on a Regibee group gift.</p>
-  `);
+  return emailLayout({
+    preheader: `${opts.organizerName} is buying it, so send the money to them.`,
+    eyebrow: `${opts.itemTitle} for ${opts.recipientName}`,
+    heading: `You're chipping in ${opts.amount}`,
+    body: `
+      <p>${escapeHtml(opts.organizerName)} is buying <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}, so send the money to them.</p>
+      ${paybackBox(opts.organizerName, opts.paybackNote)}
+      ${emailButton(opts.pledgeUrl, "See the group gift")}
+      <p style="${EMAIL_SMALL_STYLE}">Use that link to change your amount or take it back. It's yours, so don't forward this email.</p>`,
+    footer: "You're getting this because you chipped in on a Regibee group gift. Regibee never handles the money.",
+  });
 }
 
 /** Tells the organizer that someone chipped in. */
@@ -87,13 +78,16 @@ export function groupGiftNewPledgeHtml(opts: {
   progress: string;
   shareUrl: string;
 }): string {
-  return withEmailFont(`
-    <p>Hi ${escapeHtml(opts.organizerName)},</p>
-    <p><strong>${escapeHtml(opts.pledgerName)}</strong> is chipping in <strong>${escapeHtml(opts.amount)}</strong> toward <strong>${escapeHtml(opts.itemTitle)}</strong>. That's ${escapeHtml(opts.progress)}.</p>
-    <p>Mark it paid on the group gift page once they've sent it.</p>
-    ${button(opts.shareUrl, "Open the group gift")}
-    <p style="${FOOTNOTE_STYLE}">You're receiving this because you started a group gift on Regibee.</p>
-  `);
+  return emailLayout({
+    preheader: `That's ${opts.progress}.`,
+    eyebrow: opts.itemTitle,
+    heading: `${opts.pledgerName} is chipping in ${opts.amount}`,
+    body: `
+      <p style="${EMAIL_BOX_STYLE}"><strong>${escapeHtml(opts.progress)}</strong></p>
+      <p>Mark it paid on the group gift page once they've sent it.</p>
+      ${emailButton(opts.shareUrl, "Open the group gift")}`,
+    footer: "You're getting this because you started a group gift on Regibee.",
+  });
 }
 
 /** Tells someone who chipped in that the organizer called the gift off. */
@@ -105,14 +99,17 @@ export function groupGiftCalledOffHtml(opts: {
   /** The organizer had marked their pledge paid. */
   paid: boolean;
 }): string {
-  return withEmailFont(`
-    <p>Hi ${escapeHtml(opts.pledgerName)},</p>
-    <p>${escapeHtml(opts.organizerName)} called off the group gift of <strong>${escapeHtml(opts.itemTitle)}</strong> for ${escapeHtml(opts.recipientName)}, so you don't need to chip in.</p>
-    <p>${
-      opts.paid
-        ? `${escapeHtml(opts.organizerName)} had marked your share as paid. Ask them to send it back.`
-        : `If you already sent ${escapeHtml(opts.organizerName)} money for it, ask them to send it back.`
-    }</p>
-    <p style="${FOOTNOTE_STYLE}">You're receiving this because you chipped in on a Regibee group gift.</p>
-  `);
+  return emailLayout({
+    preheader: "You don't need to chip in.",
+    eyebrow: `${opts.itemTitle} for ${opts.recipientName}`,
+    heading: "The group gift was called off",
+    body: `
+      <p>${escapeHtml(opts.organizerName)} called off the group gift, so you don't need to chip in.</p>
+      <p>${
+        opts.paid
+          ? `${escapeHtml(opts.organizerName)} had marked your share as paid. Ask them to send it back.`
+          : `If you already sent ${escapeHtml(opts.organizerName)} money for it, ask them to send it back.`
+      }</p>`,
+    footer: "You're getting this because you chipped in on a Regibee group gift.",
+  });
 }

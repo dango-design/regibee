@@ -33,6 +33,13 @@ function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
+/** An item photo's full URL, since mail apps can't load "/hero/x.svg". Null when there's none. */
+function absoluteUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return url.startsWith("/") ? `${siteUrl()}${url}` : null;
+}
+
 /** "Amazon" for a known store, else the link's host, like "etsy.com". */
 function storeNameFor(url: string | null): string | undefined {
   if (!url) return undefined;
@@ -72,7 +79,7 @@ async function loadGift(purchaseId: string) {
 
   const { data: item } = await supabaseAdmin
     .from("registry_items")
-    .select("id, title, external_url, registry_id, price")
+    .select("id, title, external_url, registry_id, price, image_url")
     .eq("id", purchase.registry_item_id)
     .single();
   if (!item) return null;
@@ -104,6 +111,9 @@ async function loadGift(purchaseId: string) {
   return {
     purchase,
     item,
+    // For the item card in the emails. Mail apps need a full URL.
+    itemImageUrl: absoluteUrl(item.image_url as string | null),
+    itemPrice: item.price != null ? Number(item.price) : null,
     registry,
     links,
     registryStoreName,
@@ -136,6 +146,8 @@ export async function sendReservationEmail(purchaseId: string) {
     registryStoreName: gift.registryStoreName,
     shopUrl: item.external_url || undefined,
     storeName: gift.storeName,
+    itemImageUrl: gift.itemImageUrl,
+    itemPrice: gift.itemPrice,
     confirmUrl: links.confirmUrl,
     releaseUrl: links.releaseUrl,
   });
@@ -170,6 +182,8 @@ export async function sendGiftConfirmedEmails(purchaseId: string, by: "visitor" 
       buyerName: purchase.buyer_name,
       hideGiver: !!purchase.hide_giver,
       quantity: purchase.quantity,
+      itemImageUrl: gift.itemImageUrl,
+      itemPrice: gift.itemPrice,
       message: purchase.message,
       welcomeBox,
     }),
@@ -182,6 +196,7 @@ export async function sendGiftConfirmedEmails(purchaseId: string, by: "visitor" 
           quantity: purchase.quantity,
           parentName: registry.parentName,
           registryTitle: registry.registryTitle,
+          itemImageUrl: gift.itemImageUrl,
           registryUrl: links.registryUrl,
           undoUrl: links.releaseUrl,
         })
@@ -229,6 +244,7 @@ export async function sendCoverGiftEmails(purchaseId: string) {
       hideGiver: !!purchase.hide_giver,
       quantity: purchase.quantity,
       amount,
+      itemImageUrl: gift.itemImageUrl,
       message: purchase.message,
     }),
     purchase.buyer_email
@@ -241,6 +257,7 @@ export async function sendCoverGiftEmails(purchaseId: string) {
           amount,
           parentName: registry.parentName,
           registryTitle: registry.registryTitle,
+          itemImageUrl: gift.itemImageUrl,
           registryUrl: links.registryUrl,
           undoUrl: links.releaseUrl,
         })
@@ -343,6 +360,8 @@ export async function processGiftReservations(now = new Date()) {
       registryStoreName: gift.registryStoreName,
       shopUrl: gift.item.external_url || undefined,
       storeName: gift.storeName,
+      itemImageUrl: gift.itemImageUrl,
+      itemPrice: gift.itemPrice,
       confirmUrl: gift.links.confirmUrl,
       releaseUrl: gift.links.releaseUrl,
     });

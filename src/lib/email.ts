@@ -332,6 +332,9 @@ export async function notifyItemGiven(opts: {
   /** A Secret Santa's gift: the owners see "Secret Santa", not the name. */
   hideGiver?: boolean;
   quantity: number;
+  /** The item's photo, as a full URL, and its price, for the email's item card. */
+  itemImageUrl?: string | null;
+  itemPrice?: number | null;
   message?: string | null;
   /** Set when this gift may have unlocked a store's welcome box. */
   welcomeBox?: { storeName: string; boxName: string } | null;
@@ -373,6 +376,8 @@ export async function notifyItemGiven(opts: {
             buyerName,
             itemTitle: opts.itemTitle,
             quantity: opts.quantity,
+            itemImageUrl: opts.itemImageUrl,
+            itemPrice: opts.itemPrice,
             message: opts.message,
             dashboardLink,
             welcomeBox,
@@ -485,6 +490,8 @@ export async function notifyItemCovered(opts: {
   quantity: number;
   /** Price times quantity. Null when the item has no price. */
   amount: number | null;
+  /** The item's photo, as a full URL. */
+  itemImageUrl?: string | null;
   message?: string | null;
 } & Limited) {
   try {
@@ -522,6 +529,7 @@ export async function notifyItemCovered(opts: {
             itemTitle: opts.itemTitle,
             quantity: opts.quantity,
             amount: opts.amount,
+            itemImageUrl: opts.itemImageUrl,
             message: opts.message,
             dashboardLink,
           }),
@@ -583,6 +591,7 @@ export async function notifyNewSuggestion(opts: {
             title: opts.title,
             price: opts.price,
             notes: opts.notes,
+            listUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard/registry/${m.registryId}`,
           }),
         })
       )

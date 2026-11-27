@@ -15,7 +15,7 @@
  * files that have no imports of their own, by their full name ("./x.ts").
  */
 
-import { EMAIL_FONT_FAMILY } from "./email-font.ts";
+import { EMAIL_SMALL_STYLE, emailButton, emailLayout } from "./email-font.ts";
 
 /** Supabase replaces this with the email's link when it sends it. */
 export const SUPABASE_LINK = "{{ .ConfirmationURL }}";
@@ -24,23 +24,8 @@ export const SUPABASE_LINK = "{{ .ConfirmationURL }}";
 // 3600 seconds both locally and on production.
 const LINK_LIFETIME = "1 hour";
 
-const finePrint = "margin:16px 0 0;color:#535862;font-size:13px;";
-
-function layout(heading: string, body: string): string {
-  return `<div style="max-width:480px;margin:0 auto;font-family:${EMAIL_FONT_FAMILY};font-size:15px;line-height:1.6;color:#181d27;">
-  <p style="margin:0;padding:32px 0 24px;text-align:center;font-size:20px;font-weight:600;color:#004659;">Regibee</p>
-  <h1 style="margin:0 0 16px;text-align:center;font-size:18px;">${heading}</h1>
-${body}
-</div>
-`;
-}
-
-function button(link: string, label: string): string {
-  return `  <p style="margin:24px 0;text-align:center;"><a href="${link}" style="background-color:#004659;color:#ffffff;padding:12px 32px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:500;">${label}</a></p>`;
-}
-
 function copyLink(link: string): string {
-  return `  <p style="${finePrint}">This link works for ${LINK_LIFETIME}. If the button doesn't work, copy this link into your browser:<br /><span style="word-break:break-all;">${link}</span></p>`;
+  return `<p style="${EMAIL_SMALL_STYLE}margin:16px 0 0;">This link works for ${LINK_LIFETIME}. If the button doesn't work, copy this link into your browser:<br /><span style="word-break:break-all;">${link}</span></p>`;
 }
 
 export interface AuthEmail {
@@ -52,28 +37,30 @@ export const AUTH_EMAILS = {
   confirmation: {
     subject: "Confirm your Regibee account",
     html: (link) =>
-      layout(
-        "Confirm your email address",
-        [
-          `  <p style="margin:0;">Thanks for signing up for Regibee. Confirm your email address to finish making your account.</p>`,
-          button(link, "Confirm email address"),
+      emailLayout({
+        preheader: "One click to finish making your account.",
+        heading: "Confirm your email address",
+        body: [
+          `<p style="margin:0;">Thanks for signing up for Regibee. Confirm your email address to finish making your account.</p>`,
+          emailButton(link, "Confirm email address"),
           copyLink(link),
-          `  <p style="${finePrint}">If you didn't sign up for Regibee, you can ignore this email.</p>`,
         ].join("\n"),
-      ),
+        footer: "If you didn't sign up for Regibee, you can ignore this email.",
+      }),
   },
   recovery: {
     subject: "Reset your Regibee password",
     html: (link) =>
-      layout(
-        "Reset your password",
-        [
-          `  <p style="margin:0;">We got a request to reset the password for your Regibee account. Choose a new password with the button below.</p>`,
-          button(link, "Choose a new password"),
+      emailLayout({
+        preheader: "Choose a new password. The link works for 1 hour.",
+        heading: "Reset your password",
+        body: [
+          `<p style="margin:0;">We got a request to reset the password for your Regibee account. Choose a new password with the button below.</p>`,
+          emailButton(link, "Choose a new password"),
           copyLink(link),
-          `  <p style="${finePrint}">If you didn't ask to reset your password, you can ignore this email. Your password won't change.</p>`,
         ].join("\n"),
-      ),
+        footer: "If you didn't ask to reset your password, you can ignore this email. Your password won't change.",
+      }),
   },
 } satisfies Record<string, AuthEmail>;
 
