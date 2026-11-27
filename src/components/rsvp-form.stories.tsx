@@ -215,8 +215,9 @@ export const WeddingAnswered: Story = {
 
 /**
  * Everyone gives everyone, after a Maybe with a note and a wishlist linked.
- * The answer and Change RSVP come first. The wishlist is one row under them,
- * with changing it or adding another list in its "…" menu.
+ * The answer comes first, with a small pencil beside the heading to change
+ * it. The wishlist is one row under it, with changing it or adding another
+ * list in its "…" menu.
  */
 export const AnsweredWithWishlist: Story = {
   args: {
@@ -244,5 +245,6 @@ export const AnsweredWithWishlist: Story = {
     // The rare changes aren't buttons on the card.
     await expect(canvas.queryByRole("button", { name: "Add another list" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "Wishlist options" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Change RSVP" })).toBeVisible();
   },
 };

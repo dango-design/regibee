@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CircleHelp, Loader2, X } from "lucide-react";
+import { Check, CircleHelp, Loader2, Pencil, X } from "lucide-react";
+import { Button as AriaButton } from "react-aria-components";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -177,19 +179,39 @@ export function RsvpForm({
     const signedUp = rows
       .filter((row) => current.picks.has(row.id))
       .map((row) => describeClaim({ label: row.label, slotDate: row.slotDate, note: current.picks.get(row.id) || null }));
+    const changeLabel =
+      exchange && current.inExchange && !everyone
+        ? "Change your answer or wishlist"
+        : signup && current.status !== "no"
+          ? "Change RSVP or sign-ups"
+          : "Change RSVP";
     return (
       <section aria-labelledby="rsvp-heading" className="rounded-2xl border border-secondary p-5">
-        <h2 id="rsvp-heading" className="font-display text-xl font-semibold">
-          {exchangeOnly
-            ? current.status === "yes"
-              ? "You're in the gift exchange"
-              : "You're sitting this one out"
-            : mealTrain
+        {/* Changing an answer is rare, so it's a small pencil beside the heading, not a button in the card. */}
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="rsvp-heading" className="font-display text-xl font-semibold">
+            {exchangeOnly
               ? current.status === "yes"
-                ? "You're signed up to help"
+                ? "You're in the gift exchange"
                 : "You're sitting this one out"
-              : `${SUMMARY[current.status]}${current.status !== "no" && size > 1 ? ` (${size} people${kidsText})` : ""}`}
-        </h2>
+              : mealTrain
+                ? current.status === "yes"
+                  ? "You're signed up to help"
+                  : "You're sitting this one out"
+                : `${SUMMARY[current.status]}${current.status !== "no" && size > 1 ? ` (${size} people${kidsText})` : ""}`}
+          </h2>
+          {!passed && (
+            <Tooltip title={changeLabel} placement="bottom">
+              <AriaButton
+                aria-label={changeLabel}
+                onPress={() => setEditing(true)}
+                className="-mt-0.5 -mr-1.5 flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-tertiary transition outline-none hover:bg-primary_hover hover:text-secondary focus-visible:ring-2 focus-visible:ring-brand-solid max-sm:size-11"
+              >
+                <Pencil aria-hidden="true" className="size-4" />
+              </AriaButton>
+            </Tooltip>
+          )}
+        </div>
         <p className="mt-1 text-tertiary">
           {current.status === "no" ? "Thanks for letting the host know." : "Thanks! The host has your answer."}
         </p>
@@ -222,16 +244,7 @@ export function RsvpForm({
           </div>
         )}
         {current.note && <p className="mt-3 text-sm whitespace-pre-line text-secondary">Your note: {current.note}</p>}
-        {!passed && (
-          <Button variant="ghost" className="mt-4" onClick={() => setEditing(true)}>
-            {exchange && current.inExchange && !everyone
-              ? "Change your answer or wishlist"
-              : signup && current.status !== "no"
-                ? "Change RSVP or sign-ups"
-                : "Change RSVP"}
-          </Button>
-        )}
-        {/* The wishlist comes after the RSVP and its button, as its own quieter part. */}
+        {/* The wishlist comes after the RSVP, as its own quieter part. */}
         {everyone && current.status !== "no" && wishlist && (
           <RsvpWishlistStep slug={slug} token={token ?? newToken ?? ""} {...wishlist} />
         )}
