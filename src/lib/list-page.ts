@@ -17,7 +17,7 @@ import {
   storesWithRegistryLinks,
   } from "@/lib/retailers";
 import { buildStorePerks, parseStorePerksState, readyPerkCount, type StorePerksRow } from "@/lib/store-perks";
-import { getChecklistProgress } from "@/lib/checklist-matching";
+import { checklistStatus } from "@/lib/checklist-matching";
 import { copyForRegistry } from "@/lib/registry-copy";
 import {
   fundAsRevealed,
@@ -311,10 +311,20 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
   }));
   const dismissedChecklistItems = (registry.settings as Record<string, unknown> | null)?.checklist_dismissed as string[] | undefined;
   // A checklist entry such as Diaper Fund counts when the list has a fund by that name.
-  const checklistProgress = getChecklistProgress(
-    [...allItems.map((i) => i.title), ...((cashFunds || []) as { title: string }[]).map((f) => f.title)],
-    dismissedChecklistItems
+  const checklist = checklistStatus(
+    [
+      ...allItems.map((i) => ({ id: i.id, kind: "item" as const, title: i.title, checklist_entry: i.checklist_entry })),
+      ...((cashFunds || []) as ListPageFund[]).map((f) => ({
+        id: f.id,
+        kind: "fund" as const,
+        title: f.title,
+        checklist_entry: f.checklist_entry,
+      })),
+    ],
+    dismissedChecklistItems,
   );
+  const checklistProgress = { matched: checklist.done, total: checklist.total };
+  const checklistEssentials = { done: checklist.essentialsDone, total: checklist.essentialsTotal };
   const copy = copyForRegistry(registry);
 
   // A Secret Santa's gift shows "Secret Santa" with no email. It's masked
@@ -383,6 +393,7 @@ async function buildListPage(registry: ListPageData["registry"], viewer: ListPag
     linkedEvents,
     showChecklist: copy.checklistAvailable,
     checklistProgress,
+    checklistEssentials,
     linkedRegistries,
     storesWithRegistryLinks: registryLinkStores,
     plainLinkGroups,

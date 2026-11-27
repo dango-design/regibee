@@ -51,7 +51,13 @@ export interface OwnerListTopProps {
   /** Show "Planning a party?" with no events, until the owner dismisses it. */
   planPrompt?: boolean;
   /** Baby registries' checklist. */
-  checklist?: { matched: number; total: number; href: string } | null;
+  checklist?: {
+    matched: number;
+    total: number;
+    /** The essentials done, of all of them. Shown instead of the whole count when there. */
+    essentials?: { done: number; total: number };
+    href: string;
+  } | null;
   /** The band's color and pattern. Defaults to the light teal with dots. */
   header?: ListHeader;
   /** The Header button (ListHeaderPicker), in the band's top corner. */
@@ -198,7 +204,11 @@ export function OwnerListTop({
           icon={ClipboardList}
           href={checklist.href}
           label="Checklist"
-          detail={`${checklist.matched} of ${checklist.total} added`}
+          detail={
+            checklist.essentials
+              ? `${checklist.essentials.done} of ${checklist.essentials.total} essentials`
+              : `${checklist.matched} of ${checklist.total} added`
+          }
         />
       ),
     });

@@ -9,7 +9,7 @@
 // through the same server action.
 
 import { useRef, useState } from "react";
-import { Alert, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 
 import { DETAIL_FIELD_NAMES, detailReviewHeading, type DetailField, type ShownSide } from "@shared/item-details";
 import type { ListPageDetailChange, ListPageDetailReview, ListPageMissingDetails } from "@shared/list-page-types";
@@ -17,7 +17,7 @@ import type { ListPageDetailChange, ListPageDetailReview, ListPageMissingDetails
 import { ItemImage } from "@/components/item-image";
 import { Notice } from "@/components/notice";
 import { ProductReader } from "@/components/product-reader";
-import { Button, ProgressBar, Text } from "@/components/ui";
+import { Button, haptic, ProgressBar, Text } from "@/components/ui";
 import { errorMessage, saveReadDetails, useChooseDetailValue, useFinishDetailReview, useRefreshList } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 import type { ReadProduct } from "@/lib/product";
@@ -125,8 +125,7 @@ export function MissingDetailsNotice({ registryId, items }: { registryId: string
 
 /**
  * "Filled in details for 3 items": what filling in changed. A value that
- * replaced another lists the new and the old, with a button on the one not
- * showing. A value that filled an empty field has a button to take it out.
+ * replaced another lists the new and the old as a choice of two. A value that filled an empty field has a button to take it out.
  */
 export function DetailReview({ registryId, reviews }: { registryId: string; reviews: ListPageDetailReview[] }) {
   const theme = useTheme();
@@ -302,17 +301,27 @@ function ChangeRow({
     { side: "after", label: "New", value: change.after },
     { side: "before", label: "Old", value: change.before },
   ];
+  // A choice of two, as on the website: the one picked is what the item
+  // shows. Tapping the other row switches to it.
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 6 }} accessibilityRole="radiogroup" accessibilityLabel={`${name} of ${review.title}`}>
       <Text variant="caption" tone="tertiary">
         {name}
       </Text>
       {options.map((option) => {
-        const showing = change.shown === option.side;
+        const picked = change.shown === option.side;
         return (
-          <View
+          <Pressable
             key={option.side}
-            style={{
+            accessibilityRole="radio"
+            accessibilityState={{ selected: picked, disabled }}
+            accessibilityLabel={`${option.label} ${lowerName}`}
+            disabled={disabled || picked}
+            onPress={() => {
+              haptic();
+              onChoose(option.side);
+            }}
+            style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
               gap: spacing.sm,
@@ -320,29 +329,28 @@ function ChangeRow({
               paddingHorizontal: spacing.sm,
               paddingVertical: 6,
               borderRadius: radius.sm,
-              backgroundColor: showing ? theme.successSoft : theme.surfaceAlt,
-            }}
+              borderWidth: picked ? 2 : 1,
+              borderColor: picked ? theme.tint : theme.border,
+              backgroundColor: picked ? theme.tintSoft : theme.surface,
+              opacity: pressed ? 0.85 : 1,
+            })}
           >
-            <Text variant="footnote" tone={showing ? "success" : "tertiary"} style={{ width: 34, fontWeight: "600" }}>
+            <View
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                borderWidth: picked ? 5 : 1.5,
+                borderColor: picked ? theme.tint : theme.textTertiary,
+                backgroundColor: theme.surface,
+              }}
+            />
+            <Text variant="footnote" tone={picked ? "primary" : "tertiary"} style={{ width: 34, fontWeight: "600" }}>
               {option.label}
             </Text>
             <ShownValue field={change.field} value={option.value} />
-            {showing ? (
-              <Text variant="caption" tone="success" style={{ fontWeight: "600" }}>
-                Showing
-              </Text>
-            ) : (
-              <Button
-                title={`Use ${option.label.toLowerCase()}`}
-                accessibilityLabel={`Use the ${option.label.toLowerCase()} ${lowerName} for ${review.title}`}
-                size="small"
-                variant="secondary"
-                loading={saving}
-                disabled={disabled}
-                onPress={() => onChoose(option.side)}
-              />
-            )}
-          </View>
+            {saving && picked ? <ActivityIndicator size="small" color={theme.textTertiary} /> : null}
+          </Pressable>
         );
       })}
     </View>

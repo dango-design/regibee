@@ -59,8 +59,17 @@ interface AddItemDialogProps {
     categoryId?: string;
     quantityNeeded?: string;
     isEssential?: boolean;
+    notes?: string;
+    /** The baby checklist entry the item counts for, when added from the checklist (src/lib/checklist-matching.ts). */
+    checklistEntry?: string;
   };
   trigger?: React.ReactNode;
+  /**
+   * Opens and closes the dialog from outside, with no button of its own. The
+   * checklist opens it this way, filled in from an entry.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   /** The owner's linked store registries. Leave unset to hide store notices
    *  (personal registries don't use them). */
   linkedRegistries?: RetailerRegistry[];
@@ -133,6 +142,8 @@ export function AddItemDialog({
   openWithLink,
   saveTo,
   onAdded,
+  open: controlledOpen,
+  onOpenChange,
 }: AddItemDialogProps) {
   // With saveTo, the owner picks the list. Everything below works on the
   // chosen one.
@@ -144,7 +155,9 @@ export function AddItemDialog({
   const eventType = chosenList ? chosenList.eventType : defaultEventType;
   const copy = copyFor({ registryType, eventType });
   const isBaby = registryType === "baby";
-  const [open, setOpen] = useState(Boolean(openWithLink));
+  const [uncontrolledOpen, setOpen] = useState(Boolean(openWithLink));
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState<string>("");
@@ -179,6 +192,10 @@ export function AddItemDialog({
   // number on, so a read that finishes after that leaves the fresh form alone.
   const readNumber = useRef(0);
   const isOpen = useRef(open);
+  // Opened from outside, the dialog never runs changeOpen(true).
+  useEffect(() => {
+    isOpen.current = open;
+  }, [open]);
   // The link last read, so leaving the field doesn't read the same link again.
   const lastReadUrl = useRef<string | null>(null);
   // The link the picture choices came from.
@@ -409,6 +426,7 @@ export function AddItemDialog({
   const changeOpen = (next: boolean) => {
     isOpen.current = next;
     setOpen(next);
+    onOpenChange?.(next);
     if (!next) resetForm();
   };
 
@@ -458,21 +476,26 @@ export function AddItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <span className="inline-flex items-center gap-1.5">
-              <Plus className="h-4 w-4 shrink-0" />
-              Add item
-            </span>
-          </Button>
-        )}
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button>
+              <span className="inline-flex items-center gap-1.5">
+                <Plus className="h-4 w-4 shrink-0" />
+                Add item
+              </span>
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{saveTo ? "Save an item" : "Add an item"}</DialogTitle>
         </DialogHeader>
         <form action={handleSubmit} className="min-w-0 space-y-5">
+          {defaultValues?.checklistEntry && (
+            <input type="hidden" name="checklistEntry" value={defaultValues.checklistEntry} />
+          )}
           {saveTo && saveTo.length > 0 && (
             <Select
               label="Save to"
@@ -750,6 +773,7 @@ export function AddItemDialog({
             label="Note for guests (optional)"
             name="notes"
             placeholder="Size, color, or anything else that helps"
+            defaultValue={defaultValues?.notes}
             rows={3}
           />
 
