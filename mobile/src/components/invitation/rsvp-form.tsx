@@ -11,7 +11,7 @@ import { answerLabel, answerLines, plusOneCount, readAnswers, type RsvpAnswers, 
 import { describeClaim, formatSlotDate, MAX_CLAIM_NOTE_LENGTH, rowIsOpen, spotsLabel, type GuestSignupRow } from "@shared/signups";
 
 import { Icon, type IconName } from "@/components/icon";
-import { Button, Chip, Field, haptic, Stepper, SwitchRow, Text } from "@/components/ui";
+import { Button, Chip, Field, haptic, IconButton, Stepper, SwitchRow, Text } from "@/components/ui";
 import { errorMessage } from "@/lib/data";
 import { useRunEventAction } from "@/lib/events-data";
 import { radius, spacing, useTheme } from "@/lib/theme";
@@ -61,13 +61,17 @@ interface Saved {
 }
 
 /** A bordered box with the RSVP's heading. */
-function RsvpBox({ heading, children }: { heading: string; children?: React.ReactNode }) {
+/** `action` sits beside the heading, such as the pencil that changes an answer. */
+function RsvpBox({ heading, action, children }: { heading: string; action?: React.ReactNode; children?: React.ReactNode }) {
   const theme = useTheme();
   return (
     <View style={[styles.box, { borderColor: theme.border, backgroundColor: theme.surface }]}>
-      <Text variant="title" accessibilityRole="header">
-        {heading}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
+        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
+          {heading}
+        </Text>
+        {action}
+      </View>
       {children}
     </View>
   );
@@ -144,8 +148,20 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
       .filter((row) => current.picks.has(row.id))
       .map((row) => describeClaim({ label: row.label, slotDate: row.slotDate, note: current.picks.get(row.id) || null }));
     const lines = current.status !== "no" ? answerLines(questions, current.answers, "You") : [];
+    const changeLabel =
+      exchange && current.inExchange && !everyone
+        ? "Change your answer or wishlist"
+        : signup && current.status !== "no"
+          ? "Change RSVP or sign-ups"
+          : "Change RSVP";
     return (
       <RsvpBox
+        // Changing an answer is rare, so it's a small pencil beside the heading, not a button in the card.
+        action={
+          !passed ? (
+            <IconButton icon="edit" size={18} color={theme.textSecondary} accessibilityLabel={changeLabel} onPress={() => setEditing(true)} />
+          ) : null
+        }
         heading={
           exchangeOnly
             ? current.status === "yes"
@@ -200,22 +216,7 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
             Your note: {current.note}
           </Text>
         ) : null}
-        {!passed ? (
-          <Button
-            variant="secondary"
-            size="medium"
-            style={{ alignSelf: "flex-start" }}
-            title={
-              exchange && current.inExchange && !everyone
-                ? "Change your answer or wishlist"
-                : signup && current.status !== "no"
-                  ? "Change RSVP or sign-ups"
-                  : "Change RSVP"
-            }
-            onPress={() => setEditing(true)}
-          />
-        ) : null}
-        {/* The wishlist comes after the RSVP and its button, as its own quieter part. */}
+        {/* The wishlist comes after the RSVP, as its own quieter part. */}
         {everyone && current.status !== "no" && rsvp.wishlist && token ? <WishlistStep page={page} wishlist={rsvp.wishlist} token={token} /> : null}
       </RsvpBox>
     );
