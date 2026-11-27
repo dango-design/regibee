@@ -46,6 +46,14 @@ export interface ExtensionRegistry {
    * Missing from older servers.
    */
   plainLinks?: Partial<Record<StoreId, number>>;
+  /**
+   * What this kind of list calls marking an item as one the owner bought,
+   * such as "Mark as bought by parent". Missing from older servers, which
+   * can't save the mark, so the popup leaves the checkbox out.
+   */
+  boughtLabel?: string;
+  /** The list has a zip code, so sales tax is added to what the owner bought. */
+  addsTax?: boolean;
 }
 
 export interface MeResponse {
@@ -138,6 +146,8 @@ export interface ProductItem extends StoreItem {
   notes: string | null;
   /** The page's barcode number (src/lib/gtin.ts). Missing from older versions. */
   gtin?: string | null;
+  /** The owner already bought it, so guests can cover its cost. Missing from older versions. */
+  isParentPurchased?: boolean;
 }
 
 export interface AddProductRequest {
@@ -148,6 +158,16 @@ export interface AddProductRequest {
 export type AddProductResponse =
   | { added: { id: string; title: string } }
   | { duplicate: { id: string; title: string } };
+
+export interface TaxRequest {
+  registryId: string;
+  price: number;
+}
+
+/** The price with estimated sales tax, or null when the list adds none. */
+export interface TaxResponse {
+  tax: { priceWithTax: string; taxRate: number } | null;
+}
 
 /** "+ New category" on the product form, as on the site's add-item dialog. */
 export interface CategoryRequest {
@@ -359,6 +379,7 @@ export function parseProductItem(raw: unknown): (ProductItem & { key: string }) 
     minimumCondition: isOpenToUsed ? (condition ?? "like-new") : null,
     notes,
     gtin: normalizeGtin(value.gtin),
+    isParentPurchased: value.isParentPurchased === true,
     key,
   };
 }

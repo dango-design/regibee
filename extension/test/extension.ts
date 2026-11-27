@@ -18,6 +18,8 @@ import type {
   IdeaRequest,
   IdeaResponse,
   MeResponse,
+  TaxRequest,
+  TaxResponse,
 } from "../../src/lib/extension";
 import { pageHtml, type SavedPage } from "./pages";
 
@@ -161,6 +163,13 @@ export async function connect(
         ?.categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
       const made: CategoryResponse = { category: same ?? { id: NEW_CATEGORY_ID, name } };
       return route.fulfill({ json: made });
+    }
+    if (call.method === "POST" && call.path === "/api/extension/tax") {
+      // 10% on every list that adds tax.
+      const { registryId, price } = call.body as TaxRequest;
+      const addsTax = registries.find((r) => r.id === registryId)?.addsTax;
+      const tax: TaxResponse = { tax: addsTax ? { priceWithTax: (price * 1.1).toFixed(2), taxRate: 0.1 } : null };
+      return route.fulfill({ json: tax });
     }
     if (call.method === "POST" && call.path === "/api/extension/items/check") {
       const check: CheckResponse = { existing: existing((call.body as { urls: string[] }).urls), plain: [] };

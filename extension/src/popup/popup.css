@@ -182,13 +182,14 @@ input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
   border: none; padding: 6px 0; text-align: center; min-width: 0; flex: 1; -moz-appearance: textfield;
 }
 .stepper .stepper-value::-webkit-inner-spin-button, .stepper .stepper-value::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.checks { display: flex; gap: 20px; flex-wrap: wrap; }
+.checks { display: flex; gap: 2px 20px; flex-wrap: wrap; }
 .link-button.new-category { align-self: flex-start; color: var(--brand); padding: 4px 0; }
 .link-button.new-category:hover { text-decoration: underline; }
 .inline-form { display: flex; gap: 6px; align-items: center; }
 .inline-form input { flex: 1; min-width: 0; }
 .button.small { width: auto; flex: none; min-height: 36px; padding: 6px 14px; font-size: 13px; }
 .checks .check { min-height: 28px; }
+.tax-note { margin: -6px 0 0; font-size: 12px; color: var(--text-tertiary); }
 .ok-note {
   margin: 0; display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 1.45;
   color: var(--success); background: #ecfdf3; border: 1px solid #abefc6; border-radius: 8px; padding: 8px 10px;

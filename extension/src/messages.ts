@@ -72,6 +72,7 @@ export type BackgroundRequest =
   | { type: "check-url"; registryId: string; url: string }
   | { type: "add-product"; registryId: string; item: ProductItem }
   | { type: "add-category"; registryId: string; name: string }
+  | { type: "estimate-tax"; registryId: string; price: number }
   | { type: "add-idea"; idea: IdeaRequest["idea"] }
   | { type: "set-product-mode"; mode: ProductMode }
   // From the popup's import screen on an Elfster wishlist.

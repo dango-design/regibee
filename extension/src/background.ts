@@ -21,6 +21,7 @@ import {
   type MeResponse,
   type ReadProduct,
   type StoreItem,
+  type TaxResponse,
   type UndoResponse,
 } from "@/lib/extension";
 import { classifyStoreLink, extensionStoreForPage, storeItemKey, type StoreId } from "@/lib/retailers";
@@ -459,6 +460,11 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
       await rememberCategory(request.registryId, result.category);
       return result;
     }
+    case "estimate-tax":
+      return api<TaxResponse>("/api/extension/tax", {
+        method: "POST",
+        body: { registryId: request.registryId, price: request.price },
+      });
     case "add-idea": {
       const result = await api<IdeaResponse>("/api/extension/ideas", { method: "POST", body: { idea: request.idea } });
       await rememberRecipient(result.added.recipient);
