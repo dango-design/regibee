@@ -212,3 +212,37 @@ export const WeddingAnswered: Story = {
     questions: defaultQuestions(["plus_ones", "meal", "diet"]),
   },
 };
+
+/**
+ * Everyone gives everyone, after a Maybe with a note and a wishlist linked.
+ * The answer and Change RSVP come first. The wishlist is one row under them,
+ * with changing it or adding another list in its "…" menu.
+ */
+export const AnsweredWithWishlist: Story = {
+  args: {
+    exchange: { kind: "everyone", mailed: false, drawn: false },
+    guest: { name: "Fiyero", status: "maybe", partySize: 1, note: "Yay! 🎄" },
+    wishlist: {
+      current: { url: "https://regibee.com/r/fiyeros-list-5j2c", title: "Fiyero's Christmas List", ownListId: "list-1" },
+      giftIdeas: null,
+      account: {
+        lists: [
+          { id: "list-1", title: "Fiyero's Christmas List" },
+          { id: "list-3", title: "Nessa's Christmas List" },
+        ],
+      },
+      saveAction: fn(async () => ({ error: null })),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "You're maybe attending" })).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Fiyero's Christmas List" })).toHaveAttribute(
+      "href",
+      "/dashboard/registry/list-1",
+    );
+    // The rare changes aren't buttons on the card.
+    await expect(canvas.queryByRole("button", { name: "Add another list" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Wishlist options" })).toBeVisible();
+  },
+};

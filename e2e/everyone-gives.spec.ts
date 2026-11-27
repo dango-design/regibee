@@ -279,10 +279,10 @@ test("a guest logs in after they RSVP and links a list they already have", async
   const use = page.getByRole("button", { name: `Use ${oliveList.title}` });
   await waitForReact(use);
   await use.click();
-  await expect(page.getByRole("link", { name: "Add things to your list" })).toHaveAttribute(
-    "href",
-    `/dashboard/registry/${oliveList.id}`,
-  );
+  // The list's name links to it, to add things.
+  await expect(
+    page.getByRole("region", { name: "Your wishlist" }).getByRole("link", { name: oliveList.title }),
+  ).toHaveAttribute("href", `/dashboard/registry/${oliveList.id}`);
   const { data: guest } = await db.from("event_guests").select("wishlist_registry_id").eq("id", guests[0].id).single();
   expect(guest?.wishlist_registry_id).toBe(oliveList.id);
 });
@@ -302,12 +302,14 @@ test("a guest adds their child's list beside their own, and the other guests sho
   const [danaGuest, gusGuest] = guests;
 
   await rsvpWithOwnList(page, danaGuest.rsvpPath, dana, danaList);
-  await page.getByRole("button", { name: "Add another list" }).click();
+  // Adding another list is in the wishlist's "…" menu.
+  await page.getByRole("button", { name: "Wishlist options" }).click();
+  await page.getByRole("menuitem", { name: "Add another list" }).click();
   // Her wishlist isn't offered a second time.
   await expect(page.getByRole("button", { name: `Add ${danaList.title}` })).toHaveCount(0);
   await page.getByRole("button", { name: "Add Mia's Christmas List" }).click();
-  await expect(page.getByText("Also on the invitation")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Mia's Christmas List" })).toHaveAttribute(
+  const step = page.getByRole("region", { name: "Your wishlist" });
+  await expect(step.getByRole("link", { name: "Mia's Christmas List" })).toHaveAttribute(
     "href",
     `/dashboard/registry/${kidList.id}`,
   );
@@ -336,10 +338,11 @@ test("a guest adds their child's list beside their own, and the other guests sho
 
   // She takes it off again.
   await page.reload();
-  const off = page.getByRole("button", { name: "Take off Mia's Christmas List" });
-  await waitForReact(off);
-  await off.click();
-  await expect(page.getByText("Also on the invitation")).toHaveCount(0);
+  const options = page.getByRole("button", { name: "Wishlist options" });
+  await waitForReact(options);
+  await options.click();
+  await page.getByRole("menuitem", { name: "Take off Mia's Christmas List" }).click();
+  await expect(step.getByRole("link", { name: "Mia's Christmas List" })).toHaveCount(0);
   const { data: after } = await db.from("event_guest_lists").select("registry_id").eq("guest_id", danaGuest.id);
   expect(after).toEqual([]);
 });
@@ -452,6 +455,6 @@ test("a host on the guest list who linked their own list has it on their row", a
   );
   const step = halPage.getByRole("region", { name: "Your wishlist" });
   await expect(step.getByText(halList.title)).toBeVisible();
-  await expect(step.getByRole("button", { name: "Change", exact: true })).toBeVisible();
+  await expect(step.getByRole("button", { name: "Wishlist options" })).toBeVisible();
   await halContext.close();
 });

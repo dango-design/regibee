@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Gift, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RowActionsMenu, type RowAction } from "@/components/row-actions-menu";
 import { saveEventWishlist, type EventWishlistInput } from "@/lib/actions/events";
 import { storeName } from "@/lib/events";
 import { normalizeThemeColor, themeColors } from "@/lib/event-colors";
@@ -33,6 +34,8 @@ export interface RsvpWishlistStepProps extends RsvpWishlist {
  *
  * With a wishlist linked, someone signed in can add more of their own lists
  * beside it, such as a list they keep for their child, and take them off.
+ * Once linked, the step is one quiet row under the RSVP: the lists as links,
+ * and a "…" menu for the rare changes.
  */
 export function RsvpWishlistStep({
   slug,
@@ -113,6 +116,20 @@ export function RsvpWishlistStep({
     );
 
   if (!choosing && hasSomething) {
+    // Changing the wishlist or adding a second list is rare, so those wait
+    // in a "…" menu instead of showing as buttons.
+    const menu: RowAction[] = [
+      ...(current ? [{ id: "change", label: "Change wishlist" }] : []),
+      ...(canAddMore ? [{ id: "add", label: "Add another list" }] : []),
+      ...more.map((list) => ({ id: `remove:${list.id}`, label: `Take off ${list.title}` })),
+    ];
+    const onMenu = (id: string) => {
+      setError("");
+      if (id === "change") setChoosing(true);
+      else if (id === "add") setAdding(true);
+      else if (id.startsWith("remove:")) save({ removeRegistryId: id.slice("remove:".length) }, id);
+    };
+    const listLink = "font-medium break-words text-primary underline-offset-2 hover:underline";
     return (
       <section
         id="wishlist"
@@ -122,14 +139,37 @@ export function RsvpWishlistStep({
       >
         <div className="flex items-start gap-3">
           {icon}
-          <div className="min-w-0 pt-1">
-            <h3 id="wishlist-heading" className="font-medium text-primary">
+          <div className="min-w-0 flex-1">
+            <h3 id="wishlist-heading" className="text-sm text-tertiary">
               Your wishlist
             </h3>
-            {current ? (
-              <p className="text-sm break-words text-secondary">
-                {current.title ?? `A list on ${storeName(current.url)}`}
-              </p>
+            {current || more.length > 0 ? (
+              <ul className="flex flex-col gap-0.5">
+                {current && (
+                  <li>
+                    {current.ownListId ? (
+                      <Link href={`/dashboard/registry/${current.ownListId}`} className={listLink}>
+                        {current.title ?? "Your list"}
+                      </Link>
+                    ) : (
+                      <a href={current.url} target="_blank" rel="noopener noreferrer" className={listLink}>
+                        {current.title ?? `A list on ${storeName(current.url)}`}
+                      </a>
+                    )}
+                  </li>
+                )}
+                {more.map((list) => (
+                  <li key={list.id}>
+                    {list.ownListId ? (
+                      <Link href={`/dashboard/registry/${list.ownListId}`} className={listLink}>
+                        {list.title}
+                      </Link>
+                    ) : (
+                      <span className="font-medium break-words text-primary">{list.title}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p className="text-sm text-secondary">No list, just gift ideas.</p>
             )}
@@ -139,129 +179,85 @@ export function RsvpWishlistStep({
                 {giftIdeas}
               </p>
             )}
-            {justMade && current?.ownListId && (
-              <p className="mt-2 text-sm text-tertiary">
-                Add a few things so everyone knows what to get you.
-              </p>
-            )}
           </div>
+          <RowActionsMenu label="Wishlist options" actions={menu} onAction={onMenu} disabled={working} />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {current?.ownListId && (
-            <Button size="sm" variant={justMade ? "default" : "outline"} asChild>
+
+        {/* Right after making a list, filling it is the next thing to do. */}
+        {justMade && current?.ownListId && (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-sm text-tertiary">Add a few things so everyone knows what to get you.</p>
+            <Button size="sm" asChild>
               <Link href={`/dashboard/registry/${current.ownListId}`}>Add things to your list</Link>
             </Button>
-          )}
-          <Button size="sm" variant="outline" onClick={() => setChoosing(true)}>
-            {current ? "Change" : "Add a wishlist"}
+          </div>
+        )}
+
+        {!current && (
+          <Button size="sm" variant="outline" className="self-start" onClick={() => setChoosing(true)}>
+            Add a wishlist
           </Button>
-        </div>
+        )}
 
-        {(more.length > 0 || canAddMore) && (
+        {busy?.startsWith("remove:") && (
+          <p role="status" className="inline-flex items-center gap-1.5 text-sm text-tertiary">
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            Taking it off…
+          </p>
+        )}
+
+        {canAddMore && adding && (
           <div className="flex flex-col gap-2">
-            {more.length > 0 && (
-              <>
-                <p className="text-sm font-medium text-secondary">Also on the invitation</p>
-                <ul className="flex flex-col gap-2">
-                  {more.map((list) => (
-                    <li
-                      key={list.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3"
+            <p className="text-sm font-medium text-secondary">Add another of your lists</p>
+            {otherLists.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {otherLists.map((list) => (
+                  <li
+                    key={list.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3"
+                  >
+                    <span className="min-w-0 font-medium break-words text-primary">{list.title}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="max-sm:min-h-11"
+                      disabled={working}
+                      aria-label={`Add ${list.title}`}
+                      onClick={() => save({ addRegistryId: list.id }, list.id)}
                     >
-                      <span className="min-w-0 font-medium break-words text-primary">{list.title}</span>
-                      <span className="flex flex-wrap gap-2">
-                        {list.ownListId && (
-                          <Button size="sm" variant="outline" className="max-sm:min-h-11" asChild>
-                            <Link href={`/dashboard/registry/${list.ownListId}`} aria-label={`Open ${list.title}`}>
-                              Open
-                            </Link>
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="max-sm:min-h-11"
-                          disabled={working}
-                          aria-label={`Take off ${list.title}`}
-                          onClick={() => save({ removeRegistryId: list.id }, `remove:${list.id}`)}
-                        >
-                          {spinner(`remove:${list.id}`, "Take off", "Taking off…")}
-                        </Button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {canAddMore && !adding && (
-              <div className="flex flex-col items-start gap-1">
-                <Button size="sm" variant="ghost" disabled={working} onClick={() => setAdding(true)}>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Plus aria-hidden="true" className="size-4" />
-                    Add another list
-                  </span>
-                </Button>
-                {more.length === 0 && (
-                  <p className="text-sm text-tertiary">Like a list for your child.</p>
-                )}
-              </div>
-            )}
-
-            {canAddMore && adding && (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-secondary">Add another of your lists</p>
-                {otherLists.length > 0 ? (
-                  <ul className="flex flex-col gap-2">
-                    {otherLists.map((list) => (
-                      <li
-                        key={list.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3"
-                      >
-                        <span className="min-w-0 font-medium break-words text-primary">{list.title}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="max-sm:min-h-11"
-                          disabled={working}
-                          aria-label={`Add ${list.title}`}
-                          onClick={() => save({ addRegistryId: list.id }, list.id)}
-                        >
-                          {spinner(list.id, "Add this list", "Adding…")}
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-tertiary">
-                    You have no other lists to add.{" "}
-                    <Link href="/dashboard/new" className="font-medium text-brand-tertiary underline">
-                      Make a new list
-                    </Link>
-                    , then come back here to add it.
-                  </p>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="self-start"
-                  disabled={working}
-                  onClick={() => {
-                    setAdding(false);
-                    setError("");
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-
-            {error && (
-              <p role="alert" className="text-sm text-error-primary">
-                {error}
+                      {spinner(list.id, "Add this list", "Adding…")}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-tertiary">
+                You have no other lists to add.{" "}
+                <Link href="/dashboard/new" className="font-medium text-brand-tertiary underline">
+                  Make a new list
+                </Link>
+                , then come back here to add it.
               </p>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="self-start"
+              disabled={working}
+              onClick={() => {
+                setAdding(false);
+                setError("");
+              }}
+            >
+              Cancel
+            </Button>
           </div>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-error-primary">
+            {error}
+          </p>
         )}
       </section>
     );

@@ -41,7 +41,7 @@ const MEAL_TRAIN_ANSWERS: { value: Answer; label: string; icon: IconName }[] = [
 
 const SUMMARY: Record<Answer, string> = {
   yes: "You're going",
-  maybe: "You might make it",
+  maybe: "You're maybe attending",
   no: "You can't make it",
 };
 
@@ -161,7 +161,6 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
         <Text variant="callout" tone="tertiary">
           {current.status === "no" ? "Thanks for letting the host know." : "Thanks! The host has your answer."}
         </Text>
-        {everyone && current.status !== "no" && rsvp.wishlist && token ? <WishlistStep page={page} wishlist={rsvp.wishlist} token={token} /> : null}
         {exchange && !everyone && !exchangeOnly && current.status !== "no" ? (
           <Text variant="footnote" tone="secondary">
             {current.inExchange ? "You're in the gift exchange." : "You're not in the gift exchange."}
@@ -216,6 +215,8 @@ export function RsvpForm({ page, onNewToken }: { page: InvitationPageData; onNew
             onPress={() => setEditing(true)}
           />
         ) : null}
+        {/* The wishlist comes after the RSVP and its button, as its own quieter part. */}
+        {everyone && current.status !== "no" && rsvp.wishlist && token ? <WishlistStep page={page} wishlist={rsvp.wishlist} token={token} /> : null}
       </RsvpBox>
     );
   }
