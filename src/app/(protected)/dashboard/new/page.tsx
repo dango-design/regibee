@@ -11,7 +11,9 @@ export const metadata: Metadata = { title: "Start something new | Regibee" };
  * form. An event asks what you're planning, who it's for and how gifts work,
  * then makes the event, with a list if you want one.
  */
-export default async function NewPlanPage() {
+export default async function NewPlanPage({ searchParams }: { searchParams: Promise<{ first?: string }> }) {
+  // The Events tab's New button sends ?first=events, so events show before gift lists.
+  const { first } = await searchParams;
   const user = await getSessionUser();
   if (!user) redirect("/login");
   // Guests (anonymous sessions) can only make a registry. Events need an account.
@@ -26,7 +28,7 @@ export default async function NewPlanPage() {
     <div className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-3xl font-bold">Start something new</h1>
       <div className="mt-6">
-        <PlanPicker myName={firstName} myLists={myLists} />
+        <PlanPicker myName={firstName} myLists={myLists} eventsFirst={first === "events"} />
       </div>
     </div>
   );

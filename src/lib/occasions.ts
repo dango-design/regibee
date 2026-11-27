@@ -283,6 +283,18 @@ export function occasionFor(id: OccasionId): Occasion {
   return (OCCASIONS as readonly Occasion[]).find((o) => o.id === id) ?? OCCASIONS[OCCASIONS.length - 1];
 }
 
+/**
+ * The picker's groups of occasions, so a host can find theirs quickly. Every
+ * occasion is in exactly one group (src/lib/occasions.test.ts checks this).
+ */
+export const OCCASION_GROUPS: readonly { label: string; ids: readonly OccasionId[] }[] = [
+  { label: "Birthdays & milestones", ids: ["birthday", "kids_birthday", "graduation", "retirement", "housewarming"] },
+  { label: "Holidays", ids: ["christmas", "holiday_party", "gift_exchange", "holiday"] },
+  { label: "Baby", ids: ["baby_shower", "sip_and_see"] },
+  { label: "Wedding", ids: ["engagement", "bridal_shower", "bachelor", "wedding"] },
+  { label: "Get-togethers & more", ids: ["gathering", "potluck", "meal_train", "other"] },
+];
+
 // ── Registries ───────────────────────────────────────────────
 
 const LIST_LABELS: Record<ListOccasion, string> = {

@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import {
   LIST_OCCASIONS,
   OCCASIONS,
+  OCCASION_GROUPS,
   OCCASION_IDS,
   countdownLabel,
   giftPlanLabel,
@@ -192,4 +193,9 @@ test("the countdown shows the date with its year once it has gone by", () => {
   assert.equal(countdownLabel("2026-11-19", "2026-11-19", "baby"), "Due today");
   assert.equal(countdownLabel("2026-11-20", "2026-11-19", "personal"), "Tomorrow");
   assert.equal(countdownLabel("2026-12-01", "2026-11-19", "baby"), "Due in 12 days");
+});
+
+test("every occasion is in exactly one of the picker's groups", () => {
+  const grouped = OCCASION_GROUPS.flatMap((group) => group.ids);
+  assert.deepEqual([...grouped].sort(), [...OCCASION_IDS].sort());
 });
