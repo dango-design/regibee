@@ -28,6 +28,12 @@ const meta: Meta<typeof RsvpWishlistStep> = {
 export default meta;
 type Story = StoryObj<typeof RsvpWishlistStep>;
 
+/** Opens the wishlist's "…" menu and picks a choice. The menu opens outside the story. */
+async function chooseFromMenu(canvasElement: HTMLElement, choice: string) {
+  await userEvent.click(within(canvasElement).getByRole("button", { name: "Wishlist options" }));
+  await userEvent.click(await within(document.body).findByRole("menuitem", { name: choice }));
+}
+
 /**
  * Not signed in: make a free account and a list, or log in to use one. Both
  * come back to the guest's own link. A wishlist here is a Regibee list, so
@@ -73,7 +79,7 @@ export const SignedInNoLists: Story = {
   },
 };
 
-/** Linked to one of their own lists, which they can open to add things. */
+/** Linked to one of their own lists. Its name opens it, to add things. */
 export const Linked: Story = {
   args: {
     current: { url: "https://regibee.com/r/fiyeros-list-5j2c", title: "Fiyero's Christmas List", ownListId: "list-1" },
@@ -98,7 +104,7 @@ export const AddAnotherList: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Add another list" }));
+    await chooseFromMenu(canvasElement, "Add another list");
     // The wishlist itself isn't offered again.
     await expect(canvas.queryByRole("button", { name: "Add Fiyero's Christmas List" })).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Add Nessa's Christmas List" }));
@@ -106,7 +112,7 @@ export const AddAnotherList: Story = {
   },
 };
 
-/** With their child's list added too. Either can be opened, and the child's taken off. */
+/** With their child's list added too. Either name opens it, and the menu takes the child's off. */
 export const WithAnotherList: Story = {
   args: {
     ...AddAnotherList.args,
@@ -114,18 +120,18 @@ export const WithAnotherList: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("link", { name: "Open Nessa's Christmas List" })).toHaveAttribute(
+    await expect(canvas.getByRole("link", { name: "Nessa's Christmas List" })).toHaveAttribute(
       "href",
       "/dashboard/registry/list-3",
     );
-    await userEvent.click(canvas.getByRole("button", { name: "Take off Nessa's Christmas List" }));
+    await chooseFromMenu(canvasElement, "Take off Nessa's Christmas List");
     await expect(args.saveAction).toHaveBeenCalledWith(expect.objectContaining({ removeRegistryId: "list-3" }));
   },
 };
 
 /**
  * A list from another store, saved before a wishlist here had to be a
- * Regibee list. It still shows. Change opens the choices again, with a way back.
+ * Regibee list. It still shows. Change wishlist opens the choices again, with a way back.
  */
 export const LinkedElsewhere: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
@@ -134,8 +140,8 @@ export const LinkedElsewhere: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("A list on amazon.com")).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: "Change" }));
+    await expect(canvas.getByRole("link", { name: "A list on amazon.com" })).toBeVisible();
+    await chooseFromMenu(canvasElement, "Change wishlist");
     await expect(canvas.getByRole("heading", { name: "Change your wishlist" })).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Keep my wishlist as it is" })).toBeVisible();
   },

@@ -52,7 +52,7 @@ const MEAL_TRAIN_ANSWERS: { value: Answer; label: string; icon: typeof Check }[]
 
 const SUMMARY: Record<Answer, string> = {
   yes: "You're going",
-  maybe: "You might make it",
+  maybe: "You're maybe attending",
   no: "You can't make it",
 };
 
@@ -193,9 +193,6 @@ export function RsvpForm({
         <p className="mt-1 text-tertiary">
           {current.status === "no" ? "Thanks for letting the host know." : "Thanks! The host has your answer."}
         </p>
-        {everyone && current.status !== "no" && wishlist && (
-          <RsvpWishlistStep slug={slug} token={token ?? newToken ?? ""} {...wishlist} />
-        )}
         {exchange && !everyone && !exchangeOnly && current.status !== "no" && (
           <p className="mt-2 text-sm text-secondary">
             {current.inExchange ? "You're in the gift exchange." : "You're not in the gift exchange."}
@@ -233,6 +230,10 @@ export function RsvpForm({
                 ? "Change RSVP or sign-ups"
                 : "Change RSVP"}
           </Button>
+        )}
+        {/* The wishlist comes after the RSVP and its button, as its own quieter part. */}
+        {everyone && current.status !== "no" && wishlist && (
+          <RsvpWishlistStep slug={slug} token={token ?? newToken ?? ""} {...wishlist} />
         )}
       </section>
     );
