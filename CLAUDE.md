@@ -100,6 +100,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Deleting a registry, an event, a group or an account that holds something asks the person to type a sentence first, such as "I want to delete this registry". A brand-new one, with nothing in it, only asks with two buttons. The sentences and what counts as holding something are in `src/lib/delete-confirmation.ts`: a registry with an item or a gift fund, an event with a guest, a group with a member, an account with a registry or an event.
 - Use `ConfirmDeleteDialog` (`src/components/confirm-delete-dialog.tsx`) on the website and `ConfirmDelete` (`mobile/src/components/confirm-delete.tsx`) in the app. Don't use the browser's `confirm()` or a system alert for these.
 - The typing only slows the person down. The server actions don't check it.
+- Deleting an event emails the guests who were invited and haven't said no, unless its day has passed (`cancellationRecipients` in `src/lib/event-updates.ts`). The delete dialog says how many. Deleting an item, or a list, emails each guest whose gift went with it (`giftsOnItems` in `src/lib/gift-reservations-server.ts`). Read what you need before the delete: the guest list and the gifts go with it.
 
 ## Items on several lists
 
@@ -108,6 +109,20 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Taking an item off its home list moves it to the next list it's on. Only an item on no other list is deleted. A database trigger does this for direct deletes too, so the phone app and the extension follow the same rule.
 - Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
+
+## Emails
+
+- Every email uses `emailLayout` (`src/lib/email-font.ts`): the wordmark, a white card with a heading that says what happened, and the fine print under the card. The templates are in `src/lib/email-templates.ts`, `event-email-templates.ts` and `group-gift-email-templates.ts`, and every one has a story under "Email Templates". `npm test` fails if a template skips `emailLayout`.
+- Name a list by its title in an email, not "your registry": the same email goes to every kind of list.
+- Give each email a `preheader`, the line inbox apps show under the subject, and a `footer` that says why the person got it.
+- An email someone can turn off carries a `List-Unsubscribe` header that opens the page with the switch (`unsubscribeHeaders` in `src/lib/email.ts`).
+- Resend's batch endpoint takes no attachments, so only single sends can attach a file, like the RSVP confirmation's `.ics`. Batched event emails link to `/e/<slug>/calendar` instead.
+
+## Gift emails
+
+- Each account chooses how it hears about gifts on lists it manages: each gift, once a day, or off (`profiles.gift_emails`, on the Account page and in the app). Phone pushes don't change. The rules are in `src/lib/gift-emails.ts`.
+- A gift for a manager who chose "once a day" goes into `gift_email_digest` instead of an email (`managersToEmailNow` in `src/lib/email.ts`). The daily gift cron sends one summary per manager and deletes the rows (`src/lib/gift-digest-server.ts`). A new kind of gift email to managers should go through `managersToEmailNow` too.
+- Three days after a list's date, its managers get a thank-you reminder with who gave what, once per date (`registries.thanks_reminded_for`). Lists that hide what's been reserved get the gifts revealed email instead.
 
 ## Items a manager bought
 
@@ -165,7 +180,7 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 
 - Every account is basic unless its email address is in `star_emails`. Then it's star. Star is for people we know, like testers. Nobody can buy it, and the site never shows anyone their level (only the support pages show it, to the support team). Keep it that way: a level people pay for would bring the app stores' in-app purchase rules into the phone app.
 - Both levels can do everything. Star only gets higher limits on what costs money or reaches people who never signed up:
-  - Emails to addresses someone typed in: invitations, reminders, messages to guests, change notices, name draws, co-host and list-manager invites, asking someone to make a list, and invites to follow. Each account has a daily allowance, and all basic accounts share another. The numbers are in `src/lib/account-levels.ts`.
+  - Emails to addresses someone typed in: invitations, reminders, messages to guests, change notices, cancellations, name draws, co-host and list-manager invites, asking someone to make a list, and invites to follow. Each account has a daily allowance, and all basic accounts share another. The numbers are in `src/lib/account-levels.ts`.
   - Photo uploads: 50 for basic, 500 for star. The numbers are in `can_upload_photo` in `20261116074752_account_levels.sql`.
   - Emails a visitor sets off on a list, event or group gift: gift, RSVP and chip-in confirmations, owners' notices about them, suggestions, and the reminder and "reservation ended" emails that follow a reservation. Each page has a daily allowance, sized by its owner's level, and all basic owners' pages share another. Over it, the gift or RSVP still saves and only the email is skipped. The numbers are in `src/lib/account-levels.ts`, and the counting is in `20261117085323_visitor_email_limits.sql`.
 - A new feature that emails an address someone typed in must call `reserveEmails` (`src/lib/email-budget.ts`) before sending and `settleEmails` after. Emails to the account's own address, emails to guests who gave their own address, and the daily cron emails don't count.
@@ -271,14 +286,14 @@ Keep text on screens short. People learn the app by using it, not by reading it.
 
 ## Account emails
 
-- Supabase sends two emails itself: one to confirm a new account's email address, and one to reset a password. The website and the phone app both trigger them. Every other email goes through `src/lib/mailer.ts`.
+- Supabase sends three emails itself: one to confirm a new account's email address, one to reset a password, and a notice after a password changes. The website and the phone app both trigger them. Every other email goes through `src/lib/mailer.ts`, the welcome email included: the auth callback sends it once, right after an account confirms its address.
 - On production, Supabase sends them through Resend's SMTP server. The settings are under Authentication → Emails → SMTP Settings in the Supabase dashboard: host `smtp.resend.com`, port `465`, username `resend`, a Resend API key as the password, and sender `Regibee <notifications@regibee.com>`. Without them, Supabase uses its own sender, which only delivers to members of the Supabase team, about 2 emails an hour.
 - With custom SMTP, Supabase sends at most 30 account emails an hour to start with, for the whole project. Confirmations and password resets share the limit. Past it, sign-ups and password resets fail on the website and in the phone app until the hour is up. Raise it under Authentication → Rate Limits if sign-ups need more, once you've checked that Resend's plan can send that many.
 - Supabase sends no warning, so the site does. A pg_cron job in Supabase calls `/api/cron/auth-emails` every 5 minutes. That route counts the account emails sent in the last hour and emails `ALERT_EMAIL` at two thirds of the limit (20 of 30) and again at the limit, at most once an hour for each (`src/lib/auth-email-alert.ts`). The count can run a little low, since a user's resent email replaces the time of the one before.
 - The site can't read Supabase's limit. When you change it, set `AUTH_EMAIL_HOURLY_LIMIT` in Vercel to the same number and redeploy. Unset, it's 30.
 - The job reads the site's address and `CRON_SECRET` from Supabase Vault, in secrets named `site_url` and `cron_secret`, and does nothing until both are there. `20261116074313_auth_email_alerts.sql` shows how to add them. If `CRON_SECRET` changes in Vercel, change `cron_secret` in Vault too, with `vault.update_secret`, or the checks get a 401.
 - The templates are in `src/lib/auth-email-templates.ts`, with stories under "Email Templates" in Storybook. `npm run auth-emails` writes them to `supabase/templates/`, which local Supabase reads. Their subjects are also in `supabase/config.toml`. `npm test` fails if any of those is out of date.
-- Nothing deploys the templates to production. After changing one, paste its subject and the contents of its file into the matching template under Authentication → Emails in the Supabase dashboard: `confirmation.html` is "Confirm sign up" and `recovery.html` is "Reset password".
+- Nothing deploys the templates to production. After changing one, paste its subject and the contents of its file into the matching template under Authentication → Emails in the Supabase dashboard: `confirmation.html` is "Confirm sign up", `recovery.html` is "Reset password", and `password_changed_notification.html` is the "Password changed" notification, which has to be turned on there too.
 - Don't use `supabase config push` to do it. It sends whatever `supabase/config.toml` declares, and that file holds local settings such as `site_url`.
 
 ## Browser extension

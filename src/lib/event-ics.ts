@@ -4,7 +4,7 @@ import { calendarStamp, calendarTimes, eventLocationText, type EventDetails } fr
 // isn't Google. The event page's calendar route and the demo's use it.
 
 function escapeIcs(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
 // Lines longer than 75 bytes are folded onto lines that start with a space.

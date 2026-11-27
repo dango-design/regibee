@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cancellationRecipients } from "@/lib/event-updates";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, CalendarDays, ExternalLink, Gift, ImagePlus, MapPin, Pencil } from "lucide-react";
@@ -110,7 +111,12 @@ export default async function ManageEventPage({
             </Link>
           </Button>
           <div className="max-md:absolute max-md:top-0 max-md:right-0">
-            <EventActionsMenu eventId={event.id} isOwner={isOwner} guestCount={guests.length} />
+            <EventActionsMenu
+              eventId={event.id}
+              isOwner={isOwner}
+              guestCount={guests.length}
+              cancellationCount={cancellationRecipients(event, guests).length}
+            />
           </div>
         </div>
       </div>

@@ -281,6 +281,7 @@ function EventForm({
       : defaultQuestions(EVENT_TYPE_OPTIONS.find((o) => o.value === "baby_shower")?.defaults?.questions),
   );
   const [remindDayBefore, setRemindDayBefore] = useState(data.event?.remind_day_before ?? true);
+  const [autoRsvpReminder, setAutoRsvpReminder] = useState(data.event?.auto_rsvp_reminder ?? true);
   const [notifyGuests, setNotifyGuests] = useState(true);
 
   // Linked registries. "Plan an event" on a list's page starts with that one.
@@ -520,6 +521,7 @@ function EventForm({
     askKids: String(askKids),
     rsvpQuestions: JSON.stringify(questions),
     remindDayBefore: String(remindDayBefore),
+    autoRsvpReminder: String(autoRsvpReminder),
     notifyGuests: String(notifyGuests && changes.length > 0),
     giftNote,
     themeColor,
@@ -1019,6 +1021,12 @@ function EventForm({
               <SwitchRow label="Email me when someone RSVPs" value={emailHost} onValueChange={setEmailHost} />
               <Divider inset={spacing.lg} />
               <SwitchRow label="Email everyone going a reminder the day before" value={remindDayBefore} onValueChange={setRemindDayBefore} />
+              {rsvpBy ? (
+                <>
+                  <Divider inset={spacing.lg} />
+                  <SwitchRow label="Remind guests who haven't replied, 3 days before the reply-by date" value={autoRsvpReminder} onValueChange={setAutoRsvpReminder} />
+                </>
+              ) : null}
             </Section>
             <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
             <StepFooter label={footerLabel("rsvps")} onPress={() => finish("rsvps")} />
@@ -1171,6 +1179,12 @@ function EventForm({
               value={remindDayBefore}
               onValueChange={setRemindDayBefore}
             />
+            {rsvpBy ? (
+              <>
+                <Divider inset={spacing.lg} />
+                <SwitchRow label="Remind guests who haven't replied, 3 days before the reply-by date" value={autoRsvpReminder} onValueChange={setAutoRsvpReminder} />
+              </>
+            ) : null}
           </Section>
           <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
         </Group>

@@ -53,6 +53,8 @@ export interface EventDetails {
   rsvp_questions?: RsvpQuestion[];
   /** Email everyone going a reminder the day before. */
   remind_day_before?: boolean;
+  /** Remind guests who haven't replied, 3 days before rsvp_by (src/lib/event-reminders-server.ts). */
+  auto_rsvp_reminder?: boolean;
   /**
    * The invitation's color, like "#f9b8b9", or null for the occasion's
    * colors. Turn it into colors with themeColors (src/lib/event-colors.ts).

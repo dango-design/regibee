@@ -34,6 +34,7 @@ import {
   type GroupGiftRow,
 } from "@/lib/group-gifts-server";
 import {
+  sendGroupGiftBoughtEmails,
   sendGroupGiftCalledOffEmails,
   sendGroupGiftStartedEmail,
   sendPledgeEmails,
@@ -398,6 +399,7 @@ export async function markGroupGiftBought(token: string): Promise<Result> {
       } catch (err) {
         console.error("[email] Failed to send gift confirmed emails for a group gift:", err);
       }
+      await sendGroupGiftBoughtEmails(gift.token);
     });
   }
   revalidateGift(gift.token, await slugOf(gift.registry_id));

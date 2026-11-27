@@ -24,8 +24,14 @@ import {
   guestMessageHtml,
   eventChangedHtml,
   dayBeforeReminderHtml,
+  eventCancelledHtml,
+  giftRemovedBuyerHtml,
+  welcomeHtml,
+  followApprovedHtml,
+  giftDigestHtml,
+  thanksReminderHtml,
 } from "@/lib/email-templates";
-import { AUTH_EMAILS } from "@/lib/auth-email-templates";
+import { AUTH_EMAILS, AUTH_NOTIFICATIONS } from "@/lib/auth-email-templates";
 import { coHostInviteHtml, exchangeAssignmentHtml, listRequestHtml, registryLinkedHtml } from "@/lib/event-email-templates";
 import { sampleLinkedRegistries } from "@/lib/event-sample-data";
 
@@ -53,10 +59,12 @@ const sampleGiftLink = "https://regibee.com/r/remi-and-max/gift/6f1c2a4e-8b3d-4c
 // Sent when a guest reserves an item, which holds it for them for 2 days.
 export const BuyerItemReserved: Story = {
   args: {
-    subject: 'You reserved "Hatch Rest+ Sound Machine". It\'s held for 2 days',
+    subject: 'You reserved "Glass Baby Bottles, 4 Pack". It\'s held for 2 days',
     html: itemReservedBuyerHtml({
       buyerName: "Glinda",
-      itemTitle: "Hatch Rest+ Sound Machine",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
+      itemImageUrl: "/hero/bottle.svg",
+      itemPrice: 34.99,
       quantity: 1,
       parentName: "Remi & Max",
       registryTitle: "Remi & Max's Baby Registry",
@@ -95,10 +103,12 @@ export const BuyerItemReservedOnStoreRegistry: Story = {
 // Sent once, about a day before a reservation the guest hasn't confirmed ends.
 export const BuyerItemReservationReminder: Story = {
   args: {
-    subject: 'Your reservation of "Hatch Rest+ Sound Machine" ends soon',
+    subject: 'Your reservation of "Glass Baby Bottles, 4 Pack" ends soon',
     html: itemReservationReminderBuyerHtml({
       buyerName: "Glinda",
-      itemTitle: "Hatch Rest+ Sound Machine",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
+      itemImageUrl: "/hero/bottle.svg",
+      itemPrice: 34.99,
       parentName: "Remi & Max",
       registryTitle: "Remi & Max's Baby Registry",
       hoursLeft: 30,
@@ -115,10 +125,10 @@ export const BuyerItemReservationReminder: Story = {
 export const BuyerItemReservationEnded: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   args: {
-    subject: 'Your reservation of "Hatch Rest+ Sound Machine" ended',
+    subject: 'Your reservation of "Glass Baby Bottles, 4 Pack" ended',
     html: itemReservationEndedBuyerHtml({
       buyerName: "Glinda",
-      itemTitle: "Hatch Rest+ Sound Machine",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
       registryTitle: "Remi & Max's Baby Registry",
       registryUrl: "https://regibee.com/r/remi-and-max",
     }),
@@ -129,10 +139,11 @@ export const BuyerItemReservationEnded: Story = {
 export const BuyerItemGiven: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   args: {
-    subject: 'Your gift is confirmed — "Hatch Rest+ Sound Machine"',
+    subject: 'Your gift is confirmed — "Glass Baby Bottles, 4 Pack"',
     html: itemGivenBuyerHtml({
       buyerName: "Glinda",
-      itemTitle: "Hatch Rest+ Sound Machine",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
+      itemImageUrl: "/hero/bottle.svg",
       quantity: 1,
       parentName: "Remi & Max",
       registryTitle: "Remi & Max's Baby Registry",
@@ -181,13 +192,15 @@ export const BuyerCashFundContribution: Story = {
 // Sent when a guest says they bought an item, not when they reserve it.
 export const OwnerItemGiven: Story = {
   args: {
-    subject: '🎁 Auntie Glinda bought "Hatch Rest+ Sound Machine"',
+    subject: '🎁 Auntie Glinda bought "Glass Baby Bottles, 4 Pack"',
     to: "max@example.com",
     html: itemGivenOwnerHtml({
       ownerName: "Max",
       registryTitle: "Remi & Max's Baby Registry",
       buyerName: "Auntie Glinda",
-      itemTitle: "Hatch Rest+ Sound Machine",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
+      itemImageUrl: "/hero/bottle.svg",
+      itemPrice: 34.99,
       quantity: 2,
       message: "Can't wait to meet the little one!",
       dashboardLink: "https://regibee.com/dashboard/registry/abc?highlight=123",
@@ -220,13 +233,14 @@ export const OwnerItemGivenWelcomeBox: Story = {
 export const OwnerItemCovered: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   args: {
-    subject: '🎉 Auntie Glinda sent you $25.98 for "Muslin Swaddle Blankets"',
+    subject: '🎉 Auntie Glinda sent you $25.98 for "Organic Cotton Bibs"',
     to: "max@example.com",
     html: itemCoveredOwnerHtml({
       ownerName: "Max",
       registryTitle: "Remi & Max's Baby Registry",
       buyerName: "Auntie Glinda",
-      itemTitle: "Muslin Swaddle Blankets",
+      itemTitle: "Organic Cotton Bibs",
+      itemImageUrl: "/hero/bib.svg",
       quantity: 2,
       amount: 25.98,
       message: "Happy to help with the big stuff!",
@@ -342,7 +356,6 @@ const sampleEventEmailWithGifts = {
   exchange: { budget: "$15", drawBy: "Saturday, March 7, 2026", mailed: false },
 };
 
-// The reminder only changes the subject and the first line, so it has no story.
 export const EventInvitation: Story = {
   args: {
     subject: "You're invited: Remi's Baby Shower",
@@ -354,6 +367,22 @@ export const EventInvitation: Story = {
       message:
         "Join us for tea, cake and games as we celebrate Remi and the baby on the way! Bring a favorite children's book instead of a card.",
       rsvpUrl: "https://regibee.com/e/remis-baby-shower-k3m9q2xa?g=Qm9vayBmb3IgYSBiYWJ5",
+    }),
+  },
+};
+
+// The reminder to guests who haven't replied.
+export const EventInvitationReminder: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: "Reminder: will you be at Remi's Baby Shower?",
+    from: '"Aunt Linda & Grandma Jo via Regibee" <notifications@regibee.com>',
+    html: eventInvitationHtml({
+      guestName: "Glinda",
+      hostName: "Aunt Linda & Grandma Jo",
+      event: sampleEventEmailWithGifts,
+      rsvpUrl: "https://regibee.com/e/remis-baby-shower-k3m9q2xa?g=Qm9vayBmb3IgYSBiYWJ5",
+      reminder: true,
     }),
   },
 };
@@ -432,6 +461,41 @@ export const RsvpHostNotification: Story = {
       attending: 14,
       pending: 6,
       manageUrl: "https://regibee.com/dashboard/events/abc",
+    }),
+  },
+};
+
+// A guest who can't come leaves out the event's details.
+export const RsvpGuestDeclined: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: "You can't make it to Remi's Baby Shower",
+    html: rsvpGuestConfirmationHtml({
+      guestName: "Glinda",
+      status: "no",
+      partySize: 1,
+      event: sampleEventEmailWithGifts,
+      rsvpUrl: "https://regibee.com/e/remis-baby-shower-k3m9q2xa?g=Qm9vayBmb3IgYSBiYWJ5",
+    }),
+  },
+};
+
+// A guest who wasn't on the list added themselves from the event link.
+export const RsvpHostNotificationNewGuest: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: "Boq might come to Remi's Baby Shower",
+    to: "linda@example.com",
+    html: rsvpHostNotificationHtml({
+      hostName: "Linda",
+      guestName: "Boq",
+      status: "maybe",
+      partySize: 1,
+      eventTitle: "Remi's Baby Shower",
+      attending: 14,
+      pending: 6,
+      manageUrl: "https://regibee.com/dashboard/events/abc",
+      newGuest: true,
     }),
   },
 };
@@ -606,6 +670,28 @@ export const ExchangeAssignment: Story = {
   },
 };
 
+// Names drawn a second time: this replaces the first email.
+export const ExchangeAssignmentRedraw: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: "New Secret Santa name for Holiday Gift Swap",
+    from: '"Aunt Linda via Regibee" <notifications@regibee.com>',
+    to: "boq@example.com",
+    html: exchangeAssignmentHtml({
+      giverName: "Boq",
+      gifteeName: "Nessa",
+      eventTitle: "Holiday Gift Swap",
+      hostName: "Aunt Linda",
+      budget: "$25",
+      eventDate: "Saturday, December 19, 2026",
+      mailed: true,
+      shippingAddress: "12 Munchkin Lane\nEmerald City, OZ 10001",
+      pageUrl: "https://regibee.com/e/holiday-gift-swap-p4w8n2rt?g=token-g5",
+      redraw: true,
+    }),
+  },
+};
+
 // ── Account emails ───────────────────────────────────────────
 
 // Supabase sends these itself, from the files `npm run auth-emails` writes.
@@ -700,5 +786,187 @@ export const BirthdayReminderSeveral: Story = {
       birthdays: sampleBirthdays,
       settingsUrl: "https://regibee.com/dashboard/account#birthday-emails",
     }),
+  },
+};
+
+// ── Added after the email audit ──────────────────────────────
+
+// To invited guests who haven't said no, when the host deletes the event.
+export const EventCancelled: Story = {
+  args: {
+    subject: "Cancelled: Remi's Baby Shower",
+    from: '"Aunt Linda & Grandma Jo via Regibee" <notifications@regibee.com>',
+    html: eventCancelledHtml({
+      guestName: "Glinda",
+      hostName: "Aunt Linda & Grandma Jo",
+      eventTitle: "Remi's Baby Shower",
+      date: "Saturday, March 14, 2026",
+    }),
+  },
+};
+
+// To a guest who said they bought an item the owners then deleted.
+export const BuyerGiftRemoved: Story = {
+  args: {
+    subject: '"Glass Baby Bottles, 4 Pack" was taken off Remi & Max\'s Baby Registry',
+    html: giftRemovedBuyerHtml({
+      buyerName: "Glinda",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
+      parentName: "Remi & Max",
+      registryTitle: "Remi & Max's Baby Registry",
+      bought: true,
+      listUrl: "https://regibee.com/r/remi-and-max-baby",
+    }),
+  },
+};
+
+// The same, for a guest who had only reserved it.
+export const BuyerReservationRemoved: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: '"Glass Baby Bottles, 4 Pack" was taken off Remi & Max\'s Baby Registry',
+    html: giftRemovedBuyerHtml({
+      buyerName: "Glinda",
+      itemTitle: "Glass Baby Bottles, 4 Pack",
+      parentName: "Remi & Max",
+      registryTitle: "Remi & Max's Baby Registry",
+      bought: false,
+      listUrl: "https://regibee.com/r/remi-and-max-baby",
+    }),
+  },
+};
+
+// Once, right after a new account confirms its address.
+export const Welcome: Story = {
+  args: {
+    subject: "Welcome to Regibee",
+    html: welcomeHtml({
+      name: "Glinda",
+      newListUrl: "https://regibee.com/dashboard/new",
+      eventsUrl: "https://regibee.com/dashboard/events",
+    }),
+  },
+};
+
+// To the person who asked to follow, once it's approved.
+export const FollowApproved: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: "Glinda Upland approved your follow request",
+    to: "dorothy@example.com",
+    html: followApprovedHtml({ followeeName: "Glinda Upland", profileUrl: "https://regibee.com/u/glinda" }),
+  },
+};
+
+const digestGifts = [
+  {
+    shownName: "Auntie Glinda",
+    title: "Glass Baby Bottles, 4 Pack",
+    kind: "given" as const,
+    quantity: 2,
+    amount: null,
+    message: "Can't wait to meet the little one!",
+    imageUrl: "/hero/bottle.svg",
+  },
+  {
+    shownName: "Uncle Oz",
+    title: "Organic Cotton Bibs",
+    kind: "given" as const,
+    quantity: 1,
+    amount: null,
+    message: null,
+    imageUrl: "/hero/bib.svg",
+  },
+  {
+    shownName: "Secret Santa",
+    title: "Nursery Furniture Fund",
+    kind: "fund" as const,
+    quantity: 1,
+    amount: 50,
+    message: null,
+    imageUrl: null,
+  },
+];
+
+// Once a day, to a manager who chose one summary instead of an email per gift.
+export const OwnerGiftDigest: Story = {
+  args: {
+    subject: "3 new gifts on Remi & Max's Baby Registry",
+    html: giftDigestHtml({
+      lists: [
+        {
+          title: "Remi & Max's Baby Registry",
+          url: "https://regibee.com/dashboard/registry/abc?tab=purchases",
+          gifts: digestGifts,
+        },
+      ],
+      settingsUrl: "https://regibee.com/dashboard/account#gift-emails",
+    }),
+  },
+};
+
+// A few days after a list's date: who gave what, to thank them.
+export const OwnerThanksReminder: Story = {
+  args: {
+    subject: "Say thanks for your gifts from Remi & Max's Baby Registry",
+    html: thanksReminderHtml({
+      registryTitle: "Remi & Max's Baby Registry",
+      gifts: digestGifts,
+      listUrl: "https://regibee.com/dashboard/registry/abc?tab=purchases",
+      settingsUrl: "https://regibee.com/dashboard/account#gift-emails",
+    }),
+  },
+};
+
+// A Secret Santa's reminder before the event, with their person's wishlist.
+export const ExchangeReminder: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: "Reminder: your Secret Santa gift for Holiday Gift Swap",
+    from: '"Aunt Linda via Regibee" <notifications@regibee.com>',
+    to: "boq@example.com",
+    html: exchangeAssignmentHtml({
+      giverName: "Boq",
+      gifteeName: "Elphaba",
+      eventTitle: "Holiday Gift Swap",
+      hostName: "Aunt Linda",
+      budget: "$25",
+      eventDate: "Saturday, December 19, 2026",
+      mailed: false,
+      wishlist: { url: "https://regibee.com/r/elphabas-wishlist-3k9d", title: "Elphaba's Wishlist" },
+      pageUrl: "https://regibee.com/e/holiday-gift-swap-p4w8n2rt?g=token-g5",
+      reason: "reminder",
+      daysLeft: 3,
+    }),
+  },
+};
+
+// A Secret Santa's person added their first wishlist after the draw.
+export const ExchangeWishlistAdded: Story = {
+  args: {
+    subject: "Elphaba added a wishlist for Holiday Gift Swap",
+    from: '"Aunt Linda via Regibee" <notifications@regibee.com>',
+    to: "boq@example.com",
+    html: exchangeAssignmentHtml({
+      giverName: "Boq",
+      gifteeName: "Elphaba",
+      eventTitle: "Holiday Gift Swap",
+      hostName: "Aunt Linda",
+      budget: "$25",
+      eventDate: "Saturday, December 19, 2026",
+      mailed: false,
+      wishlist: { url: "https://regibee.com/r/elphabas-wishlist-3k9d", title: "Elphaba's Wishlist" },
+      pageUrl: "https://regibee.com/e/holiday-gift-swap-p4w8n2rt?g=token-g5",
+      reason: "wishlist",
+    }),
+  },
+};
+
+// Supabase sends this after a password changes.
+export const AuthPasswordChanged: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
+  args: {
+    subject: AUTH_NOTIFICATIONS.password_changed.subject,
+    html: AUTH_NOTIFICATIONS.password_changed.html(),
   },
 };

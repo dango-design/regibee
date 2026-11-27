@@ -18,6 +18,7 @@ import {
   notifyItemGiven,
   notifyItemReservationEnded,
   remindItemReservation,
+  sendGiftRemovedEmail,
 } from "@/lib/email";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -31,6 +32,13 @@ const REMIND_WITHIN_HOURS = 36;
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
+/** An item photo's full URL, since mail apps can't load "/hero/x.svg". Null when there's none. */
+function absoluteUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return url.startsWith("/") ? `${siteUrl()}${url}` : null;
 }
 
 /** "Amazon" for a known store, else the link's host, like "etsy.com". */
@@ -72,7 +80,7 @@ async function loadGift(purchaseId: string) {
 
   const { data: item } = await supabaseAdmin
     .from("registry_items")
-    .select("id, title, external_url, registry_id, price")
+    .select("id, title, external_url, registry_id, price, image_url")
     .eq("id", purchase.registry_item_id)
     .single();
   if (!item) return null;
@@ -104,6 +112,9 @@ async function loadGift(purchaseId: string) {
   return {
     purchase,
     item,
+    // For the item card in the emails. Mail apps need a full URL.
+    itemImageUrl: absoluteUrl(item.image_url as string | null),
+    itemPrice: item.price != null ? Number(item.price) : null,
     registry,
     links,
     registryStoreName,
@@ -136,6 +147,8 @@ export async function sendReservationEmail(purchaseId: string) {
     registryStoreName: gift.registryStoreName,
     shopUrl: item.external_url || undefined,
     storeName: gift.storeName,
+    itemImageUrl: gift.itemImageUrl,
+    itemPrice: gift.itemPrice,
     confirmUrl: links.confirmUrl,
     releaseUrl: links.releaseUrl,
   });
@@ -166,10 +179,13 @@ export async function sendGiftConfirmedEmails(purchaseId: string, by: "visitor" 
     notifyItemGiven({
       allow,
       itemId: item.id,
+      purchaseId,
       itemTitle: item.title,
       buyerName: purchase.buyer_name,
       hideGiver: !!purchase.hide_giver,
       quantity: purchase.quantity,
+      itemImageUrl: gift.itemImageUrl,
+      itemPrice: gift.itemPrice,
       message: purchase.message,
       welcomeBox,
     }),
@@ -182,6 +198,7 @@ export async function sendGiftConfirmedEmails(purchaseId: string, by: "visitor" 
           quantity: purchase.quantity,
           parentName: registry.parentName,
           registryTitle: registry.registryTitle,
+          itemImageUrl: gift.itemImageUrl,
           registryUrl: links.registryUrl,
           undoUrl: links.releaseUrl,
         })
@@ -224,11 +241,13 @@ export async function sendCoverGiftEmails(purchaseId: string) {
     notifyItemCovered({
       allow: gift.visitorAllowance,
       itemId: item.id,
+      purchaseId,
       itemTitle: item.title,
       buyerName: purchase.buyer_name,
       hideGiver: !!purchase.hide_giver,
       quantity: purchase.quantity,
       amount,
+      itemImageUrl: gift.itemImageUrl,
       message: purchase.message,
     }),
     purchase.buyer_email
@@ -241,6 +260,7 @@ export async function sendCoverGiftEmails(purchaseId: string) {
           amount,
           parentName: registry.parentName,
           registryTitle: registry.registryTitle,
+          itemImageUrl: gift.itemImageUrl,
           registryUrl: links.registryUrl,
           undoUrl: links.releaseUrl,
         })
@@ -343,6 +363,8 @@ export async function processGiftReservations(now = new Date()) {
       registryStoreName: gift.registryStoreName,
       shopUrl: gift.item.external_url || undefined,
       storeName: gift.storeName,
+      itemImageUrl: gift.itemImageUrl,
+      itemPrice: gift.itemPrice,
       confirmUrl: gift.links.confirmUrl,
       releaseUrl: gift.links.releaseUrl,
     });
@@ -350,4 +372,80 @@ export async function processGiftReservations(now = new Date()) {
   }
 
   return { released, reminded };
+}
+
+/** A guest's gift on an item that's about to be deleted, read before the delete takes it. */
+export interface GiftOnDeletedItem {
+  buyerName: string;
+  buyerEmail: string;
+  bought: boolean;
+  itemTitle: string;
+  parentName: string;
+  registryTitle: string;
+  /** The list's link, or null for a private list. */
+  listUrl: string | null;
+}
+
+/**
+ * The open gifts with an email address on these items: reservations and
+ * gifts guests said they bought. Call it before deleting the items, since a
+ * database trigger deletes their gifts with them.
+ */
+export async function giftsOnItems(itemIds: string[]): Promise<GiftOnDeletedItem[]> {
+  if (itemIds.length === 0) return [];
+  const { data: purchases } = await supabaseAdmin
+    .from("purchases")
+    .select("id, registry_item_id, buyer_name, buyer_email, status, hide_giver")
+    .in("registry_item_id", itemIds)
+    .in("status", ["reserved", "purchased"]);
+  if (!purchases || purchases.length === 0) return [];
+
+  // A hidden giver's real name and address are kept apart (secret_givers).
+  const hidden = purchases.filter((p) => p.hide_giver).map((p) => p.id);
+  const secrets = new Map<string, { buyer_name: string; buyer_email: string | null }>();
+  if (hidden.length > 0) {
+    const { data } = await supabaseAdmin.from("secret_givers").select("purchase_id, buyer_name, buyer_email").in("purchase_id", hidden);
+    for (const row of data ?? []) secrets.set(row.purchase_id as string, row as { buyer_name: string; buyer_email: string | null });
+  }
+
+  const { data: items } = await supabaseAdmin
+    .from("registry_items")
+    .select("id, title, registry_id")
+    .in("id", [...new Set(purchases.map((p) => p.registry_item_id as string))]);
+  const itemById = new Map((items ?? []).map((i) => [i.id as string, i]));
+  const registryIds = [...new Set((items ?? []).map((i) => i.registry_id as string))];
+  const { data: registries } = await supabaseAdmin
+    .from("registries")
+    .select("id, title, slug, is_private, honoree_names, parent_names")
+    .in("id", registryIds);
+  const registryById = new Map((registries ?? []).map((r) => [r.id as string, r]));
+
+  const gifts: GiftOnDeletedItem[] = [];
+  for (const p of purchases) {
+    const secret = secrets.get(p.id as string);
+    const email = (secret?.buyer_email ?? p.buyer_email) as string | null;
+    const item = itemById.get(p.registry_item_id as string);
+    const registry = item ? registryById.get(item.registry_id as string) : undefined;
+    if (!email || !item || !registry) continue;
+    gifts.push({
+      buyerName: (secret?.buyer_name ?? p.buyer_name) as string,
+      buyerEmail: email,
+      bought: p.status === "purchased",
+      itemTitle: item.title as string,
+      parentName: ((registry.honoree_names || registry.parent_names) as string | null) || "The list's owner",
+      registryTitle: registry.title as string,
+      listUrl: registry.is_private ? null : `${siteUrl()}/r/${registry.slug}`,
+    });
+  }
+  return gifts;
+}
+
+/**
+ * Tells each guest their gift went with a deleted item. `listGone` leaves the
+ * link out, for when the whole list was deleted.
+ */
+export async function sendGiftRemovedEmails(gifts: GiftOnDeletedItem[], { listGone = false } = {}) {
+  for (const gift of gifts) {
+    await sendGiftRemovedEmail({ ...gift, listUrl: listGone ? null : gift.listUrl });
+  }
 }

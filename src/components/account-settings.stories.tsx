@@ -68,6 +68,7 @@ const meta: Meta<typeof AccountSettings> = {
     photoAction: mockList,
     giftProfileAction: mockSave,
     birthdayEmailsAction: mockList,
+    giftEmailsAction: mockList,
     deleteAccountActions: {
       loadSummary: async () => ({ deleted: [], handedOver: [], leaving: [], events: 0 }),
       deleteAction: async () => ({}),
@@ -90,6 +91,7 @@ export const NewAccount: Story = {
     follows: { requests: [], followers: [], following: [] },
     giftProfile: {},
     birthdayEmails: true,
+    giftEmails: "instant",
   },
 };
 
@@ -107,6 +109,7 @@ export const WithPhoto: Story = {
     follows: { requests: [], followers: [], following: [] },
     giftProfile: {},
     birthdayEmails: true,
+    giftEmails: "instant",
   },
 };
 

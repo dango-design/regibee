@@ -64,9 +64,17 @@ import { createGroupFor, getGroupForOwner, getGroupMembers, listGroupEvents } fr
 import { listFollowedAccounts } from "@/lib/follows";
 import { displayName } from "@/lib/profile-link";
 import { getSessionUser } from "@/lib/viewer";
-import { confirmRsvpToGuest, notifyHostOfRsvp, rsvpHeadline, sendEventChangeEmails, sendEventInvitations } from "@/lib/email";
+import {
+  confirmRsvpToGuest,
+  notifyHostOfRsvp,
+  rsvpHeadline,
+  sendEventCancelledEmails,
+  sendEventChangeEmails,
+  sendEventInvitations,
+} from "@/lib/email";
 import { sendPush } from "@/lib/push-server";
 import {
+  cancellationRecipients,
   changeNotice,
   changeRecipients,
   changeSummary,
@@ -81,7 +89,13 @@ import {
   storedQuestions,
   type RsvpAnswers,
 } from "@/lib/rsvp-questions";
-import { notifyRegistryLinked, sendCoHostInvite, sendExchangeAssignments, sendListRequest } from "@/lib/event-email";
+import {
+  notifyGiverOfWishlist,
+  notifyRegistryLinked,
+  sendCoHostInvite,
+  sendExchangeAssignments,
+  sendListRequest,
+} from "@/lib/event-email";
 import {
   NO_GIFTS_NOTE,
   giftPlansFor,
@@ -175,6 +189,8 @@ function readEventForm(formData: FormData): { fields: EventFields } | { error: s
     questions = cleaned.questions;
   }
   const rawRemind = formData.get("remindDayBefore");
+  // Missing, as from an older app, keeps what's saved.
+  const rawAutoRsvp = formData.get("autoRsvpReminder");
   // The invitation's color: "" for none. Missing, as from an older app, keeps it.
   const rawTheme = formData.get("themeColor");
   const themeColor = rawTheme === null || String(rawTheme).trim() === "" ? null : normalizeThemeColor(rawTheme);
@@ -220,6 +236,7 @@ function readEventForm(formData: FormData): { fields: EventFields } | { error: s
       ask_kids: formData.get("askKids") === "true",
       ...(questions !== undefined && { rsvp_questions: questions }),
       ...(rawRemind !== null && { remind_day_before: rawRemind !== "false" }),
+      ...(rawAutoRsvp !== null && { auto_rsvp_reminder: rawAutoRsvp !== "false" }),
       ...(rawTheme !== null && { theme_color: themeColor }),
     },
   };
@@ -640,9 +657,31 @@ export async function deleteEvent(eventId: string): Promise<{ error: string } | 
   if (access.error !== null) return { error: access.error };
   if (!access.isOwner) return { error: "Only the person who made this event can delete it." };
 
-  const registries = await getEventRegistries(eventId);
+  // Guests who were invited and haven't said no hear it's cancelled. Read
+  // them first: deleting the event deletes the guest list.
+  const [registries, guests, hostName] = await Promise.all([
+    getEventRegistries(eventId),
+    getEventGuests(eventId),
+    hostNameFor(access.event, access.user.id),
+  ]);
+  const toTell = cancellationRecipients(access.event, guests);
+
   const { error } = await supabaseAdmin.from("events").delete().eq("id", eventId);
   if (error) return { error: "The event wasn't deleted. Try again." };
+
+  if (toTell.length > 0) {
+    // These are addresses the host typed, so they count against the host's
+    // daily allowance. Past it, the event is still deleted.
+    const reservation = await reserveEmails(access.user.id, "cancellation", toTell.length);
+    const recipients = toTell.slice(0, reservation.granted).map((g) => ({ name: g.name, email: g.email! }));
+    const { sent } = await sendEventCancelledEmails({
+      event: access.event,
+      hostName,
+      replyTo: access.user.email ?? null,
+      guests: recipients,
+    });
+    await settleEmails(reservation, sent);
+  }
 
   revalidateEvent(access.event);
   for (const registry of registries) revalidatePath(`/dashboard/registry/${registry.id}`);
@@ -1166,11 +1205,11 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
   };
 
   // The guest as they are now, for the exchange rules below.
-  let existing: Pick<EventGuest, "id" | "in_exchange"> | null = null;
+  let existing: Pick<EventGuest, "id" | "in_exchange" | "wishlist_url" | "gift_ideas"> | null = null;
   if (input.token) {
     const { data } = await supabaseAdmin
       .from("event_guests")
-      .select("id, in_exchange")
+      .select("id, in_exchange, wishlist_url, gift_ideas")
       .eq("event_id", event.id)
       .eq("token", input.token)
       .maybeSingle();
@@ -1297,6 +1336,13 @@ export async function submitRsvp(input: RsvpInput): Promise<Result<{ token: stri
     newGuest = true;
   }
 
+  // A Secret Santa whose person just added a wishlist or gift ideas hears so.
+  if (existing && guest.in_exchange && (guest.wishlist_url || guest.gift_ideas)) {
+    const before = existing;
+    const guestId = guest.id;
+    after(() => notifyGiverOfWishlist(event.id, guestId, before));
+  }
+
   if (guest.in_exchange && typeof response.wishlist_url === "string") {
     await hideReservationsOnOwnWishlist(response.wishlist_url, guest.email).catch((err) =>
       console.error("[events] Failed to hide reservations on a wishlist:", err),
@@ -1413,7 +1459,7 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
   const { data: guest } = input.token
     ? await supabaseAdmin
         .from("event_guests")
-        .select("id, name, email, in_exchange, wishlist_registry_id")
+        .select("id, name, email, in_exchange, wishlist_registry_id, wishlist_url, gift_ideas")
         .eq("event_id", event.id)
         .eq("token", input.token)
         .maybeSingle()
@@ -1529,6 +1575,9 @@ export async function saveEventWishlist(input: EventWishlistInput): Promise<Resu
     console.error("[events] Failed to save a guest's wishlist:", error);
     return { error: "Your wishlist wasn't saved. Try again." };
   }
+  // Only sends for drawn names, when this is the guest's first wishlist.
+  const before = { wishlist_url: guest.wishlist_url as string | null, gift_ideas: guest.gift_ideas as string | null };
+  after(() => notifyGiverOfWishlist(event.id, guest.id as string, before));
   // A list that's now the wishlist isn't also one of their other lists.
   if (registryId) {
     await supabaseAdmin.from("event_guest_lists").delete().eq("guest_id", guest.id).eq("registry_id", registryId);
@@ -1725,6 +1774,7 @@ async function copyEventForNextYear(
       ask_kids: old.ask_kids,
       rsvp_questions: storedQuestions(old.rsvp_questions),
       remind_day_before: old.remind_day_before ?? true,
+      auto_rsvp_reminder: old.auto_rsvp_reminder ?? true,
       theme_color: old.theme_color ?? null,
       repeated_from: old.id,
       group_id: groupId,
