@@ -12,7 +12,7 @@ import { ScrollToTop } from "@/components/scroll-to-top";
 import { SuggestItemDialog } from "@/components/suggest-item-dialog";
 import { DEMO_ME, demoFollowState, demoOk, demoProfilePath } from "@/lib/demo-people";
 import { findDemoRegistry } from "@/lib/demo-registries";
-import { GIFT_HOLD_DAYS, type MyItemGift } from "@/lib/gifts";
+import { GIFT_HOLD_DAYS, listProgress, type MyItemGift } from "@/lib/gifts";
 import { PAYBACK_NOTE_MAX, parseGroupGiftAmount } from "@/lib/group-gifts";
 import { copyForRegistry } from "@/lib/registry-copy";
 import { parseRetailerRegistries } from "@/lib/retailers";
@@ -140,7 +140,7 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
   const ownedByDemoAccount = registry.owner.public_id === DEMO_ME.public_id;
   const followState = ownedByDemoAccount ? "none" : demoFollowState(registry.owner.public_id);
 
-  const fulfilledCount = items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
+  const fulfilledCount = listProgress(items, (i) => coverCounts[i.id] || 0).gifted;
   const owner = registry.listed_on_profile
     ? { name: registry.owner.full_name, path: demoProfilePath(registry.owner) }
     : null;

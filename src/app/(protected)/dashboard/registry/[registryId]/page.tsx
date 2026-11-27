@@ -22,7 +22,7 @@ import { ProgressCircle } from "@/components/ui/progress-circle";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { FundsPositionMenu } from "@/components/funds-position-menu";
-import { fundsPosition } from "@/lib/gifts";
+import { coveredQuantity, fundsPosition, listProgress } from "@/lib/gifts";
 import type { PaymentMethods } from "@/lib/types";
 import { PandaMark } from "@/components/panda-mark";
 import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
@@ -106,9 +106,9 @@ export default async function RegistryManagePage({
   }
 
   const totalItems = allItems.length;
-  const fulfilledItems = allItems.filter(
-    (i) => i.quantity_fulfilled >= i.quantity_needed
-  ).length;
+  // An item a manager bought counts as gifted only once guests cover it or
+  // they mark it as gifted (src/lib/gifts.ts).
+  const progress = listProgress(allItems, (i) => coveredQuantity(purchasesByItemId.get(i.id)));
 
   // Group items by category
   const itemsByCategory = new Map<string | null, ListPageItem[]>();
@@ -240,7 +240,7 @@ export default async function RegistryManagePage({
             )}
           </>
         }
-        progress={hideReservations ? null : { gifted: fulfilledItems, total: totalItems }}
+        progress={hideReservations ? null : progress}
         hidden={
           hideReservations
             ? { revealed: revealInfo?.revealedCount ?? 0, href: `/dashboard/registry/${registryId}?tab=purchases` }

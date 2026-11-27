@@ -46,7 +46,7 @@ import { parseStorePerksState, storePerksSettings } from "@/lib/store-perks";
 import { MY_GIFTS_COOKIE, MY_GIFTS_COOKIE_OPTIONS, withFundGift, withGift } from "@/lib/my-gifts-cookie";
 import { readEventGuestCookie } from "@/lib/event-guest-cookie";
 import { eventGuestFromToken, eventIncludesRegistry } from "@/lib/events-server";
-import { FUNDS_POSITION_SETTING, GIFT_HOLD_DAYS, isOpenReservation, SECRET_GIVER_NAME, type FundsPosition } from "@/lib/gifts";
+import { canBeCovered, FUNDS_POSITION_SETTING, GIFT_HOLD_DAYS, isOpenReservation, SECRET_GIVER_NAME, type FundsPosition } from "@/lib/gifts";
 import {
   releaseExpiredOnItem,
   sendCoverGiftEmails,
@@ -1466,6 +1466,49 @@ export async function toggleParentPurchased(
   return { success: true };
 }
 
+/**
+ * What happens to an item a manager bought themselves (src/lib/gifts.ts):
+ * whether guests can cover it, and whether it counts as gifted. Either can be
+ * left out to keep it. The phone app calls this too.
+ */
+export async function setBoughtItemChoice(
+  itemId: string,
+  registryId: string,
+  choice: { guestsCanCover?: boolean; markedGifted?: boolean },
+) {
+  const { user, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const changes: { guests_can_cover?: boolean; marked_gifted?: boolean } = {};
+  if (typeof choice?.guestsCanCover === "boolean") changes.guests_can_cover = choice.guestsCanCover;
+  if (typeof choice?.markedGifted === "boolean") changes.marked_gifted = choice.markedGifted;
+  if (Object.keys(changes).length === 0) return { error: "Nothing to change." };
+
+  const supabase = await createClient();
+  const { data: item } = await supabase
+    .from("registry_items")
+    .select("id, is_parent_purchased")
+    .eq("id", itemId)
+    .single();
+
+  // The item can be on this list through a placement (src/lib/list-items.ts).
+  const lists = item ? (await listsForItems([itemId])).get(itemId) ?? [] : [];
+  if (!item || !lists.includes(registryId)) return { error: "Item not found" };
+  if (!item.is_parent_purchased) return { error: "Mark it as bought first." };
+
+  const { data: updated, error } = await supabase
+    .from("registry_items")
+    .update({ ...changes, updated_at: new Date().toISOString() })
+    .eq("id", itemId)
+    .select("id");
+
+  if (error) return { error: error.message };
+  if (!updated || updated.length === 0) return { error: "Only the list's owner can change this item." };
+
+  revalidateLists(lists);
+  return { success: true };
+}
+
 export async function cancelReservation(
   purchaseId: string,
   registryId: string
@@ -1674,7 +1717,7 @@ export async function coverParentPurchasedItem(formData: FormData): Promise<Cove
   const [{ data: item }, { data: covers }] = await Promise.all([
     supabaseAdmin
       .from("registry_items")
-      .select("quantity_needed, is_parent_purchased")
+      .select("quantity_needed, is_parent_purchased, guests_can_cover, marked_gifted")
       .eq("id", itemId)
       .single(),
     supabaseAdmin
@@ -1685,6 +1728,7 @@ export async function coverParentPurchasedItem(formData: FormData): Promise<Cove
   ]);
   if (!item) return { error: "This item isn't on the registry anymore." };
   if (!item.is_parent_purchased) return { error: "This item changed. Reload the page to see how to give it." };
+  if (!canBeCovered(item)) return { error: "This item isn't open to gifts anymore." };
   const given = (covers ?? []).reduce((sum, p) => sum + (p.quantity || 1), 0);
   const available = item.quantity_needed - given;
   if (quantity > available) {

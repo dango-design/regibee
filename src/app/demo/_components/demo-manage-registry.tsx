@@ -71,7 +71,7 @@ import { StorePerksCard } from "@/components/store-perks-card";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 import { getChecklistProgress } from "@/lib/checklist-matching";
 import { copyForRegistry, occasionLabel } from "@/lib/registry-copy";
-import { giftActivityFor, giftActivityTag, ownerItemStatus } from "@/lib/gifts";
+import { coveredQuantity, giftActivityFor, giftActivityTag, listProgress, ownerItemStatus } from "@/lib/gifts";
 import { parseRetailerRegistries, plainLinksByStore, type StoreId } from "@/lib/retailers";
 import { StoreRegistryLine } from "@/components/store-registry-line";
 import { buildStorePerks, parseStorePerksState, readyPerkCount } from "@/lib/store-perks";
@@ -1188,7 +1188,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
   };
 
   const totalItems = items.length;
-  const fulfilledItems = items.filter((i) => i.quantity_fulfilled >= i.quantity_needed).length;
+  const progress = listProgress(items, (i) => coveredQuantity(purchases.filter((p) => p.registry_item_id === i.id)));
   const checklistProgress = getChecklistProgress(items.map((i) => i.title));
 
   // Group items by category
@@ -1311,7 +1311,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
             )}
           </>
         }
-        progress={{ gifted: fulfilledItems, total: totalItems }}
+        progress={progress}
         events={linkedEvents}
         planPrompt={!eventPromptDismissed}
         checklist={

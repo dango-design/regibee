@@ -109,6 +109,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Deleting an item or a gift fund deletes guests' gifts on it, with their names, emails and messages. Database triggers do this on every path, a list's deletion included (`20261116012811_delete_gifts_with_items.sql`). A group gift's reservation stays until its group gift goes, since the group gift page reads its status from it. So never delete and re-add an item to move or change it: its gifts go with the delete.
 - An owner who hides what's been reserved on any list an item is on doesn't see that item's gifts on any of them (`itemsHiddenFromOwner`).
 
+## Items a manager bought
+
+- A list's manager can mark an item as bought by them (`is_parent_purchased`). That isn't a gift: nobody gave it to them. Guests can't reserve it.
+- The manager then chooses, and can change at any time: guests can cover it by sending its price (`guests_can_cover`, on by default), guests can't, or it counts as gifted (`marked_gifted`, which also stops covers). `setBoughtItemChoice` saves it on the website and in the phone app. Unmarking the item as bought puts both back (`20261127093601_bought_item_choices.sql`).
+- An item a manager bought counts as gifted only once guests cover every one, or the manager marks it as gifted. Until then it counts as "bought by you". `quantity_fulfilled` still equals `quantity_needed` for it, since nothing is left for guests to reserve, so never count gifts from `quantity_fulfilled` alone. Use `listProgress` and `itemProgress` in `src/lib/gifts.ts`, as the managers' progress bar, the dashboard cards and the guest page's count do.
+
 ## Barcode numbers
 
 - Items and gift ideas have a `gtin` column: the product's barcode number (its UPC or EAN), saved as 14 digits. Nothing shows it yet. It's there so Regibee can later match the same product across stores.
