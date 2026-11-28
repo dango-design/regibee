@@ -80,7 +80,11 @@ async function rsvpWithOwnList(
   const use = page.getByRole("button", { name: `Use ${list.title}` });
   await waitForReact(use);
   await use.click();
-  await expect(page.getByRole("heading", { name: "Your wishlist" })).toBeVisible();
+  // Exact: the step's heading before saving, "Now add your wishlist", would
+  // match too, and the test would go on before the list was saved.
+  await expect(
+    page.getByRole("region", { name: "Your wishlist", exact: true }).getByRole("link", { name: list.title }),
+  ).toBeVisible();
 }
 
 /** The purchases on a list that its owner can read with the anon key, as the mobile app does. */
@@ -179,9 +183,11 @@ test("guests see each other's lists and who reserved what, and the owner sees it
   await db.from("events").update({ event_date: twoDaysAgo }).eq("id", event.id);
   await db.from("purchases").update({ created_at: fourDaysAgo }).eq("registry_item_id", scarf.id);
 
-  // The daily job reveals it and emails Maya once.
+  // The daily job reveals it and emails Maya once. Other tests call the job
+  // too, against the same database, and one of their calls can reveal it
+  // first. So check the email and the saved reveal, not what this call sent.
   const first = (await runReservationJob(mayaPage)) as unknown as { reveals: { revealed: number; emailed: number } };
-  expect(first.reveals.emailed).toBeGreaterThanOrEqual(1);
+  expect(first.reveals).toBeDefined();
   await waitForEmail(maya.email, `🎁 Your gifts from ${event.title} are revealed`);
   const second = (await runReservationJob(mayaPage)) as unknown as { reveals: { revealed: number; emailed: number } };
   const { count } = await db
@@ -258,7 +264,10 @@ test("a guest logs in after they RSVP and links a list they already have", async
   const hostPage = await hostContext.newPage();
   await signIn(hostPage, hal);
   await hostPage.goto(`/dashboard/events/${event.id}`);
-  await hostPage.getByRole("button", { name: "Send invitations" }).click();
+  // A click before React takes over the page does nothing.
+  const sendInvitations = hostPage.getByRole("button", { name: "Send invitations" });
+  await waitForReact(sendInvitations);
+  await sendInvitations.click();
   await hostPage.getByRole("button", { name: "Send", exact: true }).click();
   const invitation = await waitForEmail(olive.email, `You're invited: ${event.title}`);
   expect(invitation.html).toContain("everyone gives everyone");

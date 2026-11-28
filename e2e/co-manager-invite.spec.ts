@@ -89,7 +89,10 @@ test("an owner invites a co-parent by email, who signs in from the link and acce
 
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
-  await page.getByPlaceholder("coparent@example.com").fill(coparent.email);
+  // Text typed before React takes over the page is cleared.
+  const inviteEmail = page.getByPlaceholder("coparent@example.com");
+  await waitForReact(inviteEmail);
+  await inviteEmail.fill(coparent.email);
   await page.getByRole("button", { name: "Send Invite" }).click();
   await expect(page.getByRole("button", { name: "Sent!" })).toBeVisible();
 

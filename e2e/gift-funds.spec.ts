@@ -2,7 +2,7 @@
 // and both hear about it by email.
 
 import { expect, test } from "@playwright/test";
-import { createRegistryWithItem, db, signIn, SITE_URL, uniqueEmail } from "./fixtures";
+import { createRegistryWithItem, db, signIn, SITE_URL, uniqueEmail, waitForReact } from "./fixtures";
 import { waitForEmail } from "./mailbox";
 
 test("an owner adds a gift fund, a guest contributes, and both get an email", async ({ page, browser }) => {
@@ -10,7 +10,10 @@ test("an owner adds a gift fund, a guest contributes, and both get an email", as
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}`);
 
-  await page.getByRole("button", { name: "Add Fund" }).click();
+  // A click before React takes over the page does nothing.
+  const addFund = page.getByRole("button", { name: "Add Fund" });
+  await waitForReact(addFund);
+  await addFund.click();
   const create = page.getByRole("dialog");
   await expect(create.getByRole("heading", { name: "Create gift fund" })).toBeVisible();
   await create.getByLabel("Fund Name").fill("College Fund");
@@ -30,7 +33,9 @@ test("an owner adds a gift fund, a guest contributes, and both get an email", as
   const guest = await browser.newContext();
   const guestPage = await guest.newPage();
   await guestPage.goto(`/r/${registry.slug}`);
-  await guestPage.getByRole("button", { name: "Contribute" }).click();
+  const contribute = guestPage.getByRole("button", { name: "Contribute" });
+  await waitForReact(contribute);
+  await contribute.click();
   const give = guestPage.getByRole("dialog");
   await expect(give.getByRole("heading", { name: "Contribute to “College Fund”" })).toBeVisible();
   await give.getByRole("spinbutton", { name: /^Amount/ }).fill("50");

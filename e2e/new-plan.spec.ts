@@ -2,7 +2,7 @@
 // through the page the way a person would, and checks what it made.
 
 import { expect, test, type Page } from "@playwright/test";
-import { chooseOption, createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail } from "./fixtures";
+import { chooseOption, createAccount, createWishlist, db, signIn, SITE_URL, uniqueEmail, waitForReact } from "./fixtures";
 import { linkIn, waitForEmail } from "./mailbox";
 
 async function openPicker(page: Page) {
@@ -169,7 +169,10 @@ test("asking the person it's for to make a list links it once they do", async ({
   const remiPage = await remiContext.newPage();
   await signIn(remiPage, remi);
   await remiPage.goto(requestUrl.replace(SITE_URL, ""));
-  await remiPage.getByRole("button", { name: "Make my baby registry" }).click();
+  // A click before React takes over the page does nothing.
+  const make = remiPage.getByRole("button", { name: "Make my baby registry" });
+  await waitForReact(make);
+  await make.click();
   await remiPage.waitForURL(/\/dashboard\/registry\/[0-9a-f-]{36}$/);
   await remiContext.close();
 
@@ -247,7 +250,9 @@ test("a baby registry on its own asks nothing about an event, and its party prom
 
   // It stays dismissed.
   await page.reload();
-  await page.getByRole("button", { name: "More", exact: true }).click();
+  const more = page.getByRole("button", { name: "More", exact: true });
+  await waitForReact(more);
+  await more.click();
   await expect(planLink).toBeVisible();
   await expect(page.getByText("Planning a party?")).toHaveCount(0);
   const { data: saved } = await db.from("registries").select("settings").eq("id", registryId).single();

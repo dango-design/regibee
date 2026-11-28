@@ -56,7 +56,9 @@ test("the owner gets a new link: the old one stops working, guests' gift emails 
   const reserved = await waitForEmail(guestEmail, `You reserved "${item.title}". It's held for 2 days`);
   const confirmPage = await guest.newPage();
   await confirmPage.goto(linkIn(reserved, /\/gift\/[0-9a-f-]+\?step=confirm$/));
-  await confirmPage.getByRole("dialog").getByRole("button", { name: "Yes, I bought it" }).click();
+  const bought = confirmPage.getByRole("dialog").getByRole("button", { name: "Yes, I bought it" });
+  await waitForReact(bought);
+  await bought.click();
   await expect(confirmPage.getByRole("dialog").getByRole("heading", { name: "Thank you!" })).toBeVisible();
   const confirmed = await waitForEmail(guestEmail, `Your gift is confirmed — "${item.title}"`);
   const undoUrl = linkIn(confirmed, /\/gift\/[0-9a-f-]+\?step=release$/);

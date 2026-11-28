@@ -10,7 +10,7 @@
 // tested with the extension (npm run test:extension).
 
 import { expect, test, type Page } from "@playwright/test";
-import { createRegistryWithItem, db, signIn } from "./fixtures";
+import { createRegistryWithItem, db, signIn, waitForReact } from "./fixtures";
 
 const LINK = (id: string) => `https://www.amazon.com/dp/${id}`;
 const PHOTO = "https://m.media-amazon.com/images/I/e2e-photo.jpg";
@@ -65,7 +65,10 @@ test("the list page fills in missing details and lets the owner put an old value
   await page.goto(`/dashboard/registry/${registry.id}`);
 
   await expect(page.getByText("4 items are missing a photo or price")).toBeVisible();
-  await page.getByRole("button", { name: "Fill them in" }).click();
+  // A click before React takes over the page does nothing.
+  const fillIn = page.getByRole("button", { name: "Fill them in" });
+  await waitForReact(fillIn);
+  await fillIn.click();
 
   const review = page.getByRole("region", { name: "Filled in details for 3 items" });
   await expect(review).toBeVisible();
@@ -128,7 +131,9 @@ test("the list page fills in missing details and lets the owner put an old value
   await expect(page.getByRole("region", { name: /Filled in details/ })).toHaveCount(0);
 
   // The swaddle's edit dialog shows its checks are off, and turns them back on.
-  await page.getByRole("heading", { name: "Halo Sleepsack Swaddle" }).click();
+  const swaddle = page.getByRole("heading", { name: "Halo Sleepsack Swaddle" });
+  await waitForReact(swaddle);
+  await swaddle.click();
   const dialog = page.getByRole("dialog", { name: "Edit item" });
   const weekly = dialog.getByRole("checkbox", { name: "Check the store's price weekly" });
   await expect(weekly).not.toBeChecked();

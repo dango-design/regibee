@@ -5,7 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
+import { createAccount, db, signIn, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
 import { emailsTo, waitForEmail } from "./mailbox";
 
 const DROP_OFF = "77 Linden Way\nOakland, CA 94610";
@@ -216,7 +216,10 @@ test("a meal train shows the drop-off address only to people who signed up", asy
   const hostPage = await hostContext.newPage();
   await signIn(hostPage, host);
   await hostPage.goto(`/dashboard/events/${event.id}`);
-  await hostPage.getByRole("button", { name: "Send invitations" }).click();
+  // A click before React takes over the page does nothing.
+  const sendInvitations = hostPage.getByRole("button", { name: "Send invitations" });
+  await waitForReact(sendInvitations);
+  await sendInvitations.click();
   await hostPage.getByRole("button", { name: "Send", exact: true }).click();
   const invitation = await waitForEmail(annEmail, `You're invited: ${event.title}`);
   expect(invitation.html).toContain("Pick a day");

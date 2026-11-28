@@ -6,7 +6,7 @@
 // from following back, and two people who follow each other show as Friends.
 
 import { expect, test, type Page } from "@playwright/test";
-import { chooseOption, createAccount, createWishlist, CRON_SECRET, db, waitForReact } from "./fixtures";
+import { chooseOption, createAccount, createWishlist, CRON_SECRET, db, signIn, waitForReact } from "./fixtures";
 import { emailsTo, linkIn, waitForEmail } from "./mailbox";
 import { addDays, formatBirthday, MONTH_OPTIONS } from "../src/lib/gift-profile";
 import { profilePath } from "../src/lib/profile-link";
@@ -70,15 +70,6 @@ async function runBirthdayJob(page: Page) {
   return response.json() as Promise<{ birthdays: number; sent: number; failed: number }>;
 }
 
-async function signInAs(page: Page, account: { email: string; password: string }) {
-  await page.goto("/login");
-  await waitForReact(page.locator("form"));
-  await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/\/dashboard/);
-}
-
 const birthdayEmails = async (address: string) =>
   (await emailsTo(address)).filter((email) => email.subject.includes("birthday"));
 
@@ -117,7 +108,7 @@ test("followers see a birthday, friends see sizes and likes, and anyone sees the
 
   const maxContext = await browser.newContext();
   const page = await maxContext.newPage();
-  await signInAs(page, max);
+  await signIn(page, max);
 
   // The Following page lists it.
   await page.goto("/dashboard/following");
@@ -198,7 +189,7 @@ test("each part of a gift profile shows to the people its owner chose", async ({
   // and it isn't on his Following page.
   const maxContext = await browser.newContext();
   const maxPage = await maxContext.newPage();
-  await signInAs(maxPage, max);
+  await signIn(maxPage, max);
   for (const path of paths) {
     await maxPage.goto(path);
     await expect(maxPage.getByText("Bubble tea")).toBeVisible();
@@ -211,7 +202,7 @@ test("each part of a gift profile shows to the people its owner chose", async ({
   // Her friend sees the birthday, and only he gets the email about it.
   const friendContext = await browser.newContext();
   const friendPage = await friendContext.newPage();
-  await signInAs(friendPage, friend);
+  await signIn(friendPage, friend);
   await friendPage.goto(glinda.path);
   await expect(friendPage.getByText(formatBirthday(birthday), { exact: true })).toBeVisible();
   await friendContext.close();
@@ -234,7 +225,7 @@ test("each part of a gift profile shows to the people its owner chose", async ({
     .eq("id", glinda.id);
   const friendAgain = await browser.newContext();
   const friendAgainPage = await friendAgain.newPage();
-  await signInAs(friendAgainPage, friend);
+  await signIn(friendAgainPage, friend);
   await friendAgainPage.goto(glinda.path);
   await expect(friendAgainPage.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(friendAgainPage.getByText(formatBirthday(birthday), { exact: true })).toHaveCount(0);
@@ -253,7 +244,7 @@ test("a follower is one tap from following back, and approving offers it too", a
   await follow(max.id, glinda.id, "approved");
   await follow(oz.id, glinda.id, "pending");
 
-  await signInAs(page, glinda);
+  await signIn(page, glinda);
   await page.goto("/dashboard/account");
 
   // Max already follows Glinda: one tap sends a request back. The page
@@ -294,7 +285,7 @@ test("a follower is one tap from following back, and approving offers it too", a
 
 test("someone fills in their gift profile on the Account page", async ({ page }) => {
   const maya = await createAccount("Maya Profile");
-  await signInAs(page, maya);
+  await signIn(page, maya);
   await page.goto("/dashboard/account");
 
   const form = page.locator("#gift-profile");
@@ -336,7 +327,7 @@ test("someone fills in their gift profile on the Account page", async ({ page })
 
 test("someone writes a public note on the Account page, and anyone sees it on their profile", async ({ page, browser }) => {
   const maya = await createAccount("Maya Note");
-  await signInAs(page, maya);
+  await signIn(page, maya);
   await page.goto("/dashboard/account");
 
   const card = page.locator("#profile");
@@ -365,7 +356,7 @@ test("a list kept for a child has its own gift profile, and followers see the ch
   // Dorothy fills in Toto's profile on the list's settings page.
   const dorothyContext = await browser.newContext();
   const page = await dorothyContext.newPage();
-  await signInAs(page, dorothy);
+  await signIn(page, dorothy);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
   const form = page.locator("#gift-profile");
   await expect(form.getByText("About Toto")).toBeVisible();
@@ -398,7 +389,7 @@ test("a list kept for a child has its own gift profile, and followers see the ch
   // Henry follows Dorothy, so Toto's birthday is on his Following page.
   const henryContext = await browser.newContext();
   const henryPage = await henryContext.newPage();
-  await signInAs(henryPage, henry);
+  await signIn(henryPage, henry);
   await henryPage.goto("/dashboard/following");
   const coming = henryPage.getByRole("region", { name: "Birthdays coming up" });
   await expect(coming.getByText("Toto")).toBeVisible();
