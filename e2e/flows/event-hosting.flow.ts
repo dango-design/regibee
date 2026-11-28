@@ -108,19 +108,6 @@ test("event hosting flow", async ({ page, browser }) => {
   });
   await timeAndPlace.getByRole("button", { name: "Continue" }).click();
 
-  const gifts = page.getByRole("region", { name: /Gifts(?! among)/ });
-  await expect(gifts.getByText("Maya's Birthday Wishlist")).toBeVisible();
-  await flow.page(page, {
-    id: "new-event-gifts",
-    via: "Continue",
-    focus: gifts,
-    lane: "host",
-    who: HOST,
-    title: "New event: gifts",
-    note: "What guests will see about gifts. The wishlist she came from is linked.",
-  });
-  await gifts.getByRole("button", { name: "Continue" }).click();
-
   const invitation = page.getByRole("region", { name: /Invitation/ });
   await expect(invitation.getByRole("button", { name: "Skip" })).toBeVisible();
   await flow.page(page, {
@@ -134,11 +121,24 @@ test("event hosting flow", async ({ page, browser }) => {
   });
   await invitation.getByRole("button", { name: "Skip" }).click();
 
+  const gifts = page.getByRole("region", { name: /Gifts(?! among)/ });
+  await expect(gifts.getByText("Maya's Birthday Wishlist")).toBeVisible();
+  await flow.page(page, {
+    id: "new-event-gifts",
+    via: "Skip",
+    focus: gifts,
+    lane: "host",
+    who: HOST,
+    title: "New event: gifts",
+    note: "What guests will see about gifts. The wishlist she came from is linked.",
+  });
+  await gifts.getByRole("button", { name: "Continue" }).click();
+
   const rsvps = page.getByRole("region", { name: /RSVPs/ });
   await chooseOption(rsvps, /People per RSVP/, "2");
   await flow.page(page, {
     id: "new-event-rsvps",
-    via: "Skip",
+    via: "Continue",
     focus: rsvps,
     lane: "host",
     who: HOST,

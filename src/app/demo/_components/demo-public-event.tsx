@@ -15,6 +15,7 @@ import {
   eventHasPassed,
   exchangeKind,
   googleCalendarUrl,
+  invitationReplyCta,
   type EventGuest,
   type ExchangeGiftee,
   type GuestWishList,
@@ -220,6 +221,13 @@ function GuestPage({ event, token, today }: { event: DemoEvent; token: string | 
           calendar={google ? { google, ics: `/demo/e/${event.slug}/calendar` } : null}
           signup={sheet ? { title: sheet.sheet.title, note: sheet.sheet.note, rows: signupRows, mealTrain } : null}
           addressHidden={addressHidden}
+          replyCta={invitationReplyCta({
+            guest: guest ? { status: guest.rsvp_status } : null,
+            openRsvp: event.open_rsvp && !(exchange?.drawn_at && exchange.mailed),
+            passed: eventHasPassed(event, yesterday),
+            mealTrain,
+          })}
+          today={today}
           basePath="/demo"
           // Like the real page: the reply comes before the gift sections.
           reply={

@@ -20,6 +20,7 @@ import {
   occasionFor,
   planNeedsEvent,
   startingGiftPlan,
+  usuallyHasGifts,
   type Audience,
   type GiftPlan,
   type OccasionId,
@@ -157,7 +158,8 @@ const PLAN_ICONS: Partial<Record<GiftPlan, LucideIcon>> = {
  * - A gift list on its own. These link to the registry form, with no event.
  * - An event. Three questions (what, who it's for, how gifts work) and a
  *   name, then startPlan makes the event, with a gift list if the host wants
- *   one.
+ *   one. Occasions where guests usually bring no gifts, like a potluck, skip
+ *   the gifts question (usuallyHasGifts).
  */
 export function PlanPicker({
   myName = "",
@@ -194,6 +196,10 @@ export function PlanPicker({
   const withEvent = state.gifts ? planNeedsEvent(state.gifts) || state.invitation : true;
   // The gifts step is optional. With nothing picked, its button skips it.
   const giftsPicked = Boolean(state.gifts && state.gifts !== "later");
+  // A potluck or a game night usually has no gifts, so the picker doesn't ask.
+  // The host can add them from the event later.
+  const asksGifts = !state.occasion || usuallyHasGifts(state.occasion);
+  const steps = asksGifts ? STEPS : STEPS.filter((s) => s.id !== "gifts");
 
   const update = (changes: Partial<PlanPickerState>) => {
     setError("");
@@ -229,6 +235,8 @@ export function PlanPicker({
     if (only === "everyone") {
       // A gift exchange occasion is a Secret Santa: names are drawn.
       goTo("name", { ...changes, gifts: "exchange" });
+    } else if (only && !chosen.gifts) {
+      goTo("name", { ...changes, gifts: "later" });
     } else if (only) {
       goTo("gifts", changes);
     } else {
@@ -243,6 +251,10 @@ export function PlanPicker({
   const afterWho = () => {
     if (nameLabel && !state.name.trim() && state.audience !== "me") {
       setError(`Add ${state.audience === "someone" ? "their name" : state.audience === "child" ? "your child's name" : "your names"}.`);
+      return;
+    }
+    if (!asksGifts) {
+      goTo("name", { gifts: "later" });
       return;
     }
     goTo("gifts");
@@ -271,7 +283,7 @@ export function PlanPicker({
     const order: Step[] = ["what", "who", "gifts", "name"];
     let index = order.indexOf(state.step) - 1;
     // Skip the steps the occasion answered by itself.
-    if (order[index] === "gifts" && state.audience === "everyone" && audiences.length === 1) index -= 1;
+    if (order[index] === "gifts" && ((state.audience === "everyone" && audiences.length === 1) || !asksGifts)) index -= 1;
     if (order[index] === "who" && audiences.length === 1) index -= 1;
     goTo(order[Math.max(index, 0)]);
   };
@@ -300,7 +312,7 @@ export function PlanPicker({
     router.push(result.href);
   };
 
-  const stepIndex = STEPS.findIndex((s) => s.id === state.step);
+  const stepIndex = steps.findIndex((s) => s.id === state.step);
 
   // What the plan will make, for the last step.
   const summary: string[] = [];
@@ -328,7 +340,7 @@ export function PlanPicker({
       summary.push("Guests link their wishlists when they RSVP and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
-    if (state.gifts === "later") summary.push("Nothing about gifts yet");
+    if (state.gifts === "later" && asksGifts) summary.push("Nothing about gifts yet");
     // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
     const startsSheet = Boolean(occasion.defaults && "signup" in occasion.defaults);
     if (state.gifts === "signup" || startsSheet) {
@@ -382,7 +394,7 @@ export function PlanPicker({
     <div className="flex flex-col gap-6">
       {state.step !== "what" && (
         <ol aria-label="Steps" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {STEPS.map((s, index) => (
+          {steps.map((s, index) => (
             <li
               key={s.id}
               aria-current={s.id === state.step ? "step" : undefined}

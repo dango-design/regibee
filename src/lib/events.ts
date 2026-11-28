@@ -585,6 +585,22 @@ export function eventHasPassed(event: Pick<EventDetails, "event_date">, today: s
   return Boolean(event.event_date && event.event_date < today);
 }
 
+/**
+ * The words on the invitation's button that jumps to the RSVP form, or null
+ * when there's nothing to answer: the event has passed, the guest has
+ * replied, or only invited guests can reply and this visitor isn't one.
+ */
+export function invitationReplyCta(rsvp: {
+  guest: { status: RsvpStatus } | null;
+  openRsvp: boolean;
+  passed: boolean;
+  mealTrain: boolean;
+}): string | null {
+  if (rsvp.passed) return null;
+  if (rsvp.guest ? rsvp.guest.status !== "pending" : !rsvp.openRsvp) return null;
+  return rsvp.mealTrain ? "Sign up to help" : "RSVP";
+}
+
 /** Common US time zones for the event form, plus whatever the browser is in. */
 export const COMMON_TIME_ZONES: { value: string; label: string }[] = [
   { value: "America/New_York", label: "Eastern Time" },

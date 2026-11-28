@@ -31,13 +31,18 @@ const meta: Meta<typeof EventInvitation> = {
   title: "Pages/Event Invitation (Guest View)",
   component: EventInvitation,
   parameters: { layout: "padded" },
-  args: { event: sampleEvent, registry: sampleRegistry, calendar },
+  // A fixed today, so the countdown under the title doesn't change.
+  args: { event: sampleEvent, registry: sampleRegistry, calendar, today: SAMPLE_TODAY },
 };
 export default meta;
 type Story = StoryObj<typeof EventInvitation>;
 
-/** Someone on the plain event link: they add their name and email to RSVP. */
+/**
+ * Someone on the plain event link: they add their name and email to RSVP.
+ * The button under the title jumps to the form.
+ */
 export const WithPicture: Story = {
+  args: { replyCta: "RSVP" },
   render: (args) => (
     <EventInvitation
       {...args}
@@ -77,10 +82,58 @@ export const NoPictureAlreadyReplied: Story = {
   ),
 };
 
+/**
+ * A game night: an event with no gifts and no picture. The band in its color
+ * holds the name, who's hosting, a countdown and a button to the RSVP form.
+ * There's no gift section at all.
+ */
+export const GetTogether: Story = {
+  args: {
+    event: {
+      ...sampleEvent,
+      event_type: "gathering",
+      title: "Game Night at Linda's",
+      hosted_by: "Linda",
+      image_url: null,
+      gift_note: null,
+      event_date: "2026-03-06",
+      rsvp_by: "2026-03-02",
+      start_time: "19:00:00",
+      end_time: "22:00:00",
+      location_name: "Linda's place",
+      message: "Bring a game if you have a favorite. Snacks and drinks are covered. Street parking is easiest.",
+    },
+    registry: null,
+    replyCta: "RSVP",
+  },
+  render: (args) => (
+    <EventInvitation
+      {...args}
+      reply={
+        <RsvpForm
+          slug={sampleEvent.slug}
+          guest={null}
+          token={null}
+          openRsvp
+          maxPartySize={2}
+          passed={false}
+          submitAction={submitAction}
+        />
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("6 days to go")).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "RSVP" })).toHaveAttribute("href", "#reply");
+    await expect(canvas.queryByRole("region", { name: "Gifts" })).toBeNull();
+  },
+};
+
 /** A guest from their invitation link picks Going, so the party size shows. */
 export const ChoosingGoing: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
-  args: { event: { ...sampleEvent, image_url: null }, registry: null, calendar: null },
+  args: { event: { ...sampleEvent, image_url: null }, registry: null, calendar: null, replyCta: "RSVP" },
   render: (args) => (
     <EventInvitation
       {...args}

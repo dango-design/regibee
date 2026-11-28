@@ -12,6 +12,7 @@ import { Alert, Linking, Platform, Pressable, RefreshControl, Share, StyleSheet,
 import { deletePhrase } from "@shared/delete-confirmation";
 import type { EditEventSection } from "@shared/edit-event-sections";
 import { eventLocationText, formatEventDate, mapsUrl } from "@shared/events";
+import { usuallyHasGifts } from "@shared/occasions";
 
 import { HeaderMenu, type HeaderMenuChoice } from "@/components/header-menu";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -48,6 +49,10 @@ export default function EventScreen() {
   }
 
   const { event } = data;
+  // A potluck or a game night usually has no gifts. Until the host adds some,
+  // the screen offers them with one line instead of a card, like the website.
+  const showGiftsCard =
+    data.registries.length > 0 || data.listRequests.length > 0 || Boolean(event.gift_note) || usuallyHasGifts(event.event_type);
   const publicUrl = `${SITE_URL}/e/${event.slug}`;
   // The address in the phone's maps app: Apple Maps on iPhone, and whichever
   // app handles Google Maps links on Android.
@@ -247,32 +252,33 @@ export default function EventScreen() {
           </View>
         </Card>
 
-        <Card>
-          <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "flex-start" }}>
-            <View style={[styles.giftIcon, { backgroundColor: theme.tintSoft }]}>
-              <Icon name="gift" size={18} color={theme.tint} />
-            </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text variant="headline">Gifts</Text>
-              {data.registries.length > 0 ? (
-                data.registries.map((registry) => (
-                  <Text key={registry.id} variant="footnote">
-                    <Text
-                      variant="footnote"
-                      tone="tint"
-                      accessibilityRole="link"
-                      onPress={() => openSite(`/r/${registry.slug}`)}
-                    >
-                      {registry.title}
+        {showGiftsCard ? (
+          <Card>
+            <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "flex-start" }}>
+              <View style={[styles.giftIcon, { backgroundColor: theme.tintSoft }]}>
+                <Icon name="gift" size={18} color={theme.tint} />
+              </View>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text variant="headline">Gifts</Text>
+                {data.registries.length > 0 ? (
+                  data.registries.map((registry) => (
+                    <Text key={registry.id} variant="footnote">
+                      <Text
+                        variant="footnote"
+                        tone="tint"
+                        accessibilityRole="link"
+                        onPress={() => openSite(`/r/${registry.slug}`)}
+                      >
+                        {registry.title}
+                      </Text>
+                      {registry.honoree ? <Text variant="footnote" tone="tertiary">{` · ${registry.honoree}`}</Text> : null}
                     </Text>
-                    {registry.honoree ? <Text variant="footnote" tone="tertiary">{` · ${registry.honoree}`}</Text> : null}
+                  ))
+                ) : data.listRequests.length === 0 ? (
+                  <Text variant="footnote" tone="tertiary">
+                    No registry linked.
                   </Text>
-                ))
-              ) : data.listRequests.length === 0 ? (
-                <Text variant="footnote" tone="tertiary">
-                  No registry linked.
-                </Text>
-              ) : null}
+        ) : null}
               {data.listRequests.map((request) => (
                 <Text key={request.email} variant="footnote" tone="tertiary">
                   Waiting for {request.name} to make their list. We emailed {request.email}.
@@ -289,6 +295,7 @@ export default function EventScreen() {
             </View>
           </View>
         </Card>
+        ) : null}
 
         {data.exchange && data.exchangeStatus ? <ExchangePanel data={data} onEditSettings={() => edit("exchange")} /> : null}
         {data.signupSheet ? <SignupPanel data={data} /> : <SignupStarter eventId={event.id} />}
@@ -296,6 +303,11 @@ export default function EventScreen() {
         <GuestsPanel data={data} />
         <MessagesPanel data={data} onChangeReminder={() => edit("rsvps")} />
         <HostsPanel data={data} onLeft={() => router.back()} />
+        {!showGiftsCard ? (
+          <Text variant="footnote" tone="tint" accessibilityRole="link" onPress={() => edit("gifts")} style={{ fontWeight: "600", paddingVertical: spacing.sm }}>
+            Add a gift list or note
+          </Text>
+        ) : null}
       </KeyboardScrollView>
       <ConfirmDelete
         visible={confirmingDelete}

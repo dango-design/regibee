@@ -7,7 +7,7 @@
 // The phone app shares this file, so it only imports other shared files.
 
 import { EXCHANGE_KINDS, formatEventTime } from "./events";
-import { offersGiftExchange } from "./occasions";
+import { offersGiftExchange, usuallyHasGifts } from "./occasions";
 import { hidesAddressUntilSignup } from "./signups";
 import { formatStepDate, type StepInfo } from "./step-nav";
 
@@ -38,19 +38,20 @@ export interface EventStepValues {
 }
 
 /**
- * The steps, in order. Only the name is required. Gifts among the guests only
- * comes up for occasions that might have them, or once it's on.
+ * The steps, in order. Only the name is required. The invitation comes right
+ * after the time and place, since that's the page guests open.
+ *
+ * Gifts come next only for occasions where guests usually bring them, like a
+ * baby shower or a birthday (usuallyHasGifts). For the rest, like a potluck
+ * or a game night, gifts are the last step, after the RSVPs. Gifts among the
+ * guests only comes up for occasions that might have them, or once it's on.
  */
 export function newEventSteps(eventType: string, exchangeOn: boolean): EventStepId[] {
-  return [
-    "what",
-    "details",
-    "when",
-    "gifts",
-    ...(exchangeOn || offersGiftExchange(eventType) ? (["exchange"] as const) : []),
-    "invitation",
-    "rsvps",
-  ];
+  const exchange = exchangeOn || offersGiftExchange(eventType) ? (["exchange"] as const) : [];
+  if (usuallyHasGifts(eventType)) {
+    return ["what", "details", "when", "invitation", "gifts", ...exchange, "rsvps"];
+  }
+  return ["what", "details", "when", "invitation", "rsvps", "gifts", ...exchange];
 }
 
 export function eventStepTitle(id: EventStepId, eventType: string): string {

@@ -20,7 +20,7 @@
 import { Image } from "expo-image";
 import type { ImagePickerAsset } from "expo-image-picker";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useRef, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -872,165 +872,178 @@ function EventForm({
 
   if (!editing) {
     const hidesAddress = hidesAddressUntilSignup(eventType);
-    return (
-      <>
-        <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} {...scrollProps} contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
-          <StepCard {...stepCard("what")}>
-            <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              {EVENT_TYPE_OPTIONS.map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={eventType === option.value}
-                  onPress={() => {
-                    chooseType(option.value);
-                    advanceSoon("what");
-                  }}
-                />
+    // Each step's card. They show in the order of newEventSteps
+    // (src/lib/event-steps.ts), which puts gifts last for occasions without them.
+    const stepCards: Record<EventStepId, ReactNode> = {
+      what: (
+        <StepCard {...stepCard("what")}>
+          <View accessibilityLabel="Occasion" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {EVENT_TYPE_OPTIONS.map((option) => (
+              <Chip
+                key={option.value}
+                label={option.label}
+                selected={eventType === option.value}
+                onPress={() => {
+                  chooseType(option.value);
+                  advanceSoon("what");
+                }}
+              />
+            ))}
+          </View>
+        </StepCard>
+      ),
+      details: (
+        <StepCard {...stepCard("details")}>
+          <Field
+            label="Event name"
+            value={title}
+            onChangeText={(value) => {
+              setTitle(value);
+              if (value.trim()) setTitleError(false);
+            }}
+            error={titleError ? "Give your event a name." : null}
+            maxLength={120}
+            placeholder={typeOption.titlePlaceholder}
+            autoCapitalize="words"
+            autoFocus={!title}
+            returnKeyType="next"
+            onSubmitEditing={() => finish("details")}
+          />
+          <DateField label="Date (optional)" value={eventDate || null} onChange={(value) => setEventDate(value ?? "")} />
+          <StepFooter label={footerLabel("details")} onPress={() => finish("details")} />
+        </StepCard>
+      ),
+      when: (
+        <StepCard {...stepCard("when")}>
+          <DateField label="Starts" mode="time" value={startTime || null} onChange={(value) => setStartTime(value ?? "")} />
+          <DateField label="Ends (optional)" mode="time" value={endTime || null} onChange={(value) => setEndTime(value ?? "")} />
+          <View style={{ gap: spacing.sm }}>
+            <Label>Time zone</Label>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {zoneOptions.map((zone) => (
+                <Chip key={zone.value} label={zone.label} selected={timeZone === zone.value} onPress={() => setTimeZone(zone.value)} />
               ))}
             </View>
-          </StepCard>
-
-          <StepCard {...stepCard("details")}>
+          </View>
+          {hidesAddress ? (
             <Field
-              label="Event name"
-              value={title}
-              onChangeText={(value) => {
-                setTitle(value);
-                if (value.trim()) setTitleError(false);
-              }}
-              error={titleError ? "Give your event a name." : null}
-              maxLength={120}
-              placeholder={typeOption.titlePlaceholder}
-              autoCapitalize="words"
-              autoFocus={!title}
-              returnKeyType="next"
-              onSubmitEditing={() => finish("details")}
+              label="Drop-off address"
+              value={locationAddress}
+              onChangeText={setLocationAddress}
+              maxLength={300}
+              multiline
+              placeholder={"123 Main St\nSan Francisco, CA 94102"}
+              hint="Only people who sign up for a day see it."
+              textContentType="fullStreetAddress"
             />
-            <DateField label="Date (optional)" value={eventDate || null} onChange={(value) => setEventDate(value ?? "")} />
-            <StepFooter label={footerLabel("details")} onPress={() => finish("details")} />
-          </StepCard>
-
-          <StepCard {...stepCard("when")}>
-            <DateField label="Starts" mode="time" value={startTime || null} onChange={(value) => setStartTime(value ?? "")} />
-            <DateField label="Ends (optional)" mode="time" value={endTime || null} onChange={(value) => setEndTime(value ?? "")} />
-            <View style={{ gap: spacing.sm }}>
-              <Label>Time zone</Label>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                {zoneOptions.map((zone) => (
-                  <Chip key={zone.value} label={zone.label} selected={timeZone === zone.value} onPress={() => setTimeZone(zone.value)} />
-                ))}
-              </View>
-            </View>
-            {hidesAddress ? (
+          ) : (
+            <>
+              <Field label="Place" value={locationName} onChangeText={setLocationName} maxLength={120} placeholder={`e.g., "Grandma's house"`} />
               <Field
-                label="Drop-off address"
+                label="Address"
                 value={locationAddress}
                 onChangeText={setLocationAddress}
                 maxLength={300}
                 multiline
                 placeholder={"123 Main St\nSan Francisco, CA 94102"}
-                hint="Only people who sign up for a day see it."
+                hint="Only people with the event link see it."
                 textContentType="fullStreetAddress"
               />
-            ) : (
-              <>
-                <Field label="Place" value={locationName} onChangeText={setLocationName} maxLength={120} placeholder={`e.g., "Grandma's house"`} />
-                <Field
-                  label="Address"
-                  value={locationAddress}
-                  onChangeText={setLocationAddress}
-                  maxLength={300}
-                  multiline
-                  placeholder={"123 Main St\nSan Francisco, CA 94102"}
-                  hint="Only people with the event link see it."
-                  textContentType="fullStreetAddress"
-                />
-              </>
-            )}
-            <StepFooter label={footerLabel("when")} onPress={() => finish("when")} primary={stepInfo.when.hasContent} />
-          </StepCard>
-
-          <StepCard {...stepCard("gifts")}>
-            <View style={{ gap: spacing.md }}>{registryFields(true)}</View>
-            {giftNoteField}
-            <StepFooter label={footerLabel("gifts")} onPress={() => finish("gifts")} primary={stepInfo.gifts.hasContent} />
-          </StepCard>
-
-          {stepOrder.includes("exchange") ? (
-            <StepCard {...stepCard("exchange")}>
-              <Section>
-                <ToggleRow
-                  label="Guests give gifts to each other"
-                  value={exchangeOn}
-                  onValueChange={(value) => {
-                    setExchangeOn(value);
-                    setTouched((t) => ({ ...t, exchange: true }));
-                  }}
-                />
-              </Section>
-              {exchangeDetails(true)}
-              <StepFooter label={footerLabel("exchange")} onPress={() => finish("exchange")} primary={stepInfo.exchange.hasContent} />
-            </StepCard>
-          ) : null}
-
-          <StepCard {...stepCard("invitation")}>
-            {pictureField}
-            <ThemeColorField value={themeColor} onChange={setThemeColor} />
-            <Field
-              label="Hosted by (optional)"
-              value={hostedBy}
-              onChangeText={setHostedBy}
-              maxLength={120}
-              placeholder='e.g., "Aunt Linda & Grandma Jo"'
-              autoCapitalize="words"
+            </>
+          )}
+          <StepFooter label={footerLabel("when")} onPress={() => finish("when")} primary={stepInfo.when.hasContent} />
+        </StepCard>
+      ),
+      invitation: (
+        <StepCard {...stepCard("invitation")}>
+          {pictureField}
+          <ThemeColorField value={themeColor} onChange={setThemeColor} />
+          <Field
+            label="Hosted by (optional)"
+            value={hostedBy}
+            onChangeText={setHostedBy}
+            maxLength={120}
+            placeholder='e.g., "Aunt Linda & Grandma Jo"'
+            autoCapitalize="words"
+          />
+          <Field
+            label="Message to guests (optional)"
+            value={message}
+            onChangeText={setMessage}
+            maxLength={2000}
+            multiline
+            placeholder="Parking, dress code, what to bring: anything guests should know."
+          />
+          <StepFooter label={footerLabel("invitation")} onPress={() => finish("invitation")} primary={stepInfo.invitation.hasContent} />
+        </StepCard>
+      ),
+      gifts: (
+        <StepCard {...stepCard("gifts")}>
+          <View style={{ gap: spacing.md }}>{registryFields(true)}</View>
+          {giftNoteField}
+          <StepFooter label={footerLabel("gifts")} onPress={() => finish("gifts")} primary={stepInfo.gifts.hasContent} />
+        </StepCard>
+      ),
+      exchange: (
+        <StepCard {...stepCard("exchange")}>
+          <Section>
+            <ToggleRow
+              label="Guests give gifts to each other"
+              value={exchangeOn}
+              onValueChange={(value) => {
+                setExchangeOn(value);
+                setTouched((t) => ({ ...t, exchange: true }));
+              }}
             />
-            <Field
-              label="Message to guests (optional)"
-              value={message}
-              onChangeText={setMessage}
-              maxLength={2000}
-              multiline
-              placeholder="Parking, dress code, what to bring: anything guests should know."
-            />
-            <StepFooter label={footerLabel("invitation")} onPress={() => finish("invitation")} primary={stepInfo.invitation.hasContent} />
-          </StepCard>
-
-          {/* RSVPs shows the settings the event gets if the host skips it. */}
-          <StepCard {...stepCard("rsvps", { showWhenUpcoming: true })}>
-            <DateField label="Reply by (optional)" value={rsvpBy || null} onChange={(value) => setRsvpBy(value ?? "")} />
-            <View style={{ gap: 6 }}>
-              <Label>People per RSVP</Label>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <Stepper value={maxPartySize} onChange={setMaxPartySize} min={1} max={MAX_PARTY_SIZE_LIMIT} />
-                {maxPartySize === 1 ? (
-                  <Text variant="subhead" tone="secondary">
-                    Just the guest
-                  </Text>
-                ) : null}
-              </View>
-              <Text variant="footnote" tone="tertiary">
-                Including the guest.
-              </Text>
-            </View>
-            <Section>
-              <SwitchRow label="Anyone with the event link can RSVP" value={openRsvp} onValueChange={setOpenRsvp} />
-              <Divider inset={spacing.lg} />
-              <SwitchRow label="Ask how many kids are coming" value={askKids} onValueChange={changeAskKids} />
-              <Divider inset={spacing.lg} />
-              <SwitchRow label="Email me when someone RSVPs" value={emailHost} onValueChange={setEmailHost} />
-              <Divider inset={spacing.lg} />
-              <SwitchRow label="Email everyone going a reminder the day before" value={remindDayBefore} onValueChange={setRemindDayBefore} />
-              {rsvpBy ? (
-                <>
-                  <Divider inset={spacing.lg} />
-                  <SwitchRow label="Remind guests who haven't replied, 3 days before the reply-by date" value={autoRsvpReminder} onValueChange={setAutoRsvpReminder} />
-                </>
+          </Section>
+          {exchangeDetails(true)}
+          <StepFooter label={footerLabel("exchange")} onPress={() => finish("exchange")} primary={stepInfo.exchange.hasContent} />
+        </StepCard>
+      ),
+      // RSVPs shows the settings the event gets if the host skips it.
+      rsvps: (
+        <StepCard {...stepCard("rsvps", { showWhenUpcoming: true })}>
+          <DateField label="Reply by (optional)" value={rsvpBy || null} onChange={(value) => setRsvpBy(value ?? "")} />
+          <View style={{ gap: 6 }}>
+            <Label>People per RSVP</Label>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+              <Stepper value={maxPartySize} onChange={setMaxPartySize} min={1} max={MAX_PARTY_SIZE_LIMIT} />
+              {maxPartySize === 1 ? (
+                <Text variant="subhead" tone="secondary">
+                  Just the guest
+                </Text>
               ) : null}
-            </Section>
-            <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
-            <StepFooter label={footerLabel("rsvps")} onPress={() => finish("rsvps")} />
-          </StepCard>
+            </View>
+            <Text variant="footnote" tone="tertiary">
+              Including the guest.
+            </Text>
+          </View>
+          <Section>
+            <SwitchRow label="Anyone with the event link can RSVP" value={openRsvp} onValueChange={setOpenRsvp} />
+            <Divider inset={spacing.lg} />
+            <SwitchRow label="Ask how many kids are coming" value={askKids} onValueChange={changeAskKids} />
+            <Divider inset={spacing.lg} />
+            <SwitchRow label="Email me when someone RSVPs" value={emailHost} onValueChange={setEmailHost} />
+            <Divider inset={spacing.lg} />
+            <SwitchRow label="Email everyone going a reminder the day before" value={remindDayBefore} onValueChange={setRemindDayBefore} />
+            {rsvpBy ? (
+              <>
+                <Divider inset={spacing.lg} />
+                <SwitchRow label="Remind guests who haven't replied, 3 days before the reply-by date" value={autoRsvpReminder} onValueChange={setAutoRsvpReminder} />
+              </>
+            ) : null}
+          </Section>
+          <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
+          <StepFooter label={footerLabel("rsvps")} onPress={() => finish("rsvps")} />
+        </StepCard>
+      ),
+    };
+    return (
+      <>
+        <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} {...scrollProps} contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+          {stepOrder.map((id) => (
+            <Fragment key={id}>{stepCards[id]}</Fragment>
+          ))}
         </KeyboardScrollView>
         <KeyboardFooter {...keyboardFooter.footerProps} style={{ padding: spacing.lg, paddingBottom: Math.max(insets.bottom, spacing.lg), gap: spacing.sm }}>
           {error ? (

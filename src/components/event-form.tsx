@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Gift, ImagePlus, Loader2, Trash2, X } from "lucide-react";
@@ -734,192 +734,206 @@ export function EventForm({
     </>
   );
 
+  // Each step's section. They show in the order of newEventSteps
+  // (src/lib/event-steps.ts), which puts gifts last for occasions without them.
+  const stepContent: Record<EventStepId, React.ReactNode> = {
+    what: (
+      <StepSection {...stepProps("what")}>
+        <div role="group" aria-label="Occasion" className="flex flex-wrap gap-2">
+          {EVENT_TYPE_OPTIONS.map((option) => (
+            <ChoiceChip
+              key={option.value}
+              selected={eventType === option.value}
+              onClick={() => {
+                chooseType(option.value);
+                advanceSoon("what");
+              }}
+              label={option.label}
+            />
+          ))}
+        </div>
+      </StepSection>
+    ),
+    details: (
+      <StepSection {...stepProps("details")}>
+        <div className="space-y-4">
+          <Input
+            ref={titleRef}
+            label="Event name"
+            value={title}
+            onChange={(value) => {
+              setTitle(value);
+              if (value.trim()) setTitleError(false);
+            }}
+            isRequired
+            isInvalid={titleError}
+            hint={titleError ? "Give your event a name." : undefined}
+            maxLength={120}
+            placeholder={typeOption.titlePlaceholder}
+          />
+          <Input label="Date (optional)" type="date" value={eventDate} onChange={changeEventDate} />
+        </div>
+        <StepFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
+      </StepSection>
+    ),
+    when: (
+      <StepSection {...stepProps("when")}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
+          <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
+          <SelectField
+            label="Time zone"
+            value={timeZone}
+            onChange={setTimeZone}
+            options={zoneOptions}
+            className="sm:col-span-2"
+          />
+          {hidesAddress ? (
+            <TextArea
+              label="Drop-off address"
+              value={locationAddress}
+              onChange={setLocationAddress}
+              maxLength={300}
+              rows={2}
+              placeholder={"123 Main St\nSan Francisco, CA 94102"}
+              hint="Only people who sign up for a day see it."
+              className="sm:col-span-2"
+            />
+          ) : (
+            <>
+              <Input
+                label="Place"
+                value={locationName}
+                onChange={setLocationName}
+                maxLength={120}
+                placeholder={`e.g., "Grandma's house"`}
+                className="sm:col-span-2"
+              />
+              <TextArea
+                label="Address"
+                value={locationAddress}
+                onChange={setLocationAddress}
+                maxLength={300}
+                rows={2}
+                placeholder={"123 Main St\nSan Francisco, CA 94102"}
+                hint="Only people with the event link see it."
+                className="sm:col-span-2"
+              />
+            </>
+          )}
+        </div>
+        <StepFooter
+          label={footerLabel("when")}
+          onClick={() => finish("when")}
+          primary={steps.when.hasContent}
+          enterHint={steps.when.hasContent}
+        />
+      </StepSection>
+    ),
+    invitation: (
+      <StepSection {...stepProps("invitation")}>
+        <div className="flex flex-col gap-4">
+          {pictureField}
+          <ThemeColorField value={themeColor} onChange={setThemeColor} />
+          <Input
+            label="Hosted by (optional)"
+            value={hostedBy}
+            onChange={setHostedBy}
+            maxLength={120}
+            placeholder='e.g., "Aunt Linda & Grandma Jo"'
+          />
+          <TextArea
+            label="Message to guests (optional)"
+            value={message}
+            onChange={setMessage}
+            maxLength={2000}
+            rows={3}
+            placeholder="Parking, dress code, what to bring: anything guests should know."
+          />
+        </div>
+        <StepFooter
+          label={footerLabel("invitation")}
+          onClick={() => finish("invitation")}
+          primary={steps.invitation.hasContent}
+        />
+      </StepSection>
+    ),
+    gifts: (
+      <StepSection {...stepProps("gifts")}>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3">{registryFields(true)}</div>
+          {giftNoteField}
+        </div>
+        <StepFooter label={footerLabel("gifts")} onClick={() => finish("gifts")} primary={steps.gifts.hasContent} />
+      </StepSection>
+    ),
+    exchange: (
+      <StepSection {...stepProps("exchange")}>
+        <div className="flex flex-col gap-4">{exchangeFields(true)}</div>
+        <StepFooter
+          label={footerLabel("exchange")}
+          onClick={() => finish("exchange")}
+          primary={steps.exchange.hasContent}
+        />
+      </StepSection>
+    ),
+    // RSVPs shows the settings the event gets if the host skips it.
+    rsvps: (
+      <StepSection {...stepProps("rsvps", { showWhenUpcoming: true })}>
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
+            <SelectField
+              label="People per RSVP"
+              hint="Including the guest."
+              value={maxPartySize}
+              onChange={setMaxPartySize}
+              options={partySizeOptions}
+            />
+          </div>
+          <Checkbox
+            isSelected={openRsvp}
+            onChange={setOpenRsvp}
+            label={<span className="font-normal">Anyone with the event link can RSVP</span>}
+          />
+          <Checkbox
+            isSelected={askKids}
+            onChange={changeAskKids}
+            label={<span className="font-normal">Ask how many kids are coming</span>}
+          />
+          <Checkbox
+            isSelected={emailHost}
+            onChange={setEmailHost}
+            label={<span className="font-normal">Email me when someone RSVPs</span>}
+          />
+          <Checkbox
+            isSelected={remindDayBefore}
+            onChange={setRemindDayBefore}
+            label={<span className="font-normal">Email everyone going a reminder the day before</span>}
+          />
+          {rsvpBy && (
+            <Checkbox
+              isSelected={autoRsvpReminder}
+              onChange={setAutoRsvpReminder}
+              label={<span className="font-normal">Remind guests who haven't replied, 3 days before the reply-by date</span>}
+            />
+          )}
+          <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
+        </div>
+        <StepFooter label={footerLabel("rsvps")} onClick={() => finish("rsvps")} />
+      </StepSection>
+    ),
+  };
+
   if (!editing) {
     return (
       // noValidate, because the browser can't point at a required field in a
       // closed step. handleSubmit checks the name instead.
       <form onSubmit={handleSubmit} noValidate>
         <div className="space-y-3">
-          <StepSection {...stepProps("what")}>
-            <div role="group" aria-label="Occasion" className="flex flex-wrap gap-2">
-              {EVENT_TYPE_OPTIONS.map((option) => (
-                <ChoiceChip
-                  key={option.value}
-                  selected={eventType === option.value}
-                  onClick={() => {
-                    chooseType(option.value);
-                    advanceSoon("what");
-                  }}
-                  label={option.label}
-                />
-              ))}
-            </div>
-          </StepSection>
-
-          <StepSection {...stepProps("details")}>
-            <div className="space-y-4">
-              <Input
-                ref={titleRef}
-                label="Event name"
-                value={title}
-                onChange={(value) => {
-                  setTitle(value);
-                  if (value.trim()) setTitleError(false);
-                }}
-                isRequired
-                isInvalid={titleError}
-                hint={titleError ? "Give your event a name." : undefined}
-                maxLength={120}
-                placeholder={typeOption.titlePlaceholder}
-              />
-              <Input label="Date (optional)" type="date" value={eventDate} onChange={changeEventDate} />
-            </div>
-            <StepFooter label={footerLabel("details")} onClick={() => finish("details")} enterHint />
-          </StepSection>
-
-          <StepSection {...stepProps("when")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="Starts" type="time" value={startTime} onChange={setStartTime} />
-              <Input label="Ends (optional)" type="time" value={endTime} onChange={setEndTime} />
-              <SelectField
-                label="Time zone"
-                value={timeZone}
-                onChange={setTimeZone}
-                options={zoneOptions}
-                className="sm:col-span-2"
-              />
-              {hidesAddress ? (
-                <TextArea
-                  label="Drop-off address"
-                  value={locationAddress}
-                  onChange={setLocationAddress}
-                  maxLength={300}
-                  rows={2}
-                  placeholder={"123 Main St\nSan Francisco, CA 94102"}
-                  hint="Only people who sign up for a day see it."
-                  className="sm:col-span-2"
-                />
-              ) : (
-                <>
-                  <Input
-                    label="Place"
-                    value={locationName}
-                    onChange={setLocationName}
-                    maxLength={120}
-                    placeholder={`e.g., "Grandma's house"`}
-                    className="sm:col-span-2"
-                  />
-                  <TextArea
-                    label="Address"
-                    value={locationAddress}
-                    onChange={setLocationAddress}
-                    maxLength={300}
-                    rows={2}
-                    placeholder={"123 Main St\nSan Francisco, CA 94102"}
-                    hint="Only people with the event link see it."
-                    className="sm:col-span-2"
-                  />
-                </>
-              )}
-            </div>
-            <StepFooter
-              label={footerLabel("when")}
-              onClick={() => finish("when")}
-              primary={steps.when.hasContent}
-              enterHint={steps.when.hasContent}
-            />
-          </StepSection>
-
-          <StepSection {...stepProps("gifts")}>
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-3">{registryFields(true)}</div>
-              {giftNoteField}
-            </div>
-            <StepFooter label={footerLabel("gifts")} onClick={() => finish("gifts")} primary={steps.gifts.hasContent} />
-          </StepSection>
-
-          {stepOrder.includes("exchange") && (
-            <StepSection {...stepProps("exchange")}>
-              <div className="flex flex-col gap-4">{exchangeFields(true)}</div>
-              <StepFooter
-                label={footerLabel("exchange")}
-                onClick={() => finish("exchange")}
-                primary={steps.exchange.hasContent}
-              />
-            </StepSection>
-          )}
-
-          <StepSection {...stepProps("invitation")}>
-            <div className="flex flex-col gap-4">
-              {pictureField}
-              <ThemeColorField value={themeColor} onChange={setThemeColor} />
-              <Input
-                label="Hosted by (optional)"
-                value={hostedBy}
-                onChange={setHostedBy}
-                maxLength={120}
-                placeholder='e.g., "Aunt Linda & Grandma Jo"'
-              />
-              <TextArea
-                label="Message to guests (optional)"
-                value={message}
-                onChange={setMessage}
-                maxLength={2000}
-                rows={3}
-                placeholder="Parking, dress code, what to bring: anything guests should know."
-              />
-            </div>
-            <StepFooter
-              label={footerLabel("invitation")}
-              onClick={() => finish("invitation")}
-              primary={steps.invitation.hasContent}
-            />
-          </StepSection>
-
-          {/* RSVPs shows the settings the event gets if the host skips it. */}
-          <StepSection {...stepProps("rsvps", { showWhenUpcoming: true })}>
-            <div className="flex flex-col gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input label="Reply by (optional)" type="date" value={rsvpBy} onChange={setRsvpBy} />
-                <SelectField
-                  label="People per RSVP"
-                  hint="Including the guest."
-                  value={maxPartySize}
-                  onChange={setMaxPartySize}
-                  options={partySizeOptions}
-                />
-              </div>
-              <Checkbox
-                isSelected={openRsvp}
-                onChange={setOpenRsvp}
-                label={<span className="font-normal">Anyone with the event link can RSVP</span>}
-              />
-              <Checkbox
-                isSelected={askKids}
-                onChange={changeAskKids}
-                label={<span className="font-normal">Ask how many kids are coming</span>}
-              />
-              <Checkbox
-                isSelected={emailHost}
-                onChange={setEmailHost}
-                label={<span className="font-normal">Email me when someone RSVPs</span>}
-              />
-              <Checkbox
-                isSelected={remindDayBefore}
-                onChange={setRemindDayBefore}
-                label={<span className="font-normal">Email everyone going a reminder the day before</span>}
-              />
-              {rsvpBy && (
-                <Checkbox
-                  isSelected={autoRsvpReminder}
-                  onChange={setAutoRsvpReminder}
-                  label={<span className="font-normal">Remind guests who haven't replied, 3 days before the reply-by date</span>}
-                />
-              )}
-              <RsvpQuestionsEditor questions={questions} onChange={changeQuestions} />
-            </div>
-            <StepFooter label={footerLabel("rsvps")} onClick={() => finish("rsvps")} />
-          </StepSection>
+          {stepOrder.map((id) => (
+            <Fragment key={id}>{stepContent[id]}</Fragment>
+          ))}
         </div>
 
         <div ref={createRef} className="mt-6 space-y-3">

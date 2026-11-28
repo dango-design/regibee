@@ -45,6 +45,13 @@ export interface Occasion {
   /** Who it's usually for, first one first. The picker offers these. */
   audiences: Audience[];
   /**
+   * Whether guests usually bring gifts. When false, making an event of this
+   * kind skips the picker's gift question and puts the event form's gift
+   * steps last, so the host plans the get-together first. The host can still
+   * add gifts. See usuallyHasGifts.
+   */
+  gifts: boolean;
+  /**
    * What a new event of this kind starts with. The host can change all of it.
    * `exchange` starts the guests giving each other gifts: "draw" draws names
    * (a Secret Santa), and "everyone" has each guest link their own wishlist
@@ -91,6 +98,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Baby Shower"),
     list: BABY_LIST,
     audiences: ["someone", "us", "me"],
+    gifts: true,
   },
   {
     id: "birthday",
@@ -100,6 +108,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Birthday"),
     list: BIRTHDAY_LIST,
     audiences: ["me", "someone", "us"],
+    gifts: true,
   },
   {
     id: "kids_birthday",
@@ -109,6 +118,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Birthday Party"),
     list: BIRTHDAY_LIST,
     audiences: ["child", "someone"],
+    gifts: true,
     defaults: { askKids: true, questions: ["diet"] },
   },
   {
@@ -119,6 +129,7 @@ export const OCCASIONS = [
     titleFor: (name) => (name.trim() ? `${name.trim()} Secret Santa` : "Secret Santa"),
     list: CHRISTMAS_LIST,
     audiences: ["everyone"],
+    gifts: true,
     defaults: { exchange: "draw" },
   },
   {
@@ -132,6 +143,7 @@ export const OCCASIONS = [
     // the event most families plan on Regibee once a year. Each guest links
     // their own wishlist.
     audiences: ["everyone", "no_one", "me", "us", "child"],
+    gifts: true,
     defaults: { exchange: "everyone" },
   },
   {
@@ -145,6 +157,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Holiday Party"),
     list: WISHLIST,
     audiences: ["everyone", "no_one"],
+    gifts: true,
     defaults: { exchange: "everyone" },
   },
   {
@@ -155,6 +168,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Bridal Shower"),
     list: WEDDING_LIST,
     audiences: ["someone", "me"],
+    gifts: true,
   },
   {
     id: "wedding",
@@ -164,6 +178,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Wedding"),
     list: WEDDING_LIST,
     audiences: ["us", "someone"],
+    gifts: true,
     defaults: { questions: ["plus_ones", "meal", "diet"] },
   },
   {
@@ -174,6 +189,7 @@ export const OCCASIONS = [
     titleFor: (name) => (name.trim() ? `${name.trim()} Are Engaged!` : "Engagement Party"),
     list: WEDDING_LIST,
     audiences: ["us", "someone"],
+    gifts: false,
   },
   {
     id: "bachelor",
@@ -183,6 +199,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Last Weekend Out"),
     list: WISHLIST,
     audiences: ["someone", "me"],
+    gifts: false,
   },
   {
     id: "sip_and_see",
@@ -192,6 +209,7 @@ export const OCCASIONS = [
     titleFor: (name) => (name.trim() ? `Come Meet ${name.trim()}` : "Sip and See"),
     list: BABY_LIST,
     audiences: ["us", "me", "someone"],
+    gifts: true,
   },
   {
     id: "housewarming",
@@ -201,6 +219,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Housewarming"),
     list: { registryType: "personal", eventType: "housewarming", noun: "housewarming registry" },
     audiences: ["us", "me", "someone"],
+    gifts: true,
   },
   {
     id: "graduation",
@@ -210,6 +229,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Graduation Party"),
     list: { registryType: "personal", eventType: "graduation", noun: "graduation registry" },
     audiences: ["someone", "child", "me"],
+    gifts: true,
   },
   {
     id: "retirement",
@@ -219,6 +239,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Retirement Lunch"),
     list: WISHLIST,
     audiences: ["someone", "me"],
+    gifts: false,
   },
   {
     id: "holiday",
@@ -228,6 +249,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Holiday Dinner"),
     list: WISHLIST,
     audiences: ["no_one", "me", "us", "child"],
+    gifts: false,
   },
   {
     id: "potluck",
@@ -237,6 +259,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Potluck"),
     list: WISHLIST,
     audiences: ["no_one"],
+    gifts: false,
     defaults: { signup: "potluck", questions: ["diet"] },
   },
   {
@@ -247,6 +270,7 @@ export const OCCASIONS = [
     titleFor: (name) => (name.trim() ? `Meals for ${name.trim()}` : "Meal Train"),
     list: WISHLIST,
     audiences: ["someone", "us", "me"],
+    gifts: false,
     defaults: { signup: "meal_train" },
   },
   {
@@ -257,6 +281,7 @@ export const OCCASIONS = [
     titleFor: () => "Get-Together",
     list: WISHLIST,
     audiences: ["no_one"],
+    gifts: false,
     defaults: { questions: ["diet"] },
   },
   {
@@ -267,6 +292,7 @@ export const OCCASIONS = [
     titleFor: (name) => named(name, "Celebration"),
     list: WISHLIST,
     audiences: ["someone", "me", "us", "child", "no_one"],
+    gifts: false,
   },
 ] as const satisfies readonly Occasion[];
 
@@ -281,6 +307,15 @@ export function isOccasionId(value: unknown): value is OccasionId {
 
 export function occasionFor(id: OccasionId): Occasion {
   return (OCCASIONS as readonly Occasion[]).find((o) => o.id === id) ?? OCCASIONS[OCCASIONS.length - 1];
+}
+
+/**
+ * Whether guests usually bring gifts to this kind of event, like a baby
+ * shower or a birthday. A potluck, a game night or a retirement lunch
+ * usually has none, so making one asks about the event first and gifts last.
+ */
+export function usuallyHasGifts(id: string): boolean {
+  return isOccasionId(id) && occasionFor(id).gifts;
 }
 
 /**
@@ -508,13 +543,14 @@ export function countdownLabel(eventDate: string, today: string, registryType: "
 
 /**
  * Whether the guests of a new event of this occasion might give each other
- * gifts, so the new event form asks about it. That's when the occasion can be
- * for everyone taking part or for no one in particular, the audiences whose
- * gift plans include an exchange (giftPlansFor). A baby shower or a wedding
+ * gifts, so the new event form asks about it. That's an occasion with gifts
+ * that can be for everyone taking part or for no one in particular, the
+ * audiences whose gift plans include an exchange (giftPlansFor): Christmas, a
+ * holiday party, a gift exchange. A baby shower, a wedding or a potluck
  * doesn't ask, and can still turn it on when the event is edited.
  */
 export function offersGiftExchange(id: string): boolean {
-  if (!isOccasionId(id)) return false;
-  const occasion = occasionFor(id);
+  if (!usuallyHasGifts(id)) return false;
+  const occasion = occasionFor(id as OccasionId);
   return occasion.audiences.some((audience) => giftPlansFor(audience, occasion).includes("exchange"));
 }

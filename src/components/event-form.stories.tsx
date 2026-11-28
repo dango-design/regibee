@@ -163,7 +163,7 @@ export const NewEventMissingName: Story = {
 
 /**
  * The whole flow: keep the baby shower, name it, add a start time and a
- * place, skip gifts and the invitation, and keep the RSVP settings. Every
+ * place, skip the invitation and gifts, and keep the RSVP settings. Every
  * step ends up closed with a summary, and the cursor is on Create.
  */
 export const NewEventAllStepsDone: Story = {
@@ -185,14 +185,40 @@ export const NewEventAllStepsDone: Story = {
     fill(canvas.getByLabelText(/^Place/), "Grandma's house");
     await userEvent.click(step(/Time and place/).getByRole("button", { name: "Continue" }));
 
-    await waitFor(() => isOpen(canvasElement, /^\d?\s*Gifts(?! among)/));
-    await userEvent.click(step(/^\d?\s*Gifts(?! among)/).getByRole("button", { name: "Skip" }));
     await waitFor(() => isOpen(canvasElement, /Invitation/));
     await userEvent.click(step(/Invitation/).getByRole("button", { name: "Skip" }));
+    await waitFor(() => isOpen(canvasElement, /^\d?\s*Gifts(?! among)/));
+    await userEvent.click(step(/^\d?\s*Gifts(?! among)/).getByRole("button", { name: "Skip" }));
     await waitFor(() => isOpen(canvasElement, /RSVPs/));
     await userEvent.click(step(/RSVPs/).getByRole("button", { name: "Done" }));
 
     await waitFor(() => expect(canvas.getByRole("button", { name: "Create event" })).toHaveFocus());
+    await settle();
+  },
+};
+
+/**
+ * A get-together usually has no gifts, so its Gifts step comes last, after
+ * the RSVPs, and it doesn't ask about gifts among the guests.
+ */
+export const NewGetTogether: Story = {
+  args: newEvent,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Get-together" }));
+    await waitFor(() => isOpen(canvasElement, /Name and date/));
+    fill(canvas.getByLabelText(/Event name/), "Game Night");
+    const headers = canvas
+      .getAllByRole("button", { expanded: false })
+      .map((button) => button.textContent ?? "")
+      .filter((text) => /Time and place|Invitation|RSVPs|Gifts/.test(text));
+    await expect(headers.map((text) => text.match(/Time and place|Invitation|RSVPs|Gifts/)?.[0])).toEqual([
+      "Time and place",
+      "Invitation",
+      "RSVPs",
+      "Gifts",
+    ]);
+    await expect(canvas.queryByRole("button", { name: /Gifts among the guests/ })).toBeNull();
     await settle();
   },
 };
