@@ -249,3 +249,4 @@ h1.title { margin: 0; font-size: 16px; font-weight: 600; }
 .sync-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sync-row > .stack { flex: 1; gap: 8px; }
 .sync-actions { display: flex; align-items: center; gap: 12px; }
+.background-sync { flex: none; gap: 6px; align-items: flex-start; }

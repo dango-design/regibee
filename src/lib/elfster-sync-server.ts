@@ -9,7 +9,13 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { importItemKey } from "@/lib/extension";
 import { LINK_COLUMNS, loadListItems, type LinkRow } from "@/lib/list-items";
-import { planWishlistSync, takenForGuests, type ImportItem, type SyncListItem } from "@/lib/wishlist-import";
+import {
+  ELFSTER_SYNC_EVERY_MS,
+  planWishlistSync,
+  takenForGuests,
+  type ImportItem,
+  type SyncListItem,
+} from "@/lib/wishlist-import";
 
 /** True when the list is kept in sync with that wishlist. */
 export async function isSyncedWith(registryId: string, wishlistId: string): Promise<boolean> {
@@ -21,6 +27,27 @@ export async function isSyncedWith(registryId: string, wishlistId: string): Prom
     .maybeSingle();
   if (error) throw new Error(`Couldn't read the Elfster sync: ${error.message}`);
   return data !== null;
+}
+
+/**
+ * The Elfster wishlists the list's page should ask the extension to sync on
+ * this visit: the ones `userId` last synced from the popup, so their Elfster
+ * account can read them, and that haven't synced for an hour. Only ids, never
+ * what's been given. Fails soft: the page still loads without them.
+ */
+export async function elfsterSyncsDue(registryId: string, userId: string): Promise<string[]> {
+  const before = new Date(Date.now() - ELFSTER_SYNC_EVERY_MS).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("elfster_wishlists")
+    .select("wishlist_id")
+    .eq("registry_id", registryId)
+    .eq("linked_by", userId)
+    .lt("synced_at", before);
+  if (error) {
+    console.error("[elfster] Couldn't read the lists' Elfster syncs:", error.message);
+    return [];
+  }
+  return (data ?? []).map((row) => row.wishlist_id as string);
 }
 
 /**

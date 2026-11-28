@@ -49,6 +49,37 @@ const ELFSTER_WISHLIST_PATH =
 /** Where the extension's home screen sends the owner to pick a wishlist. */
 export const ELFSTER_WISHLISTS_URL = "https://www.elfster.com/wish-lists";
 
+/**
+ * The extension's access to Elfster, for keeping a list in sync without the
+ * owner opening the extension on the wishlist. It's an optional permission
+ * (extension/src/manifest.ts): the owner allows it from the popup. A site in
+ * host_permissions would make Chrome turn the extension off for everyone
+ * until they accepted it.
+ */
+export const ELFSTER_ORIGINS = ["https://*.elfster.com/*"];
+
+/**
+ * The page the extension opens in a background tab to read a synced
+ * wishlist. Any page on Elfster's site works, since the reader asks Elfster's
+ * API from it as whoever is signed in there. This one is small and runs none
+ * of Elfster's code.
+ */
+export const ELFSTER_SYNC_PAGE = "https://www.elfster.com/robots.txt";
+
+/** At most this often, a list's page asks the extension to sync each of its Elfster wishlists. */
+export const ELFSTER_SYNC_EVERY_MS = 60 * 60 * 1000;
+
+/** True for a page on elfster.com. */
+export function isElfsterUrl(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" && ELFSTER_HOST.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /** True for the page of one wishlist on elfster.com. */
 export function isElfsterWishlistUrl(raw: string | null | undefined): boolean {
   if (!raw) return false;

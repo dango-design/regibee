@@ -23,7 +23,7 @@ import {
 } from "@/lib/extension";
 import { categoryName, MAX_CATEGORY_NAME_LENGTH, suggestCategory } from "@/lib/item-categories";
 import { classifyStoreLink, EXTENSION_STORES, getStore, storeItemKey, type StoreId, type StoreInfo } from "@/lib/retailers";
-import { ELFSTER_WISHLISTS_URL, isElfsterWishlistUrl } from "@/lib/wishlist-import";
+import { ELFSTER_ORIGINS, ELFSTER_WISHLISTS_URL, isElfsterWishlistUrl } from "@/lib/wishlist-import";
 import { REGIBEE_URL, VERSION_NAME } from "../config";
 import { readElfsterWishlist, type WishlistPage } from "../elfster-reader";
 import { readProductPage, type ProductPage } from "../product-reader";
@@ -577,6 +577,7 @@ async function showWishlist(ctx: WishlistContext) {
   const syncHint = "Gifts bought on Elfster show as taken to your guests. You won't see them.";
 
   const syncRow = synced && wishlistId && syncedRow(user, registryId, wishlistId, () => showWishlist({ ...ctx, registryId }));
+  const backgroundOffer = synced && !syncFailed ? await backgroundSyncOffer() : null;
   const syncProblem = syncFailed && h("p", { className: "warn" }, "Couldn't sync with this wishlist. Try again later.");
   const goneNote =
     gone.length > 0 &&
@@ -620,6 +621,7 @@ async function showWishlist(ctx: WishlistContext) {
         ),
         receivedNote,
         syncRow,
+        backgroundOffer,
         syncProblem,
         goneNote,
         h(
@@ -742,7 +744,7 @@ async function showWishlist(ctx: WishlistContext) {
       const result = await ask<WishlistSyncResponse>({ type: "import-sync", registryId, wishlistId, items: wishlist.wishes });
       syncError = !result.ok;
     }
-    showImported(user, registryId, registryTitle(), added.data, syncError);
+    await showImported(user, registryId, registryTitle(), added.data, syncError, keepInSync && Boolean(wishlistId));
   });
 
   render(
@@ -755,6 +757,7 @@ async function showWishlist(ctx: WishlistContext) {
       h("div", { className: "picker" }, h("ul", { className: "items" }, ...itemRows), alreadyRow),
       receivedNote,
       syncRow,
+      backgroundOffer,
       syncProblem,
       goneNote,
       syncBox,
@@ -807,14 +810,39 @@ function syncedRow(user: { name: string }, registryId: string, wishlistId: strin
   return row;
 }
 
-function showImported(
+/**
+ * Offers to sync a synced wishlist in the background too, when the owner
+ * hasn't allowed the extension to read Elfster yet. Chrome asks them first.
+ * Null once they have. The background worker does the syncing (background.ts).
+ *
+ * It's a button of its own, after the sync is set up, rather than part of
+ * turning the sync on: Chrome's prompt can close the popup, and that would
+ * cut short an import under way.
+ */
+async function backgroundSyncOffer(): Promise<HTMLElement | null> {
+  const allowed = await chrome.permissions.contains({ origins: ELFSTER_ORIGINS }).catch(() => false);
+  if (allowed) return null;
+  const block = h("div", { className: "stack background-sync" });
+  const button = h("button", { type: "button", className: "button secondary small" }, "Sync in the background") as HTMLButtonElement;
+  button.addEventListener("click", async () => {
+    // Asked first thing, while Chrome still counts it as the owner's click.
+    const granted = await chrome.permissions.request({ origins: ELFSTER_ORIGINS }).catch(() => false);
+    if (granted) block.replaceChildren(h("span", { className: "muted" }, "Syncs in the background too."));
+  });
+  block.append(button, h("span", { className: "muted" }, "Syncs when you open your list on Regibee, if you're signed in to Elfster."));
+  return block;
+}
+
+async function showImported(
   user: { name: string },
   registryId: string,
   registryTitle: string,
   result: ImportResponse,
-  syncFailed = false
+  syncFailed = false,
+  synced = false
 ) {
   const count = result.added.length;
+  const backgroundOffer = synced && !syncFailed ? await backgroundSyncOffer() : null;
   render(
     header(user),
     h(
@@ -837,6 +865,7 @@ function showImported(
         result.skipped > 0 && count > 0 && h("p", { className: "muted" }, `${plural(result.skipped, "item was", "items were")} already there.`),
         syncFailed && h("p", { className: "warn" }, "Couldn't sync with this wishlist. Open it here again to try again.")
       ),
+      backgroundOffer,
       h(
         "div",
         { className: "footer-actions" },

@@ -24,6 +24,10 @@ import type {
 import { pageHtml, type SavedPage } from "./pages";
 
 const DIST = path.resolve(__dirname, "../dist");
+// The same extension with access to Elfster from the start, as if the owner
+// had allowed it (build.mjs --grant-elfster). Playwright can't answer
+// Chrome's permission prompt.
+const DIST_GRANTED = path.resolve(__dirname, "../dist-granted");
 const API = "https://www.regibee.com/api/extension/";
 // A 1×1 transparent PNG for every picture. save-page.js gave each picture
 // the size it loaded at, so the page lays out the same.
@@ -46,6 +50,8 @@ export interface ApiCall {
 }
 
 interface Fixtures {
+  /** Load the copy of the extension that's allowed to read Elfster. */
+  grantElfster: boolean;
   context: BrowserContext;
   /** The extension's background worker. */
   worker: Worker;
@@ -53,9 +59,11 @@ interface Fixtures {
 }
 
 export const test = base.extend<Fixtures>({
-  context: async ({ headless }, use) => {
-    if (!existsSync(path.join(DIST, "manifest.json"))) {
-      throw new Error("extension/dist is missing. Run npm run test:extension, which builds it first.");
+  grantElfster: [false, { option: true }],
+  context: async ({ headless, grantElfster }, use) => {
+    const dist = grantElfster ? DIST_GRANTED : DIST;
+    if (!existsSync(path.join(dist, "manifest.json"))) {
+      throw new Error(`extension/${path.basename(dist)} is missing. Run npm run test:extension, which builds it first.`);
     }
     const context = await chromium.launchPersistentContext("", {
       // Playwright's full Chromium, not its headless shell: the shell can't load extensions.
@@ -63,8 +71,8 @@ export const test = base.extend<Fixtures>({
       headless,
       viewport: { width: 1280, height: 900 },
       args: [
-        `--disable-extensions-except=${DIST}`,
-        `--load-extension=${DIST}`,
+        `--disable-extensions-except=${dist}`,
+        `--load-extension=${dist}`,
         // No host name resolves, so nothing the tests don't answer below can
         // reach a store or Regibee, including the Connect page the extension
         // opens when it's installed.
@@ -121,6 +129,23 @@ export async function openSavedPage(context: BrowserContext, saved: SavedPage): 
   const tab = await context.newPage();
   await tab.goto(saved.url);
   return tab;
+}
+
+/**
+ * Playwright answers a tab's requests only once it has attached to the tab,
+ * and a tab the extension opens straight at an address starts loading
+ * before that. So here the extension's tabs open blank and go to the address
+ * a moment later.
+ */
+export async function openTabsBlankFirst(worker: Worker) {
+  await worker.evaluate(() => {
+    const create = chrome.tabs.create.bind(chrome.tabs);
+    chrome.tabs.create = (async (properties: chrome.tabs.CreateProperties) => {
+      const tab = await create({ ...properties, url: "about:blank" });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return chrome.tabs.update(tab.id!, { url: properties.url });
+    }) as typeof chrome.tabs.create;
+  });
 }
 
 /** The extension's id for a tab, found by its address. */

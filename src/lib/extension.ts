@@ -243,6 +243,13 @@ export interface WishlistSyncRequest {
   registryId: string;
   wishlistId: string;
   items: ImportItem[];
+  /**
+   * True when the extension read the wishlist on its own, for a list's page
+   * on Regibee. The server then only syncs a list that's already kept in
+   * sync with the wishlist, and never starts one. Versions before 0.5.0 leave
+   * it out.
+   */
+  background?: boolean;
 }
 
 export interface WishlistSyncResponse {
@@ -470,19 +477,27 @@ export const PAGE_SOURCE = "regibee-page";
 export const EXTENSION_SOURCE = "regibee-extension";
 
 /** What this version of the extension can do for the site. Older versions send none. */
-export type ExtensionFeature = "read-product";
+export type ExtensionFeature = "read-product" | "sync-elfster";
 
 export type PageMessage =
   | { source: typeof PAGE_SOURCE; type: "hello" }
   | { source: typeof PAGE_SOURCE; type: "connect"; session: ExtensionSession }
   | { source: typeof PAGE_SOURCE; type: "cancel" }
-  | { source: typeof PAGE_SOURCE; type: "read-product"; id: string; url: string };
+  | { source: typeof PAGE_SOURCE; type: "read-product"; id: string; url: string }
+  // A list's page asks whether the extension can sync one of its Elfster
+  // wishlists now, then asks it to (src/components/elfster-sync.tsx).
+  | { source: typeof PAGE_SOURCE; type: "can-sync-elfster"; id: string; registryId: string; wishlistId: string }
+  | { source: typeof PAGE_SOURCE; type: "sync-elfster"; id: string; registryId: string; wishlistId: string };
 
 export type ExtensionMessage =
   | { source: typeof EXTENSION_SOURCE; type: "ready"; version: string; features?: ExtensionFeature[] }
   | { source: typeof EXTENSION_SOURCE; type: "connected" }
   | { source: typeof EXTENSION_SOURCE; type: "connect-failed"; error: string }
-  | { source: typeof EXTENSION_SOURCE; type: "product"; id: string; product: ReadProduct | null; error?: string };
+  | { source: typeof EXTENSION_SOURCE; type: "product"; id: string; product: ReadProduct | null; error?: string }
+  // Only whether it can, or did. Never what the wishlist holds: what's been
+  // bought on Elfster goes only to the server.
+  | { source: typeof EXTENSION_SOURCE; type: "elfster-sync-ready"; id: string; ready: boolean }
+  | { source: typeof EXTENSION_SOURCE; type: "elfster-synced"; id: string; synced: boolean };
 
 export function isExtensionMessage(data: unknown): data is ExtensionMessage {
   return Boolean(

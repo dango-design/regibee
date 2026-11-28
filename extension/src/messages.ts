@@ -89,7 +89,11 @@ export type BackgroundRequest =
   | { type: "connect-session"; session: ExtensionSession }
   | { type: "connect-cancel" }
   // From the connect content script, for the add and edit item dialogs.
-  | { type: "read-product"; url: string };
+  | { type: "read-product"; url: string }
+  // From the connect content script, for a list's page: whether the
+  // extension can sync one of its Elfster wishlists now, and doing it.
+  | { type: "can-sync-elfster"; registryId: string; wishlistId: string }
+  | { type: "sync-elfster"; registryId: string; wishlistId: string };
 
 export interface RegistriesResult {
   user: { name: string; email: string | null };

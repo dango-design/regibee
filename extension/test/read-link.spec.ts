@@ -4,9 +4,9 @@
 // requests that arrive together wait their turn. These are small made-up
 // pages, so they run on any computer.
 
-import type { BrowserContext, Page, Worker } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import type { ReadProduct } from "../../src/lib/extension";
-import { expect, test } from "./extension";
+import { expect, openTabsBlankFirst, test } from "./extension";
 
 const REGIBEE_PAGE = "https://www.regibee.com/dashboard";
 
@@ -81,23 +81,6 @@ function read(tab: Page, url: string): Promise<Answer> {
       }),
     url
   );
-}
-
-/**
- * Playwright answers a tab's requests only once it has attached to the tab,
- * and a tab the extension opens straight at a store link starts loading
- * before that. So here the extension's tabs open blank and go to the link a
- * moment later.
- */
-async function openTabsBlankFirst(worker: Worker) {
-  await worker.evaluate(() => {
-    const create = chrome.tabs.create.bind(chrome.tabs);
-    chrome.tabs.create = (async (properties: chrome.tabs.CreateProperties) => {
-      const tab = await create({ ...properties, url: "about:blank" });
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return chrome.tabs.update(tab.id!, { url: properties.url });
-    }) as typeof chrome.tabs.create;
-  });
 }
 
 test.beforeEach(async ({ context, worker }) => {

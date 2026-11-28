@@ -3,6 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  ELFSTER_SYNC_PAGE,
+  isElfsterUrl,
   isElfsterWishlistUrl,
   parseImportItem,
   planWishlistSync,
@@ -25,6 +27,18 @@ test("only one wishlist's page on elfster.com counts", () => {
   assert.equal(isElfsterWishlistUrl(`http://www.elfster.com/profile/${USER}/wish-lists/${LIST}`), false);
   assert.equal(isElfsterWishlistUrl(null), false);
   assert.equal(isElfsterWishlistUrl("not a link"), false);
+});
+
+test("the extension reads a synced wishlist in the background only from elfster.com", () => {
+  assert.equal(isElfsterUrl(ELFSTER_SYNC_PAGE), true);
+  assert.equal(isElfsterUrl("https://elfster.com/"), true);
+  assert.equal(isElfsterUrl(`https://www.elfster.com/profile/${USER}/wish-lists/${LIST}`), true);
+  // A page that redirected somewhere else, such as a sign-in on another site.
+  assert.equal(isElfsterUrl("https://elfster.com.example.com/robots.txt"), false);
+  assert.equal(isElfsterUrl("https://notelfster.com/robots.txt"), false);
+  assert.equal(isElfsterUrl("http://www.elfster.com/robots.txt"), false);
+  assert.equal(isElfsterUrl("about:blank"), false);
+  assert.equal(isElfsterUrl(undefined), false);
 });
 
 test("items with no link match on their name", () => {
