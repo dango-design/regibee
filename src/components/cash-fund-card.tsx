@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { TextArea } from "@/components/base/textarea/textarea";
 import {
   Dialog,
@@ -38,15 +38,6 @@ interface CashFundCardProps {
   deleteAction?: typeof deleteCashFund;
 }
 
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
-
 export function CashFundCard({
   fund,
   registryId,
@@ -61,7 +52,6 @@ export function CashFundCard({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [error, setError] = useState("");
-  const [currency, setCurrency] = useState("USD");
   const [giftDetailOpen, setGiftDetailOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const isHighlighted = highlightId === fund.id;
@@ -110,7 +100,7 @@ export function CashFundCard({
     <>
       <Card
         ref={cardRef}
-        className="py-0 gap-0 rounded-2xl cursor-pointer transition hover:shadow-md motion-safe:hover:-translate-y-0.5"
+        className="min-w-0 py-0 gap-0 rounded-2xl cursor-pointer transition hover:shadow-md motion-safe:hover:-translate-y-0.5"
         style={isHighlighted ? { animation: "highlight-pulse 1.5s ease-in-out 3" } : undefined}
         onClick={() => setEditOpen(true)}
       >
@@ -177,10 +167,9 @@ export function CashFundCard({
               label="Goal Amount (optional)"
               name="goalAmount"
               defaultValue={fund.goal_amount != null ? fund.goal_amount.toFixed(2) : ""}
-              prefix={currencySymbols[currency] || "$"}
-              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
             >
               <InputBase
+                icon={DollarSign}
                 type="number"
                 inputMode="decimal"
                 step="0.01"
