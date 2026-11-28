@@ -6,7 +6,7 @@
 // (src/components/section-nav.tsx) goes to it once it is.
 
 import { expect, test, type Page } from "@playwright/test";
-import { createAccount, db, signIn } from "./fixtures";
+import { createAccount, db, signIn, waitForReact } from "./fixtures";
 
 async function askToFollow(followerId: string, followeeId: string) {
   const { error } = await db.from("follows").insert({ follower_id: followerId, followee_id: followeeId, status: "pending" });
@@ -61,8 +61,12 @@ test("someone with a follow request goes from the dashboard straight to it, and 
   await expect(requests).toContainText("No follow requests right now.");
   await expect(page.locator("#followers")).toContainText("Otto Asking");
 
-  // The navigation follows the page as it scrolls, and goes to a section when picked.
-  await nav.getByRole("link", { name: "Delete account" }).click();
+  // The navigation follows the page as it scrolls, and goes to a section when
+  // picked. Before React takes over the page, the link still scrolls there,
+  // but nothing moves focus to the section.
+  const deleteAccount = nav.getByRole("link", { name: "Delete account" });
+  await waitForReact(deleteAccount);
+  await deleteAccount.click();
   await expect(page.getByRole("heading", { name: "Delete account" })).toBeFocused();
   await expect(nav.getByRole("link", { name: "Delete account" })).toHaveAttribute("aria-current", "location");
   await expect(page).toHaveURL(/#delete-account$/);

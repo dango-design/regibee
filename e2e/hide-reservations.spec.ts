@@ -48,7 +48,9 @@ test("a wishlist added to a gift exchange hides reservations from its owner only
   await reserveGift(guestPage, { slug: registry.slug, name: "Glinda Guest", email: guestEmail });
   const reserved = await waitForEmail(guestEmail, `You reserved "${item.title}". It's held for 2 days`);
   await guestPage.goto(linkIn(reserved, /\/gift\/[0-9a-f-]+\?step=confirm$/));
-  await guestPage.getByRole("dialog").getByRole("button", { name: "Yes, I bought it" }).click();
+  const bought = guestPage.getByRole("dialog").getByRole("button", { name: "Yes, I bought it" });
+  await waitForReact(bought);
+  await bought.click();
   await expect(guestPage.getByRole("dialog").getByRole("heading", { name: "Thank you!" })).toBeVisible();
 
   // Sam, the co-manager, hears about it. Maya doesn't.
@@ -78,10 +80,15 @@ test("a wishlist added to a gift exchange hides reservations from its owner only
   await expect(page.getByRole("button", { name: "Gifts hidden from you" })).toBeVisible();
   await expect(page.getByText("1 of 1 still needed")).toBeVisible();
   await expect(page.getByText("Glinda Guest")).toHaveCount(0);
-  await page.getByRole("button", { name: "Gifts hidden from you" }).click();
+  const hidden = page.getByRole("button", { name: "Gifts hidden from you" });
+  await waitForReact(hidden);
+  await hidden.click();
   await page.getByRole("dialog").getByRole("link", { name: "Gift activity" }).click();
   await expect(page).toHaveURL(/\?tab=purchases$/);
-  await expect(page.getByText("What's been reserved is hidden from you")).toBeVisible();
+  // In the tab, not the explanation, which can still be closing and says the same.
+  await expect(
+    page.getByRole("tabpanel", { name: "Gift Activity" }).getByText("What's been reserved is hidden from you"),
+  ).toBeVisible();
   await expect(page.getByText("Regibee turned this on for the gift exchange.")).toBeVisible();
   await expect(page.getByText("Glinda Guest")).toHaveCount(0);
   await page.goto(`/r/${registry.slug}`);

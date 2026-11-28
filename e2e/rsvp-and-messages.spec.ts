@@ -5,7 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { chooseOption, CRON_SECRET, createAccount, db, signIn, uniqueEmail, uniqueId } from "./fixtures";
+import { chooseOption, createAccount, CRON_SECRET, db, signIn, uniqueEmail, uniqueId, waitForReact } from "./fixtures";
 import { emailsTo, waitForEmail } from "./mailbox";
 import { dateIn, MESSAGE_AUDIENCES, nextDate } from "../src/lib/event-updates";
 
@@ -337,7 +337,10 @@ test("deleting an event emails the guests who were invited and haven't said no",
 
   await signIn(page, host);
   await page.goto(`/dashboard/events/${event.id}`);
-  await page.getByRole("button", { name: "More actions" }).first().click();
+  // A click before React takes over the page does nothing.
+  const moreActions = page.getByRole("button", { name: "More actions" }).first();
+  await waitForReact(moreActions);
+  await moreActions.click();
   await page.getByRole("menuitem", { name: "Delete event" }).click();
   const dialog = page.getByRole("dialog", { name: "Delete this event?" });
   await expect(dialog).toContainText("The 2 guests you invited get an email saying it's cancelled.");

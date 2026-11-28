@@ -10,6 +10,7 @@ import {
   runReservationJob,
   SITE_URL,
   uniqueEmail,
+  waitForReact,
 } from "./fixtures";
 import { emailsTo, linkIn, waitForEmail } from "./mailbox";
 
@@ -36,7 +37,9 @@ test("a guest reserves a gift, confirms it from the email, and the owners hear",
   await fromEmail.goto(confirmUrl);
   const dialog = fromEmail.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: `Did you buy the ${item.title}?` })).toBeVisible();
-  await dialog.getByRole("button", { name: "Yes, I bought it" }).click();
+  const bought = dialog.getByRole("button", { name: "Yes, I bought it" });
+  await waitForReact(bought);
+  await bought.click();
   await expect(dialog.getByRole("heading", { name: "Thank you!" })).toBeVisible();
 
   const toOwner = await waitForEmail(owner.email, `🎁 Glinda Guest bought "${item.title}"`);
