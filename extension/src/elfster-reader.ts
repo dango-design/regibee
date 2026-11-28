@@ -16,9 +16,10 @@
 //
 // It also reads how many of each wish have been bought (`quantityPurchased`)
 // and received (`quantityReceived`), for keeping a Regibee list in sync
-// (src/lib/wishlist-import.ts). Elfster doesn't show owners what's been
-// bought for them, so the popup never shows `given` either. It goes only to
-// the server, which uses it for guests.
+// (src/lib/wishlist-import.ts). Elfster's page doesn't show owners what's
+// been bought for them, but its API sends `quantityPurchased` to the owner's
+// session too (checked on a test wishlist). The popup never shows `given`.
+// It goes only to the server, which uses it for guests.
 //
 // Chrome copies this function into the page by its source text, so it must
 // not use anything from outside its own body: no imports, no shared helpers.
