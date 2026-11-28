@@ -1,6 +1,7 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, waitFor, within } from "storybook/test";
 import { AccountSettings, type AccountRegistry } from "./account-settings";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const mockSave = async () => {
   await new Promise((r) => setTimeout(r, 500));
@@ -161,5 +162,6 @@ export const LandedOnFollowRequests: Story = {
 // On a phone, the sections are a row of links under the top bar.
 export const Phone: Story = {
   args: withRequests,
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

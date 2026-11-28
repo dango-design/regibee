@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ItemCard } from "./item-card";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // The app shows this card only to registry owners (on the dashboard), so every
 // story uses isOwner. Gift givers see a different card on the public page.
@@ -94,6 +95,7 @@ export const ParentPurchased: Story = {
 // On a phone the action buttons are at least 44px tall.
 export const Phone: Story = {
   ...WithImage,
+  parameters: { ...WithImage.parameters, chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

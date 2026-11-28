@@ -55,6 +55,8 @@ type StoryState = {
   // The size of that viewport, from parameters.viewport.options in
   // .storybook/preview.ts, the same list Chromatic reads.
   viewportSize?: { width: string; height: string };
+  // The width of each Chromatic mode the story sets (parameters.chromatic.modes).
+  modeWidths: string[];
 };
 
 // A viewport's size, such as { width: "320px", height: "568px" }, in pixels.
@@ -145,7 +147,10 @@ async function openStory(page: Page, id: string): Promise<StoryState> {
       phase?: string;
       story?: {
         parameters?: {
-          chromatic?: { disableSnapshot?: boolean };
+          chromatic?: {
+            disableSnapshot?: boolean;
+            modes?: Record<string, { viewport?: number | string; disable?: boolean }>;
+          };
           viewport?: { options?: Record<string, { styles?: { width: string; height: string } }> };
         };
         storyGlobals?: { viewport?: { value?: string } | string };
@@ -168,6 +173,9 @@ async function openStory(page: Page, id: string): Promise<StoryState> {
       disableSnapshot: render?.story?.parameters?.chromatic?.disableSnapshot === true,
       viewport,
       viewportSize: viewport ? render?.story?.parameters?.viewport?.options?.[viewport]?.styles : undefined,
+      modeWidths: Object.values(render?.story?.parameters?.chromatic?.modes ?? {})
+        .filter((mode) => !mode.disable)
+        .map((mode) => String(mode.viewport ?? "")),
     };
   });
   return (await handle.jsonValue()) as StoryState;
@@ -209,6 +217,19 @@ for (const story of stories()) {
         `Viewport "${state.viewport}" has no size in pixels. Add it to parameters.viewport.options in .storybook/preview.ts.`,
       );
     }
+    // Chromatic takes a story at the story's viewport only when the story also
+    // names a mode with that width (src/stories/viewports.ts). Without one, it
+    // takes the story at 1200px, and the two checks would test different
+    // layouts.
+    const modeWidths = state.modeWidths.map((width) => parseInt(width, 10));
+    const expected = size ? [size.width] : [];
+    expect(
+      modeWidths,
+      size
+        ? `The story picks the ${state.viewport} viewport, so Chromatic needs the matching mode. Add parameters: { chromatic: { modes: ... } } from src/stories/viewports.ts.`
+        : "The story sets a Chromatic mode but picks no viewport. Add the matching globals: { viewport: ... }.",
+    ).toEqual(expected);
+
     if (size) {
       await page.setViewportSize(size);
       state = await openStory(page, story.id);

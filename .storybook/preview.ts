@@ -27,12 +27,10 @@ const preview: Preview = {
       appDirectory: true,
     },
     // The viewports a story can pick with `globals: { viewport: { value: "mobile1" } }`.
-    // Storybook's toolbar offers these even without this line, but Chromatic
-    // only knows a viewport's size when it is listed here. Without it,
-    // Chromatic took every phone story at its default 1200px width. With it,
-    // Chromatic takes a phone story once, at 320px, in place of the 1200px
-    // snapshot. The story screenshots (story-screenshots/) read the sizes from
-    // here too.
+    // Storybook's toolbar offers these even without this line. The story
+    // screenshots (story-screenshots/) read each viewport's size from here.
+    // Chromatic doesn't use a story's viewport at all: the story also needs a
+    // mode from src/stories/viewports.ts.
     viewport: { options: MINIMAL_VIEWPORTS },
   },
   globalTypes: {

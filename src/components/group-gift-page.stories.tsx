@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { GroupGiftPage, type GroupGiftPageActions } from "./group-gift-page";
 import type { GroupGiftView, GroupGiftViewer } from "@/lib/group-gifts";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // Server actions can't run in Storybook, so these pretend to succeed after a
 // moment. The page shows each change straight away.
@@ -113,6 +114,7 @@ export const Pledger: Story = {
 /** A first visit without an account, on a phone: name, email and an amount. */
 export const NewVisitorOnAPhone: Story = {
   args: { view: asVisitor, viewer: visitor },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

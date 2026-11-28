@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { GiftProfileForm } from "./gift-profile-form";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const mockSave = async () => {
   await new Promise((r) => setTimeout(r, 500));
@@ -60,5 +61,6 @@ export const ForAChild: Story = {
 // A phone-sized screen.
 export const Mobile: Story = {
   ...Filled,
+  parameters: { ...Filled.parameters, chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

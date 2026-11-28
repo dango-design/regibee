@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { FollowButton } from "./follow-button";
 import { PublicProfile } from "./public-profile";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const mockFollow = async () => ({ success: true });
 
@@ -180,5 +181,6 @@ export const FriendWithGiftProfile: Story = {
       />
     ),
   },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

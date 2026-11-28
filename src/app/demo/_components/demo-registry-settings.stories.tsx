@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { DemoRegistrySettings } from "./demo-registry-settings";
 import { demoPageParameters, withDemoToday } from "../story-today";
+import { DESKTOP_MODES, PHONE_MODES } from "@/stories/viewports";
 
 /** Puts a section's #fragment in the URL, as a link from another page does. */
 const withSectionInUrl = (section: string) => () => {
@@ -26,6 +27,7 @@ type Story = StoryObj<typeof DemoRegistrySettings>;
 // listed on the left like the Account page.
 export const Default: Story = {
   args: { registryId: "baby" },
+  parameters: { chromatic: { modes: DESKTOP_MODES } },
   globals: { viewport: { value: "desktop" } },
 };
 
@@ -54,6 +56,7 @@ export const LandingOnStoreRegistries: Story = {
  */
 export const Phone: Story = {
   args: { registryId: "baby" },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvas }) => {
     const nav = within(canvas.getByRole("navigation", { name: "Registry settings sections" }));

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { BirthdaysComingUp } from "./birthdays-coming-up";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const meta: Meta<typeof BirthdaysComingUp> = {
   title: "Components/BirthdaysComingUp",
@@ -52,5 +53,6 @@ export const Mobile: Story = {
       },
     ],
   },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

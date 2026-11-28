@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { EditItemDialog } from "./edit-item-dialog";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const CATEGORIES = [
   { id: "cat-1", name: "Nursery & Sleep" },
@@ -188,5 +189,6 @@ export const OnlyRemove: Story = {
 
 // On a phone the dialog is a sheet, and the photo sits above the fields.
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

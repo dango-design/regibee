@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { DashboardEvent } from "@/lib/dashboard-page-types";
 import { UpcomingEvents } from "./upcoming-events";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // A fixed "today", so the countdowns don't change from day to day in Chromatic.
 const TODAY = "2026-11-20";
@@ -98,5 +99,6 @@ export const Mobile: Story = {
       { ...birthday, title: "Elphaba's Thirtieth Birthday Picnic in the Emerald City Botanical Gardens" },
     ],
   },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

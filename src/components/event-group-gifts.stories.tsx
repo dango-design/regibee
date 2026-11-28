@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { EventGroupGifts } from "./event-group-gifts";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const meta: Meta<typeof EventGroupGifts> = {
   title: "Components/EventGroupGifts",
@@ -37,5 +38,6 @@ type Story = StoryObj<typeof EventGroupGifts>;
 
 /** On a guest's invitation: one collecting, one already bought. On a phone. */
 export const OnAPhone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
