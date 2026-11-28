@@ -30,9 +30,10 @@ test("the host picks a color for the invitation, and guests see it", async ({ pa
   const { data: saved } = await db.from("events").select("theme_color").eq("id", event.id).single();
   expect(saved?.theme_color).toBe("#d9c8f0");
 
-  // With no picture, the invitation's top takes the color.
+  // With no picture, the invitation's top takes the color. The "Birthday"
+  // label sits in a column inside the colored band, so the band is two up.
   await page.goto(`/e/${event.slug}`);
-  const top = page.getByText("Birthday", { exact: true }).locator("xpath=..");
+  const top = page.getByText("Birthday", { exact: true }).locator("xpath=../..");
   await expect(top).toHaveCSS("background-color", "rgb(217, 200, 240)");
 
   // None takes it away, and the occasion's colors come back.
