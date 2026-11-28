@@ -26,6 +26,9 @@ test("planning an event from a registry goes step by step and saves each one", a
   await timeAndPlace.getByLabel("Place").fill("The Garden Room");
   await timeAndPlace.getByRole("button", { name: "Continue" }).click();
 
+  // The invitation comes next, then gifts.
+  await page.getByRole("region", { name: /Invitation/ }).getByRole("button", { name: "Skip" }).click();
+
   // The registry it came from is already linked.
   const gifts = page.getByRole("region", { name: /Gifts(?! among)/ });
   await expect(gifts.getByText(registry.title)).toBeVisible();
@@ -33,7 +36,6 @@ test("planning an event from a registry goes step by step and saves each one", a
 
   // A birthday's guests don't give each other gifts, so that step isn't there.
   await expect(page.getByRole("button", { name: /Gifts among the guests/ })).toHaveCount(0);
-  await page.getByRole("region", { name: /Invitation/ }).getByRole("button", { name: "Skip" }).click();
 
   const rsvps = page.getByRole("region", { name: /RSVPs/ });
   await rsvps.getByText("Ask how many kids are coming").click();

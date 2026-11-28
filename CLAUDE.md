@@ -96,6 +96,12 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - `setListHeader` saves it, and any manager can change it. The owner's page, the wishlist guest page and the phone app's list screen draw the band. A baby registry's guest page keeps its illustrated header until the owner picks a band.
 - The phone app draws the chosen color, and dots only for the Dots pattern. It draws other patterns as a plain band for now.
 
+## Events without gifts
+
+- Many events have no gifts: a potluck, a game night, a retirement lunch. Each occasion in `src/lib/occasions.ts` says whether guests usually bring them (`gifts`). Read it with `usuallyHasGifts`.
+- For an occasion without gifts, the New picker skips "How do gifts work?", the event form puts its Gifts step last, after the RSVPs (`newEventSteps` in `src/lib/event-steps.ts`), and the host's event page shows one "Add a gift list or note" link instead of the Gifts card until the host adds something. The website and the phone app both do this.
+- The guest page (`src/components/event-invitation.tsx`) shows gift sections only when the event has gifts. Its top is about the event: the name, a countdown, a button to the RSVP form and the details.
+
 ## Gift profiles
 
 - A person's gift profile (birthday, sizes, colors, likes, things to skip, notes) is in `profiles.gift_profile`. The rules are in `src/lib/gift-profile.ts`.

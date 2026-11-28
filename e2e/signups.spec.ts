@@ -270,8 +270,8 @@ test("a potluck from the New button starts with a sign-up sheet the host can cha
     await page.getByRole("button", { name: "Potluck", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Or plan an event" })).toBeHidden({ timeout: 1000 });
   }).toPass();
-  await page.getByRole("button", { name: /A sign-up sheet/ }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  // A potluck has no gifts, so the picker goes straight to the name. The
+  // sheet starts anyway.
   await expect(page.getByText("A sign-up sheet for mains, sides, desserts and drinks.")).toBeVisible();
   await page.getByLabel("Event name").fill("Friendsgiving");
   await page.getByRole("button", { name: "Make the event" }).click();
@@ -307,8 +307,7 @@ test("a meal train from the New button starts with a week of dinners", async ({ 
     await expect(page.getByRole("heading", { name: "Or plan an event" })).toBeHidden({ timeout: 1000 });
   }).toPass();
   await page.getByLabel("Their name").fill("the Parks");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByRole("button", { name: /A sign-up sheet/ }).click();
+  // A meal train has no gifts, so the picker goes straight to the name.
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByLabel("Event name")).toHaveValue("Meals for the Parks");
   await page.getByLabel("First day (optional)").fill("2027-01-04");

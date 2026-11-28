@@ -5,6 +5,7 @@ import {
   Clock,
   CookingPot,
   Gift,
+  Hourglass,
   MapPin,
   Megaphone,
   PartyPopper,
@@ -22,6 +23,7 @@ import {
   type LinkedRegistry,
 } from "@/lib/events";
 import type { InvitationUpdate } from "@/lib/event-updates";
+import { countdownLabel, daysUntil } from "@/lib/occasions";
 import type { InvitationEvent, InvitationRegistry } from "@/lib/invitation-page-types";
 import { GuestWishLists } from "@/components/guest-wish-lists";
 import { SignupSheetSection } from "@/components/signup-sheet";
@@ -70,6 +72,17 @@ export interface EventInvitationProps {
    * the gift sections: a guest answers before browsing what to give.
    */
   reply?: React.ReactNode;
+  /**
+   * The words on a button at the top that jumps to the reply, like "RSVP".
+   * Leave it out when there's nothing to answer: the guest has replied, the
+   * event has passed, or only invited guests can reply.
+   */
+  replyCta?: string | null;
+  /**
+   * Today's date (YYYY-MM-DD) where the event is, for the countdown under the
+   * title ("12 days to go"). Stories pass a fixed date.
+   */
+  today?: string | null;
   /** What comes after the gift sections, such as group gifts. */
   children?: React.ReactNode;
   /** Put in front of the registry link. The demo passes "/demo". */
@@ -122,6 +135,28 @@ function RegistryPictures({ items }: { items: NonNullable<InvitationRegistry["it
   );
 }
 
+/** How long until the event, as a small pill under its name. */
+function Countdown({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary shadow-xs ring-1 ring-secondary">
+      <Hourglass aria-hidden="true" className="size-4 text-brand-tertiary" />
+      {label}
+    </span>
+  );
+}
+
+/** Jumps to the RSVP form, for a guest who hasn't answered yet. */
+function ReplyButton({ label }: { label: string }) {
+  return (
+    <a
+      href="#reply"
+      className="inline-flex items-center justify-center rounded-lg bg-brand-solid px-4 py-2 text-sm font-semibold text-primary_on-brand shadow-xs transition hover:bg-brand-solid_hover focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-2 focus-visible:outline-none max-sm:min-h-11"
+    >
+      {label}
+    </a>
+  );
+}
+
 /** "Mar 5", the day it was posted where the event is. */
 function formatPosted(iso: string, timeZone: string | null) {
   const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
@@ -170,8 +205,9 @@ function HostUpdates({ updates, timeZone }: { updates: InvitationUpdate[]; timeZ
 }
 
 /**
- * The event as guests see it: the invitation picture, the details, the
- * host's updates, a link to the registry, and the RSVP form below. The public
+ * The event as guests see it: the invitation picture or a band in the
+ * event's color, a countdown, the details, the host's updates, the RSVP
+ * form, and then any gifts or sign-up sheet. The public
  * event page and the host's preview both use it.
  */
 export function EventInvitation({
@@ -187,6 +223,8 @@ export function EventInvitation({
   addressHidden = false,
   updates = [],
   reply,
+  replyCta = null,
+  today = null,
   children,
   basePath = "",
 }: EventInvitationProps) {
@@ -205,6 +243,14 @@ export function EventInvitation({
   // Everyone gives everyone: the host's lists and the guests' lists are all
   // the same kind of thing, so they share one section instead of Gifts.
   const everyone = exchange?.kind === "everyone";
+  // "12 days to go", "Tomorrow" or "Today". Nothing once the day has passed.
+  const countdown =
+    event.event_date && today && daysUntil(event.event_date, today) >= 0
+      ? countdownLabel(event.event_date, today, "personal")
+      : null;
+  const hasDetails = Boolean(
+    event.event_date || event.location_name || event.location_address || addressHidden || event.rsvp_by,
+  );
 
   return (
     <div
@@ -223,98 +269,124 @@ export function EventInvitation({
           />
         </div>
       ) : (
+        // Without a picture, the band in the event's color is the invitation:
+        // the occasion, the name, who's hosting and how long until it.
         <div
-          className={cx("flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center", colors ? HOST_FILL : theme.bg)}
+          className={cx("relative overflow-hidden rounded-2xl px-6 py-10 text-center sm:py-14", colors ? HOST_FILL : theme.bg)}
           style={colors ? hostColorVars(colors) : undefined}
         >
-          <span className="flex size-14 items-center justify-center rounded-full bg-primary">
-            {/* A meal train is help after a birth, an illness or a loss, not a party. */}
-            {event.event_type === "meal_train" ? (
-              <CookingPot
-                aria-hidden="true"
-                className={cx("size-7", colors ? HOST_INK : theme.icon)}
-                style={colors ? hostColorVars(colors) : undefined}
-              />
-            ) : (
-              <PartyPopper
-                aria-hidden="true"
-                className={cx("size-7", colors ? HOST_INK : theme.icon)}
-                style={colors ? hostColorVars(colors) : undefined}
-              />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 [background-image:radial-gradient(white_1.4px,transparent_1.4px)] [background-size:20px_20px] opacity-70 dark:opacity-10"
+          />
+          <div className="relative flex flex-col items-center gap-3">
+            <span className="flex size-14 items-center justify-center rounded-full bg-primary shadow-xs">
+              {/* A meal train is help after a birth, an illness or a loss, not a party. */}
+              {event.event_type === "meal_train" ? (
+                <CookingPot
+                  aria-hidden="true"
+                  className={cx("size-7", colors ? HOST_INK : theme.icon)}
+                  style={colors ? hostColorVars(colors) : undefined}
+                />
+              ) : (
+                <PartyPopper
+                  aria-hidden="true"
+                  className={cx("size-7", colors ? HOST_INK : theme.icon)}
+                  style={colors ? hostColorVars(colors) : undefined}
+                />
+              )}
+            </span>
+            <p
+              className={cx("text-sm font-semibold tracking-wide uppercase", colors ? HOST_INK : theme.text)}
+              style={colors ? hostColorVars(colors) : undefined}
+            >
+              {eventTypeLabel(event.event_type)}
+            </p>
+            <h1 className="font-display text-4xl leading-tight font-bold tracking-tight text-balance text-primary sm:text-5xl">
+              {event.title}
+            </h1>
+            {event.hosted_by && <p className="text-lg text-secondary">Hosted by {event.hosted_by}</p>}
+            {(countdown || replyCta) && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+                {countdown && <Countdown label={countdown} />}
+                {replyCta && <ReplyButton label={replyCta} />}
+              </div>
             )}
-          </span>
-          <p
-            className={cx("text-sm font-semibold tracking-wide uppercase", colors ? HOST_INK : theme.text)}
-            style={colors ? hostColorVars(colors) : undefined}
-          >
-            {eventTypeLabel(event.event_type)}
-          </p>
+          </div>
         </div>
       )}
 
-      <div className={cx("flex flex-col gap-6", hasImage ? "mt-8 lg:mt-0" : "mt-8")}>
-        <div>
-          {hasImage && (
+      <div className={cx("flex flex-col gap-6", hasImage ? "mt-8 lg:mt-0" : "mt-6")}>
+        {hasImage && (
+          <div>
             <p className={cx("text-sm font-semibold tracking-wide uppercase", theme.text)}>
               {eventTypeLabel(event.event_type)}
             </p>
-          )}
-          <h1 className="mt-1 font-display text-4xl leading-tight font-bold tracking-tight text-primary">
-            {event.title}
-          </h1>
-          {event.hosted_by && <p className="mt-2 text-lg text-secondary">Hosted by {event.hosted_by}</p>}
-        </div>
+            <h1 className="mt-1 font-display text-4xl leading-tight font-bold tracking-tight text-primary">
+              {event.title}
+            </h1>
+            {event.hosted_by && <p className="mt-2 text-lg text-secondary">Hosted by {event.hosted_by}</p>}
+            {(countdown || replyCta) && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {countdown && <Countdown label={countdown} />}
+                {replyCta && <ReplyButton label={replyCta} />}
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className="flex flex-col gap-4">
-          {event.event_date && (
-            <DetailRow icon={CalendarDays}>
-              <p className="font-medium text-primary">{formatEventDate(event.event_date)}</p>
-              {time && <p>{time}</p>}
-              {calendar && (
-                <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm max-sm:gap-y-0">
+        {hasDetails && (
+          <div className="flex flex-col gap-4 rounded-2xl border border-secondary p-4 sm:p-5">
+            {event.event_date && (
+              <DetailRow icon={CalendarDays}>
+                <p className="font-medium text-primary">{formatEventDate(event.event_date)}</p>
+                {time && <p>{time}</p>}
+                {calendar && (
+                  <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm max-sm:gap-y-0">
+                    <a
+                      href={calendar.google}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
+                    >
+                      <CalendarPlus aria-hidden="true" className="size-3.5" />
+                      Google Calendar
+                    </a>
+                    <a href={calendar.ics} className="font-medium text-brand-tertiary hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
+                      Apple or Outlook (.ics)
+                    </a>
+                  </p>
+                )}
+              </DetailRow>
+            )}
+            {(event.location_name || event.location_address) && (
+              <DetailRow icon={MapPin}>
+                {event.location_name && <p className="font-medium text-primary">{event.location_name}</p>}
+                {event.location_address && <p className="whitespace-pre-line">{event.location_address}</p>}
+                {map && (
                   <a
-                    href={calendar.google}
+                    href={map}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-medium text-brand-tertiary hover:underline max-sm:min-h-11"
+                    className="mt-1 inline-block text-sm font-medium text-brand-tertiary hover:underline max-sm:mt-0 max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"
                   >
-                    <CalendarPlus aria-hidden="true" className="size-3.5" />
-                    Google Calendar
+                    Open in Maps
                   </a>
-                  <a href={calendar.ics} className="font-medium text-brand-tertiary hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
-                    Apple or Outlook (.ics)
-                  </a>
-                </p>
-              )}
-            </DetailRow>
-          )}
-          {(event.location_name || event.location_address) && (
-            <DetailRow icon={MapPin}>
-              {event.location_name && <p className="font-medium text-primary">{event.location_name}</p>}
-              {event.location_address && <p className="whitespace-pre-line">{event.location_address}</p>}
-              {map && (
-                <a
-                  href={map}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 inline-block text-sm font-medium text-brand-tertiary hover:underline max-sm:mt-0 max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"
-                >
-                  Open in Maps
-                </a>
-              )}
-            </DetailRow>
-          )}
-          {addressHidden && (
-            <DetailRow icon={MapPin}>
-              <p>The drop-off address shows here once you sign up for a day.</p>
-            </DetailRow>
-          )}
-          {event.rsvp_by && (
-            <DetailRow icon={Clock}>
-              <p>Please reply by {formatEventDate(event.rsvp_by)}</p>
-            </DetailRow>
-          )}
-        </div>
+                )}
+              </DetailRow>
+            )}
+            {addressHidden && (
+              <DetailRow icon={MapPin}>
+                <p>The drop-off address shows here once you sign up for a day.</p>
+              </DetailRow>
+            )}
+            {event.rsvp_by && (
+              <DetailRow icon={Clock}>
+                <p>Please reply by {formatEventDate(event.rsvp_by)}</p>
+              </DetailRow>
+            )}
+          </div>
+        )}
 
         {event.message && (
           <p className="text-lg leading-relaxed whitespace-pre-line text-secondary">{event.message}</p>
@@ -322,7 +394,12 @@ export function EventInvitation({
 
         {updates.length > 0 && <HostUpdates updates={updates} timeZone={event.time_zone} />}
 
-        {reply}
+        {reply && (
+          // The button at the top jumps here.
+          <div id="reply" className="flex scroll-mt-6 flex-col gap-6">
+            {reply}
+          </div>
+        )}
 
         {everyone && (
           <GuestWishLists

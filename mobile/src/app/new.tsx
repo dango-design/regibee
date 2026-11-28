@@ -3,7 +3,8 @@
 // (src/components/plan-picker.tsx), with the same steps, choices, words and
 // defaults. A gift list on its own opens the new list form with its type
 // already chosen. An event asks what it is, who it's for and how gifts work,
-// then the website's own startPlan makes it. Change both together.
+// then the website's own startPlan makes it. Occasions where guests usually
+// bring no gifts, like a potluck, skip the gifts question. Change both together.
 
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -20,6 +21,7 @@ import {
   occasionFor,
   planNeedsEvent,
   startingGiftPlan,
+  usuallyHasGifts,
   type Audience,
   type GiftPlan,
   type OccasionId,
@@ -318,6 +320,10 @@ function PlanPicker({
   const withEvent = state.gifts ? planNeedsEvent(state.gifts) || state.invitation : true;
   // The gifts step is optional. With nothing picked, its button skips it.
   const giftsPicked = Boolean(state.gifts && state.gifts !== "later");
+  // A potluck or a game night usually has no gifts, so the picker doesn't ask.
+  // The host can add them from the event later.
+  const asksGifts = !state.occasion || usuallyHasGifts(state.occasion);
+  const steps = asksGifts ? STEPS : STEPS.filter((s) => s.id !== "gifts");
 
   const update = (changes: Partial<PlanPickerState>) => {
     setError("");
@@ -353,6 +359,8 @@ function PlanPicker({
     if (only === "everyone") {
       // A gift exchange occasion is a Secret Santa: names are drawn.
       goTo("name", { ...changes, gifts: "exchange" });
+    } else if (only && !chosen.gifts) {
+      goTo("name", { ...changes, gifts: "later" });
     } else if (only) {
       goTo("gifts", changes);
     } else {
@@ -367,6 +375,10 @@ function PlanPicker({
   const afterWho = () => {
     if (nameLabel && !state.name.trim() && state.audience !== "me") {
       setError(`Add ${state.audience === "someone" ? "their name" : state.audience === "child" ? "your child's name" : "your names"}.`);
+      return;
+    }
+    if (!asksGifts) {
+      goTo("name", { gifts: "later" });
       return;
     }
     goTo("gifts");
@@ -395,7 +407,7 @@ function PlanPicker({
     const order: Step[] = ["what", "who", "gifts", "name"];
     let index = order.indexOf(state.step) - 1;
     // Skip the steps the occasion answered by itself.
-    if (order[index] === "gifts" && state.audience === "everyone" && audiences.length === 1) index -= 1;
+    if (order[index] === "gifts" && ((state.audience === "everyone" && audiences.length === 1) || !asksGifts)) index -= 1;
     if (order[index] === "who" && audiences.length === 1) index -= 1;
     goTo(order[Math.max(index, 0)]);
   };
@@ -455,7 +467,7 @@ function PlanPicker({
     }
   };
 
-  const stepIndex = STEPS.findIndex((s) => s.id === state.step);
+  const stepIndex = steps.findIndex((s) => s.id === state.step);
 
   // What the plan will make, for the last step.
   const summary: string[] = [];
@@ -481,7 +493,7 @@ function PlanPicker({
       summary.push("Guests link their wishlists when they RSVP and see each other's");
     }
     if (state.gifts === "no_gifts") summary.push("A note on the invitation: “No gifts, please.”");
-    if (state.gifts === "later") summary.push("Nothing about gifts yet");
+    if (state.gifts === "later" && asksGifts) summary.push("Nothing about gifts yet");
     // A potluck or a meal train always starts with its sheet, like a gift exchange with its draw.
     const startsSheet = Boolean(occasion.defaults && "signup" in occasion.defaults);
     if (state.gifts === "signup" || startsSheet) {
@@ -524,7 +536,7 @@ function PlanPicker({
       <KeyboardScrollView bottomOffset={keyboardFooter.bottomOffset} contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
         {state.step !== "what" ? (
           <View accessibilityLabel="Steps" style={{ flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: 4 }}>
-            {STEPS.map((s, index) => {
+            {steps.map((s, index) => {
               const current = index === stepIndex;
               const reached = index <= stepIndex;
               return (

@@ -7,7 +7,8 @@ import { PoweredByFooter } from "@/components/site-footer";
 import { SecretSantaCard } from "@/components/secret-santa-card";
 import { EventGroupGifts } from "@/components/event-group-gifts";
 import { getEventBySlug, loadInvitationPage } from "@/lib/invitation-page";
-import { formatEventDate } from "@/lib/events";
+import { formatEventDate, invitationReplyCta } from "@/lib/events";
+import { dateIn } from "@/lib/event-updates";
 
 // What the invitation shows, and to whom, is in loadInvitationPage
 // (src/lib/invitation-page.ts). The phone app's invitation screen shows the
@@ -73,6 +74,8 @@ export default async function PublicEventPage({
           signup={page.signup}
           addressHidden={page.addressHidden}
           updates={page.updates}
+          replyCta={invitationReplyCta(rsvp)}
+          today={dateIn(page.event.time_zone)}
           // The reply comes before the gift sections: a guest answers before
           // browsing what to give. Group gifts follow them.
           reply={

@@ -146,6 +146,22 @@ export const NameIt: Story = {
   },
 };
 
+/**
+ * A potluck usually has no gifts, so the picker doesn't ask about them. It
+ * goes straight to the name, and the event starts with its sign-up sheet.
+ */
+export const PotluckSkipsGifts: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Potluck" }));
+    await expect(canvas.getByRole("heading", { name: "Name your event" })).toBeVisible();
+    const steps = within(canvas.getByRole("list", { name: "Steps" }));
+    await expect(steps.queryByText("Gifts")).toBeNull();
+    await expect(canvas.queryByText("Nothing about gifts yet")).toBeNull();
+    await expect(canvas.getByText(/A sign-up sheet for mains/)).toBeVisible();
+  },
+};
+
 /** A Secret Santa skips straight to its name: everyone draws names. */
 export const SecretSanta: Story = {
   play: async ({ canvasElement }) => {

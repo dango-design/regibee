@@ -17,6 +17,7 @@ import {
   listTitleFor,
   occasionFor,
   offersGiftExchange,
+  usuallyHasGifts,
   planNeedsEvent,
   startingExchange,
   startingGiftPlan,
@@ -177,13 +178,24 @@ test("a gift plan's label fits who it's for", () => {
 });
 
 test("the new event form asks about gifts among the guests only when the occasion can have them", () => {
-  for (const id of ["gift_exchange", "christmas", "holiday", "potluck", "gathering", "other"]) {
+  for (const id of ["gift_exchange", "christmas", "holiday_party"]) {
     assert.equal(offersGiftExchange(id), true, id);
   }
-  for (const id of ["baby_shower", "wedding", "birthday", "kids_birthday", "graduation"]) {
+  // A potluck or a game night could have one, but usually has no gifts at all.
+  for (const id of ["baby_shower", "wedding", "birthday", "kids_birthday", "graduation", "holiday", "potluck", "gathering", "other"]) {
     assert.equal(offersGiftExchange(id), false, id);
   }
   assert.equal(offersGiftExchange("not_an_occasion"), false);
+});
+
+test("only occasions where guests usually bring gifts put gifts first", () => {
+  for (const id of ["baby_shower", "birthday", "kids_birthday", "christmas", "gift_exchange", "wedding", "bridal_shower", "housewarming"]) {
+    assert.equal(usuallyHasGifts(id), true, id);
+  }
+  for (const id of ["potluck", "meal_train", "gathering", "retirement", "bachelor", "other"]) {
+    assert.equal(usuallyHasGifts(id), false, id);
+  }
+  assert.equal(usuallyHasGifts("not_an_occasion"), false);
 });
 
 test("the countdown shows the date with its year once it has gone by", () => {

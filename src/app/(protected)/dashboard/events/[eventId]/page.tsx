@@ -17,6 +17,7 @@ import { editSectionHref } from "@/lib/edit-event-sections";
 import { loadEventPage } from "@/lib/events-page";
 import { getViewer } from "@/lib/viewer";
 import { cx } from "@/lib/utils/cx";
+import { usuallyHasGifts } from "@/lib/occasions";
 
 export const metadata: Metadata = { title: "Event | Regibee" };
 
@@ -60,6 +61,10 @@ export default async function ManageEventPage({
   const publicPath = `/e/${event.slug}`;
   // Links to a part of the event go straight to its section of the edit page.
   const editPath = `/dashboard/events/${event.id}/edit`;
+  // A potluck or a game night usually has no gifts. Until the host adds some,
+  // the page offers them with one line instead of a card.
+  const hasGifts = registries.length > 0 || listRequests.length > 0 || Boolean(event.gift_note);
+  const showGiftsCard = hasGifts || usuallyHasGifts(event.event_type);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -193,46 +198,48 @@ export default async function ManageEventPage({
             </CardContent>
           </Card>
 
-          <Card className="py-0">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
-                  <Gift aria-hidden="true" className="size-4.5 text-brand-tertiary" />
-                </span>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <p className="font-medium text-primary">Gifts</p>
-                  {registries.length > 0 ? (
-                    <ul className="flex flex-col gap-0.5">
-                      {registries.map((registry) => (
-                        <li key={registry.id} className="text-sm">
-                          <a
-                            href={`/r/${registry.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-brand-tertiary hover:underline"
-                          >
-                            {registry.title}
-                          </a>
-                          {registry.honoree && <span className="text-tertiary"> · {registry.honoree}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : listRequests.length === 0 ? (
-                    <p className="text-sm text-tertiary">No registry linked.</p>
-                  ) : null}
-                  {listRequests.map((request) => (
-                    <p key={request.email} className="text-sm text-tertiary">
-                      Waiting for {request.name} to make their list. We emailed {request.email}.
-                    </p>
-                  ))}
-                  {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
-                  <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-tertiary hover:underline">
-                    {registries.length > 0 || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
-                  </Link>
+          {showGiftsCard && (
+            <Card className="py-0">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary">
+                    <Gift aria-hidden="true" className="size-4.5 text-brand-tertiary" />
+                  </span>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="font-medium text-primary">Gifts</p>
+                    {registries.length > 0 ? (
+                      <ul className="flex flex-col gap-0.5">
+                        {registries.map((registry) => (
+                          <li key={registry.id} className="text-sm">
+                            <a
+                              href={`/r/${registry.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-brand-tertiary hover:underline"
+                            >
+                              {registry.title}
+                            </a>
+                            {registry.honoree && <span className="text-tertiary"> · {registry.honoree}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : listRequests.length === 0 ? (
+                      <p className="text-sm text-tertiary">No registry linked.</p>
+                    ) : null}
+                    {listRequests.map((request) => (
+                      <p key={request.email} className="text-sm text-tertiary">
+                        Waiting for {request.name} to make their list. We emailed {request.email}.
+                      </p>
+                    ))}
+                    {event.gift_note && <p className="text-sm whitespace-pre-line text-secondary">{event.gift_note}</p>}
+                    <Link href={editSectionHref(editPath, "gifts")} className="text-sm font-medium text-brand-tertiary hover:underline">
+                      {registries.length > 0 || event.gift_note ? "Change gifts" : "Link a registry or add a gift note"}
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {!signupSheet && <SignupSheetStarter eventId={event.id} />}
 
@@ -246,6 +253,16 @@ export default async function ManageEventPage({
           />
 
           <EventCoHosts eventId={event.id} hosts={hosts} invites={invites} viewerId={viewer.id} />
+
+          {!showGiftsCard && (
+            <Link
+              href={editSectionHref(editPath, "gifts")}
+              className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-tertiary hover:text-primary max-sm:min-h-11"
+            >
+              <Gift aria-hidden="true" className="size-4" />
+              Add a gift list or note
+            </Link>
+          )}
         </aside>
       </div>
     </div>
