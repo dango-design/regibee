@@ -78,7 +78,7 @@ export function GroupGiftSheet({
       <Text variant="callout" tone="secondary">
         You reserve the {item.title}
         {item.price ? ` (${formatPrice(item.price)})` : ""}, friends chip in and pay you back, and you buy it.{" "}
-        {page.parentName} never sees who chipped in.
+        {page.parentName} won&apos;t see who chipped in.
       </Text>
       <ItemPhoto item={item} />
     </>

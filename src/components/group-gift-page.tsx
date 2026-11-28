@@ -518,7 +518,7 @@ export function GroupGiftPage({
               </div>
               {!editing && (
                 <p className="text-sm text-tertiary">
-                  {view.recipientName} never sees who chipped in or how much.
+                  {view.recipientName} won&apos;t see who chipped in or how much.
                 </p>
               )}
             </form>
@@ -584,7 +584,7 @@ export function GroupGiftPage({
             >
               <p id="finish-confirm" className="text-sm text-primary">
                 {confirming === "bought"
-                  ? `Mark the ${view.item.title} as bought? ${view.recipientName} hears it's from you and others.`
+                  ? `Mark the ${view.item.title} as bought? ${view.recipientName} will hear it's from you and others.`
                   : `Call off this group gift? The ${view.item.title} opens up again on ${view.recipientName}'s list, and everyone who chipped in gets an email.${
                       view.pledges.some((p) => p.paid) ? " Send back any money you've been paid." : ""
                     }`}

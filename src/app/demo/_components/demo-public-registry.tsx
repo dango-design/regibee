@@ -12,7 +12,7 @@ import { ScrollToTop } from "@/components/scroll-to-top";
 import { SuggestItemDialog } from "@/components/suggest-item-dialog";
 import { DEMO_ME, demoFollowState, demoOk, demoProfilePath } from "@/lib/demo-people";
 import { findDemoRegistry } from "@/lib/demo-registries";
-import { GIFT_HOLD_DAYS, listProgress, type MyItemGift } from "@/lib/gifts";
+import { GIFT_HOLD_DAYS, isExpiredReservation, isOpenReservation, listProgress, type MyItemGift } from "@/lib/gifts";
 import { PAYBACK_NOTE_MAX, parseGroupGiftAmount } from "@/lib/group-gifts";
 import { copyForRegistry } from "@/lib/registry-copy";
 import { parseRetailerRegistries } from "@/lib/retailers";
@@ -140,6 +140,15 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
   const ownedByDemoAccount = registry.owner.public_id === DEMO_ME.public_id;
   const followState = ownedByDemoAccount ? "none" : demoFollowState(registry.owner.public_id);
 
+  // How many of each item guests have only reserved, not bought, so the grid
+  // tags them "Reserved by a guest" rather than "Gifted". Like reservedCounts
+  // in loadPublicList (src/lib/public-list-page.ts).
+  const reservedCounts: Record<string, number> = {};
+  for (const p of registry.purchases) {
+    if (!p.registry_item_id || !isOpenReservation(p) || isExpiredReservation(p)) continue;
+    reservedCounts[p.registry_item_id] = (reservedCounts[p.registry_item_id] || 0) + p.quantity;
+  }
+
   const fulfilledCount = listProgress(items, (i) => coverCounts[i.id] || 0).gifted;
   const owner = registry.listed_on_profile
     ? { name: registry.owner.full_name, path: demoProfilePath(registry.owner) }
@@ -211,6 +220,7 @@ export function DemoPublicRegistry({ slug }: { slug: string }) {
           myGifts={{ funds: myFunds }}
           myItemGifts={myItemGifts}
           coverCounts={coverCounts}
+          reservedCounts={reservedCounts}
           selfPurchasedLabel={copy.selfPurchasedLabel}
           coverFlavor={copy.coverItemFlavor(parentName)}
           linkedStores={isBaby ? parseRetailerRegistries(registry.settings).map((r) => r.store) : []}
