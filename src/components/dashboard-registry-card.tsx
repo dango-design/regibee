@@ -111,7 +111,8 @@ export function DashboardRegistryCard({
                   Private
                 </span>
               )}
-              <ManagerAvatars managers={managers} />
+              {/* Taller than the badges, so it takes no height: the countdown stays level with other cards'. */}
+              <ManagerAvatars managers={managers} className="-my-1" />
             </span>
           )}
         </div>

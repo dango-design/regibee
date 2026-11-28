@@ -115,7 +115,10 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
                   </Text>
                 </View>
               ) : null}
-              <ManagerFaces managers={managers} />
+              {/* Taller than the badges, so it takes no height: the countdown stays level with other cards'. */}
+              <View style={{ marginVertical: -4 }}>
+                <ManagerFaces managers={managers} />
+              </View>
             </View>
           ) : null}
         </View>
