@@ -11,22 +11,7 @@ const meta: Meta<typeof PublicProfile> = {
     fullName: "Remi & Max",
     today: "2026-11-02",
     registries: [
-      {
-        slug: "past-housewarming",
-        title: "Our New Home",
-        event_date: "2026-03-14",
-        registry_type: "personal",
-        event_type: "housewarming",
-        is_public: true,
-      },
-      {
-        slug: "anytime-wishlist",
-        title: "Remi's Wishlist",
-        event_date: null,
-        registry_type: "personal",
-        event_type: null,
-        is_public: true,
-      },
+      // In the order the page sends them (orderProfileLists): soonest first.
       {
         slug: "christmas",
         title: "Remi & Max's Christmas",
@@ -42,6 +27,22 @@ const meta: Meta<typeof PublicProfile> = {
         registry_type: "baby",
         event_type: null,
         is_public: false,
+      },
+      {
+        slug: "anytime-wishlist",
+        title: "Remi's Wishlist",
+        event_date: null,
+        registry_type: "personal",
+        event_type: null,
+        is_public: true,
+      },
+      {
+        slug: "past-housewarming",
+        title: "Our New Home",
+        event_date: "2026-03-14",
+        registry_type: "personal",
+        event_type: "housewarming",
+        is_public: true,
       },
     ],
   },

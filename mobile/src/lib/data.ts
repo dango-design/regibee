@@ -12,6 +12,7 @@ import type { DetailField, ShownSide } from "@shared/item-details";
 import type { ListPageData, ListPagePurchase } from "@shared/list-page-types";
 import { profileAudienceFields, type ListVisibility, type ProfileAudience } from "@shared/list-access";
 import { FUNDS_POSITION_SETTING, type FundsPosition } from "@shared/gifts";
+import { orderLists } from "@shared/list-order";
 
 import { act, ApiError, form, loadPage, runAction } from "@/lib/api";
 import { useSession } from "@/lib/auth";
@@ -54,6 +55,37 @@ export function useDashboard() {
     queryKey: keys.dashboard(userId),
     queryFn: fetchDashboard,
     enabled: Boolean(userId),
+  });
+}
+
+/** Every list on the home screen, in the person's order. Older servers send no `lists`. */
+export function homeLists(data: DashboardData): RegistrySummary[] {
+  return data.lists ?? [...data.owned, ...data.shared];
+}
+
+/**
+ * Saves the order of the lists on the home screen (listOrder.setListOrder on
+ * the website). The screen shows the new order straight away, and goes back
+ * if it doesn't save.
+ */
+export function useSaveListOrder() {
+  const { userId } = useSession();
+  const queryClient = useQueryClient();
+  const key = keys.dashboard(userId);
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (isDemo()) return demo.setListOrder(ids);
+      await act("listOrder.setListOrder", ids);
+    },
+    onMutate: async (ids: string[]) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<DashboardData>(key);
+      if (previous) queryClient.setQueryData<DashboardData>(key, { ...previous, lists: orderLists(homeLists(previous), ids) });
+      return { previous };
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+    },
   });
 }
 

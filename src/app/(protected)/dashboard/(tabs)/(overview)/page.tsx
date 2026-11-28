@@ -11,5 +11,5 @@ export default async function DashboardPage() {
   }
 
   // The markup is in a plain component, so Storybook and the demo can draw it.
-  return <DashboardHome {...data} />;
+  return <DashboardHome {...data} lists={data.lists ?? [...data.owned, ...data.shared]} />;
 }
