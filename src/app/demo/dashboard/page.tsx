@@ -74,8 +74,9 @@ export default function DemoDashboardPage() {
   return (
     <DemoOwnerShell tabs>
       <DashboardHome
-        owned={owned}
-        shared={[]}
+        lists={owned}
+        // The demo keeps a new order only until the page reloads.
+        saveOrder={async () => ({})}
         giftsThisWeek={giftsThisWeek}
         followRequestCount={requestCount}
         showProfilePrompt={false}

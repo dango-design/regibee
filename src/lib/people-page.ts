@@ -9,6 +9,7 @@ import { listUpcomingBirthdays } from "@/lib/birthdays-server";
 import { listRegistriesSharedWithViewer } from "@/lib/groups-server";
 import { cleanPublicNote, parseGiftProfile } from "@/lib/gift-profile";
 import { profilePhotoUrl } from "@/lib/profile-photos";
+import { orderProfileLists } from "@/lib/list-order";
 import { getViewer } from "@/lib/viewer";
 import { createClient } from "@/utils/supabase/server";
 import type { AccountPageData, AccountRegistry, FollowingTabData } from "@/lib/people-page-types";
@@ -45,7 +46,9 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
       .single(),
     supabase
       .from("registries")
-      .select("id, title, is_public, is_private, listed_on_profile, profile_audience, registry_type, event_type, settings")
+      .select(
+        "id, slug, title, event_date, is_public, is_private, listed_on_profile, profile_audience, registry_type, event_type, settings",
+      )
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false }),
     listFollows(user.id),
@@ -59,13 +62,23 @@ export async function loadAccountPage(): Promise<AccountPageData | null> {
   ]);
   // Separate too: it errors until 20261127205241_email_settings_and_new_emails.sql
   // has run, which counts as one email per gift.
-  const { data: giftEmailsRow } = await supabase.from("profiles").select("gift_emails").eq("id", user.id).maybeSingle();
+  // So does the profile's order of lists, until 20261128085244_list_order.sql
+  // has run, which counts as no order.
+  const [{ data: giftEmailsRow }, orderRow] = await Promise.all([
+    supabase.from("profiles").select("gift_emails").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("profile_list_order").eq("id", user.id).maybeSingle(),
+  ]);
   const gift = giftRow.error ? null : giftRow.data;
+  const profileOrder = orderRow.error ? null : ((orderRow.data?.profile_list_order as string[] | null) ?? null);
 
-  const accountRegistries: AccountRegistry[] = (registries || []).map(({ settings, ...registry }) => ({
-    ...registry,
-    has_shipping_address: Boolean(settings?.shipping_address),
-  }));
+  // In the order their profile shows them (src/lib/list-order.ts).
+  const today = new Date().toISOString().slice(0, 10);
+  const accountRegistries: AccountRegistry[] = orderProfileLists(registries || [], profileOrder, today).map(
+    ({ settings, slug: _slug, event_date: _date, ...registry }) => ({
+      ...registry,
+      has_shipping_address: Boolean(settings?.shipping_address),
+    }),
+  );
 
   return {
     profile: {

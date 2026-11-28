@@ -16,11 +16,14 @@ import { spacing } from "@/lib/theme";
 export function HomeSection({
   title,
   more,
+  action,
   children,
 }: {
   title: string;
   /** A link at the heading's right, like "All events". */
   more?: { title: string; href: Href };
+  /** A button at the heading's right instead, like Reorder. */
+  action?: { title: string; onPress: () => void };
   children: ReactNode;
 }) {
   return (
@@ -38,6 +41,18 @@ export function HomeSection({
           >
             <Text variant="subhead" tone="tint" style={{ fontWeight: "600" }}>
               {more.title}
+            </Text>
+          </Pressable>
+        ) : null}
+        {action ? (
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={action.onPress}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text variant="subhead" tone="tint" style={{ fontWeight: "600" }}>
+              {action.title}
             </Text>
           </Pressable>
         ) : null}

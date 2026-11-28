@@ -1,13 +1,15 @@
 import { router, Stack } from "expo-router";
-import { RefreshControl, ScrollView, View } from "react-native";
+import { useState } from "react";
+import { Alert, RefreshControl, ScrollView, View } from "react-native";
 
 import { ComingUp } from "@/components/home/coming-up";
 import { HomeNote } from "@/components/home/home-note";
 import { HomeSection } from "@/components/home/home-section";
 import { ListCoverCard } from "@/components/home/list-cover-card";
+import { ListOrderRows } from "@/components/list-order-rows";
 import { PlayUpdateNotice } from "@/components/play-update-notice";
 import { Button, EmptyState, ErrorState, IconButton, LoadingState, Text } from "@/components/ui";
-import { errorMessage, useDashboard } from "@/lib/data";
+import { errorMessage, homeLists, useDashboard, useSaveListOrder } from "@/lib/data";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { spacing, useTheme } from "@/lib/theme";
 import type { RegistrySummary } from "@/lib/types";
@@ -15,14 +17,19 @@ import type { RegistrySummary } from "@/lib/types";
 // The home tab. It shows the website's My registries tab
 // (src/app/(protected)/dashboard/(tabs)/(overview)/page.tsx), from the same
 // loader, as a stack of sections (HomeSection): first what's waiting on the
-// person, then their events, then their lists. New kinds of updates can go
+// person, then their events, then their lists, in their own order. New kinds of updates can go
 // in as more sections.
 export default function HomeScreen() {
   const theme = useTheme();
   const dashboard = useDashboard();
   const pull = usePullToRefresh(dashboard.refetch);
   const data = dashboard.data;
-  const hasLists = data ? data.owned.length + data.shared.length > 0 : false;
+  // Every list they own or help manage, in their order. A list someone else
+  // also manages shows their faces on its card.
+  const lists = data ? homeLists(data) : [];
+  const hasLists = lists.length > 0;
+  const [reordering, setReordering] = useState(false);
+  const saveOrder = useSaveListOrder();
 
   return (
     <>
@@ -89,15 +96,27 @@ export default function HomeScreen() {
 
             <ComingUp events={data.upcomingEvents ?? []} today={data.today} />
 
-            {data.owned.length > 0 ? (
-              <HomeSection title="Your lists">
-                <ListCards lists={data.owned} today={data.today} />
-              </HomeSection>
-            ) : null}
-
-            {data.shared.length > 0 ? (
-              <HomeSection title="Shared with you">
-                <ListCards lists={data.shared} today={data.today} />
+            {hasLists ? (
+              <HomeSection
+                title="Your lists"
+                action={
+                  lists.length > 1 || reordering
+                    ? { title: reordering ? "Done" : "Reorder", onPress: () => setReordering((value) => !value) }
+                    : undefined
+                }
+              >
+                {reordering ? (
+                  <ListOrderRows
+                    lists={lists}
+                    onMove={(ids) =>
+                      saveOrder.mutate(ids, {
+                        onError: (error) => Alert.alert("That order didn't save", errorMessage(error)),
+                      })
+                    }
+                  />
+                ) : (
+                  <ListCards lists={lists} today={data.today} />
+                )}
               </HomeSection>
             ) : null}
 

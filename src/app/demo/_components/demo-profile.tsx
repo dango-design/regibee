@@ -6,6 +6,7 @@ import { PublicProfile } from "@/components/public-profile";
 import { demoFollowState, demoOk, demoProfilePath, findDemoPerson } from "@/lib/demo-people";
 import { demoProfileRegistries } from "@/lib/demo-registries";
 import { publicIdFromPath } from "@/lib/profile-link";
+import { sortListedRegistries } from "@/lib/registry-listing";
 import { useDemoToday } from "../demo-today";
 import { DemoOwnerShell } from "./demo-shell";
 
@@ -26,7 +27,7 @@ export function DemoProfile({ segment }: { segment: string }) {
     <DemoOwnerShell>
       <PublicProfile
         fullName={person.full_name}
-        registries={demoProfileRegistries(today, person, isOwnProfile || state === "approved")}
+        registries={sortListedRegistries(demoProfileRegistries(today, person, isOwnProfile || state === "approved"), today)}
         today={today}
         isOwnProfile={isOwnProfile}
         basePath="/demo"

@@ -119,10 +119,12 @@ test("an owner invites a co-parent by email, who signs in from the link and acce
     ]),
   );
 
-  // Their dashboard lists it as shared with them, and they can add to it.
+  // Their dashboard lists it with their own lists, with the owner's face on
+  // its card, and they can add to it.
   await theirPage.goto("/dashboard");
-  await expect(theirPage.getByRole("heading", { name: "Shared with you" })).toBeVisible();
-  await expect(theirPage.getByText(registry.title)).toBeVisible();
+  const yourLists = theirPage.getByRole("region", { name: "Your lists" });
+  await expect(yourLists.getByText(registry.title)).toBeVisible();
+  await expect(yourLists.getByTitle(/^Shared with /)).toBeVisible();
   await theirPage.goto(`/dashboard/registry/${registry.id}`);
   await expect(theirPage.getByText(item.title)).toBeVisible();
   await expect(theirPage.getByRole("button", { name: "Add Item" }).first()).toBeVisible();

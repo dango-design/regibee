@@ -81,6 +81,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
 - Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
 
+## List order
+
+- The My registries tab and the phone app's home screen show one "Your lists" section: the lists someone owns and the ones they help manage, together. A list with other managers shows their faces on its card (`managers` on each card, from `loadDashboard`).
+- Each person orders their lists twice, with the Reorder button: once for themselves, on the My registries tab, and once for their profile, on the Account page. Both are lists of registry ids on their profile, `profiles.list_order` and `profiles.profile_list_order` (`20261128085244_list_order.sql`). Each co-manager keeps their own `list_order`.
+- The rules and their tests are in `src/lib/list-order.ts`, which the phone app shares. A list missing from an order, like a new one, goes first. A profile with no saved order shows the soonest date first, as before.
+- `setListOrder` and `setProfileListOrder` (`src/lib/actions/list-order.ts`) save them with the service-role client, since signed-in sessions can't write those columns.
+- `DashboardData.lists` holds the ordered lists. `owned` and `shared` stay for older app builds.
+
 ## List headers
 
 - The band at the top of a list's page has a color and a pattern the owner picks with the Header button on their list's page. The choice is saved in `registries.settings.header` as `{ color, pattern }`. A list with nothing saved keeps the light teal with dots.
