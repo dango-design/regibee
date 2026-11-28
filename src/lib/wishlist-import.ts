@@ -207,3 +207,17 @@ export function planWishlistSync(
 export function takenForGuests(quantityNeeded: number, quantityFulfilled: number, givenElsewhere: number): number {
   return Math.min(Math.max(quantityNeeded, quantityFulfilled), quantityFulfilled + Math.max(0, givenElsewhere));
 }
+
+/**
+ * An item as a guest sees it: what's been given on Elfster counts as taken.
+ * `given` maps item ids to how many have been given there. Only for people
+ * who don't manage the list.
+ */
+export function withElfsterGifts<
+  T extends { id: string; quantity_needed: number; quantity_fulfilled: number; is_parent_purchased?: boolean | null },
+>(item: T, given: Map<string, number>): T {
+  const elsewhere = given.get(item.id) ?? 0;
+  // An item the owners bought takes covers instead, and Elfster's gifts don't change that.
+  if (elsewhere === 0 || item.is_parent_purchased) return item;
+  return { ...item, quantity_fulfilled: takenForGuests(item.quantity_needed, item.quantity_fulfilled, elsewhere) };
+}

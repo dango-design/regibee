@@ -87,32 +87,43 @@ export async function loadInvitationPage(slug: string, token: string | null): Pr
   const [event, viewer] = await Promise.all([getEventBySlug(slug), getViewer()]);
   if (!event) return null;
 
-  const [registries, exchange, signupSheet, updates, guestResult] = await Promise.all([
-    getEventRegistries(event.id, { withItems: true }),
-    getGiftExchange(event.id),
-    getSignupSheet(event.id),
-    // The host's messages and changes, for anyone with the link (#129).
-    getInvitationUpdates(event.id),
-    token
-      ? supabaseAdmin
+  const guestRead: Promise<InvitationGuest | null> = token
+    ? Promise.resolve(
+        supabaseAdmin
           .from("event_guests")
           .select(
             "id, name, email, rsvp_status, party_size, kids_count, rsvp_note, token, in_exchange, wishlist_url, gift_ideas, shipping_address, giftee_id, answers",
           )
           .eq("event_id", event.id)
           .eq("token", token)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+          .maybeSingle(),
+      ).then(({ data }) => (data as InvitationGuest | null) ?? null)
+    : Promise.resolve(null);
+  // The linked lists the person looking manages: as the signed-in viewer, or
+  // as the account with the guest's email. Their group gifts stay hidden from
+  // them, and so do gifts bought on a synced Elfster wishlist. Both callers
+  // pass the event's linked lists, so the first answer serves both.
+  let ownLists: Promise<string[]> | null = null;
+  const managedByViewer = (registryIds: string[]) =>
+    (ownLists ??= guestRead.then((guest) =>
+      viewer || guest?.email
+        ? listsOfViewer(registryIds, { viewerId: viewer?.id ?? null, guestEmail: guest?.email ?? null })
+        : [],
+    ));
+
+  const [registries, exchange, signupSheet, updates, guest] = await Promise.all([
+    getEventRegistries(event.id, { withItems: true, managedByViewer }),
+    getGiftExchange(event.id),
+    getSignupSheet(event.id),
+    // The host's messages and changes, for anyone with the link (#129).
+    getInvitationUpdates(event.id),
+    guestRead,
   ]);
-  const guest = guestResult.data as InvitationGuest | null;
 
   // Group gifts started from this event, on a guest's own link only. Gifts
   // for lists the guest manages stay hidden, so their surprise holds.
   const groupGifts = guest
-    ? await listsOfViewer(
-        registries.map((r) => r.id),
-        { viewerId: viewer?.id ?? null, guestEmail: guest.email },
-      )
+    ? await managedByViewer(registries.map((r) => r.id))
         .then((own) => groupGiftsForEvent(event.id, { hideRegistryIds: own }))
         .catch((err) => {
           console.error("[event] Failed to load group gifts:", err);

@@ -9,7 +9,10 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { importItemKey } from "@/lib/extension";
 import { LINK_COLUMNS, loadListItems, type LinkRow } from "@/lib/list-items";
-import { planWishlistSync, takenForGuests, type ImportItem, type SyncListItem } from "@/lib/wishlist-import";
+import { planWishlistSync, type ImportItem, type SyncListItem } from "@/lib/wishlist-import";
+
+// The rule for how a guest sees an item has no imports, so its tests can run it.
+export { withElfsterGifts } from "@/lib/wishlist-import";
 
 /** True when the list is kept in sync with that wishlist. */
 export async function isSyncedWith(registryId: string, wishlistId: string): Promise<boolean> {
@@ -126,15 +129,4 @@ export async function givenOnElfster(itemIds: string[]): Promise<Map<string, num
   }
   for (const row of data ?? []) given.set(row.item_id as string, row.given as number);
   return given;
-}
-
-/** An item as a guest sees it: what's been given on Elfster counts as taken. */
-export function withElfsterGifts<T extends { id: string; quantity_needed: number; quantity_fulfilled: number; is_parent_purchased?: boolean | null }>(
-  item: T,
-  given: Map<string, number>,
-): T {
-  const elsewhere = given.get(item.id) ?? 0;
-  // An item the owners bought takes covers instead, and Elfster's gifts don't change that.
-  if (elsewhere === 0 || item.is_parent_purchased) return item;
-  return { ...item, quantity_fulfilled: takenForGuests(item.quantity_needed, item.quantity_fulfilled, elsewhere) };
 }
