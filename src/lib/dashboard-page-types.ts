@@ -6,6 +6,14 @@ import type { EventType, RsvpStatus, RsvpSummary } from "./events";
 import type { ListProgress } from "./gifts";
 import type { PersonalEventType, RegistryType } from "./types";
 
+/** Someone else who manages a list: its owner or a co-manager. */
+export interface DashboardManager {
+  /** Their profile's name, or "Regibee member". */
+  name: string;
+  /** Their profile photo's URL, or null for their initials. */
+  photoUrl: string | null;
+}
+
 /** One list's card. */
 export interface DashboardCard {
   id: string;
@@ -39,6 +47,11 @@ export interface DashboardCard {
   giftsThisWeek: number;
   /** The owner hides what's been reserved from themselves. */
   reservationsHidden: boolean;
+  /**
+   * Everyone else who manages the list, owner first. Empty when only the
+   * viewer manages it. Missing from older servers' answers.
+   */
+  managers?: DashboardManager[];
 }
 
 /** An event in "Coming up" (src/lib/upcoming-events.ts). */
@@ -72,6 +85,12 @@ export interface DashboardData {
   owned: DashboardCard[];
   /** Lists they help manage, newest first. */
   shared: DashboardCard[];
+  /**
+   * Every list they own or help manage, in the order they chose
+   * (src/lib/list-order.ts). Missing from older servers' answers: then show
+   * owned, then shared.
+   */
+  lists?: DashboardCard[];
   /** Gifts reserved in the last 7 days, an item on several lists counted once. */
   giftsThisWeek: number;
   /** People waiting for the user to approve their follow. */

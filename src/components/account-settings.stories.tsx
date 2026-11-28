@@ -65,6 +65,7 @@ const meta: Meta<typeof AccountSettings> = {
     registries,
     saveAction: mockSave as never,
     listAction: mockList as never,
+    profileOrderAction: async () => ({}),
     uploadPhoto: async () => ({ url: "/hero/panda.svg" }),
     photoAction: mockList,
     giftProfileAction: mockSave,

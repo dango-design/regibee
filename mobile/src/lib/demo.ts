@@ -5,6 +5,7 @@
 import { getChecklistProgress } from "@shared/checklist-matching";
 import { PLANNED_CATEGORY_PREFIX, sortPlan } from "@shared/item-categories";
 import type { DashboardCard, DashboardData } from "@shared/dashboard-page-types";
+import { orderLists } from "@shared/list-order";
 import {
   DEMO_CASH_FUNDS,
   DEMO_CATEGORIES,
@@ -212,17 +213,25 @@ function itemRegistry(itemId: string) {
   throw new Error("That item isn't in the demo.");
 }
 
+// The order the demo's lists were put in, until the app restarts.
+let demoListOrder: string[] = [];
+
 let nextId = 1;
 const newId = (prefix: string) => `${prefix}-new-${nextId++}`;
 
 export const demo = {
+  setListOrder(ids: string[]) {
+    demoListOrder = [...ids];
+  },
   dashboard(): DashboardData {
     const day = today();
     const weekAgo = Date.now() - 7 * 24 * HOUR_MS;
     const lists = [...current().lists.values()].reverse();
+    const cards = lists.map(card);
     return {
-      owned: lists.map(card),
+      owned: cards,
       shared: [],
+      lists: orderLists(cards, demoListOrder),
       giftsThisWeek: lists
         .flatMap((l) => giftsFor(l.registry.id))
         .filter((g) => g.status !== "cancelled" && Date.parse(g.created_at) >= weekAgo).length,
