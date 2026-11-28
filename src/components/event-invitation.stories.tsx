@@ -198,8 +198,9 @@ const linkedRegistries: InvitationRegistry[] = [
 ];
 
 /**
- * The shower links two registries and shows a few gifts each still needs.
- * The host added a gift note. This guest already replied.
+ * The shower links two registries. Gifts are one of the event's details,
+ * under the date and place: the host's note, then a link to each list with
+ * how many gifts it still needs. This guest already replied.
  */
 export const WithRegistriesAndGiftNote: Story = {
   args: {
@@ -232,8 +233,8 @@ export const WithRegistriesAndGiftNote: Story = {
 };
 
 /**
- * The host picked a color: it fills the top, since there's no picture, and
- * the Gifts section, in place of the occasion's colors.
+ * The host picked a color: it fills the top, since there's no picture, in
+ * place of the occasion's colors.
  */
 export const WithHostColor: Story = {
   ...WithRegistriesAndGiftNote,
@@ -244,15 +245,17 @@ export const WithHostColor: Story = {
 };
 
 /**
- * The same gifts on a phone. Each list is one short row: one picture,
- * its name and how many gifts are left. The whole row opens the list.
+ * The same gifts on a phone. Each list is a link with its name and how many
+ * gifts are left. There's no separate Gifts section.
  */
 export const WithRegistriesPhone: Story = {
   ...WithRegistriesAndGiftNote,
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvasElement }) => {
-    const gifts = within(canvasElement).getByRole("region", { name: "Gifts" });
-    const lists = within(gifts).getAllByRole("link");
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("region", { name: "Gifts" })).toBeNull();
+    await expect(canvas.getByText(/^Gifts are optional/)).toBeVisible();
+    const lists = canvas.getAllByRole("link", { name: /still needed$/ });
     await expect(lists).toHaveLength(2);
     await expect(lists[0]).toHaveAccessibleName(/23 gifts still needed$/);
     await expect(lists[0]).toHaveAttribute("href", expect.stringContaining(`/e/${sampleEvent.slug}/gifts?g=token-g1`));

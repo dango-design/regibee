@@ -73,8 +73,8 @@ export default async function PublicEventPage({
           signup={page.signup}
           addressHidden={page.addressHidden}
           updates={page.updates}
-          // The reply comes before the gift sections: a guest answers before
-          // browsing what to give. Group gifts follow them.
+          // The reply comes right after the details: a guest answers before
+          // browsing what to give. Group gifts come last.
           reply={
             <>
               {santa && (

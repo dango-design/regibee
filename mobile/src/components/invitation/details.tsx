@@ -1,19 +1,20 @@
 // The top of an invitation: the picture or the event's color, the title, the
-// date, the place, the host's message and their updates. The website's
+// date, the place, gifts, the host's message and their updates. The website's
 // EventInvitation (src/components/event-invitation.tsx), as a phone screen.
 
 import { Image } from "expo-image";
-import { Linking, Platform, StyleSheet, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { eventLocationText, eventTypeLabel, formatEventDate, formatEventTime, mapsUrl } from "@shared/events";
-import type { InvitationPageData } from "@shared/invitation-page-types";
+import { invitationGiftPath, type InvitationPageData } from "@shared/invitation-page-types";
 
 import { Icon, type IconName } from "@/components/icon";
-import { Button, Text } from "@/components/ui";
+import { Button, haptic, Text } from "@/components/ui";
 import { SITE_URL } from "@/lib/supabase";
 import { radius, spacing, useTheme } from "@/lib/theme";
 
 import type { PanelColors } from "./colors";
+import { openInvitationLink } from "./sections";
 
 /** An icon in a circle, then the row's text. */
 function DetailRow({ icon, children }: { icon: IconName; children: React.ReactNode }) {
@@ -65,7 +66,7 @@ export function InvitationHero({ page, colors }: { page: InvitationPageData; col
   );
 }
 
-/** The title, who's hosting, and the date, place and reply-by rows. */
+/** The title, who's hosting, and the date, place, reply-by and gifts rows. */
 export function InvitationDetails({ page, colors }: { page: InvitationPageData; colors: PanelColors }) {
   const { event } = page;
   const time = formatEventTime(event);
@@ -160,6 +161,7 @@ export function InvitationDetails({ page, colors }: { page: InvitationPageData; 
             </Text>
           </DetailRow>
         ) : null}
+        <GiftsRow page={page} />
       </View>
 
       {event.message ? (
@@ -170,6 +172,65 @@ export function InvitationDetails({ page, colors }: { page: InvitationPageData; 
 
       {page.updates.length > 0 ? <HostUpdates page={page} /> : null}
     </View>
+  );
+}
+
+/**
+ * Gifts, as one more detail of the event: the host's note, then a link to
+ * each list they linked with how many gifts it still needs. On a guest's own
+ * link a list opens through the event, which tells the list who the guest
+ * is. With no note and no list there's no row, and when everyone gives
+ * everyone the lists are in everyone's wishlists instead. Like the website.
+ */
+function GiftsRow({ page }: { page: InvitationPageData }) {
+  const theme = useTheme();
+  const { event, registries } = page;
+  if (page.exchange?.kind === "everyone") return null;
+  if (registries.length === 0 && !event.gift_note) return null;
+  return (
+    <DetailRow icon="gift">
+      {event.gift_note ? (
+        <Text variant="callout" tone="secondary">
+          {event.gift_note}
+        </Text>
+      ) : null}
+      {registries.map((linked) => {
+        const details = [
+          linked.honoree ? `${linked.honoree}'s registry` : null,
+          linked.itemsLeft !== undefined
+            ? linked.itemsLeft === 0
+              ? "Every gift is taken"
+              : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return (
+          <Pressable
+            key={linked.slug}
+            accessibilityRole="link"
+            accessibilityLabel={`${linked.title}${details ? `, ${details}` : ""}`}
+            onPress={() => {
+              haptic();
+              openInvitationLink(invitationGiftPath(page.slug, page.guestToken, linked.slug));
+            }}
+            style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", paddingVertical: 4, opacity: pressed ? 0.6 : 1 })}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+              <Text variant="callout" style={{ fontWeight: "600", color: theme.tint, flexShrink: 1 }} numberOfLines={2}>
+                {linked.title}
+              </Text>
+              <Icon name="chevronRight" size={14} color={theme.tint} />
+            </View>
+            {details ? (
+              <Text variant="footnote" tone="tertiary">
+                {details}
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </DetailRow>
   );
 }
 
