@@ -1,8 +1,9 @@
-// The invitation's sections below the RSVP: the lists to shop from,
-// everyone's wishlists, the sign-up sheet, the gift exchange, who the guest
-// drew, and group gifts. Each is the website's section of the same name:
-// GuestWishLists, SignupSheetSection, SecretSantaCard and EventGroupGifts in
-// src/components, and the Gifts and Gift exchange parts of EventInvitation.
+// The invitation's sections below the RSVP: everyone's wishlists, the
+// sign-up sheet, the gift exchange, who the guest drew, and group gifts. Each
+// is the website's section of the same name: GuestWishLists,
+// SignupSheetSection, SecretSantaCard and EventGroupGifts in src/components,
+// and the Gift exchange part of EventInvitation. The lists the host linked
+// are a row of the event's details (details.tsx).
 
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -63,70 +64,6 @@ function SectionHeading({
         </Text>
         {children}
       </View>
-    </View>
-  );
-}
-
-// ── Gifts ────────────────────────────────────────────────────
-
-/**
- * The lists the host linked, one row each: a few pictures, the list's name
- * and how many gifts are left. On a guest's own link a row goes through the
- * event, which tells the list who the guest is.
- */
-export function GiftsSection({ page, colors }: { page: InvitationPageData; colors: PanelColors & { hostColor: string | null } }) {
-  const theme = useTheme();
-  const { event, registries } = page;
-  if (registries.length === 0 && !event.gift_note) return null;
-  // The host's color, or the brand's soft teal, like the website.
-  const panel = colors.hostColor ? colors : { fill: theme.tintSoft, ink: theme.tint };
-  return (
-    <View style={[styles.panel, { backgroundColor: panel.fill }]}>
-      <SectionHeading icon="gift" title="Gifts" ink={panel.ink} circle={theme.surface}>
-        {event.gift_note ? (
-          <Text variant="callout" tone="secondary">
-            {event.gift_note}
-          </Text>
-        ) : null}
-      </SectionHeading>
-      {registries.map((linked) => {
-        const details = [
-          linked.honoree ? `${linked.honoree}'s registry` : null,
-          linked.itemsLeft !== undefined
-            ? linked.itemsLeft === 0
-              ? "Every gift is taken"
-              : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        const picture = linked.items?.find((item) => item.image_url)?.image_url ?? null;
-        return (
-          <Pressable
-            key={linked.slug}
-            accessibilityRole="link"
-            accessibilityLabel={`${linked.title}${details ? `, ${details}` : ""}`}
-            onPress={() => {
-              haptic();
-              openInvitationLink(invitationGiftPath(page.slug, page.guestToken, linked.slug));
-            }}
-            style={({ pressed }) => [styles.row, { backgroundColor: theme.surface, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <ItemImage uri={picture} size={44} rounded={radius.sm} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="callout" style={{ fontWeight: "600" }} numberOfLines={2}>
-                {linked.title}
-              </Text>
-              {details ? (
-                <Text variant="footnote" tone="tertiary">
-                  {details}
-                </Text>
-              ) : null}
-            </View>
-            <Icon name="chevronRight" size={16} color={theme.textTertiary} />
-          </Pressable>
-        );
-      })}
     </View>
   );
 }

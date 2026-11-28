@@ -67,10 +67,10 @@ export interface EventInvitationProps {
   /**
    * The guest's reply: the RSVP form, and the Secret Santa card once names are
    * drawn. It comes right after the details and the host's updates, before
-   * the gift sections: a guest answers before browsing what to give.
+   * everyone's wishlists and the sign-up sheet.
    */
   reply?: React.ReactNode;
-  /** What comes after the gift sections, such as group gifts. */
+  /** What comes last, such as group gifts. */
   children?: React.ReactNode;
   /** Put in front of the registry link. The demo passes "/demo". */
   basePath?: string;
@@ -84,41 +84,6 @@ function DetailRow({ icon: Icon, children }: { icon: typeof CalendarDays; childr
       </span>
       <div className="min-w-0 pt-1.5 text-secondary">{children}</div>
     </div>
-  );
-}
-
-/**
- * A few of a list's gifts as small overlapping pictures, or a gift icon when
- * none has a picture. One on a phone, so the name has room, and three on a
- * wider screen.
- */
-function RegistryPictures({ items }: { items: NonNullable<InvitationRegistry["items"]> }) {
-  const pictures = items.filter((item) => item.image_url).slice(0, 3);
-  if (pictures.length === 0) {
-    return (
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary">
-        <Gift aria-hidden="true" className="size-5 text-quaternary" />
-      </span>
-    );
-  }
-  return (
-    <span aria-hidden="true" className="flex shrink-0">
-      {pictures.map((item, index) => (
-        <span
-          key={item.id}
-          className={cx(
-            "flex size-11 items-center justify-center overflow-hidden rounded-lg bg-secondary ring-2 ring-bg-primary",
-            // Each picture after the first tucks under the one before it.
-            // A margin on the picture itself, not -space-x on the row, so the
-            // phone's single picture keeps its full width.
-            index > 0 && "-ml-4 max-sm:hidden",
-          )}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- product pictures from any store */}
-          <img src={item.image_url!} alt="" className="size-full object-contain p-1" />
-        </span>
-      ))}
-    </span>
   );
 }
 
@@ -170,8 +135,8 @@ function HostUpdates({ updates, timeZone }: { updates: InvitationUpdate[]; timeZ
 }
 
 /**
- * The event as guests see it: the invitation picture, the details, the
- * host's updates, a link to the registry, and the RSVP form below. The public
+ * The event as guests see it: the invitation picture, the details (gifts
+ * among them), the host's updates, and the RSVP form below. The public
  * event page and the host's preview both use it.
  */
 export function EventInvitation({
@@ -314,6 +279,43 @@ export function EventInvitation({
               <p>Please reply by {formatEventDate(event.rsvp_by)}</p>
             </DetailRow>
           )}
+          {/* Gifts are one more detail of the event, like the place. With no
+              note and no list, there's no row: the invitation doesn't say
+              anything about gifts the host didn't. When everyone gives
+              everyone, the lists are in everyone's wishlists below instead. */}
+          {!everyone && (registries.length > 0 || event.gift_note) && (
+            <DetailRow icon={Gift}>
+              {event.gift_note && <p className="whitespace-pre-line">{event.gift_note}</p>}
+              {registries.map((linked) => {
+                const details = [
+                  linked.honoree ? `${linked.honoree}'s registry` : null,
+                  linked.itemsLeft !== undefined
+                    ? linked.itemsLeft === 0
+                      ? "Every gift is taken"
+                      : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <a
+                    key={linked.slug}
+                    href={giftHref(linked.slug)}
+                    className="group mt-1 block first:mt-0 max-sm:py-1"
+                  >
+                    <span className="inline-flex items-center gap-0.5 font-medium text-brand-tertiary group-hover:underline">
+                      {linked.title}
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-4 shrink-0 transition motion-safe:group-hover:translate-x-0.5"
+                      />
+                    </span>
+                    {details && <span className="block text-sm text-tertiary">{details}</span>}
+                  </a>
+                );
+              })}
+            </DetailRow>
+          )}
         </div>
 
         {event.message && (
@@ -336,61 +338,6 @@ export function EventInvitation({
             waitingCount={wishLists?.waitingCount}
             basePath={basePath || undefined}
           />
-        )}
-
-        {!everyone && (registries.length > 0 || event.gift_note) && (
-          <section
-            aria-labelledby="gifts-heading"
-            className={cx("flex flex-col gap-4 rounded-2xl p-4", colors ? HOST_FILL : "bg-brand-primary")}
-            style={colors ? hostColorVars(colors) : undefined}
-          >
-            <div className="flex items-start gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary">
-                <Gift
-                  aria-hidden="true"
-                  className={cx("size-4.5", colors ? HOST_INK : "text-brand-tertiary")}
-                  style={colors ? hostColorVars(colors) : undefined}
-                />
-              </span>
-              <div className="min-w-0 pt-1">
-                <h2 id="gifts-heading" className="font-medium text-primary">
-                  Gifts
-                </h2>
-                {event.gift_note && <p className="mt-1 whitespace-pre-line text-secondary">{event.gift_note}</p>}
-              </div>
-            </div>
-            {registries.map((linked) => {
-              const details = [
-                linked.honoree ? `${linked.honoree}'s registry` : null,
-                linked.itemsLeft !== undefined
-                  ? linked.itemsLeft === 0
-                    ? "Every gift is taken"
-                    : `${linked.itemsLeft} ${linked.itemsLeft === 1 ? "gift" : "gifts"} still needed`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              return (
-                // One compact row per list: a few pictures, its name and how
-                // many gifts are left. The names and prices are on the list.
-                <a
-                  key={linked.slug}
-                  href={giftHref(linked.slug)}
-                  className="group clickable-card flex items-center gap-3 rounded-xl border border-transparent bg-primary p-3"
-                >
-                  <RegistryPictures items={linked.items ?? []} />
-                  <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 font-medium text-primary">{linked.title}</span>
-                    {details && <span className="block text-sm text-tertiary">{details}</span>}
-                  </span>
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="size-5 shrink-0 text-quaternary transition motion-safe:group-hover:translate-x-0.5"
-                  />
-                </a>
-              );
-            })}
-          </section>
         )}
 
         {signup && <SignupSheetSection signup={signup} />}

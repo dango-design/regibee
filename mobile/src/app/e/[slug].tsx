@@ -18,7 +18,6 @@ import { InvitationDetails, InvitationHero } from "@/components/invitation/detai
 import { RsvpForm } from "@/components/invitation/rsvp-form";
 import {
   ExchangeSection,
-  GiftsSection,
   GroupGiftsSection,
   SecretSantaCard,
   SignupSection,
@@ -86,7 +85,7 @@ export default function InvitationScreen() {
         <InvitationHero page={data} colors={colors} />
         <InvitationDetails page={data} colors={colors} />
 
-        {/* The reply comes before the gift sections: a guest answers before
+        {/* The reply comes right after the details: a guest answers before
             browsing what to give. */}
         {data.santa ? <SecretSantaCard santa={data.santa} /> : null}
         {data.staleToken ? (
@@ -104,7 +103,7 @@ export default function InvitationScreen() {
           onNewToken={(next) => router.setParams({ g: next })}
         />
 
-        {everyone ? <WishListsSection page={data} colors={colors} /> : <GiftsSection page={data} colors={colors} />}
+        {everyone ? <WishListsSection page={data} colors={colors} /> : null}
         <SignupSection page={data} />
         <ExchangeSection page={data} />
         <GroupGiftsSection gifts={data.groupGifts} />
