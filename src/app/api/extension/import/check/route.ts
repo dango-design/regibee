@@ -3,10 +3,13 @@ import { authenticateExtension, isRegistryManager, jsonError, readJson } from "@
 import { importItemKey, isUuid, MAX_ITEMS_PER_REQUEST, type ImportCheckResponse } from "@/lib/extension";
 import { LINK_COLUMNS, loadListItems, type LinkRow } from "@/lib/list-items";
 import { parseImportItem } from "@/lib/wishlist-import";
+import { isSyncedWith } from "@/lib/elfster-sync-server";
 
-// POST { registryId, items } → which of a wishlist's items are already on
-// the registry. Items match on their link, or on their name when they have
-// no link, the same as POST /api/extension/import.
+// POST { registryId, items, wishlistId? } → which of a wishlist's items are
+// already on the registry. Items match on their link, or on their name when
+// they have no link, the same as POST /api/extension/import. With a
+// wishlistId, it also says whether the registry is kept in sync with that
+// wishlist (POST /api/extension/import/sync).
 export async function POST(request: Request) {
   const auth = await authenticateExtension(request);
   if (auth.response) return auth.response;
@@ -15,6 +18,8 @@ export async function POST(request: Request) {
   const body = await readJson(request);
   const registryId = body?.registryId;
   const rawItems = body?.items;
+  const wishlistId = body?.wishlistId;
+  if (wishlistId !== undefined && !isUuid(wishlistId)) return jsonError("Invalid request", 400);
   if (!isUuid(registryId) || !Array.isArray(rawItems) || rawItems.length > MAX_ITEMS_PER_REQUEST) {
     return jsonError("Invalid request", 400);
   }
@@ -45,5 +50,12 @@ export async function POST(request: Request) {
   }
 
   const response: ImportCheckResponse = { existing: [...existing] };
+  if (wishlistId) {
+    // The import still works when the sync can't be read.
+    response.synced = await isSyncedWith(registryId, wishlistId).catch((err) => {
+      console.error("[extension] Couldn't read the Elfster sync:", err);
+      return false;
+    });
+  }
   return NextResponse.json(response);
 }

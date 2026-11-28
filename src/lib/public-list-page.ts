@@ -46,6 +46,7 @@ import {
 } from "@/lib/gifts";
 import { parseGiftProfile, visibleChildGiftProfile, visibleGiftProfile, type GiftProfile } from "@/lib/gift-profile";
 import { itemsHiddenFromOwner, loadListItems } from "@/lib/list-items";
+import { givenOnElfster, withElfsterGifts } from "@/lib/elfster-sync-server";
 import { myGroupGiftsOnItems } from "@/lib/group-gifts-server";
 import { accountForEvents, listEventsOnListForViewer } from "@/lib/shared-events-server";
 import type { ListEventForViewer } from "@/lib/shared-events";
@@ -431,6 +432,10 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
       ? await itemsHiddenFromOwner(allItems.map((i) => i.id), viewer.id).catch(() => new Set<string>())
       : new Set<string>();
   const hidesItem = (id: string) => hideReservations || hiddenItemIds.has(id);
+  // A list kept in sync with an Elfster wishlist: what's been bought or
+  // received there counts as taken, for guests only (src/lib/wishlist-import.ts).
+  // Elfster never shows owners what's been bought for them, so neither do we.
+  const elfsterGiven = viewerManages ? new Map<string, number>() : await givenOnElfster(allItems.map((i) => i.id));
   const allCategories: PublicListCategory[] = ((categories || []) as PublicListCategory[]).map((c) => ({
     id: c.id,
     name: c.name,
@@ -631,9 +636,10 @@ export async function loadPublicList(slug: string, guestInput: PublicListGuest =
   const shownItems = allItems.map((i) =>
     hidesItem(i.id)
       ? itemAsUnreserved(i)
-      : expiredCounts[i.id]
-        ? { ...i, quantity_fulfilled: Math.max(0, i.quantity_fulfilled - expiredCounts[i.id]) }
-        : i
+      : withElfsterGifts(
+          expiredCounts[i.id] ? { ...i, quantity_fulfilled: Math.max(0, i.quantity_fulfilled - expiredCounts[i.id]) } : i,
+          elfsterGiven,
+        )
   );
   for (const id of Object.keys(reservedCounts)) {
     if (hidesItem(id)) delete reservedCounts[id];

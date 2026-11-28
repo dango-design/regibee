@@ -14,6 +14,13 @@
 // shop's own page, and `url`, Elfster's tracking link to it. Only
 // `sourceUrl` is used.
 //
+// It also reads how many of each wish have been bought (`quantityPurchased`)
+// and received (`quantityReceived`), for keeping a Regibee list in sync
+// (src/lib/wishlist-import.ts). Elfster's page doesn't show owners what's
+// been bought for them, but its API sends `quantityPurchased` to the owner's
+// session too (checked on a test wishlist). The popup never shows `given`.
+// It goes only to the server, which uses it for guests.
+//
 // Chrome copies this function into the page by its source text, so it must
 // not use anything from outside its own body: no imports, no shared helpers.
 // Types are fine, since they're gone by then.
@@ -23,17 +30,24 @@ import type { ImportItem } from "@/lib/wishlist-import";
 export interface WishlistPage {
   /** False when the page isn't one wishlist on elfster.com. */
   isWishlist: boolean;
+  /** The id in the wishlist's address. */
+  wishlistId: string | null;
   /** The wishlist's name on Elfster, when it could be read. */
   title: string | null;
   items: ImportItem[];
-  /** Wishes left out because the owner marked them as received. */
+  /**
+   * Every wish, for a sync, the received ones included. The import offers
+   * only the ones in `items`.
+   */
+  wishes: ImportItem[];
+  /** Wishes left out of `items` because the owner marked them as received. */
   received: number;
   /** True when Elfster didn't answer, or answered something this can't read. */
   failed: boolean;
 }
 
 export async function readElfsterWishlist(): Promise<WishlistPage> {
-  const page: WishlistPage = { isWishlist: false, title: null, items: [], received: 0, failed: false };
+  const page: WishlistPage = { isWishlist: false, wishlistId: null, title: null, items: [], wishes: [], received: 0, failed: false };
   // The same page isElfsterWishlistUrl (src/lib/wishlist-import.ts) accepts.
   if (location.protocol !== "https:" || !/(^|\.)elfster\.com$/i.test(location.hostname)) return page;
   const id = location.pathname.match(
@@ -41,6 +55,7 @@ export async function readElfsterWishlist(): Promise<WishlistPage> {
   )?.[1];
   if (!id) return page;
   page.isWishlist = true;
+  page.wishlistId = id.toLowerCase();
 
   const PAGE_SIZE = 100;
   const MAX_PAGES = 10;
@@ -96,18 +111,14 @@ export async function readElfsterWishlist(): Promise<WishlistPage> {
     if (!title) continue;
     const wanted = typeof wish.quantity === "number" && Number.isInteger(wish.quantity) ? wish.quantity : 1;
     const quantity = Math.min(Math.max(wanted, 1), 99);
-    // Already received: the owner doesn't want another. What's been bought
-    // but not received is left unread, so the import can't spoil a surprise.
-    if (typeof wish.quantityReceived === "number" && wish.quantityReceived >= quantity) {
-      page.received++;
-      continue;
-    }
+    const count = (raw: unknown) => (typeof raw === "number" && Number.isInteger(raw) ? Math.min(Math.max(raw, 0), 99) : 0);
+    const received = count(wish.quantityReceived);
     const price = wish.price && typeof wish.price === "object" ? (wish.price as Record<string, unknown>) : null;
     const amount = price && typeof price.amount === "number" && Number.isFinite(price.amount) ? price.amount : null;
     // Regibee's prices are in US dollars.
     const inDollars = !price?.currency || price.currency === "USD";
     const notes = typeof wish.description === "string" ? wish.description.trim().slice(0, 1000) : "";
-    page.items.push({
+    const item = {
       url: link(wish.sourceUrl, ["https:", "http:"]),
       title,
       price: amount !== null && amount > 0 && inDollars ? Math.round(amount * 100) / 100 : null,
@@ -116,7 +127,14 @@ export async function readElfsterWishlist(): Promise<WishlistPage> {
       quantity,
       notes: notes || null,
       isEssential: wish.isMostWanted === true,
-    });
+      wishId: typeof wish.wishId === "string" && wish.wishId.length <= 100 ? wish.wishId : null,
+      received,
+      given: Math.max(count(wish.quantityPurchased), received),
+    };
+    page.wishes.push(item);
+    // Already received: the owner doesn't want another.
+    if (received >= quantity) page.received++;
+    else page.items.push(item);
   }
   return page;
 }

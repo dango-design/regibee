@@ -76,8 +76,11 @@ export type BackgroundRequest =
   | { type: "add-idea"; idea: IdeaRequest["idea"] }
   | { type: "set-product-mode"; mode: ProductMode }
   // From the popup's import screen on an Elfster wishlist.
-  | { type: "import-check"; registryId: string; items: ImportItem[] }
+  | { type: "import-check"; registryId: string; items: ImportItem[]; wishlistId?: string }
   | { type: "import"; registryId: string; items: ImportItem[] }
+  // Keeps the registry in sync with the wishlist, or stops.
+  | { type: "import-sync"; registryId: string; wishlistId: string; items: ImportItem[] }
+  | { type: "import-stop"; registryId: string; wishlistId: string }
   // Swaps in a registry link for an item already on Regibee with a plain one.
   | { type: "link"; registryId: string; items: StoreItem[] }
   // From the store content script, once a registry page has loaded.

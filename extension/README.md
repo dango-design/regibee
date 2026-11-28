@@ -96,11 +96,22 @@ Elfster's wishlist page (`/profile/<user id>/wish-lists/<wishlist id>`) shows ea
 - `GET /v1/wishlists/<id>` for the wishlist's name.
 - `GET /v1/wishlists/<id>/wishes?limit=100&offset=0` for the wishes, a page at a time.
 
-Checked on a real wishlist of 26 wishes on 2026-11-25. Each wish has `sourceUrl`, the shop's page, and `url`, Elfster's tracking link to it. The reader uses only `sourceUrl`. It also reads `title`, `description`, `imageUrl` (skipped when `imageUrlIsDefault`), `quantity`, `price.amount` (only when `price.currency` is USD or missing, since Regibee's prices are in dollars), `isMostWanted` and `quantityReceived`. It never reads `quantityPurchased`, so the import can't tell an owner what's been bought for them.
+Checked on a real wishlist of 26 wishes on 2026-11-25. Each wish has `sourceUrl`, the shop's page, and `url`, Elfster's tracking link to it. The reader uses only `sourceUrl`. It also reads `wishId`, `title`, `description`, `imageUrl` (skipped when `imageUrlIsDefault`), `quantity`, `price.amount` (only when `price.currency` is USD or missing, since Regibee's prices are in dollars), `isMostWanted`, `quantityReceived` and `quantityPurchased`.
+
+### Keeping a list in sync
+
+Some people keep their Elfster wishlist because their family uses Elfster. A gift bought on one site doesn't show on the other, so two people can buy the same thing. A Regibee list can be kept in sync with the owner's Elfster wishlist:
+
+- The import screen has "Keep in sync with Elfster", ticked. When everything is already on the list, it's a button instead. Either one calls `POST /api/extension/import/sync` with every wish, received ones included.
+- From then on, each time the owner opens the extension on that wishlist, `POST /api/extension/import/check` says the list is synced (`synced: true`), and the popup syncs again. It only syncs when the owner clicks the toolbar button on the wishlist: the extension still has no access to elfster.com.
+- The server matches each wish to an item, by the wish it matched before, then by link, then by name (`planWishlistSync` in `src/lib/wishlist-import.ts`). It saves how many of each have been bought or received on Elfster (`given`) in `elfster_wishes`. The guest list page counts those as taken, and `reserve_registry_item` refuses them (`20261128070237_elfster_sync.sql`).
+- Elfster never shows an owner what's been bought for them, so Regibee doesn't either. `given` goes only to the sync route, never to the check or import routes, and the sync answers only with the items whose wish left the wishlist. The popup never shows it. The list's managers never see it on any page, and the tables have no access rules for any API role.
+- "Stop syncing" on the popup calls `POST /api/extension/import/stop`, which forgets the wishes, so guests can choose those items again.
+- Checked on a test wishlist on 2026-11-28: after a second account marked a wish as bought, Elfster's API sent `quantityPurchased: 1` for it to the owner's own session, while Elfster's page showed the owner nothing. So a sync from the owner's session carries over what family members bought.
 
 The extension has no access to elfster.com in its manifest, on purpose: a new site there would make Chrome turn the extension off for everyone until they accept the new permission. The popup runs the reader with `activeTab`, the same way it reads a product page, so it works only after the owner clicks the button on that tab.
 
-The server side is `POST /api/extension/import/check` and `POST /api/extension/import`. The checks are in `src/lib/wishlist-import.ts`. If Elfster changes its API, the popup says it couldn't read the wishlist, and the reader and its test need the new shape.
+The server side is `POST /api/extension/import/check`, `POST /api/extension/import`, and for syncing, `POST /api/extension/import/sync` and `/import/stop`. The checks are in `src/lib/wishlist-import.ts`. If Elfster changes its API, the popup says it couldn't read the wishlist, and the reader and its test need the new shape.
 
 ## Publishing
 

@@ -473,7 +473,10 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 <strong className="font-semibold text-primary">An Elfster wishlist, when you ask.</strong> When you
                 click its toolbar button on a wishlist on elfster.com, it reads that wishlist&apos;s items from
                 Elfster: their names, prices, pictures, quantities, notes and the links to their shops. It compares
-                them with your Regibee registry and adds the ones you pick.
+                them with your Regibee registry and adds the ones you pick. If you keep a list in sync with the
+                wishlist, it also reads how many of each item have been bought or received on Elfster, and sends
+                those counts to Regibee each time you open the wishlist there. Regibee uses them only to show
+                those items as taken to your guests, and never shows them to you.
               </li>
               <li>
                 <strong className="font-semibold text-primary">Store links on regibee.com.</strong> When
