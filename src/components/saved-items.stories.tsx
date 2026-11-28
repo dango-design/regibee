@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { SavedItem, SavedList } from "@/lib/saved-items";
 import { SavedSkeleton } from "./page-skeletons";
 import { SavedItems } from "./saved-items";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // Server actions can't run in Storybook, so these pretend to work. The
 // component shows each change straight away, so ticking lists and the bulk
@@ -174,6 +175,7 @@ export const HidesReservations: Story = {
 
 /** On a phone. */
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

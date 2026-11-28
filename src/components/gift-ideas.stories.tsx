@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { GiftIdea } from "@/lib/gift-ideas";
 import { GiftIdeasSkeleton } from "./page-skeletons";
 import { GiftIdeas } from "./gift-ideas";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // Server actions can't run in Storybook, so these pretend to work. "Bought
 // it" shows straight away, so ticking it works here.
@@ -114,6 +115,7 @@ export const Empty: Story = {
 
 /** On a phone. */
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

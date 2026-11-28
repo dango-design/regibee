@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { NavBar } from "./nav-bar";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const account = {
   name: "Remi & Max",
@@ -39,5 +40,6 @@ export const SignedOut: Story = {
 
 export const Phone: Story = {
   args: { account: { ...account, followRequestCount: 1 } },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

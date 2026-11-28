@@ -5,6 +5,7 @@ import { NavBar } from "./nav-bar";
 import { listHeader } from "@/lib/list-headers";
 import { ListHeaderPicker } from "./list-header-picker";
 import { OwnerListTop } from "./owner-list-top";
+import { PHONE_MODES } from "@/stories/viewports";
 
 /**
  * The site's top bar above it and a few item rows under it, so a snapshot
@@ -269,6 +270,7 @@ export const EverythingShowing: Story = {
 
 export const OnPhone: Story = {
   ...EverythingShowing,
+  parameters: { ...EverythingShowing.parameters, chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

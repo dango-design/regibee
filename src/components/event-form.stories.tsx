@@ -3,6 +3,7 @@ import { expect, fireEvent, fn, userEvent, waitFor, within } from "storybook/tes
 import { EventForm } from "./event-form";
 import { SAMPLE_REGISTRY_ID, sampleEvent, sampleLinkedRegistries } from "@/lib/event-sample-data";
 import { defaultQuestions } from "@/lib/rsvp-questions";
+import { DESKTOP_MODES, PHONE_MODES } from "@/stories/viewports";
 
 const registries = [
   { id: SAMPLE_REGISTRY_ID, title: "Remi & Max's Baby Registry" },
@@ -205,7 +206,7 @@ const editPage = { layout: "fullscreen" };
 
 /** Editing shows every section at once, with a navigation to them on the left. */
 export const EditingWithPicture: Story = {
-  parameters: editPage,
+  parameters: { ...editPage, chromatic: { modes: DESKTOP_MODES } },
   globals: { viewport: { value: "desktop" } },
   args: { eventId: sampleEvent.id, initial: sampleEvent, linkedRegistries },
 };
@@ -239,7 +240,7 @@ export const EditingFromAddYourInvitation: Story = {
  * and scrolls sideways by itself. Following one goes to its section.
  */
 export const EditingOnPhone: Story = {
-  parameters: editPage,
+  parameters: { ...editPage, chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   args: { eventId: sampleEvent.id, initial: sampleEvent, linkedRegistries },
   play: async ({ canvas }) => {

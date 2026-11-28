@@ -26,15 +26,6 @@ const FONT_HOST = "fonts.gstatic.com";
 // reads the same on every run.
 const NOW = new Date("2026-11-25T18:00:00Z");
 
-// Storybook's viewport names (globals: { viewport: { value: "mobile1" } }).
-// The sizes are Storybook's own: MINIMAL_VIEWPORTS in storybook/viewport.
-const VIEWPORTS: Record<string, { width: number; height: number }> = {
-  mobile1: { width: 320, height: 568 },
-  mobile2: { width: 414, height: 896 },
-  tablet: { width: 834, height: 1112 },
-  desktop: { width: 1280, height: 1024 },
-};
-
 // Stories whose picture differs from one run to the next, with the reason.
 // They are still opened, and still fail when they don't render, but no
 // screenshot is compared. Take a story off this list once it is fixed.
@@ -61,7 +52,19 @@ type StoryState = {
   playErrors: string[];
   disableSnapshot: boolean;
   viewport?: string;
+  // The size of that viewport, from parameters.viewport.options in
+  // .storybook/preview.ts, the same list Chromatic reads.
+  viewportSize?: { width: string; height: string };
+  // The width of each Chromatic mode the story sets (parameters.chromatic.modes).
+  modeWidths: string[];
 };
+
+// A viewport's size, such as { width: "320px", height: "568px" }, in pixels.
+function pixelSize(styles?: { width: string; height: string }): { width: number; height: number } | undefined {
+  const width = /^(\d+)px$/.exec(styles?.width ?? "")?.[1];
+  const height = /^(\d+)px$/.exec(styles?.height ?? "")?.[1];
+  return width && height ? { width: Number(width), height: Number(height) } : undefined;
+}
 
 function stories(): IndexEntry[] {
   const indexFile = path.join(STORYBOOK_DIR, "index.json");
@@ -143,7 +146,13 @@ async function openStory(page: Page, id: string): Promise<StoryState> {
     type StoryRender = {
       phase?: string;
       story?: {
-        parameters?: { chromatic?: { disableSnapshot?: boolean } };
+        parameters?: {
+          chromatic?: {
+            disableSnapshot?: boolean;
+            modes?: Record<string, { viewport?: number | string; disable?: boolean }>;
+          };
+          viewport?: { options?: Record<string, { styles?: { width: string; height: string } }> };
+        };
         storyGlobals?: { viewport?: { value?: string } | string };
       };
     };
@@ -154,14 +163,19 @@ async function openStory(page: Page, id: string): Promise<StoryState> {
     const render = preview?.currentRender;
     const done = ["completed", "finished", "errored", "aborted"].includes(render?.phase ?? "");
     if (!failed && !done) return false;
-    const viewport = render?.story?.storyGlobals?.viewport;
+    const globalViewport = render?.story?.storyGlobals?.viewport;
+    const viewport = typeof globalViewport === "string" ? globalViewport : globalViewport?.value;
     return {
       phase: render?.phase,
       failed: failed || render?.phase === "errored",
       error: document.querySelector(".sb-errordisplay")?.textContent?.trim().slice(0, 2000) ?? "",
       playErrors: [...((window as unknown as { __PLAY_ERRORS__?: string[] }).__PLAY_ERRORS__ ?? [])],
       disableSnapshot: render?.story?.parameters?.chromatic?.disableSnapshot === true,
-      viewport: typeof viewport === "string" ? viewport : viewport?.value,
+      viewport,
+      viewportSize: viewport ? render?.story?.parameters?.viewport?.options?.[viewport]?.styles : undefined,
+      modeWidths: Object.values(render?.story?.parameters?.chromatic?.modes ?? {})
+        .filter((mode) => !mode.disable)
+        .map((mode) => String(mode.viewport ?? "")),
     };
   });
   return (await handle.jsonValue()) as StoryState;
@@ -197,8 +211,25 @@ for (const story of stories()) {
 
     // Storybook's own page resizes the story for a viewport. Here the story
     // is the whole page, so resize the page and load the story again.
-    const size = state.viewport ? VIEWPORTS[state.viewport] : undefined;
-    if (state.viewport && !size) throw new Error(`Unknown viewport "${state.viewport}". Add it to VIEWPORTS.`);
+    const size = state.viewport ? pixelSize(state.viewportSize) : undefined;
+    if (state.viewport && !size) {
+      throw new Error(
+        `Viewport "${state.viewport}" has no size in pixels. Add it to parameters.viewport.options in .storybook/preview.ts.`,
+      );
+    }
+    // Chromatic takes a story at the story's viewport only when the story also
+    // names a mode with that width (src/stories/viewports.ts). Without one, it
+    // takes the story at 1200px, and the two checks would test different
+    // layouts.
+    const modeWidths = state.modeWidths.map((width) => parseInt(width, 10));
+    const expected = size ? [size.width] : [];
+    expect(
+      modeWidths,
+      size
+        ? `The story picks the ${state.viewport} viewport, so Chromatic needs the matching mode. Add parameters: { chromatic: { modes: ... } } from src/stories/viewports.ts.`
+        : "The story sets a Chromatic mode but picks no viewport. Add the matching globals: { viewport: ... }.",
+    ).toEqual(expected);
+
     if (size) {
       await page.setViewportSize(size);
       state = await openStory(page, story.id);

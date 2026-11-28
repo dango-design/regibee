@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { GuestWishLists } from "./guest-wish-lists";
 import { sampleExchangeEvent, sampleGuestWishLists } from "@/lib/event-sample-data";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // Everyone's wishlists on an everyone-gives-everyone invitation
 // (src/components/event-invitation.tsx): the lists the host linked, then each
@@ -193,6 +194,7 @@ export const NobodyYet: Story = {
 
 /** On a phone, the buttons go under each name. */
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

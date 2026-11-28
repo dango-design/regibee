@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen } from "storybook/test";
 import { StartGroupGiftDialog } from "./start-group-gift-dialog";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // Server actions can't run in Storybook, so this pretends to start one.
 const action: NonNullable<React.ComponentProps<typeof StartGroupGiftDialog>["action"]> = async () => {
@@ -35,6 +36,7 @@ export const SignedIn: Story = {};
 /** From an event's invitation: its guests will see the group gift too. On a phone. */
 export const FromAnEventOnAPhone: Story = {
   args: { eventTitle: "Remi & Max's baby shower" },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 

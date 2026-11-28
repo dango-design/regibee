@@ -1,4 +1,5 @@
 import type { Decorator, Preview } from "@storybook/react";
+import { MINIMAL_VIEWPORTS } from "storybook/viewport";
 import { fontVariables } from "../src/app/fonts";
 import "../src/app/globals.css";
 
@@ -25,6 +26,12 @@ const preview: Preview = {
     nextjs: {
       appDirectory: true,
     },
+    // The viewports a story can pick with `globals: { viewport: { value: "mobile1" } }`.
+    // Storybook's toolbar offers these even without this line. The story
+    // screenshots (story-screenshots/) read each viewport's size from here.
+    // Chromatic doesn't use a story's viewport at all: the story also needs a
+    // mode from src/stories/viewports.ts.
+    viewport: { options: MINIMAL_VIEWPORTS },
   },
   globalTypes: {
     theme: {
