@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { loadItemsForLists } from "@/lib/list-items";
+import { givenOnElfster } from "@/lib/elfster-sync-server";
+import { listPreview, type PreviewItem } from "@/lib/event-list-preview";
 import { displayName } from "@/lib/profile-link";
 import { giveGuestsTheirLinkedLists } from "@/lib/guest-linked-lists";
 import {
@@ -305,8 +307,16 @@ const PREVIEW_ITEMS = 4;
 /**
  * The registries an event links, in the order they were linked. With
  * withItems, also a few gifts still needed from each, for the invitation.
+ * managedByViewer says which of the lists the person looking manages. Gifts
+ * from a synced Elfster wishlist count only on the others.
  */
-export async function getEventRegistries(eventId: string, { withItems = false } = {}): Promise<EventRegistry[]> {
+export async function getEventRegistries(
+  eventId: string,
+  {
+    withItems = false,
+    managedByViewer,
+  }: { withItems?: boolean; managedByViewer?: (registryIds: string[]) => Promise<string[]> } = {},
+): Promise<EventRegistry[]> {
   const { data } = await supabaseAdmin
     .from("event_registries")
     .select(
@@ -358,34 +368,37 @@ export async function getEventRegistries(eventId: string, { withItems = false } 
 
   // Each list's own items and the ones its owner placed on it from their
   // other lists (src/lib/list-items.ts).
-  type PreviewItem = {
-    id: string;
-    registry_id: string;
-    category_id: string | null;
-    created_at: string;
-    title: string;
-    image_url: string | null;
-    price: number | null;
-    quantity_needed: number;
-    quantity_fulfilled: number;
-    is_essential: boolean;
-    sort_order: number;
-  };
-  const itemsByList = await loadItemsForLists<PreviewItem>(
-    registries.map((r) => r.id),
-    "id, registry_id, category_id, created_at, title, image_url, price, quantity_needed, quantity_fulfilled, is_essential, sort_order",
-  ).catch(() => new Map<string, PreviewItem[]>());
+  //
+  // A list kept in sync with an Elfster wishlist: what's been bought or
+  // received there counts as taken, as on the list's own guest page. Only for
+  // the lists the person looking doesn't manage. Elfster never shows owners
+  // what's been bought for them, so neither do we. Without managedByViewer,
+  // or if it fails, nothing from Elfster counts.
+  const ids = registries.map((r) => r.id);
+  type Row = PreviewItem & { registry_id: string; category_id: string | null; created_at: string; sort_order: number };
+  const [itemsByList, managedIds] = await Promise.all([
+    loadItemsForLists<Row>(
+      ids,
+      "id, registry_id, category_id, created_at, title, image_url, price, quantity_needed, quantity_fulfilled, is_essential, is_parent_purchased, sort_order",
+    ).catch(() => new Map<string, Row[]>()),
+    managedByViewer
+      ? managedByViewer(ids).catch((err) => {
+          console.error("[event] Couldn't tell which lists the viewer manages:", err);
+          return ids;
+        })
+      : null,
+  ]);
+  const managed = managedIds ? new Set(managedIds) : null;
+  const guestItemIds = managed
+    ? registries.filter((r) => !managed.has(r.id)).flatMap((r) => (itemsByList.get(r.id) ?? []).map((item) => item.id))
+    : [];
+  const elfsterGiven = await givenOnElfster(guestItemIds);
+
   for (const registry of registries) {
-    const open = (itemsByList.get(registry.id) ?? [])
-      .filter((item) => item.quantity_fulfilled < item.quantity_needed)
-      // Most wanted first, then in list order.
-      .sort((a, b) => Number(b.is_essential) - Number(a.is_essential));
-    registry.itemsLeft = open.length;
-    // Items with a picture first: the preview is a row of pictures.
-    registry.items = [...open]
-      .sort((a, b) => Number(Boolean(b.image_url)) - Number(Boolean(a.image_url)))
-      .slice(0, PREVIEW_ITEMS)
-      .map((item) => ({ id: item.id, title: item.title, image_url: item.image_url, price: item.price }));
+    const asGuest = managed !== null && !managed.has(registry.id);
+    const preview = listPreview(itemsByList.get(registry.id) ?? [], PREVIEW_ITEMS, asGuest ? elfsterGiven : undefined);
+    registry.itemsLeft = preview.itemsLeft;
+    registry.items = preview.items;
   }
   return registries;
 }
