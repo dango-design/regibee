@@ -112,7 +112,7 @@ export async function loadInvitationPage(slug: string, token: string | null): Pr
     ));
 
   const [registries, exchange, signupSheet, updates, guest] = await Promise.all([
-    getEventRegistries(event.id, { withItems: true, managedByViewer }),
+    getEventRegistries(event.id, { withItems: true, managedByViewer, viewerId: viewer?.id }),
     getGiftExchange(event.id),
     getSignupSheet(event.id),
     // The host's messages and changes, for anyone with the link (#129).

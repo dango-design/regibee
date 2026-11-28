@@ -138,3 +138,28 @@ test("a child's list, and a list someone else pasted, keep showing reservations"
   expect((await settingsOf(kids.registry.id)).hide_reservations).toBeUndefined();
   expect((await settingsOf(pats.registry.id)).hide_reservations).toBeUndefined();
 });
+
+test("an event's invitation doesn't show the owner what's been reserved on their list", async ({ browser }) => {
+  const hal = await createAccount("Hal Host");
+  const { registry, item } = await createWishlist(hal.id, { settings: { hide_reservations: true } });
+  // A second item, and a guest has given the first one.
+  await db.from("registry_items").insert({ registry_id: registry.id, title: "Mittens", price: 20, quantity_needed: 1 });
+  await db.from("registry_items").update({ quantity_fulfilled: 1 }).eq("id", item.id);
+  const { event } = await createExchangeEvent(hal.id, [{ name: "Gus", email: uniqueEmail("gus") }]);
+  await db.from("event_registries").insert({ event_id: event.id, registry_id: registry.id, linked_by: hal.id });
+
+  // Guests see that one is taken.
+  const guest = await browser.newContext();
+  const guestPage = await guest.newPage();
+  await guestPage.goto(`/e/${event.slug}`);
+  await expect(guestPage.getByText("1 gift still needed")).toBeVisible();
+  await guest.close();
+
+  // Hal, the list's owner, sees both as still needed.
+  const host = await browser.newContext();
+  const hostPage = await host.newPage();
+  await signIn(hostPage, hal);
+  await hostPage.goto(`/e/${event.slug}`);
+  await expect(hostPage.getByText("2 gifts still needed")).toBeVisible();
+  await host.close();
+});

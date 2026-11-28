@@ -2,8 +2,9 @@
 // giver, and a few of them to picture. getEventRegistries
 // (src/lib/events-server.ts) loads the items and calls this.
 //
-// This file only imports another file with no imports, so the unit tests can run it.
+// This file only imports files with no imports, so the unit tests can run it.
 
+import { itemAsUnreserved } from "./gifts.ts";
 import { withElfsterGifts } from "./wishlist-import.ts";
 
 export interface PreviewItem {
@@ -22,14 +23,20 @@ export interface PreviewItem {
  * for the preview. `elfsterGiven` is how many of each item have been given on
  * Elfster. Pass it only to someone who doesn't manage the list: Elfster never
  * shows owners what's been bought for them, so neither do we.
+ *
+ * `hiddenIds` are the items whose gifts the person looking mustn't see: they
+ * own the list and hide what's been reserved (itemsHiddenFromOwner in
+ * src/lib/list-items.ts). Those show as nothing reserved, as on the list's own
+ * page, so the preview doesn't give the surprise away.
  */
 export function listPreview(
   items: PreviewItem[],
   limit: number,
   elfsterGiven: Map<string, number> = new Map(),
+  hiddenIds: Set<string> = new Set(),
 ): { itemsLeft: number; items: { id: string; title: string; image_url: string | null; price: number | null }[] } {
   const open = items
-    .map((item) => withElfsterGifts(item, elfsterGiven))
+    .map((item) => (hiddenIds.has(item.id) ? itemAsUnreserved(item) : withElfsterGifts(item, elfsterGiven)))
     .filter((item) => item.quantity_fulfilled < item.quantity_needed)
     // Most wanted first, then in list order.
     .sort((a, b) => Number(b.is_essential) - Number(a.is_essential));

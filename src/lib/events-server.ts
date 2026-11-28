@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { loadItemsForLists } from "@/lib/list-items";
+import { itemsHiddenFromOwner, loadItemsForLists } from "@/lib/list-items";
 import { givenOnElfster } from "@/lib/elfster-sync-server";
 import { listPreview, type PreviewItem } from "@/lib/event-list-preview";
 import { displayName } from "@/lib/profile-link";
@@ -308,14 +308,21 @@ const PREVIEW_ITEMS = 4;
  * The registries an event links, in the order they were linked. With
  * withItems, also a few gifts still needed from each, for the invitation.
  * managedByViewer says which of the lists the person looking manages. Gifts
- * from a synced Elfster wishlist count only on the others.
+ * from a synced Elfster wishlist count only on the others. viewerId is the
+ * signed-in account: on a list they own that hides what's been reserved from
+ * them, nothing shows as reserved.
  */
 export async function getEventRegistries(
   eventId: string,
   {
     withItems = false,
     managedByViewer,
-  }: { withItems?: boolean; managedByViewer?: (registryIds: string[]) => Promise<string[]> } = {},
+    viewerId,
+  }: {
+    withItems?: boolean;
+    managedByViewer?: (registryIds: string[]) => Promise<string[]>;
+    viewerId?: string | null;
+  } = {},
 ): Promise<EventRegistry[]> {
   const { data } = await supabaseAdmin
     .from("event_registries")
@@ -392,11 +399,31 @@ export async function getEventRegistries(
   const guestItemIds = managed
     ? registries.filter((r) => !managed.has(r.id)).flatMap((r) => (itemsByList.get(r.id) ?? []).map((item) => item.id))
     : [];
-  const elfsterGiven = await givenOnElfster(guestItemIds);
+  // An owner can hide what's been reserved from themselves (src/lib/gifts.ts).
+  // On their own lists, the preview then shows nothing reserved, as the list's
+  // own page does. Only an owner can be hiding, and an item is only placed on
+  // its owner's other lists, so only the viewer's own lists need checking.
+  const ownItemIds = viewerId
+    ? registries
+        .filter((r) => r.owner?.id === viewerId)
+        .flatMap((r) => (itemsByList.get(r.id) ?? []).map((item) => item.id))
+    : [];
+  const [elfsterGiven, hiddenIds] = await Promise.all([
+    givenOnElfster(guestItemIds),
+    itemsHiddenFromOwner(ownItemIds, viewerId).catch((err) => {
+      console.error("[event] Couldn't tell which gifts are hidden from the viewer:", err);
+      return new Set<string>();
+    }),
+  ]);
 
   for (const registry of registries) {
     const asGuest = managed !== null && !managed.has(registry.id);
-    const preview = listPreview(itemsByList.get(registry.id) ?? [], PREVIEW_ITEMS, asGuest ? elfsterGiven : undefined);
+    const preview = listPreview(
+      itemsByList.get(registry.id) ?? [],
+      PREVIEW_ITEMS,
+      asGuest ? elfsterGiven : undefined,
+      hiddenIds,
+    );
     registry.itemsLeft = preview.itemsLeft;
     registry.items = preview.items;
   }

@@ -77,3 +77,33 @@ test("only sends what the preview shows", () => {
   const [shown] = listPreview([item("a")], 4).items;
   assert.deepEqual(Object.keys(shown).sort(), ["id", "image_url", "price", "title"]);
 });
+
+test("items hidden from their owner show as nothing reserved", () => {
+  const preview = listPreview(
+    [item("a", { quantity_fulfilled: 1 }), item("b", { quantity_needed: 3, quantity_fulfilled: 3 }), item("c", { quantity_fulfilled: 1 })],
+    4,
+    new Map(),
+    new Set(["a", "b"]),
+  );
+  // c isn't hidden, so it still counts as taken.
+  assert.equal(preview.itemsLeft, 2);
+  assert.deepEqual(
+    preview.items.map((i) => i.id),
+    ["a", "b"],
+  );
+});
+
+test("an item its owner bought themselves stays bought when gifts are hidden", () => {
+  const preview = listPreview(
+    [item("a", { quantity_fulfilled: 1, is_parent_purchased: true }), item("b")],
+    4,
+    new Map(),
+    new Set(["a", "b"]),
+  );
+  assert.equal(preview.itemsLeft, 1);
+});
+
+test("a hidden item ignores what's been given on Elfster", () => {
+  const preview = listPreview([item("a")], 4, new Map([["a", 1]]), new Set(["a"]));
+  assert.equal(preview.itemsLeft, 1);
+});
