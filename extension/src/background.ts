@@ -24,10 +24,19 @@ import {
   type StoreItem,
   type TaxResponse,
   type UndoResponse,
+  isUuid,
 } from "@/lib/extension";
 import { classifyStoreLink, extensionStoreForPage, storeItemKey, type StoreId } from "@/lib/retailers";
+import {
+  ELFSTER_ORIGINS,
+  ELFSTER_SYNC_EVERY_MS,
+  ELFSTER_SYNC_PAGE,
+  isElfsterUrl,
+  MAX_SYNC_ITEMS,
+} from "@/lib/wishlist-import";
 import { api, NotConnectedError } from "./api";
 import { REGIBEE_URL } from "./config";
+import { readElfsterWishlist, type WishlistPage } from "./elfster-reader";
 import { readProductPage, type ProductPage } from "./product-reader";
 import type {
   AutoImportResult,
@@ -403,6 +412,97 @@ function readProductLink(url: string, from: chrome.tabs.Tab | undefined): Promis
   return read;
 }
 
+// ── Syncing an Elfster wishlist in the background ───────────────────────
+// A list kept in sync with an Elfster wishlist (see "Keeping a list in sync"
+// in extension/README.md) syncs each time the owner opens the extension on
+// the wishlist. When the owner has also allowed the extension to read
+// Elfster, their list's page on Regibee asks it to sync too, at most once an
+// hour (src/components/elfster-sync.tsx). It opens a small page on Elfster in
+// a background tab next to the list's, reads the wishlist there as whoever is
+// signed in to Elfster, sends it to the sync route and closes the tab.
+//
+// Anything that stops it, such as no access to Elfster or nobody signed in
+// there, stops it quietly. The page only learns whether it synced, never
+// what the wishlist holds: what's been bought on Elfster goes only to the
+// server, which keeps it for guests.
+
+/** True when the owner allowed the extension to read Elfster. */
+async function canReadElfster(): Promise<boolean> {
+  try {
+    return await chrome.permissions.contains({ origins: ELFSTER_ORIGINS });
+  } catch {
+    return false;
+  }
+}
+
+function elfsterTryKey(registryId: string, wishlistId: string): string {
+  return `${registryId}:${wishlistId}`;
+}
+
+/** Whether the extension can sync the wishlist in the background now. */
+async function elfsterSyncReady(registryId: string, wishlistId: string): Promise<boolean> {
+  if (!isUuid(registryId) || !isUuid(wishlistId)) return false;
+  const { session, elfsterTries = {} } = await load("session", "elfsterTries");
+  if (!session) return false;
+  const last = elfsterTries[elfsterTryKey(registryId, wishlistId)];
+  if (last && Date.now() - last < ELFSTER_SYNC_EVERY_MS) return false;
+  return canReadElfster();
+}
+
+/** Opens a page on Elfster in a background tab and reads the wishlist there. Null when it couldn't. */
+async function readElfsterTab(wishlistId: string, from: chrome.tabs.Tab | undefined): Promise<WishlistPage | null> {
+  let tabId: number | undefined;
+  try {
+    const tab = await chrome.tabs.create({
+      url: ELFSTER_SYNC_PAGE,
+      active: false,
+      ...(from?.id !== undefined ? { windowId: from.windowId, index: from.index + 1 } : {}),
+    });
+    tabId = tab.id;
+    if (tabId === undefined) return null;
+    readingTabs.add(tabId);
+    const loaded = await waitForLoad(tabId, READ_LOAD_TIMEOUT_MS);
+    // Only on Elfster's own site, where the reader can ask its API.
+    if (!isElfsterUrl(loaded.url)) return null;
+    const [injection] = await chrome.scripting.executeScript({ target: { tabId }, func: readElfsterWishlist, args: [wishlistId] });
+    return (injection?.result as WishlistPage | undefined) ?? null;
+  } finally {
+    if (tabId !== undefined) {
+      readingTabs.delete(tabId);
+      await chrome.tabs.remove(tabId).catch(() => {});
+    }
+  }
+}
+
+/** Syncs a list with its Elfster wishlist for the list's page. True when it did. */
+async function syncElfsterInBackground(registryId: string, wishlistId: string, from: chrome.tabs.Tab | undefined): Promise<boolean> {
+  if (!(await elfsterSyncReady(registryId, wishlistId))) return false;
+  const { elfsterTries = {} } = await load("elfsterTries");
+  // Old tries are no use: the hour has passed for them.
+  const now = Date.now();
+  const kept = Object.fromEntries(Object.entries(elfsterTries).filter(([, at]) => now - at < ELFSTER_SYNC_EVERY_MS));
+  await save({ elfsterTries: { ...kept, [elfsterTryKey(registryId, wishlistId)]: now } });
+
+  // Takes its turn with the product reads, so only one tab opens at a time.
+  const read = lastRead.then(() => readElfsterTab(wishlistId, from));
+  lastRead = read.catch(() => {});
+  const page = await read.catch(() => null);
+  // Not signed in to Elfster, or Elfster didn't answer. An empty wishlist
+  // has nothing to sync, and an empty answer could be a session that can't
+  // see the wishlist.
+  if (!page || page.failed || !page.isWishlist || page.wishlistId !== wishlistId || page.wishes.length === 0) return false;
+  try {
+    await api<WishlistSyncResponse>("/api/extension/import/sync", {
+      method: "POST",
+      body: { registryId, wishlistId, items: page.wishes.slice(0, MAX_SYNC_ITEMS), background: true },
+    });
+    return true;
+  } catch (error) {
+    console.warn("Regibee: couldn't sync the Elfster wishlist.", error);
+    return false;
+  }
+}
+
 async function handle(request: BackgroundRequest, sender: chrome.runtime.MessageSender): Promise<unknown> {
   // Only this extension's own pages and content scripts can message it, but
   // check the content-script messages came from the pages they belong to.
@@ -520,6 +620,12 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
     case "read-product":
       if (!isRegibeeSite(sender)) throw new Error("Not the Regibee site");
       return readProductLink(request.url, sender.tab);
+    case "can-sync-elfster":
+      if (!isRegibeeSite(sender)) throw new Error("Not the Regibee site");
+      return elfsterSyncReady(request.registryId, request.wishlistId);
+    case "sync-elfster":
+      if (!isRegibeeSite(sender)) throw new Error("Not the Regibee site");
+      return syncElfsterInBackground(request.registryId, request.wishlistId, sender.tab);
   }
 }
 

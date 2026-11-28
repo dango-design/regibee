@@ -15,7 +15,7 @@ BRING IN YOUR STORE REGISTRIES
 Open your registry on Amazon, Walmart, Target or Pottery Barn Kids, and Regibee shows the items that aren't on your Regibee list yet. Add them with one click, or let it add new ones for you. Each item keeps its store registry link, so gifts bought through Regibee still count toward your store registry.
 
 BRING IN AN ELFSTER WISHLIST
-Open a wishlist on elfster.com and click the Regibee button. Regibee lists the items that aren't on your Regibee list yet, each with its name, price, picture, note and the link to its shop. Pick the ones to add. Keep the list in sync, and gifts bought on Elfster show as taken to your Regibee guests, so nobody buys the same thing twice.
+Open a wishlist on elfster.com and click the Regibee button. Regibee lists the items that aren't on your Regibee list yet, each with its name, price, picture, note and the link to its shop. Pick the ones to add. Keep the list in sync, and gifts bought on Elfster show as taken to your Regibee guests, so nobody buys the same thing twice. Let it sync in the background, and it syncs each time you open the list on Regibee too.
 
 ADD ANYTHING FROM ANY SHOP
 On a product page, click the Regibee button, choose "Add to Regibee" in the right-click menu, or press Alt+Shift+R. The name, price and pictures are filled in for you.
@@ -29,7 +29,7 @@ Some stores block Regibee's server. When you paste a link from Amazon, Walmart, 
 You need a free Regibee account: https://www.regibee.com
 
 PRIVACY
-The extension reads a page only when you open your own store registry, or when you click its button, its menu item or its shortcut. It doesn't read any other pages or your browsing history. Full details: https://www.regibee.com/privacy
+The extension reads a page only when you open your own store registry, or when you click its button, its menu item or its shortcut. If you let it sync an Elfster wishlist in the background, it also reads that wishlist when you open its list on Regibee. It doesn't read any other pages or your browsing history. Full details: https://www.regibee.com/privacy
 ```
 
 - **Category:** Shopping (under Lifestyle)
@@ -55,7 +55,7 @@ Adds products and store registry items to the user's Regibee gift lists while th
 
 - **storage:**
   ```
-  Keeps the extension's Regibee sign-in, the user's list of registries, their settings (ask first or add automatically), the names they've saved gift ideas for, and which store registry items they've already seen, so it doesn't offer the same item twice.
+  Keeps the extension's Regibee sign-in, the user's list of registries, their settings (ask first or add automatically), the names they've saved gift ideas for, which store registry items they've already seen, so it doesn't offer the same item twice, and when it last synced each Elfster wishlist in the background, so it syncs at most once an hour.
   ```
 - **activeTab:**
   ```
@@ -73,6 +73,10 @@ Adds products and store registry items to the user's Regibee gift lists while th
   ```
   amazon.com, walmart.com, target.com and potterybarnkids.com: when the user opens their own registry page at one of these stores, the extension reads the items on it (name, price, picture, quantity and registry link) so it can add them to the user's Regibee registry. It also reads a product link from these stores that the user pastes on regibee.com, because these stores block Regibee's server. It doesn't read other pages on these sites.
   regibee.com: the Connect page on regibee.com signs the extension in to the user's account, and the extension saves items through regibee.com's API.
+  ```
+- **Optional host permission (elfster.com):** the dashboard may not ask about it, since it's optional. If it does:
+  ```
+  elfster.com, only if the user allows it from the popup, after keeping a Regibee list in sync with their Elfster wishlist. Then, when the user opens that list on regibee.com, at most once an hour, the extension opens a page on elfster.com in a background tab, reads that one wishlist through Elfster's API as the signed-in Elfster user (each item's name, price, picture, quantity, note, shop link, and how many have been bought or received), sends it to Regibee and closes the tab. Regibee uses the counts only to show those items as taken to the list's guests, and never shows them to the user. It reads nothing else on elfster.com.
   ```
 
 **Remote code:** No. All code is in the package. The extension only fetches JSON data from regibee.com.

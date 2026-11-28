@@ -1,7 +1,12 @@
 // Reads the Elfster wishlist the owner has open, for the popup's import
 // screen. The popup runs it in the page with chrome.scripting.executeScript
-// only after the owner clicks the toolbar button, so the extension needs no
-// access to elfster.com and never reads it on its own.
+// only after the owner clicks the toolbar button, under activeTab.
+//
+// It also reads a synced wishlist in the background (background.ts), given
+// the wishlist's id, from any page on Elfster's site. That needs access to
+// elfster.com, which the owner allows from the popup (ELFSTER_ORIGINS in
+// src/lib/wishlist-import.ts). Without it, the extension can't read Elfster
+// on its own.
 //
 // Elfster's page shows each wish's name, price and picture, but not its
 // link. Its own API has all of them, so this asks the API the page itself
@@ -46,13 +51,20 @@ export interface WishlistPage {
   failed: boolean;
 }
 
-export async function readElfsterWishlist(): Promise<WishlistPage> {
+/**
+ * Reads the wishlist whose page is open, or, given `wishlistId`, that
+ * wishlist from any page on elfster.com.
+ */
+export async function readElfsterWishlist(wishlistId?: unknown): Promise<WishlistPage> {
   const page: WishlistPage = { isWishlist: false, wishlistId: null, title: null, items: [], wishes: [], received: 0, failed: false };
   // The same page isElfsterWishlistUrl (src/lib/wishlist-import.ts) accepts.
   if (location.protocol !== "https:" || !/(^|\.)elfster\.com$/i.test(location.hostname)) return page;
-  const id = location.pathname.match(
-    /\/wish-lists\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?=\/|$)/i
-  )?.[1];
+  const id =
+    typeof wishlistId === "string"
+      ? wishlistId.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i)?.[1]
+      : location.pathname.match(
+          /\/wish-lists\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?=\/|$)/i
+        )?.[1];
   if (!id) return page;
   page.isWishlist = true;
   page.wishlistId = id.toLowerCase();

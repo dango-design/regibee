@@ -3,7 +3,7 @@
 // loads on every Regibee page so it's already there when the site moves to
 // the Connect page without a full load, as it does after signing in. On any
 // Regibee page it also reads a store product link for the add and edit item
-// dialogs.
+// dialogs, and syncs a list's Elfster wishlist for the list's page.
 
 import {
   CONNECT_PATH,
@@ -18,7 +18,7 @@ import { ask } from "../messages";
 
 type WithoutSource<T> = T extends unknown ? Omit<T, "source"> : never;
 
-const FEATURES: ExtensionFeature[] = ["read-product"];
+const FEATURES: ExtensionFeature[] = ["read-product", "sync-elfster"];
 
 function tell(message: WithoutSource<ExtensionMessage>) {
   window.postMessage({ source: EXTENSION_SOURCE, ...message }, location.origin);
@@ -42,6 +42,18 @@ window.addEventListener("message", async (event) => {
         ? { type: "product", id: message.id, product: result.data }
         : { type: "product", id: message.id, product: null, error: result.error }
     );
+    return;
+  }
+  if (message.type === "can-sync-elfster" || message.type === "sync-elfster") {
+    const { id, registryId, wishlistId } = message;
+    if (typeof id !== "string" || typeof registryId !== "string" || typeof wishlistId !== "string") return;
+    if (message.type === "can-sync-elfster") {
+      const result = await ask<boolean>({ type: "can-sync-elfster", registryId, wishlistId });
+      tell({ type: "elfster-sync-ready", id, ready: result.ok && result.data === true });
+    } else {
+      const result = await ask<boolean>({ type: "sync-elfster", registryId, wishlistId });
+      tell({ type: "elfster-synced", id, synced: result.ok && result.data === true });
+    }
     return;
   }
   // Sessions and cancels come only from the Connect page.

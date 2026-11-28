@@ -22,6 +22,12 @@ export interface Stored {
    * items it hasn't seen, so an item removed on Regibee doesn't come back.
    */
   seen?: Record<string, string[]>;
+  /**
+   * When the extension last tried to sync each Elfster wishlist in the
+   * background, by "<registry id>:<wishlist id>", so a list's page that's
+   * opened again and again doesn't open Elfster each time.
+   */
+  elfsterTries?: Record<string, number>;
 }
 
 const MAX_SEEN_PER_REGISTRY = 3000;
@@ -44,6 +50,7 @@ export async function clearAccount(): Promise<void> {
     "registriesFetchedAt",
     "ideaRecipients",
     "seen",
+    "elfsterTries",
   ]);
 }
 

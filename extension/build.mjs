@@ -8,6 +8,10 @@
 // .github/workflows/extension-publish.yml also sets EXTENSION_BUILD, the
 // version's fourth part, and EXTENSION_PR, the pull request the build comes
 // from. See BuildInfo in src/manifest.ts.
+//
+// npm run test:extension also makes a second copy in extension/dist-granted
+// with --grant-elfster, which has access to Elfster from the start, for the
+// tests of syncing in the background. Never publish that one.
 
 import * as esbuild from "esbuild";
 import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
@@ -16,7 +20,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const outdir = path.join(here, "dist");
+const grantElfster = process.argv.includes("--grant-elfster");
+const outdir = path.join(here, grantElfster ? "dist-granted" : "dist");
 
 const dev = process.argv.includes("--dev");
 const watch = process.argv.includes("--watch");
@@ -31,7 +36,7 @@ function wholeNumber(name, max) {
 }
 
 // Chrome allows at most 65535 in each part of a version.
-const buildInfo = { build: wholeNumber("EXTENSION_BUILD", 65535), pr: wholeNumber("EXTENSION_PR", Number.MAX_SAFE_INTEGER) };
+const buildInfo = { build: wholeNumber("EXTENSION_BUILD", 65535), pr: wholeNumber("EXTENSION_PR", Number.MAX_SAFE_INTEGER), grantElfster };
 
 const shared = {
   bundle: true,
@@ -90,5 +95,5 @@ if (watch) {
   console.log(`Watching. The extension talks to ${siteUrl}. Reload it in chrome://extensions after changes.`);
 } else {
   await Promise.all(builds.map((options) => esbuild.build(options)));
-  console.log(`Built extension/dist ${versionName} for ${siteUrl}.`);
+  console.log(`Built extension/${path.basename(outdir)} ${versionName} for ${siteUrl}.`);
 }

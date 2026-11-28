@@ -33,6 +33,7 @@ import { getEventsForReveal, getGiftsRevealedThrough, listEventsForRegistry, typ
 import { getSessionUser } from "@/lib/viewer";
 import { itemsHiddenFromOwner, listsForItems, loadListItems, type ListItem } from "@/lib/list-items";
 import { loadItemDetailsState } from "@/lib/item-details-server";
+import { elfsterSyncsDue } from "@/lib/elfster-sync-server";
 import type {
   ListPageCategory,
   ListPageData,
@@ -167,14 +168,19 @@ export async function loadListPage(registryId: string): Promise<ListPageData | n
   // otherwise. Co-managers still see it all.
   const hideReservations = reservationsHiddenFrom(registry, user.id);
 
-  return buildListPage(registry, {
-    userId: user.id,
-    isAnonymous: Boolean(user.is_anonymous),
-    isOwner,
-    client: supabase,
-    hideReservations,
-    hiddenItemsFor: isOwner && registry.owner_id === user.id && !hideReservations ? user.id : null,
-  });
+  const [page, elfsterSyncs] = await Promise.all([
+    buildListPage(registry, {
+      userId: user.id,
+      isAnonymous: Boolean(user.is_anonymous),
+      isOwner,
+      client: supabase,
+      hideReservations,
+      hiddenItemsFor: isOwner && registry.owner_id === user.id && !hideReservations ? user.id : null,
+    }),
+    // Not for the support team's page, which never asks the extension anything.
+    elfsterSyncsDue(registryId, user.id),
+  ]);
+  return { ...page, elfsterSyncs };
 }
 
 /**

@@ -12,7 +12,7 @@ import { EXTENSION_STORES } from "@/lib/retailers";
 
 /** Where Regibee is run from, how to reach it, and when this version took effect. */
 export const PRIVACY_FACTS = {
-  effectiveDate: "November 27, 2026",
+  effectiveDate: "November 28, 2026",
   contactEmail: "contact@regibee.com",
   location: "California, United States",
 };
@@ -479,6 +479,14 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
                 those items as taken to your guests, and never shows them to you.
               </li>
               <li>
+                <strong className="font-semibold text-primary">A synced Elfster wishlist, in the background, if you
+                allow it.</strong> If you let the extension read Elfster, which Chrome asks you about first, it also
+                syncs the list when you open it on regibee.com, at most once an hour. It opens a page on elfster.com
+                in a background tab, reads the same wishlist and counts as whoever is signed in to Elfster in your
+                browser, sends them to Regibee and closes the tab. It reads nothing else on Elfster. You can take
+                the access away in Chrome&apos;s settings for the extension.
+              </li>
+              <li>
                 <strong className="font-semibold text-primary">Store links on regibee.com.</strong> When
                 you paste a link from one of those stores while adding an item, or click &ldquo;Fill them in&rdquo; on
                 a list whose items are missing a photo or price, the extension may open each link in a background tab,
@@ -490,7 +498,8 @@ export function PrivacyPolicy({ nav }: { nav: React.ReactNode }) {
             <P>
               It doesn&apos;t read any other pages or your browsing history. In your browser it keeps its own Regibee
               session, your name and email address, your list of registries, the names of the people you&apos;ve
-              saved gift ideas for, and which store items you&apos;ve already seen. Disconnecting the extension removes them, and removing it from Chrome removes
+              saved gift ideas for, which store items you&apos;ve already seen, and when it last synced each Elfster
+              wishlist in the background. Disconnecting the extension removes them, and removing it from Chrome removes
               everything it kept.
             </P>
           </Section>

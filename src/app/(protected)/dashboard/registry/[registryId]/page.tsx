@@ -9,6 +9,7 @@ import { ItemCard } from "@/components/item-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
 import { MissingDetailsNotice } from "@/components/missing-details-notice";
 import { PriceCheck } from "@/components/price-check";
+import { ElfsterSync } from "@/components/elfster-sync";
 import { SortIntoCategoriesButton } from "@/components/sort-into-categories-button";
 import { DetailReview } from "@/components/detail-review";
 import { RegistryTabs } from "@/components/registry-tabs";
@@ -77,6 +78,7 @@ export default async function RegistryManagePage({
     missingDetails = [],
     priceChecks = [],
     detailReview = [],
+    elfsterSyncs = [],
   } = data;
   const registryLinkStores = data.storesWithRegistryLinks;
   const allSuggestions = data.suggestions;
@@ -261,6 +263,9 @@ export default async function RegistryManagePage({
 
             {/* Always there too, so a page refresh after a new price doesn't start it again. */}
             <PriceCheck registryId={registryId} items={priceChecks} className="mb-6" />
+
+            {/* The same, for a list kept in sync with an Elfster wishlist. */}
+            <ElfsterSync registryId={registryId} wishlistIds={elfsterSyncs} className="mb-6" />
 
             {plainLinkGroups.length > 0 && (
               <div className="mb-6">

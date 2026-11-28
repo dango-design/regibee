@@ -188,6 +188,13 @@ export interface ListPageData {
   priceChecks?: ListPageMissingDetails[];
   /** Filled-in details waiting for review. */
   detailReview?: ListPageDetailReview[];
+  /**
+   * Ids of the Elfster wishlists the browser extension should sync on this
+   * visit (elfsterSyncsDue in src/lib/elfster-sync-server.ts). Never what's
+   * been given on Elfster. Missing from older servers' answers and from the
+   * support team's page.
+   */
+  elfsterSyncs?: string[];
   perkRows: StorePerksRow[];
   perkEmails: boolean;
   readyPerkCount: number;

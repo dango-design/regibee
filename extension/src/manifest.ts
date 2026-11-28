@@ -2,9 +2,10 @@
 // stores the extension may read always match src/lib/retailers.ts.
 
 import { EXTENSION_STORES } from "@/lib/retailers";
+import { ELFSTER_ORIGINS } from "@/lib/wishlist-import";
 
 /** Change this when the extension does something new. Builds from main add a fourth part. */
-export const EXTENSION_VERSION = "0.4.0";
+export const EXTENSION_VERSION = "0.5.0";
 
 /** Set by .github/workflows/extension-publish.yml. Local builds have neither. */
 export interface BuildInfo {
@@ -16,6 +17,12 @@ export interface BuildInfo {
   build?: number;
   /** The pull request whose merge made this build. */
   pr?: number;
+  /**
+   * Only for the extension's tests: gives the extension access to Elfster
+   * from the start, as if the owner had allowed it. Playwright can't answer
+   * Chrome's permission prompt.
+   */
+  grantElfster?: boolean;
 }
 
 export function fullVersion({ build }: BuildInfo = {}): string {
@@ -70,7 +77,12 @@ export function buildManifest(siteUrl: string, info: BuildInfo = {}) {
       _execute_action: { suggested_key: { default: "Alt+Shift+R" } },
     },
     // Only the stores' sites and Regibee. Nothing else.
-    host_permissions: [...stores, ...sites.map((origin) => `${origin}/*`)],
+    host_permissions: [...stores, ...sites.map((origin) => `${origin}/*`), ...(info.grantElfster ? ELFSTER_ORIGINS : [])],
+    // Elfster, only once the owner allows it from the popup, to keep a list
+    // in sync with their wishlist without opening the extension on it. An
+    // optional site adds no install warning, and a new one doesn't turn the
+    // extension off on update, as a new site in host_permissions would.
+    optional_host_permissions: info.grantElfster ? undefined : ELFSTER_ORIGINS,
     content_scripts: [
       { matches: stores, js: ["store.js"], run_at: "document_idle" },
       // Every Regibee page, not just the Connect page: after signing in, the
