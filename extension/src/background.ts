@@ -14,6 +14,7 @@ import {
   type ExtensionSession,
   type IdeaResponse,
   type ImportCheckResponse,
+  type WishlistSyncResponse,
   type ImportItem,
   type ImportResponse,
   type LinkResponse,
@@ -159,22 +160,40 @@ function chunks<T>(items: T[]): T[][] {
   return result;
 }
 
-/** Which of a wishlist's items are already on the registry. */
-async function importCheck(registryId: string, items: ImportItem[]): Promise<ImportCheckResponse> {
+/**
+ * What's been bought on Elfster goes only to the sync route, which keeps it
+ * for guests. Checking and importing don't need it.
+ */
+function withoutGiven(items: ImportItem[]): ImportItem[] {
+  return items.map((item) => ({ ...item, given: 0 }));
+}
+
+/** Which of a wishlist's items are already on the registry, and whether it's kept in sync. */
+async function importCheck(registryId: string, items: ImportItem[], wishlistId?: string): Promise<ImportCheckResponse> {
   const existing = new Set<string>();
-  for (const part of chunks(items)) {
+  let synced: boolean | undefined;
+  for (const part of chunks(withoutGiven(items))) {
     const result = await api<ImportCheckResponse>("/api/extension/import/check", {
       method: "POST",
-      body: { registryId, items: part },
+      body: { registryId, items: part, wishlistId },
     });
     for (const key of result.existing) existing.add(key);
+    synced = synced || result.synced;
   }
-  return { existing: [...existing] };
+  // A wishlist with no items still asks, to learn whether it's synced.
+  if (items.length === 0 && wishlistId) {
+    const result = await api<ImportCheckResponse>("/api/extension/import/check", {
+      method: "POST",
+      body: { registryId, items: [], wishlistId },
+    });
+    synced = result.synced;
+  }
+  return { existing: [...existing], synced };
 }
 
 async function importItems(registryId: string, items: ImportItem[]): Promise<ImportResponse> {
   const total: ImportResponse = { added: [], skipped: 0 };
-  for (const part of chunks(items)) {
+  for (const part of chunks(withoutGiven(items))) {
     const result = await api<ImportResponse>("/api/extension/import", {
       method: "POST",
       body: { registryId, items: part },
@@ -431,9 +450,19 @@ async function handle(request: BackgroundRequest, sender: chrome.runtime.Message
       return { exists: existing.includes(key), plain: plain.includes(key) };
     }
     case "import-check":
-      return importCheck(request.registryId, request.items);
+      return importCheck(request.registryId, request.items, request.wishlistId);
     case "import":
       return importItems(request.registryId, request.items);
+    case "import-sync":
+      return api<WishlistSyncResponse>("/api/extension/import/sync", {
+        method: "POST",
+        body: { registryId: request.registryId, wishlistId: request.wishlistId, items: request.items },
+      });
+    case "import-stop":
+      return api<{ stopped: boolean }>("/api/extension/import/stop", {
+        method: "POST",
+        body: { registryId: request.registryId, wishlistId: request.wishlistId },
+      });
     case "link":
       return { linked: await link(request.registryId, request.items) } satisfies LinkResponse;
     case "menu-click": {

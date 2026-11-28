@@ -223,11 +223,36 @@ export function importItemKey(item: { url: string | null; title: string | null }
 export interface ImportCheckRequest {
   registryId: string;
   items: ImportItem[];
+  /** The Elfster wishlist's id. Extension versions before 0.4.0 leave it out. */
+  wishlistId?: string;
 }
 
 export interface ImportCheckResponse {
   /** importItemKey values that are already on the registry. */
   existing: string[];
+  /** True when the registry is kept in sync with the wishlist. Only sent when the request had a wishlistId. */
+  synced?: boolean;
+}
+
+/**
+ * Keeps a registry in sync with an Elfster wishlist (src/lib/wishlist-import.ts).
+ * Sends every wish at once, up to MAX_SYNC_ITEMS, so the server can tell
+ * which ones left the wishlist.
+ */
+export interface WishlistSyncRequest {
+  registryId: string;
+  wishlistId: string;
+  items: ImportItem[];
+}
+
+export interface WishlistSyncResponse {
+  /** Items kept in sync before whose wish is no longer on the wishlist. */
+  gone: { id: string; title: string }[];
+}
+
+export interface WishlistStopRequest {
+  registryId: string;
+  wishlistId: string;
 }
 
 export interface ImportRequest {

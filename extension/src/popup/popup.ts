@@ -15,6 +15,7 @@ import {
   type ImportCheckResponse,
   type ImportItem,
   type ImportResponse,
+  type WishlistSyncResponse,
   type LinkResponse,
   type ProductItem,
   type StoreItem,
@@ -509,11 +510,17 @@ interface WishlistContext {
  * The wishes on the Elfster wishlist the owner has open, with the ones that
  * aren't on Regibee yet ticked. Always asks first: there's no automatic mode
  * here, since the owner may be looking at someone else's wishlist.
+ *
+ * A registry can be kept in sync with the wishlist (src/lib/wishlist-import.ts).
+ * Then each visit here sends every wish to Regibee, so gifts bought or
+ * received on Elfster show as taken to guests. Nothing here ever shows what's
+ * been bought: Elfster keeps that from the owner, and so does Regibee.
  */
 async function showWishlist(ctx: WishlistContext) {
   const { user, wishlist, registries } = ctx;
   let registryId = ctx.registryId;
   const registryTitle = () => registries.find((r) => r.id === registryId)?.title ?? "your registry";
+  const wishlistId = wishlist.wishlistId;
 
   // One row for each item: Elfster lets the same wish be added twice.
   const byKey = new Map<string, ImportItem>();
@@ -526,8 +533,25 @@ async function showWishlist(ctx: WishlistContext) {
 
   render(header(user), h("main", { className: "body" }, wishlistRow(wishlist.title, found), h("p", { className: "muted" }, "Checking Regibee…")));
 
-  const checked = await ask<ImportCheckResponse>({ type: "import-check", registryId, items: items.map((i) => i.item) });
+  const checked = await ask<ImportCheckResponse>({
+    type: "import-check",
+    registryId,
+    items: items.map((i) => i.item),
+    wishlistId: wishlistId ?? undefined,
+  });
   if (!checked.ok) return handleFailure(checked, user, ctx.reload);
+  const synced = Boolean(wishlistId && checked.data.synced);
+
+  // Kept in sync: send every wish, the received ones included.
+  let gone: WishlistSyncResponse["gone"] = [];
+  let syncFailed = false;
+  if (synced && wishlistId) {
+    const result = await ask<WishlistSyncResponse>({ type: "import-sync", registryId, wishlistId, items: wishlist.wishes });
+    if (result.ok) gone = result.data.gone;
+    else if (result.notConnected) return handleFailure(result, user, ctx.reload);
+    else syncFailed = true;
+  }
+
   const existing = new Set(checked.data.existing);
   const fresh = items.filter((i) => !existing.has(i.key));
   const already = items.filter((i) => existing.has(i.key));
@@ -541,6 +565,7 @@ async function showWishlist(ctx: WishlistContext) {
   };
   const receivedNote =
     wishlist.received > 0 &&
+    items.length > 0 &&
     h(
       "p",
       { className: "muted" },
@@ -548,20 +573,60 @@ async function showWishlist(ctx: WishlistContext) {
         ? "1 item you marked as received on Elfster is left out."
         : `${wishlist.received} items you marked as received on Elfster are left out.`
     );
+  // Who sees what a sync brings over, since the owner never does.
+  const syncHint = "Gifts bought on Elfster show as taken to your guests. You won't see them.";
+
+  const syncRow = synced && wishlistId && syncedRow(user, registryId, wishlistId, () => showWishlist({ ...ctx, registryId }));
+  const syncProblem = syncFailed && h("p", { className: "warn" }, "Couldn't sync with this wishlist. Try again later.");
+  const goneNote =
+    gone.length > 0 &&
+    h(
+      "p",
+      { className: "note" },
+      gone.length === 1
+        ? `"${gone[0].title}" is no longer on this Elfster wishlist. It's still on ${registryTitle()}.`
+        : `${gone.length} items are no longer on this Elfster wishlist, and are still on ${registryTitle()}: ${gone
+            .map((g) => g.title)
+            .join(", ")}.`
+    );
 
   if (fresh.length === 0) {
+    const startButton =
+      !synced &&
+      wishlistId &&
+      (h("button", { type: "button", className: "button primary" }, "Keep in sync with Elfster") as HTMLButtonElement);
+    if (startButton) {
+      startButton.addEventListener("click", async () => {
+        startButton.disabled = true;
+        startButton.textContent = "Syncing…";
+        const result = await ask<WishlistSyncResponse>({ type: "import-sync", registryId, wishlistId, items: wishlist.wishes });
+        if (!result.ok) return handleFailure(result, user, ctx.reload);
+        await showWishlist({ ...ctx, registryId });
+      });
+    }
     render(
       header(user),
       h(
         "main",
         { className: "body" },
-        wishlistRow(wishlist.title, summary),
+        wishlistRow(wishlist.title, items.length === 0 ? `${plural(wishlist.received, "item")} received` : summary),
         registries.length > 1 && registrySelect(registries, registryId, "Add to", onRegistryChange),
-        h("p", { className: "lead" }, `Everything on this wishlist is already on ${registryTitle()}.`),
+        h(
+          "p",
+          { className: "lead" },
+          items.length === 0
+            ? "Everything on this wishlist is marked as received on Elfster, so there's nothing to add."
+            : `Everything on this wishlist is already on ${registryTitle()}.`
+        ),
         receivedNote,
+        syncRow,
+        syncProblem,
+        goneNote,
         h(
           "div",
           { className: "footer-actions" },
+          startButton,
+          startButton && h("p", { className: "footnote" }, syncHint),
           h(
             "button",
             { type: "button", className: "button secondary", onclick: () => openTab(`${REGIBEE_URL}/dashboard/registry/${registryId}`) },
@@ -641,13 +706,43 @@ async function showWishlist(ctx: WishlistContext) {
     alreadyRow = h("div", { className: "already" }, toggle, list);
   }
 
+  // Not kept in sync yet: offer it, ticked, since this is usually the owner's own wishlist.
+  let keepInSync = synced;
+  const syncBox =
+    !synced &&
+    wishlistId &&
+    h(
+      "div",
+      { className: "stack" },
+      h(
+        "label",
+        { className: "check" },
+        h("input", {
+          type: "checkbox",
+          checked: true,
+          onchange: (e: Event) => {
+            keepInSync = (e.target as HTMLInputElement).checked;
+          },
+        }),
+        "Keep in sync with Elfster"
+      ),
+      h("span", { className: "muted" }, syncHint)
+    );
+  if (syncBox) keepInSync = true;
+
   button.addEventListener("click", async () => {
     button.disabled = true;
     button.textContent = "Adding…";
     const chosen = fresh.filter((i) => picked.has(i.key)).map((i) => i.item);
     const added = await ask<ImportResponse>({ type: "import", registryId, items: chosen });
     if (!added.ok) return handleFailure(added, user, ctx.reload);
-    showImported(user, registryId, registryTitle(), added.data);
+    // Sync again, so the new items are matched to their wishes.
+    let syncError = false;
+    if (keepInSync && wishlistId) {
+      const result = await ask<WishlistSyncResponse>({ type: "import-sync", registryId, wishlistId, items: wishlist.wishes });
+      syncError = !result.ok;
+    }
+    showImported(user, registryId, registryTitle(), added.data, syncError);
   });
 
   render(
@@ -659,6 +754,10 @@ async function showWishlist(ctx: WishlistContext) {
       registrySelect(registries, registryId, "Add to", onRegistryChange),
       h("div", { className: "picker" }, h("ul", { className: "items" }, ...itemRows), alreadyRow),
       receivedNote,
+      syncRow,
+      syncProblem,
+      goneNote,
+      syncBox,
       h(
         "div",
         { className: "footer-actions" },
@@ -669,7 +768,52 @@ async function showWishlist(ctx: WishlistContext) {
   );
 }
 
-function showImported(user: { name: string }, registryId: string, registryTitle: string, result: ImportResponse) {
+/**
+ * "Synced with this wishlist", with a way to stop. Stopping asks first:
+ * guests could then choose gifts already bought on Elfster.
+ */
+function syncedRow(user: { name: string }, registryId: string, wishlistId: string, reload: () => void): HTMLElement {
+  const row = h("div", { className: "sync-row" });
+  const showSynced = () => {
+    row.replaceChildren(
+      h("span", { className: "muted" }, "Synced with this wishlist"),
+      h("button", { type: "button", className: "link-button", onclick: showConfirm }, "Stop syncing")
+    );
+  };
+  const showConfirm = () => {
+    const stop = h("button", { type: "button", className: "button secondary small" }, "Stop syncing") as HTMLButtonElement;
+    stop.addEventListener("click", async () => {
+      stop.disabled = true;
+      stop.textContent = "Stopping…";
+      const result = await ask({ type: "import-stop", registryId, wishlistId });
+      if (!result.ok) return handleFailure(result, user, reload);
+      reload();
+    });
+    row.replaceChildren(
+      h(
+        "div",
+        { className: "stack" },
+        h("p", { className: "note" }, "Your guests could then choose gifts already bought on Elfster."),
+        h(
+          "div",
+          { className: "sync-actions" },
+          stop,
+          h("button", { type: "button", className: "link-button", onclick: showSynced }, "Keep syncing")
+        )
+      )
+    );
+  };
+  showSynced();
+  return row;
+}
+
+function showImported(
+  user: { name: string },
+  registryId: string,
+  registryTitle: string,
+  result: ImportResponse,
+  syncFailed = false
+) {
   const count = result.added.length;
   render(
     header(user),
@@ -690,7 +834,8 @@ function showImported(user: { name: string }, registryId: string, registryTitle:
               ? `It's on ${registryTitle}.`
               : `They're on ${registryTitle}.`
         ),
-        result.skipped > 0 && count > 0 && h("p", { className: "muted" }, `${plural(result.skipped, "item was", "items were")} already there.`)
+        result.skipped > 0 && count > 0 && h("p", { className: "muted" }, `${plural(result.skipped, "item was", "items were")} already there.`),
+        syncFailed && h("p", { className: "warn" }, "Couldn't sync with this wishlist. Open it here again to try again.")
       ),
       h(
         "div",
@@ -1760,7 +1905,8 @@ async function start() {
   // An Elfster wishlist, unless the owner right-clicked to add the page itself.
   const wishlist = menuClick ? null : await readWishlist(tab);
   if (wishlist) {
-    if (wishlist.failed || wishlist.items.length === 0) return showCouldntReadWishlist(user, wishlist, start);
+    // Everything received still syncs, so guests see those as taken.
+    if (wishlist.failed || wishlist.wishes.length === 0) return showCouldntReadWishlist(user, wishlist, start);
     return showWishlist({ user, wishlist, registries: data.registries, registryId: data.registryId, reload: start });
   }
 
