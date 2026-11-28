@@ -55,6 +55,7 @@ export interface AccountPageData {
     /** What they wrote for everyone who opens their profile, or null. */
     public_note: string | null;
   };
+  /** The lists they own, in the order their profile shows them. */
   registries: AccountRegistry[];
   follows: {
     requests: FollowPerson[];

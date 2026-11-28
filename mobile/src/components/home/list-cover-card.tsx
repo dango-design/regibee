@@ -4,7 +4,8 @@
 // The card keeps to what tells the owner how the list is doing. Its total
 // value, item count, who gave what and the link to its public page are on
 // the list's own screen. The cover is the list's photo, or its occasion's
-// color (the website's occasionTheme) with a large icon.
+// color (the website's occasionTheme) with a large icon. A list someone else
+// also manages shows their faces at the cover's right.
 
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -15,6 +16,7 @@ import { countdownLabel, listTint } from "@shared/occasions";
 import { Icon, type IconName } from "@/components/icon";
 import { useTintColors } from "@/components/invitation/colors";
 import { ListProgressBar } from "@/components/list-progress";
+import { ManagerFaces, sharedWithLabel } from "@/components/manager-faces";
 import { ProgressBar, Text } from "@/components/ui";
 import { occasionLabel } from "@/lib/occasion";
 import { radius, spacing, useTheme } from "@/lib/theme";
@@ -63,6 +65,8 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
     (registry.progress ? registry.progress.toBuy === 0 : registry.fulfilledItems >= registry.totalItems);
   // A finished list celebrates instead of counting new gifts, as on the website.
   const newText = allDone ? null : newThisWeek > 0 ? `${newThisWeek} new this week` : null;
+  // Everyone else who manages it. Older servers send none.
+  const managers = registry.managers ?? [];
 
   return (
     <Pressable
@@ -73,6 +77,7 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
         occasionLabel(registry),
         when,
         isPrivate ? "Private" : null,
+        managers.length > 0 ? sharedWithLabel(managers) : null,
         registry.reservationsHidden ? "What's been reserved is hidden from you" : giftedText(registry),
         allDone && !registry.reservationsHidden ? "All done" : null,
         newText,
@@ -100,12 +105,17 @@ export function ListCoverCard({ registry, today, onPress }: { registry: Registry
               </Text>
             </View>
           ) : null}
-          {isPrivate ? (
-            <View style={[styles.badge, { backgroundColor: theme.surface, marginLeft: "auto" }]}>
-              <Icon name="lock" size={11} color={theme.textSecondary} weight="bold" />
-              <Text variant="caption" tone="secondary" style={{ fontWeight: "700" }}>
-                Private
-              </Text>
+          {isPrivate || managers.length > 0 ? (
+            <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              {isPrivate ? (
+                <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+                  <Icon name="lock" size={11} color={theme.textSecondary} weight="bold" />
+                  <Text variant="caption" tone="secondary" style={{ fontWeight: "700" }}>
+                    Private
+                  </Text>
+                </View>
+              ) : null}
+              <ManagerFaces managers={managers} />
             </View>
           ) : null}
         </View>

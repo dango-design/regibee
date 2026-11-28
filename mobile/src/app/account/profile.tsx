@@ -1,5 +1,6 @@
 // "Your profile" and "Registries on your profile": the website's Account page
-// (src/components/account-settings.tsx), with the same server actions.
+// (src/components/account-settings.tsx), with the same server actions,
+// including the order of the lists on the profile.
 
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
@@ -7,12 +8,14 @@ import { Alert, Share, View } from "react-native";
 
 import { MAX_PUBLIC_NOTE_LENGTH } from "@shared/gift-profile";
 import { LIST_ACCESS, listVisibility, profileAudience, type ProfileAudience } from "@shared/list-access";
+import { orderLists } from "@shared/list-order";
 import type { AccountRegistry } from "@shared/people-page-types";
 import { displayName, profilePath } from "@shared/profile-link";
 import { occasionLabel } from "@shared/registry-copy";
 
 import { Icon } from "@/components/icon";
 import { KeyboardScrollView } from "@/components/keyboard";
+import { ListOrderRows } from "@/components/list-order-rows";
 import { ProfileAudienceChips } from "@/components/profile-audience-chips";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { Button, Card, ErrorState, Field, haptic, LoadingState, SwitchRow, Text } from "@/components/ui";
@@ -40,25 +43,7 @@ export default function ProfileScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: 120 }}
       >
         <ProfileCard profile={data.profile} />
-        <Card>
-          <Text variant="title" style={{ fontSize: 20 }}>
-            Registries on your profile
-          </Text>
-          <Text variant="footnote" tone="secondary">
-            Choose who sees each one on your profile. Friends are people you follow who follow you back.
-          </Text>
-          {data.registries.length === 0 ? (
-            <Text variant="footnote" tone="tertiary">
-              You don&apos;t own any registries yet.
-            </Text>
-          ) : (
-            <View style={{ marginHorizontal: -spacing.lg }}>
-              {data.registries.map((registry) => (
-                <ListingRow key={registry.id} registry={registry} />
-              ))}
-            </View>
-          )}
-        </Card>
+        <ProfileRegistries registries={data.registries} />
       </KeyboardScrollView>
     </>
   );
@@ -257,9 +242,96 @@ function ProfileCard({
   );
 }
 
-function ListingRow({ registry }: { registry: AccountRegistry }) {
+/** Puts `shown`, in its new order, back into the places the shown lists had in `all`. */
+function mergeShownOrder(all: string[], shown: string[]): string[] {
+  const shownSet = new Set(shown);
+  let next = 0;
+  return all.map((id) => (shownSet.has(id) ? shown[next++] : id));
+}
+
+/**
+ * Who sees each list on the profile, and the order they show in, as on the
+ * website's Account page. Reorder lists only the ones the profile shows. The
+ * server sends the lists in the profile's order.
+ */
+function ProfileRegistries({ registries }: { registries: AccountRegistry[] }) {
   const { run } = useRunPeopleAction();
-  const [audience, setAudience] = useState<ProfileAudience>(profileAudience(registry));
+  const [audiences, setAudiences] = useState<Record<string, ProfileAudience>>(() =>
+    Object.fromEntries(registries.map((registry) => [registry.id, profileAudience(registry)]))
+  );
+  const [order, setOrder] = useState(() => registries.map((registry) => registry.id));
+  const [reordering, setReordering] = useState(false);
+  // A list added or deleted since this screen opened follows the saved order.
+  const ordered = orderLists(registries, order);
+  const onProfile = ordered.filter(
+    (registry) => listVisibility(registry) !== "private" && (audiences[registry.id] ?? profileAudience(registry)) !== "hidden"
+  );
+
+  async function move(shown: string[]) {
+    const before = order;
+    // The whole order, so lists that aren't shown keep their places.
+    const next = mergeShownOrder(ordered.map((registry) => registry.id), shown);
+    setOrder(next);
+    try {
+      await run("listOrder.setProfileListOrder", next);
+    } catch (e) {
+      setOrder(before);
+      Alert.alert("That order didn't save", errorMessage(e));
+    }
+  }
+
+  return (
+    <Card>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md }}>
+        <Text variant="title" style={{ fontSize: 20, flexShrink: 1 }}>
+          Registries on your profile
+        </Text>
+        {onProfile.length > 1 || reordering ? (
+          <Button
+            title={reordering ? "Done" : "Reorder"}
+            size="small"
+            variant={reordering ? "primary" : "secondary"}
+            onPress={() => setReordering((value) => !value)}
+          />
+        ) : null}
+      </View>
+      <Text variant="footnote" tone="secondary">
+        {reordering
+          ? "The order people see on your profile."
+          : "Choose who sees each one on your profile. Friends are people you follow who follow you back."}
+      </Text>
+      {registries.length === 0 ? (
+        <Text variant="footnote" tone="tertiary">
+          You don&apos;t own any registries yet.
+        </Text>
+      ) : reordering ? (
+        <ListOrderRows lists={onProfile} onMove={move} />
+      ) : (
+        <View style={{ marginHorizontal: -spacing.lg }}>
+          {ordered.map((registry) => (
+            <ListingRow
+              key={registry.id}
+              registry={registry}
+              audience={audiences[registry.id] ?? profileAudience(registry)}
+              setAudience={(audience) => setAudiences((old) => ({ ...old, [registry.id]: audience }))}
+            />
+          ))}
+        </View>
+      )}
+    </Card>
+  );
+}
+
+function ListingRow({
+  registry,
+  audience,
+  setAudience,
+}: {
+  registry: AccountRegistry;
+  audience: ProfileAudience;
+  setAudience: (audience: ProfileAudience) => void;
+}) {
+  const { run } = useRunPeopleAction();
   const [saving, setSaving] = useState(false);
   const visibility = listVisibility(registry);
 

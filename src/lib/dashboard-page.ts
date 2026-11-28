@@ -14,7 +14,10 @@ import { pickUpcomingEvents } from "@/lib/upcoming-events";
 import { getSessionUser } from "@/lib/viewer";
 import { coveredQuantity, giftActivityAction, giverNameForOwner, itemAsUnreserved, listProgress, reservationsHiddenFrom } from "@/lib/gifts";
 import { itemsHiddenFromOwner, loadPlacements } from "@/lib/list-items";
-import type { DashboardCard, DashboardData, DashboardEvent } from "@/lib/dashboard-page-types";
+import { orderLists } from "@/lib/list-order";
+import { displayName } from "@/lib/profile-link";
+import { profilePhotoUrl } from "@/lib/profile-photos";
+import type { DashboardCard, DashboardData, DashboardEvent, DashboardManager } from "@/lib/dashboard-page-types";
 
 export type * from "@/lib/dashboard-page-types";
 
@@ -50,6 +53,7 @@ function toCard(
   hiddenItemIds: Set<string>,
   role: DashboardCard["role"],
   weekAgo: number,
+  managers: DashboardManager[],
 ): DashboardCard {
   // An owner who hides what's been reserved sees nothing reserved yet.
   const hidden = reservationsHiddenFrom(registry, viewerId);
@@ -89,6 +93,7 @@ function toCard(
     recentActivity: recentPurchases.map((p) => ({ id: p.id, name: giverNameForOwner(p), action: giftActivityAction(p) })),
     giftsThisWeek: visiblePurchases.filter((p) => Date.parse(p.created_at) >= weekAgo).length,
     reservationsHidden: hidden,
+    managers,
   };
 }
 
@@ -171,6 +176,48 @@ async function loadSharedRegistries(supabase: ServerClient, user: User) {
 }
 
 /**
+ * Everyone else who manages each list, owner first, then co-managers in the
+ * order they joined. A list only the viewer manages gets none. A failure
+ * leaves every list with none, rather than failing the tab.
+ */
+async function loadOtherManagers(registryIds: string[], viewerId: string): Promise<Map<string, DashboardManager[]>> {
+  const byList = new Map<string, DashboardManager[]>();
+  if (registryIds.length === 0) return byList;
+  const { data: rows, error } = await supabaseAdmin
+    .from("registry_managers")
+    .select("registry_id, user_id, role, created_at")
+    .in("registry_id", registryIds)
+    .neq("user_id", viewerId)
+    .order("created_at");
+  if (error || !rows || rows.length === 0) return byList;
+
+  const userIds = [...new Set(rows.map((row) => row.user_id as string))];
+  const { data: profiles } = await supabaseAdmin
+    .from("profiles")
+    .select("id, public_id, full_name, avatar_url")
+    .in("id", userIds);
+  const people = new Map(
+    (profiles ?? []).map((profile) => [
+      profile.id as string,
+      { name: displayName(profile), photoUrl: profilePhotoUrl(profile) } satisfies DashboardManager,
+    ]),
+  );
+
+  const sorted = [...rows].sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner"));
+  for (const row of sorted) {
+    const person = people.get(row.user_id as string) ?? { name: displayName({ full_name: null }), photoUrl: null };
+    byList.set(row.registry_id as string, [...(byList.get(row.registry_id as string) ?? []), person]);
+  }
+  return byList;
+}
+
+/** The order the person chose for their lists, or null. Null too until 20261128085244_list_order.sql has run. */
+async function loadListOrder(supabase: ServerClient, userId: string): Promise<string[] | null> {
+  const { data, error } = await supabase.from("profiles").select("list_order").eq("id", userId).maybeSingle();
+  return error ? null : ((data?.list_order as string[] | null) ?? null);
+}
+
+/**
  * "Coming up": the soonest events the user hosts or co-hosts, other people's
  * events they're invited to, and other people's events that link their lists,
  * as the Events tab lists them. An event that's in more than one keeps its
@@ -240,7 +287,7 @@ export async function loadDashboard(): Promise<DashboardData | null> {
 
   // None of these needs another's result, so they run at the same time.
   // The page waits for the slowest one, not for all of them in a row.
-  const [{ data: registries }, sharedRegistries, followRequestCount, upcomingEvents] = await Promise.all([
+  const [{ data: registries }, sharedRegistries, followRequestCount, upcomingEvents, listOrder] = await Promise.all([
     supabase
       .from("registries")
       .select(REGISTRY_CARD_FIELDS)
@@ -256,10 +303,17 @@ export async function loadDashboard(): Promise<DashboardData | null> {
           console.error("[dashboard] Failed to load upcoming events:", error);
           return [];
         }),
+    loadListOrder(supabase, user.id),
   ]);
 
   const owned = registries || [];
-  const hiddenItemIds = await withPlacedItems([...owned, ...sharedRegistries], user.id);
+  const [hiddenItemIds, managers] = await Promise.all([
+    withPlacedItems([...owned, ...sharedRegistries], user.id),
+    loadOtherManagers(
+      [...owned, ...sharedRegistries].map((registry) => registry.id as string),
+      user.id,
+    ),
+  ]);
 
   const weekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
   // An item on several lists counts its gifts once.
@@ -278,9 +332,19 @@ export async function loadDashboard(): Promise<DashboardData | null> {
       .map((p) => p.id),
   ).size;
 
+  const card = (registry: any, role: DashboardCard["role"]) =>
+    toCard(registry, user.id, hiddenItemIds, role, weekAgo, managers.get(registry.id) ?? []);
+  const ownedCards = owned.map((registry) => card(registry, "owner"));
+  const sharedCards = sharedRegistries.map((registry) => card(registry, "manager"));
+
   return {
-    owned: owned.map((registry) => toCard(registry, user.id, hiddenItemIds, "owner", weekAgo)),
-    shared: sharedRegistries.map((registry) => toCard(registry, user.id, hiddenItemIds, "manager", weekAgo)),
+    owned: ownedCards,
+    shared: sharedCards,
+    // Newest first, until the person puts them in their own order.
+    lists: orderLists(
+      [...ownedCards, ...sharedCards].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+      listOrder,
+    ),
     giftsThisWeek,
     followRequestCount,
     // Until one of their registries is on their profile, the profile link has

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { EyeOff, Lock, PartyPopper } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ListProgressBar } from "@/components/list-progress-bar";
+import { ManagerAvatars } from "@/components/manager-avatars";
 import { Progress } from "@/components/ui/progress";
 import { RegistryIcon } from "@/components/registry-icon";
+import type { DashboardManager } from "@/lib/dashboard-page-types";
 import type { ListProgress } from "@/lib/gifts";
 import { countdownLabel, occasionTheme } from "@/lib/occasion-theme";
 import { occasionLabel } from "@/lib/registry-copy";
@@ -35,9 +37,11 @@ export interface DashboardRegistryCardProps {
    * instead of showing progress. Pass zero fulfilled items and no gifts this week.
    */
   reservationsHidden?: boolean;
+  /** Everyone else who manages the list. Their faces show on the cover. */
+  managers?: DashboardManager[];
   /**
    * The title's heading level. Cards right under the page's h1 use 2. Cards
-   * under a section h2, like "Shared with you", use 3.
+   * under a section h2, like "Your lists", use 3.
    */
   headingLevel?: 2 | 3;
 }
@@ -46,7 +50,8 @@ export interface DashboardRegistryCardProps {
  * A list on the My registries tab. The cover across the top is the list's
  * photo, or its occasion's color and icon (src/lib/occasion-theme.ts), and
  * counts down to its date. Under it are the title, a progress bar and one
- * line about its gifts. Its total value, who gave what and the link to its
+ * line about its gifts. A list someone else also manages shows their faces
+ * at the cover's right (ManagerAvatars). Its total value, who gave what and the link to its
  * public page are on the list's own page. A click anywhere on the card opens
  * the list (see clickable-card in globals.css). The phone app's home screen
  * draws the same card (mobile/src/components/home/list-cover-card.tsx).
@@ -65,6 +70,7 @@ export function DashboardRegistryCard({
   photoUrl,
   isPrivate = false,
   reservationsHidden = false,
+  managers = [],
   headingLevel = 2,
 }: DashboardRegistryCardProps) {
   const Heading = headingLevel === 3 ? "h3" : "h2";
@@ -97,10 +103,15 @@ export function DashboardRegistryCard({
               {countdown}
             </span>
           )}
-          {isPrivate && (
-            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-secondary">
-              <Lock aria-hidden="true" className="size-3" />
-              Private
+          {(isPrivate || managers.length > 0) && (
+            <span className="ml-auto flex items-center gap-2">
+              {isPrivate && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-secondary">
+                  <Lock aria-hidden="true" className="size-3" />
+                  Private
+                </span>
+              )}
+              <ManagerAvatars managers={managers} />
             </span>
           )}
         </div>

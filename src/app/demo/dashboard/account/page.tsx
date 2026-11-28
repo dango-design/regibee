@@ -34,6 +34,7 @@ export default function DemoAccountPage() {
         follows={DEMO_FOLLOWS}
         saveAction={demoOk}
         listAction={demoOk}
+        profileOrderAction={demoOk}
         // The photo stays in the browser. Nothing is uploaded.
         uploadPhoto={demoUpload}
         photoAction={demoOk}
