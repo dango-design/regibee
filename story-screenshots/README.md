@@ -10,7 +10,7 @@ These tests take a screenshot of every Storybook story and compare it with a sav
 - Stories are served from `https://storybook.test`, a made-up address that Playwright answers from `storybook-static`. It has to be https: Storybook gives a play function the `userEvent` in its context (`async ({ userEvent }) => ...`) only when the browser offers `navigator.clipboard`, and browsers offer that only on https pages and localhost.
 - The baselines are PNG files in `baselines/`, one for each story, named by the story's id. They are committed, so each branch carries its own baselines and a merge brings them to `main`.
 - It skips the stories Chromatic skips: the ones with `parameters: { chromatic: { disableSnapshot: true } }`.
-- A story with `globals: { viewport: { value: "mobile1" } }` is taken at that viewport's size. Every other story is 1200 pixels wide.
+- A story with `globals: { viewport: { value: "mobile1" } }` is taken at that viewport's size, such as 320 pixels wide for `mobile1`. The sizes come from `parameters.viewport.options` in `.storybook/preview.ts`, the same list Chromatic reads. Every other story is 1200 pixels wide.
 - Any pixel that differs fails the story.
 
 ## When the check fails

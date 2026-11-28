@@ -1,4 +1,5 @@
 import type { Decorator, Preview } from "@storybook/react";
+import { MINIMAL_VIEWPORTS } from "storybook/viewport";
 import { fontVariables } from "../src/app/fonts";
 import "../src/app/globals.css";
 
@@ -25,6 +26,14 @@ const preview: Preview = {
     nextjs: {
       appDirectory: true,
     },
+    // The viewports a story can pick with `globals: { viewport: { value: "mobile1" } }`.
+    // Storybook's toolbar offers these even without this line, but Chromatic
+    // only knows a viewport's size when it is listed here. Without it,
+    // Chromatic took every phone story at its default 1200px width. With it,
+    // Chromatic takes a phone story once, at 320px, in place of the 1200px
+    // snapshot. The story screenshots (story-screenshots/) read the sizes from
+    // here too.
+    viewport: { options: MINIMAL_VIEWPORTS },
   },
   globalTypes: {
     theme: {
