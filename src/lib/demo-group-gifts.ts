@@ -12,6 +12,7 @@
 import type { DemoPurchase, DemoRegistry } from "@/lib/demo-registries";
 import { addDays } from "@/lib/demo-data";
 import { DEMO_OZ, type DemoPerson } from "@/lib/demo-people";
+import { GROUP_GIFT_HOLD_DAYS } from "@/lib/gifts";
 import {
   groupGiftReservationName,
   type EventGroupGift,
@@ -90,6 +91,8 @@ export function demoGroupGiftReservation(today: string, gift: DemoGroupGift, ite
     quantity: 1,
     amount: null,
     status: "reserved",
+    // Held until the organizer buys it, like startGroupGift's reservation.
+    reserved_until: `${addDays(today, GROUP_GIFT_HOLD_DAYS - gift.startedDaysAgo)}T19:30:00Z`,
     message: null,
     created_at: `${addDays(today, -gift.startedDaysAgo)}T19:30:00Z`,
     item_title: itemTitle,
