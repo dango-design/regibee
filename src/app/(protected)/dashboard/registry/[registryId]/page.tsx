@@ -194,7 +194,8 @@ export default async function RegistryManagePage({
               })}`
             : null
         }
-        access={{ visibility, audience, href: registrySettingsHref(registryId, "sharing") }}
+        // canPlanEvents is false only for a guest account, which has no profile.
+        access={{ visibility, audience, href: registrySettingsHref(registryId, "sharing"), noProfile: !canPlanEvents }}
         sharePath={registryUrl}
         links={{
           preview: registryUrl,

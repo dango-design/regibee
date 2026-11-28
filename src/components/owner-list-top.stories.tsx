@@ -1,5 +1,6 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import type { ListVisibility, ProfileAudience } from "@/lib/list-access";
 import { NavBar } from "./nav-bar";
 import { listHeader } from "@/lib/list-headers";
 import { ListHeaderPicker } from "./list-header-picker";
@@ -53,6 +54,11 @@ const meta: Meta<typeof OwnerListTop> = {
     events: [],
     unlinkAction: fn(async () => ({ error: null })),
     dismissAction: fn(async () => ({ error: null })),
+    shareAction: fn(async (_registryId: string, change: { visibility: ListVisibility; profileAudience?: ProfileAudience }) => ({
+      error: null,
+      visibility: change.visibility,
+      audience: change.visibility === "private" ? ("hidden" as const) : (change.profileAudience ?? ("friends" as const)),
+    })),
   },
 };
 export default meta;
@@ -96,19 +102,79 @@ export const HiddenGiftsExplained: Story = {
   },
 };
 
-/** Share copies the link and says who can open the list. */
+/** Opens Share and returns its panel. */
+async function openShare(canvasElement: HTMLElement) {
+  await userEvent.click(within(canvasElement).getByRole("button", { name: "Share" }));
+  const dialog = await within(document.body).findByRole("dialog", { name: "Share" });
+  // The panel fades in, so it's in the page a moment before it's visible.
+  await waitFor(() => expect(dialog).toBeVisible());
+  return within(dialog);
+}
+
+/** Opens one of the panel's dropdowns and picks an option. The list opens outside the panel. */
+async function choose(panel: ReturnType<typeof within>, field: RegExp, option: string) {
+  await userEvent.click(panel.getByRole("button", { name: field }));
+  const list = within(document.body);
+  // The list fades in, so an option is in the page a moment before it's visible.
+  await waitFor(() => expect(list.getByRole("option", { name: option })).toBeVisible());
+  await userEvent.click(list.getByRole("option", { name: option }));
+}
+
+/** Share copies the link, and says who can open the list and who sees it on the profile. */
 export const ShareOpen: Story = {
   ...Wishlist,
   parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Share" }));
-    const dialog = within(await within(document.body).findByRole("dialog", { name: "Share" }));
-    await expect(dialog.getByText("Anyone with the link")).toBeVisible();
-    await expect(dialog.getByText("Friends")).toBeVisible();
-    await expect(dialog.getByRole("textbox", { name: "List link" })).toHaveValue(
+    const panel = await openShare(canvasElement);
+    await expect(panel.getByRole("button", { name: /Who can open it/ })).toHaveTextContent("Anyone with the link");
+    await expect(panel.getByRole("button", { name: /On your profile/ })).toHaveTextContent("Friends");
+    await expect(panel.getByRole("textbox", { name: "List link" })).toHaveValue(
       `${window.location.origin}/r/dorothys-wishlist-k2m9x4p7q1zw`,
     );
+  },
+};
+
+/** Picking who sees it on the profile saves at once, with no warning. */
+export const ShareChangeProfile: Story = {
+  ...Wishlist,
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement, args }) => {
+    const panel = await openShare(canvasElement);
+    await choose(panel, /On your profile/, "Followers");
+    await expect(args.shareAction).toHaveBeenCalledWith("reg-1", { visibility: "link", profileAudience: "followers" });
+    await expect(await panel.findByText("Saved")).toBeVisible();
+    await expect(panel.getByRole("button", { name: /On your profile/ })).toHaveTextContent("Followers");
+  },
+};
+
+/**
+ * Picking Private warns what it breaks, naming the list's events, and saves
+ * nothing until it's confirmed.
+ */
+export const SharePrivateWarning: Story = {
+  ...Wishlist,
+  play: async ({ canvasElement, args }) => {
+    const panel = await openShare(canvasElement);
+    await choose(panel, /Who can open it/, "Private");
+    await expect(await panel.findByText("Make this list private?")).toBeVisible();
+    await expect(panel.getByText(/comes off Dorothy's 60th, your profile and any groups/)).toBeVisible();
+    await expect(args.shareAction).not.toHaveBeenCalled();
+    await expect(panel.getByRole("button", { name: "Make private" })).toBeVisible();
+  },
+};
+
+/** Confirming makes it private, and the panel drops the link. */
+export const SharePrivateConfirmed: Story = {
+  ...Wishlist,
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement, args }) => {
+    const panel = await openShare(canvasElement);
+    await choose(panel, /Who can open it/, "Private");
+    await userEvent.click(await panel.findByRole("button", { name: "Make private" }));
+    await expect(args.shareAction).toHaveBeenCalledWith("reg-1", { visibility: "private" });
+    await expect(await panel.findByText("This list is private")).toBeVisible();
+    await expect(panel.queryByRole("textbox")).not.toBeInTheDocument();
+    await expect(panel.queryByRole("button", { name: /On your profile/ })).not.toBeInTheDocument();
   },
 };
 
@@ -117,11 +183,22 @@ export const SharePrivate: Story = {
   args: { access: { visibility: "private", audience: "hidden", href: "#settings" } },
   parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Share" }));
-    const dialog = within(await within(document.body).findByRole("dialog", { name: "Share" }));
-    await expect(dialog.getByText("This list is private")).toBeVisible();
-    await expect(dialog.queryByRole("textbox")).not.toBeInTheDocument();
+    const panel = await openShare(canvasElement);
+    await expect(panel.getByText("This list is private")).toBeVisible();
+    await expect(panel.queryByRole("textbox")).not.toBeInTheDocument();
+  },
+};
+
+/** A co-manager can change who can open it, and sees who the owner shows it to on their profile. */
+export const ShareAsManager: Story = {
+  ...Wishlist,
+  args: { ...Wishlist.args, manager: true },
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const panel = await openShare(canvasElement);
+    await expect(panel.getByRole("button", { name: /Who can open it/ })).toBeVisible();
+    await expect(panel.getByText("On the owner's profile")).toBeVisible();
+    await expect(panel.queryByRole("button", { name: /On your profile/ })).not.toBeInTheDocument();
   },
 };
 

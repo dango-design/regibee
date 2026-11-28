@@ -61,7 +61,7 @@ import { RegistryTabs } from "@/components/registry-tabs";
 import { OwnerListTop } from "@/components/owner-list-top";
 import { ListHeaderPicker } from "@/components/list-header-picker";
 import { headerChoice, headerOccasion, listHeader, type HeaderChoice } from "@/lib/list-headers";
-import { listVisibility, profileAudience } from "@/lib/list-access";
+import { clampProfileAudience, listVisibility, profileAudience, type ListVisibility, type ProfileAudience } from "@/lib/list-access";
 import { AddCashFundDialog } from "@/components/add-cash-fund-dialog";
 import { CashFundCard } from "@/components/cash-fund-card";
 import { PlainLinksNotice } from "@/components/plain-links-notice";
@@ -1121,6 +1121,22 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
     return { error: null };
   };
 
+  // Sharing changes from the Share panel last until you leave too.
+  const [access, setAccess] = useState(() => ({
+    visibility: listVisibility(registry),
+    audience: profileAudience(registry),
+  }));
+  const saveSharing = async (
+    _registryId: string,
+    change: { visibility: ListVisibility; profileAudience?: ProfileAudience },
+  ) => {
+    const visibility = change.visibility;
+    const audience = change.profileAudience ?? (visibility === "private" ? "hidden" : access.audience);
+    const saved = { visibility, audience: clampProfileAudience(audience, visibility) };
+    setAccess(saved);
+    return { error: null, ...saved };
+  };
+
   const handleAddItem = (item: DemoItem) => {
     setItems((prev) => [...prev, item]);
   };
@@ -1277,8 +1293,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
             : null
         }
         access={{
-          visibility: listVisibility(registry),
-          audience: profileAudience(registry),
+          ...access,
           href: `/demo/dashboard/registry/${registry.id}/settings`,
         }}
         sharePath={publicPath}
@@ -1299,6 +1314,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
         basePath="/demo"
         unlinkAction={unlinkEvent}
         dismissAction={dismissEventPrompt}
+        shareAction={saveSharing}
       />
 
       <div className="container mx-auto px-4 py-8">

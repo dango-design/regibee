@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
-import { createAccount, createExchangeEvent, createWishlist, db, signIn, waitForReact } from "./fixtures";
+import { chooseOption, createAccount, createExchangeEvent, createWishlist, db, signIn, waitForReact } from "./fixtures";
 import { localSupabase } from "./local-supabase";
 
 test("a private list opens only for its owner and co-managers", async ({ page, browser }) => {
@@ -81,6 +81,66 @@ test("a private list opens only for its owner and co-managers", async ({ page, b
     .from("event_registries")
     .insert({ event_id: event.id, registry_id: registry.id, linked_by: owner.id });
   expect(relinkError?.message).toContain("A private list can't be shared");
+});
+
+test("the Share panel makes a list private after a warning, and opens it again", async ({ page, browser }) => {
+  const owner = await createAccount("Sasha Owner");
+  const { registry } = await createWishlist(owner.id);
+  await db.from("registries").update({ listed_on_profile: true }).eq("id", registry.id);
+  const { event } = await createExchangeEvent(owner.id, [{ name: "Sasha", email: owner.email }]);
+  const { error: linkError } = await db
+    .from("event_registries")
+    .insert({ event_id: event.id, registry_id: registry.id, linked_by: owner.id });
+  if (linkError) throw linkError;
+
+  await signIn(page, owner);
+  await page.goto(`/dashboard/registry/${registry.id}`);
+  const share = page.getByRole("button", { name: "Share", exact: true });
+  await waitForReact(share);
+  await share.click();
+  const panel = page.getByRole("dialog", { name: "Share" });
+  await expect(panel.getByRole("button", { name: /Who can open it/ })).toHaveText(/Public/);
+
+  // Picking Private warns, naming the event, and saves nothing yet.
+  await chooseOption(panel, /Who can open it/, "Private");
+  await expect(panel.getByText("Make this list private?")).toBeVisible();
+  await expect(panel.getByText(new RegExp(`comes off ${event.title}, your profile`))).toBeVisible();
+  const { data: before } = await db.from("registries").select("is_private").eq("id", registry.id).single();
+  expect(before?.is_private).toBe(false);
+
+  await panel.getByRole("button", { name: "Make private" }).click();
+  await expect(panel.getByText("This list is private")).toBeVisible();
+  await expect(panel.getByRole("textbox", { name: "List link" })).toBeHidden();
+  // The panel shows the choice at once, then saves it.
+  await expect(panel.getByText("Saved")).toBeVisible();
+
+  const { data: saved } = await db
+    .from("registries")
+    .select("is_private, is_public, listed_on_profile")
+    .eq("id", registry.id)
+    .single();
+  expect(saved).toEqual({ is_private: true, is_public: false, listed_on_profile: false });
+  const { count: onEvents } = await db
+    .from("event_registries")
+    .select("registry_id", { count: "exact", head: true })
+    .eq("registry_id", registry.id);
+  expect(onEvents).toBe(0);
+
+  const stranger = await (await browser.newContext()).newPage();
+  expect((await stranger.goto(`/r/${registry.slug}`))?.status()).toBe(404);
+
+  // Anyone with the link saves at once, with no warning, and the link shows again.
+  await chooseOption(panel, /Who can open it/, "Anyone with the link");
+  await expect(panel.getByRole("textbox", { name: "List link" })).toHaveValue(new RegExp(`/r/${registry.slug}$`));
+  await expect(panel.getByText("Saved")).toBeVisible();
+  const { data: reopened } = await db
+    .from("registries")
+    .select("is_private, is_public")
+    .eq("id", registry.id)
+    .single();
+  expect(reopened).toEqual({ is_private: false, is_public: false });
+  expect((await stranger.goto(`/r/${registry.slug}`))?.status()).toBe(200);
+  await expect(stranger.getByRole("heading", { name: registry.title })).toBeVisible();
 });
 
 test("new lists start as anyone with the link", async ({ page }) => {

@@ -4,7 +4,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  accessChangeWarning,
   clampProfileAudience,
+  profileChangeNotice,
+  sharingColumns,
   profileAudience,
   profileAudienceChoices,
   profileAudienceColumns,
@@ -72,4 +75,77 @@ test("each audience includes the ones before it", () => {
   assert.deepEqual(seen("friends"), ["owner", "friend"]);
   assert.deepEqual(seen("followers"), ["owner", "friend", "follower"]);
   assert.deepEqual(seen("everyone"), ["owner", "friend", "follower", "other"]);
+});
+
+test("making a list private takes it off the profile, whoever does it", () => {
+  for (const isOwner of [true, false]) {
+    assert.deepEqual(sharingColumns({ visibility: "private", isOwner, audience: "everyone" }), {
+      is_private: true,
+      is_public: false,
+      listed_on_profile: false,
+    });
+  }
+});
+
+test("only the owner's profile choice is saved, clamped to what the access allows", () => {
+  assert.deepEqual(sharingColumns({ visibility: "link", isOwner: true, audience: "everyone" }), {
+    is_private: false,
+    is_public: false,
+    listed_on_profile: true,
+    profile_audience: "followers",
+  });
+  assert.deepEqual(sharingColumns({ visibility: "public", isOwner: true, audience: "hidden" }), {
+    is_private: false,
+    is_public: true,
+    listed_on_profile: false,
+    profile_audience: null,
+  });
+  assert.deepEqual(sharingColumns({ visibility: "public", isOwner: false, audience: "everyone" }), {
+    is_private: false,
+    is_public: true,
+  });
+});
+
+test("changing only who can open it keeps the saved profile choice", () => {
+  assert.deepEqual(sharingColumns({ visibility: "link", isOwner: true }), { is_private: false, is_public: false });
+});
+
+test("older app builds' listedOnProfile turns the listing on or off", () => {
+  assert.deepEqual(sharingColumns({ visibility: "link", isOwner: true, listedOnProfile: true }), {
+    is_private: false,
+    is_public: false,
+    listed_on_profile: true,
+  });
+  assert.deepEqual(sharingColumns({ visibility: "link", isOwner: false, listedOnProfile: true }), {
+    is_private: false,
+    is_public: false,
+  });
+});
+
+const noLinks = { events: [], onProfile: false, isOwner: true };
+
+test("going private warns what comes off, and going public warns about search engines", () => {
+  assert.equal(accessChangeWarning("link", "link", noLinks), null);
+  assert.equal(accessChangeWarning("public", "link", noLinks), null);
+  assert.equal(accessChangeWarning("private", "link", noLinks), null);
+  assert.equal(accessChangeWarning("link", "public", noLinks)?.confirm, "Make public");
+  assert.equal(accessChangeWarning("private", "public", noLinks)?.confirm, "Make public");
+
+  const warning = accessChangeWarning("link", "private", { events: ["Baby shower"], onProfile: true, isOwner: true });
+  assert.equal(warning?.confirm, "Make private");
+  assert.match(warning!.text, /comes off Baby shower, your profile and any groups it's shared with\./);
+  assert.match(
+    accessChangeWarning("public", "private", noLinks)!.text,
+    /comes off any groups it's shared with\./,
+  );
+  assert.match(
+    accessChangeWarning("link", "private", { events: ["A", "B", "C"], onProfile: true, isOwner: false })!.text,
+    /comes off A, 2 other events, the owner's profile and any groups/,
+  );
+});
+
+test("a list that stops being public says it now shows to followers", () => {
+  assert.match(profileChangeNotice({ visibility: "public", audience: "everyone" }, "link", true) ?? "", /followers/);
+  assert.equal(profileChangeNotice({ visibility: "public", audience: "friends" }, "link", true), null);
+  assert.equal(profileChangeNotice({ visibility: "public", audience: "everyone" }, "private", true), null);
 });

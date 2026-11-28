@@ -22,8 +22,10 @@ import {
   DEFAULT_LIST_VISIBILITY,
   parseListVisibility,
   parseProfileAudience,
-  profileAudienceColumns,
-  visibilityColumns,
+  profileAudience,
+  sharingColumns,
+  type ListVisibility,
+  type ProfileAudience,
 } from "@/lib/list-access";
 import { registryPhotoUrlPrefix } from "@/lib/registry-photos";
 import { buildBuyerRegistryUrl } from "@/lib/buyer-link";
@@ -322,24 +324,16 @@ export async function updateRegistry(registryId: string, formData: FormData) {
   const visibility = parseListVisibility(formData.get("visibility"));
   if (!visibility) return { error: "Choose who can open this list." };
 
-  // A listed registry appears under its owner's name, so only the owner can
-  // list it, and choose who sees it there (profileAudience). Private ones
-  // come off the profile, whoever makes them private. A list that stops being
-  // public keeps its choice: profileAudience reads "everyone" as followers
-  // then, so nobody needs to save it again.
-  //
-  // Older versions of the phone app only send listedOnProfile. That turns the
-  // listing on or off and leaves the saved choice alone.
+  // Who can open it and who sees it on the profile follow sharingColumns'
+  // rules, which the Share panel's updateListSharing uses too. Older versions
+  // of the phone app only send listedOnProfile.
   const listedField = formData.get("listedOnProfile");
-  const audienceField = parseProfileAudience(formData.get("profileAudience"));
-  let listing: { listed_on_profile?: boolean; profile_audience?: string | null } = {};
-  if (visibility === "private") {
-    listing.listed_on_profile = false;
-  } else if (role === "owner" && audienceField) {
-    listing = profileAudienceColumns(audienceField, visibility);
-  } else if (role === "owner" && listedField !== null) {
-    listing.listed_on_profile = listedField === "true";
-  }
+  const sharing = sharingColumns({
+    visibility,
+    isOwner: role === "owner",
+    audience: parseProfileAudience(formData.get("profileAudience")),
+    listedOnProfile: listedField === null ? null : listedField === "true",
+  });
 
   const { error } = await supabase
     .from("registries")
@@ -349,8 +343,7 @@ export async function updateRegistry(registryId: string, formData: FormData) {
       parent_names: honoreeNames || null,
       event_date: eventDate || null,
       description: description || null,
-      ...visibilityColumns(visibility),
-      ...listing,
+      ...sharing,
     })
     .eq("id", registryId);
 
@@ -360,6 +353,46 @@ export async function updateRegistry(registryId: string, formData: FormData) {
 
   revalidatePath(`/dashboard/registry/${registryId}`);
   return { success: true };
+}
+
+/**
+ * Saves who can open a list, and who sees it on the owner's profile, from the
+ * Share panel on the list's page. Same rules as the Settings page
+ * (sharingColumns). Any manager can change who can open it; only the owner's
+ * profile choice is saved. Returns what was saved, since the profile choice
+ * can be clamped.
+ */
+export async function updateListSharing(
+  registryId: string,
+  change: { visibility: ListVisibility; profileAudience?: ProfileAudience | null },
+): Promise<{ error: string } | { error: null; visibility: ListVisibility; audience: ProfileAudience }> {
+  const { user, role, error: authError } = await requireManager(registryId);
+  if (authError || !user) return { error: authError || "Not authenticated" };
+
+  const visibility = parseListVisibility(change.visibility);
+  if (!visibility) return { error: "Choose who can open this list." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("registries")
+    .update(
+      sharingColumns({
+        visibility,
+        isOwner: role === "owner",
+        audience: parseProfileAudience(change.profileAudience),
+      }),
+    )
+    .eq("id", registryId)
+    .select("is_public, is_private, listed_on_profile, profile_audience")
+    .single();
+  if (error || !data) {
+    console.error("[registry] Failed to save sharing:", error);
+    return { error: "We couldn't save that. Try again." };
+  }
+
+  revalidatePath(`/dashboard/registry/${registryId}`, "layout");
+  revalidatePath("/dashboard");
+  return { error: null, visibility, audience: profileAudience(data) };
 }
 
 /**
