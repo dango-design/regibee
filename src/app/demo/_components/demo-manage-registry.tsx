@@ -675,9 +675,11 @@ function DemoItemCard({
           </div>
 
           <div className="flex-1 min-w-0 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
+            {/* The badge sits beside the title when both fit, and wraps under
+                it when they don't. It shortens only on a line of its own. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <h3 className="text-sm font-medium min-w-0 break-words">{item.title}</h3>
-              <div className="h-6 min-w-0 max-w-[45%] shrink">
+              <div className="h-6 min-w-0 max-w-full">
                 {status.tag && (
                   <Tag variant={status.tag.kind} className="max-w-full overflow-hidden text-ellipsis block">
                     {status.tag.label}
