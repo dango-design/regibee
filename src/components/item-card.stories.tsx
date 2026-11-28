@@ -95,7 +95,6 @@ export const ParentPurchased: Story = {
 export const Phone: Story = {
   ...WithImage,
   globals: { viewport: { value: "mobile1" } },
-  parameters: { ...WithImage.parameters, chromatic: { modes: { "probe-320": { viewport: 320 } } } },
 };
 
 // The link is a registry item link from the owner's Amazon registry, so a
