@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { TextArea } from "@/components/base/textarea/textarea";
 import {
   Dialog,
@@ -38,15 +37,6 @@ interface AddCashFundDialogProps {
   action?: typeof addCashFund;
 }
 
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
-
 const METHODS = [
   { name: "venmo", label: "Venmo", placeholder: "@your-venmo" },
   { name: "paypal", label: "PayPal", placeholder: "you@email.com or PayPal.me link" },
@@ -71,7 +61,6 @@ export function AddCashFundDialog({
   const open = controlled ? openProp : openState;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [currency, setCurrency] = useState("USD");
   // With no payment methods yet, the fields show right away. Otherwise the
   // saved ones show as text, with Edit to change them here.
   const [editingMethods, setEditingMethods] = useState(!hasMethods(paymentMethods));
@@ -139,10 +128,9 @@ export function AddCashFundDialog({
           <InputGroup
             label="Goal Amount (optional)"
             name="goalAmount"
-            prefix={currencySymbols[currency] || "$"}
-            trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
           >
             <InputBase
+              icon={DollarSign}
               type="number"
               inputMode="decimal"
               step="0.01"

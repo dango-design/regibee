@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, DollarSign } from "lucide-react";
 import { Clipboard, Link01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
 import { CategoryField } from "@/components/category-field";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -120,15 +119,6 @@ export const readLinkMessages = {
 /** The category field's key for a guessed category the list doesn't have yet. */
 const NEW_CATEGORY_KEY = "__new_category__";
 
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
-
 export function AddItemDialog({
   registryId: defaultRegistryId,
   categories: defaultCategories,
@@ -166,7 +156,6 @@ export function AddItemDialog({
   const [parentPurchased, setParentPurchased] = useState(false);
   const [openToUsed, setOpenToUsed] = useState(false);
   const [taxInfo, setTaxInfo] = useState<{ original: string; rate: number } | null>(null);
-  const [currency, setCurrency] = useState("USD");
   const [title, setTitle] = useState(openWithLink?.title || defaultValues?.title || "");
   const [price, setPrice] = useState(defaultValues?.price ? parseFloat(defaultValues.price).toFixed(2) : "");
   const [imageUrl, setImageUrl] = useState("");
@@ -407,7 +396,6 @@ export function AddItemDialog({
     setParentPurchased(false);
     setOpenToUsed(false);
     setTaxInfo(null);
-    setCurrency("USD");
     setTitle(defaultValues?.title || "");
     setPrice(defaultValues?.price ? parseFloat(defaultValues.price).toFixed(2) : "");
     setImageUrl("");
@@ -699,19 +687,18 @@ export function AddItemDialog({
             )}
           </div>
 
-          {/* On phones the price gets most of the row: its $ and currency
-              picker leave little room to type otherwise. */}
+          {/* On phones the price gets most of the row. The quantity needs
+              little room. */}
           <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-4 sm:grid-cols-2">
             <InputGroup
               label="Price (optional)"
               name="price"
               value={price}
               onChange={handlePriceChange}
-              prefix={currencySymbols[currency] || "$"}
-              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
             >
               <InputBase
                 ref={priceRef}
+                icon={DollarSign}
                 type="number"
                 inputMode="decimal"
                 step="0.01"

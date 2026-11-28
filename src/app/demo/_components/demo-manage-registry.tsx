@@ -21,6 +21,7 @@ import {
   Pencil,
   Loader2,
   Lightbulb,
+  DollarSign,
 } from "lucide-react";
 import { Link01 } from "@untitledui/icons";
 import { RowActionsMenu, type RowAction } from "@/components/row-actions-menu";
@@ -32,7 +33,6 @@ import { Tag } from "@/components/ui/tag";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup, InputPrefix } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -113,15 +113,6 @@ interface DemoSuggestion {
 // browser tab. It lasts until the page reloads.
 export const demoUpload = async (file: File) => ({ url: URL.createObjectURL(file) });
 
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
-
 function DemoAddItemDialog({
   categories,
   onAdd,
@@ -133,7 +124,6 @@ function DemoAddItemDialog({
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
   const [openToUsed, setOpenToUsed] = useState(false);
-  const [currency, setCurrency] = useState("USD");
   const [imageUrl, setImageUrl] = useState("");
   const urlRef = React.useRef<HTMLInputElement>(null);
   const titleRef = React.useRef<HTMLInputElement>(null);
@@ -210,7 +200,7 @@ function DemoAddItemDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setScrapeStatus(""); setOpenToUsed(false); setCurrency("USD"); setImageUrl(""); } }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setScrapeStatus(""); setOpenToUsed(false); setImageUrl(""); } }}>
       <DialogTrigger asChild>
         <Button>
           <span className="inline-flex items-center gap-1.5">
@@ -311,11 +301,10 @@ function DemoAddItemDialog({
           <div className="grid grid-cols-2 gap-4">
             <InputGroup
               label="Price (optional)"
-              prefix={currencySymbols[currency] || "$"}
-              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
             >
               <InputBase
                 ref={priceRef}
+                icon={DollarSign}
                 name="price"
                 type="number"
                 step="0.01"
@@ -398,7 +387,6 @@ function DemoEditItemDialog({
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState("");
   const [openToUsed, setOpenToUsed] = useState(false);
-  const [currency, setCurrency] = useState("USD");
   const [imageUrl, setImageUrl] = useState(item.image_url || "");
   const urlRef = React.useRef<HTMLInputElement>(null);
   const titleRef = React.useRef<HTMLInputElement>(null);
@@ -472,7 +460,7 @@ function DemoEditItemDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setScrapeStatus(""); setOpenToUsed(false); setCurrency("USD"); setImageUrl(item.image_url || ""); } }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setScrapeStatus(""); setOpenToUsed(false); setImageUrl(item.image_url || ""); } }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Edit item</DialogTitle>
@@ -547,11 +535,10 @@ function DemoEditItemDialog({
           <div className="grid grid-cols-2 gap-4">
             <InputGroup
               label="Price (optional)"
-              prefix={currencySymbols[currency] || "$"}
-              trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
             >
               <InputBase
                 ref={priceRef}
+                icon={DollarSign}
                 name="price"
                 type="number"
                 step="0.01"
@@ -689,9 +676,13 @@ function DemoItemCard({
 
           <div className="flex-1 min-w-0 flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">{item.title}</h3>
-              <div className="shrink-0 h-6">
-                {status.tag && <Tag variant={status.tag.kind}>{status.tag.label}</Tag>}
+              <h3 className="text-sm font-medium min-w-0 break-words">{item.title}</h3>
+              <div className="h-6 min-w-0 max-w-[45%] shrink">
+                {status.tag && (
+                  <Tag variant={status.tag.kind} className="max-w-full overflow-hidden text-ellipsis block">
+                    {status.tag.label}
+                  </Tag>
+                )}
               </div>
             </div>
 
@@ -1377,7 +1368,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
                         Gift Funds
                         <Badge variant="secondary">{funds.length}</Badge>
                       </h3>
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {funds.map((fund) => (
                           <CashFundCard
                             key={fund.id}
@@ -1402,7 +1393,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
                           {category.name}
                           <Badge variant="secondary">{categoryItems.length}</Badge>
                         </h3>
-                        <div className="grid gap-3 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {categoryItems.map((item) => itemCard(item, category.name))}
                         </div>
                       </div>
@@ -1412,7 +1403,7 @@ export function DemoManageRegistry({ registryId }: { registryId: string }) {
                   {uncategorized.length > 0 && (
                     <div id={getCategorySectionId(null)} className="scroll-mt-20">
                       <h3 className="font-display text-lg font-semibold mb-3">Other</h3>
-                      <div className="grid gap-3 md:grid-cols-2">{uncategorized.map((item) => itemCard(item))}</div>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{uncategorized.map((item) => itemCard(item))}</div>
                     </div>
                   )}
                 </div>

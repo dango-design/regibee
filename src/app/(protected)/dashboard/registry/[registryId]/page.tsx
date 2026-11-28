@@ -159,7 +159,7 @@ export default async function RegistryManagePage({
           </h3>
           <FundsPositionMenu registryId={registryId} position={fundsAt} />
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {allFunds.map((fund) => (
             <CashFundCard key={fund.id} fund={fund} registryId={registryId} highlightId={highlight} purchases={purchasesByFundId.get(fund.id)} />
           ))}
@@ -335,7 +335,7 @@ export default async function RegistryManagePage({
                           {category.name}
                           <Badge variant="secondary">{categoryItems.length}</Badge>
                         </h3>
-                        <div className="grid gap-3 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {categoryItems.map((item) => (
                             <ItemCard
                               key={item.id}
@@ -368,7 +368,7 @@ export default async function RegistryManagePage({
                         <h3 className="font-display text-lg font-semibold">Other</h3>
                         <SortIntoCategoriesButton registryId={registryId} count={itemsByCategory.get(null)!.length} />
                       </div>
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {itemsByCategory.get(null)!.map((item) => (
                           <ItemCard
                             key={item.id}

@@ -1,14 +1,13 @@
 "use client";
 
 import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
-import { Camera, Check, CornerUpRight, ExternalLink, ImagePlus, Images, Info, ListPlus, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Camera, Check, CornerUpRight, DollarSign, ExternalLink, ImagePlus, Images, Info, ListPlus, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Clipboard, DotsHorizontal, Link01 } from "@untitledui/icons";
 import { Button as AriaButton, SubmenuTrigger } from "react-aria-components";
 import { Button } from "@/components/ui/button";
 import { Input, InputBase } from "@/components/base/input/input";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputGroup } from "@/components/base/input/input-group";
-import { CurrencySelect } from "@/components/currency-select";
 import { Label } from "@/components/base/input/label";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
@@ -124,15 +123,6 @@ const CONDITIONS = [
   { id: "good", label: "Good" },
   { id: "acceptable", label: "Acceptable" },
 ];
-
-const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  CAD: "CA$",
-  AUD: "A$",
-};
 
 /** "Wishlist", "Wishlist and Birthday", "Wishlist, Birthday and 2 more". */
 function listNames(titles: string[]): string {
@@ -271,7 +261,6 @@ export function EditItemDialog({
   const [parentPurchased, setParentPurchased] = useState(item.is_parent_purchased);
   const [priceChecksOn, setPriceChecksOn] = useState(item.priceChecks === "on");
   const [guestInfoOpen, setGuestInfoOpen] = useState(false);
-  const [currency, setCurrency] = useState("USD");
   const [title, setTitle] = useState(item.title);
   const [price, setPrice] = useState(item.price != null ? item.price.toFixed(2) : "");
   const [imageUrl, setImageUrl] = useState(item.image_url || "");
@@ -342,7 +331,6 @@ export function EditItemDialog({
   const linkBig = linkOpen || !externalUrl.trim() || scraping || scrapeIsError;
   const storeName = externalUrl.trim() ? storeNameForLink(withScheme(externalUrl.trim())) : "";
   const isRegistryLink = classifyStoreLink(externalUrl)?.kind === "registry";
-  const symbol = currencySymbols[currency] || "$";
   const categoryName = categories.find((c) => c.id === categoryId)?.name;
   const photoChoices = imageCandidates.filter((c) => !brokenCandidates.has(c));
 
@@ -695,7 +683,6 @@ export function EditItemDialog({
     setParentPurchased(item.is_parent_purchased);
     setPriceChecksOn(item.priceChecks === "on");
     setGuestInfoOpen(false);
-    setCurrency("USD");
     setError("");
     setNotice("");
     setAddedTo([]);
@@ -1144,10 +1131,9 @@ export function EditItemDialog({
                     name="price"
                     value={price}
                     onChange={handlePriceChange}
-                    prefix={symbol}
-                    trailingAddon={<CurrencySelect value={currency} onChange={setCurrency} />}
                   >
                     <InputBase
+                      icon={DollarSign}
                       type="number"
                       inputMode="decimal"
                       step="0.01"
@@ -1169,7 +1155,7 @@ export function EditItemDialog({
                         setReplaced((r) => ({ ...r, price: null }));
                       }}
                     >
-                      Was {symbol}
+                      Was $
                       {replaced.price}
                     </WasLine>
                   )}
