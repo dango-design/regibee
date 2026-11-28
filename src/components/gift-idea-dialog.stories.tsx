@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { screen } from "storybook/test";
 import { Button } from "@/components/ui/button";
 import { GiftIdeaDialog } from "./gift-idea-dialog";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // Server actions can't run in Storybook, so these pretend to work.
 const mockSave = async () => ({ success: true as const, id: "new-idea" });
@@ -59,6 +60,7 @@ export const Edit: Story = {
 
 /** On a phone the dialog is a sheet, with Cancel and Save idea in a bar at the bottom. */
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   play: open,
 };

@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import { Link2, Plus, UserPlus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DashboardRegistryCard } from "@/components/dashboard-registry-card";
-import { HomeSection } from "@/components/home-section";
+import { HomeLists } from "@/components/home-lists";
+import type { SaveListOrder } from "@/components/list-order-editor";
 import { PandaMark } from "@/components/panda-mark";
 import { UpcomingEvents } from "@/components/upcoming-events";
+import { setListOrder } from "@/lib/actions/list-order";
 import type { DashboardCard, DashboardData } from "@/lib/dashboard-page-types";
 import { cx } from "@/lib/utils/cx";
 
@@ -25,12 +26,18 @@ export type HomeList = Pick<
   | "progress"
   | "giftsThisWeek"
   | "reservationsHidden"
+  | "managers"
 >;
 
 export interface DashboardHomeProps
   extends Pick<DashboardData, "giftsThisWeek" | "followRequestCount" | "showProfilePrompt" | "upcomingEvents" | "today"> {
-  owned: HomeList[];
-  shared: HomeList[];
+  /**
+   * Every list they own or help manage, in their order. A list someone else
+   * also manages shows their faces on its card.
+   */
+  lists: HomeList[];
+  /** Saves a new order of the lists. The demo passes one that saves nothing. */
+  saveOrder?: SaveListOrder;
   /** Put in front of every link. The demo passes "/demo". */
   basePath?: string;
   /** The button at the top right. The demo sends people to sign up instead. */
@@ -88,8 +95,8 @@ function HomeNote({
  * (mobile/src/app/(tabs)/(home)/index.tsx).
  */
 export function DashboardHome({
-  owned,
-  shared,
+  lists,
+  saveOrder = setListOrder,
   giftsThisWeek,
   followRequestCount,
   showProfilePrompt,
@@ -100,28 +107,9 @@ export function DashboardHome({
   intro,
 }: DashboardHomeProps) {
   const hasEvents = upcomingEvents.length > 0;
-  const hasNoLists = owned.length === 0 && shared.length === 0;
+  const hasNoLists = lists.length === 0;
   // Two columns of cards next to the events, three when the lists have the width.
   const grid = cx("grid gap-5 sm:grid-cols-2", !hasEvents && "lg:grid-cols-3");
-  const card = (list: HomeList, headingLevel: 2 | 3) => (
-    <DashboardRegistryCard
-      key={list.id}
-      title={list.title}
-      registryType={list.registry_type}
-      eventType={list.event_type}
-      eventDate={list.event_date}
-      today={today}
-      totalItems={list.totalItems}
-      fulfilledItems={list.fulfilledItems}
-      progress={list.progress}
-      giftsThisWeek={list.giftsThisWeek}
-      manageHref={`${basePath}/dashboard/registry/${list.id}`}
-      photoUrl={list.photo_url}
-      isPrivate={list.is_private}
-      reservationsHidden={list.reservationsHidden}
-      headingLevel={headingLevel}
-    />
-  );
 
   return (
     <div className="container mx-auto px-4 pt-6 pb-8">
@@ -182,16 +170,8 @@ export function DashboardHome({
         <UpcomingEvents events={upcomingEvents} today={today} basePath={basePath} className="lg:order-2" />
 
         <div className="flex min-w-0 flex-col gap-10 lg:order-1">
-          {owned.length > 0 && (
-            <HomeSection id="your-lists" title="Your lists">
-              <div className={grid}>{owned.map((list) => card(list, 3))}</div>
-            </HomeSection>
-          )}
-
-          {shared.length > 0 && (
-            <HomeSection id="shared-lists" title="Shared with you">
-              <div className={grid}>{shared.map((list) => card(list, 3))}</div>
-            </HomeSection>
+          {lists.length > 0 && (
+            <HomeLists lists={lists} save={saveOrder} today={today} basePath={basePath} gridClassName={grid} />
           )}
 
           {hasNoLists && (

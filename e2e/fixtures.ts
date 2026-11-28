@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page, type Request } from "@playwright/test";
 import { localSupabase } from "./local-supabase";
 
 export const SITE_URL = "http://localhost:3100";
@@ -139,7 +139,10 @@ export async function waitForReact(locator: Locator) {
  * `field` matches any part of that.
  */
 export async function chooseOption(scope: Page | Locator, field: string | RegExp, option: string) {
-  await scope.getByRole("button", { name: field }).click();
+  const button = scope.getByRole("button", { name: field });
+  // A click before React takes over the page doesn't open the list.
+  await waitForReact(button);
+  await button.click();
   // The list opens at the end of the page, outside `scope`.
   const page = "page" in scope ? scope.page() : scope;
   await page.getByRole("option", { name: option, exact: true }).click();
@@ -148,14 +151,46 @@ export async function chooseOption(scope: Page | Locator, field: string | RegExp
   await expect(page.getByRole("listbox")).toBeHidden();
 }
 
-/** Signs in from the login page. */
+/**
+ * Signs in from the login page, and returns once the dashboard has finished
+ * loading.
+ *
+ * The login page moves to the dashboard with router.push and then calls
+ * router.refresh, so the browser fetches the dashboard twice. The address
+ * changes after the first fetch, and the second starts just after. A
+ * page.goto made while the second is still running can be cancelled with
+ * net::ERR_ABORTED (issue #273). So this also waits until no fetch of a
+ * page's server data has run for half a second. Next.js marks those fetches
+ * with an "rsc" header.
+ */
 export async function signIn(page: Page, account: { email: string; password: string }) {
   await page.goto("/login");
   await waitForReact(page.locator("form"));
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/\/dashboard/);
+
+  const running = new Set<Request>();
+  let lastChange = Date.now();
+  const started = (request: Request) => {
+    if (!request.headers()["rsc"]) return;
+    running.add(request);
+    lastChange = Date.now();
+  };
+  const ended = (request: Request) => {
+    if (running.delete(request)) lastChange = Date.now();
+  };
+  page.on("request", started);
+  page.on("requestfinished", ended);
+  page.on("requestfailed", ended);
+  try {
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL(/\/dashboard/);
+    await expect.poll(() => running.size === 0 && Date.now() - lastChange >= 500).toBe(true);
+  } finally {
+    page.off("request", started);
+    page.off("requestfinished", ended);
+    page.off("requestfailed", ended);
+  }
 }
 
 /** A personal wishlist with one item, owned by the given account. */
@@ -214,7 +249,10 @@ export async function createExchangeEvent(
 /** RSVPs yes from a guest's personal link, joins the exchange and adds a wishlist link. */
 export async function joinExchange(page: Page, rsvpPath: string, wishlistUrl: string) {
   await page.goto(rsvpPath);
-  await page.getByRole("button", { name: "Going" }).click();
+  // A click before React takes over the page does nothing.
+  const going = page.getByRole("button", { name: "Going" });
+  await waitForReact(going);
+  await going.click();
   await page.getByLabel("Your wishlist (optional)").fill(wishlistUrl);
   await page.getByRole("button", { name: "Send RSVP" }).click();
   await expect(page.getByText("You're in the gift exchange.")).toBeVisible();

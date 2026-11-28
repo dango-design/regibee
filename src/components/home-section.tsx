@@ -13,6 +13,7 @@ export function HomeSection({
   id,
   title,
   more,
+  action,
   className,
   children,
 }: {
@@ -21,6 +22,8 @@ export function HomeSection({
   title: string;
   /** A link at the heading's right, like "All events". */
   more?: { title: string; href: string };
+  /** A button at the heading's right instead, like Reorder. */
+  action?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
@@ -36,6 +39,7 @@ export function HomeSection({
             {more.title}
           </Link>
         )}
+        {action}
       </div>
       <div className="mt-3">{children}</div>
     </section>

@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
-import { createAccount, createWishlist, db, reserveGift, signIn, uniqueEmail } from "./fixtures";
+import { createAccount, createWishlist, db, reserveGift, signIn, uniqueEmail, waitForReact } from "./fixtures";
 import { localSupabase } from "./local-supabase";
 
 async function supportViews(supportUserId: string) {
@@ -90,8 +90,12 @@ test("the support team sees any account and list, read only, and each look is re
 
   // A pasted list link finds the list.
   await page.goto("/support");
-  await page.getByRole("searchbox", { name: "Search" }).fill(`https://www.regibee.com/r/${registry.slug}`);
-  await page.getByRole("searchbox", { name: "Search" }).press("Enter");
+  // Text typed before React takes over the page is cleared, and the search
+  // then runs with an empty field.
+  const search = page.getByRole("searchbox", { name: "Search" });
+  await waitForReact(search);
+  await search.fill(`https://www.regibee.com/r/${registry.slug}`);
+  await search.press("Enter");
   await expect(page.getByRole("link", { name: new RegExp(registry.title) })).toBeVisible();
 
   // Each account and list opened was recorded, and searching wasn't.

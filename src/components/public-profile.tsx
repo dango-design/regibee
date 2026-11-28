@@ -10,11 +10,7 @@ import { giftProfileAudienceSummary, hasGiftDetails, type GiftProfile } from "@/
 import { displayName as nameToShow } from "@/lib/profile-link";
 import { eventHasPassed, eventTypeLabel } from "@/lib/events";
 import type { SharedEvent } from "@/lib/shared-events";
-import {
-  isPastEvent,
-  sortListedRegistries,
-  type ListedRegistry,
-} from "@/lib/registry-listing";
+import { isPastEvent, type ListedRegistry } from "@/lib/registry-listing";
 
 /** One event the viewer and this person both go to. The whole row opens it. */
 function SharedEventCard({ event, today, basePath }: { event: SharedEvent; today: string; basePath: string }) {
@@ -70,6 +66,7 @@ export function PublicProfile({
   fullName: string | null;
   /** The profile photo. Without one, the circle shows the name's initials. */
   photoUrl?: string | null;
+  /** In the order to show them: the owner's, or soonest first (orderProfileLists in src/lib/list-order.ts). */
   registries: ListedRegistry[];
   /**
    * Events the viewer and this person both went to or are going to, in the
@@ -164,7 +161,7 @@ export function PublicProfile({
         <div className="mt-10">
           <h2 className="text-lg font-semibold">Registries</h2>
           <div className="mt-3 flex flex-col gap-3">
-            {sortListedRegistries(registries, today).map((registry) => (
+            {registries.map((registry) => (
               <ProfileRegistryCard
                 key={registry.slug}
                 registry={registry}

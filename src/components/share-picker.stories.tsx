@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { SharePicker } from "./share-picker";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // /share on an Android phone, after an owner with two registries shared a
 // product from Amazon's app to Regibee. It goes on a registry, or it's a gift
@@ -13,6 +14,7 @@ export default meta;
 type Story = StoryObj<typeof SharePicker>;
 
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   args: {
     shared: {
@@ -46,6 +48,7 @@ export const Phone: Story = {
  */
 export const NoRegistries: Story = {
   name: "No registries",
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   args: {
     shared: { url: "https://www.example.com/products/wool-scarf", title: "Wool scarf in forest green" },

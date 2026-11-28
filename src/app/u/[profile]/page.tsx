@@ -11,6 +11,7 @@ import { cleanPublicNote, parseGiftProfile, visibleGiftProfile } from "@/lib/gif
 import { sharedRegistrySlugsFrom } from "@/lib/groups-server";
 import { listSharedEvents } from "@/lib/shared-events-server";
 import { profileAudience, profileViewer, seesOnProfile } from "@/lib/list-access";
+import { orderProfileLists } from "@/lib/list-order";
 import {
   LISTED_REGISTRY_COLUMNS,
   PROFILE_AUDIENCE_COLUMNS,
@@ -115,10 +116,10 @@ export default async function ProfilePage({
   // with this person. Neither is for the owner or for someone who blocked them.
   const viewer = isOwnProfile || followState === "blocked" ? null : await getViewer();
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: listed }, sharedSlugs, giftRow, noteRow, sharedEvents] = await Promise.all([
+  const [{ data: listed }, sharedSlugs, giftRow, noteRow, sharedEvents, orderRow] = await Promise.all([
     supabaseAdmin
       .from("registries")
-      .select(`${LISTED_REGISTRY_COLUMNS}, ${PROFILE_AUDIENCE_COLUMNS}`)
+      .select(`id, ${LISTED_REGISTRY_COLUMNS}, ${PROFILE_AUDIENCE_COLUMNS}`)
       .eq("owner_id", profile.id)
       .eq("listed_on_profile", true),
     viewer
@@ -137,6 +138,9 @@ export default async function ProfilePage({
           today,
         )
       : Promise.resolve([]),
+    // The order the owner chose. Separate too: it errors until
+    // 20261128085244_list_order.sql has run, which counts as no order.
+    supabaseAdmin.from("profiles").select("profile_list_order").eq("id", profile.id).maybeSingle(),
   ]);
   // The person chooses who sees their birthday, their sizes, and their likes
   // and dislikes (src/lib/gift-profile.ts). The parts this viewer may not see
@@ -148,10 +152,16 @@ export default async function ProfilePage({
   const showBirthday = Boolean(giftProfile.birthday);
   // The public note is for everyone who opens the profile.
   const publicNote = cleanPublicNote(noteRow.error ? null : noteRow.data?.public_note);
-  // The audience columns are only for choosing; they aren't sent on.
-  const registries: ListedRegistry[] = ((listed || []) as unknown as (ListedRegistry & ProfileAudienceRow)[])
-    .filter((registry) => seesOnProfile(profileAudience(registry), viewerKind) || sharedSlugs.has(registry.slug))
-    .map(({ is_private: _private, listed_on_profile: _listed, profile_audience: _audience, ...registry }) => registry);
+  // In the owner's order (src/lib/list-order.ts), or soonest first. The id
+  // and the audience columns are only for choosing and ordering; they aren't
+  // sent on.
+  const visible = ((listed || []) as unknown as (ListedRegistry & ProfileAudienceRow & { id: string })[]).filter(
+    (registry) => seesOnProfile(profileAudience(registry), viewerKind) || sharedSlugs.has(registry.slug),
+  );
+  const order = orderRow.error ? null : ((orderRow.data?.profile_list_order as string[] | null) ?? null);
+  const registries: ListedRegistry[] = orderProfileLists(visible, order, today).map(
+    ({ id: _id, is_private: _private, listed_on_profile: _listed, profile_audience: _audience, ...registry }) => registry,
+  );
 
   return (
     <div className="min-h-screen flex flex-col">

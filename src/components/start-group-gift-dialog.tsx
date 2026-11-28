@@ -109,7 +109,7 @@ export function StartGroupGiftDialog({
             <DialogDescription>
               You reserve the {item.title}
               {item.price ? ` (${formatPrice(item.price)})` : ""}, friends chip in and pay you back, and you buy it.{" "}
-              {recipientName} never sees who chipped in.
+              {recipientName} won&apos;t see who chipped in.
             </DialogDescription>
           </DialogHeader>
           <ItemPhotoPanel imageUrl={item.image_url} title={item.title} />

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { RsvpWishlistStep } from "./rsvp-wishlist-step";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // The step after a guest says they're coming to an everyone-gives-everyone
 // event, like a family Christmas. The RSVP Form stories show it after a reply.
@@ -156,5 +157,6 @@ export const WithHostColor: Story = {
 export const SignedOutPhone: Story = {
   ...SignedOut,
   play: undefined,
+  parameters: { ...SignedOut.parameters, chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };

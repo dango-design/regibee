@@ -89,7 +89,10 @@ test("an owner invites a co-parent by email, who signs in from the link and acce
 
   await signIn(page, owner);
   await page.goto(`/dashboard/registry/${registry.id}/settings`);
-  await page.getByPlaceholder("coparent@example.com").fill(coparent.email);
+  // Text typed before React takes over the page is cleared.
+  const inviteEmail = page.getByPlaceholder("coparent@example.com");
+  await waitForReact(inviteEmail);
+  await inviteEmail.fill(coparent.email);
   await page.getByRole("button", { name: "Send Invite" }).click();
   await expect(page.getByRole("button", { name: "Sent!" })).toBeVisible();
 
@@ -119,10 +122,12 @@ test("an owner invites a co-parent by email, who signs in from the link and acce
     ]),
   );
 
-  // Their dashboard lists it as shared with them, and they can add to it.
+  // Their dashboard lists it with their own lists, with the owner's face on
+  // its card, and they can add to it.
   await theirPage.goto("/dashboard");
-  await expect(theirPage.getByRole("heading", { name: "Shared with you" })).toBeVisible();
-  await expect(theirPage.getByText(registry.title)).toBeVisible();
+  const yourLists = theirPage.getByRole("region", { name: "Your lists" });
+  await expect(yourLists.getByText(registry.title)).toBeVisible();
+  await expect(yourLists.getByTitle(/^Shared with /)).toBeVisible();
   await theirPage.goto(`/dashboard/registry/${registry.id}`);
   await expect(theirPage.getByText(item.title)).toBeVisible();
   await expect(theirPage.getByRole("button", { name: "Add Item" }).first()).toBeVisible();

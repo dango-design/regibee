@@ -8,6 +8,7 @@ import {
   type PageSection,
 } from "./section-nav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { DESKTOP_MODES, PHONE_MODES } from "@/stories/viewports";
 
 const SECTIONS: PageSection[] = [
   { id: "profile", label: "Your profile" },
@@ -73,11 +74,13 @@ type Story = StoryObj<typeof SectionNav>;
 
 // On a wide screen: a column on the left, with two follow requests waiting.
 export const Default: Story = {
+  parameters: { chromatic: { modes: DESKTOP_MODES } },
   globals: { viewport: { value: "desktop" } },
 };
 
 // Picking a section scrolls to it, marks it current and moves focus to its title.
 export const PickingASection: Story = {
+  parameters: { chromatic: { modes: DESKTOP_MODES } },
   globals: { viewport: { value: "desktop" } },
   play: async ({ canvas }) => {
     const nav = within(canvas.getByRole("navigation", { name: "Account sections" }));
@@ -100,6 +103,7 @@ export const NoRequests: Story = {
 // On a phone: a row of links under the top bar that scrolls sideways by
 // itself. Following a link brings it into view in the row.
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvas }) => {
     const nav = within(canvas.getByRole("navigation", { name: "Account sections" }));

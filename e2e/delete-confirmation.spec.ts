@@ -2,8 +2,17 @@
 // to type a sentence first. A brand-new one asks with the buttons alone
 // (src/lib/delete-confirmation.ts).
 
-import { expect, test } from "@playwright/test";
-import { createRegistryWithItem, db, signIn } from "./fixtures";
+import { expect, test, type Page } from "@playwright/test";
+import { createRegistryWithItem, db, signIn, waitForReact } from "./fixtures";
+
+/** Opens the registry's Settings page and clicks Delete registry. */
+async function openDeleteDialog(page: Page, registryId: string) {
+  await page.goto(`/dashboard/registry/${registryId}/settings`);
+  // A click before React takes over the page does nothing.
+  const deleteRegistry = page.getByRole("button", { name: "Delete registry" });
+  await waitForReact(deleteRegistry);
+  await deleteRegistry.click();
+}
 
 async function registryExists(id: string) {
   const { count } = await db.from("registries").select("id", { count: "exact", head: true }).eq("id", id);
@@ -14,8 +23,7 @@ test("a registry with an item is deleted only after its owner types the sentence
   const { owner, registry } = await createRegistryWithItem();
 
   await signIn(page, owner);
-  await page.goto(`/dashboard/registry/${registry.id}/settings`);
-  await page.getByRole("button", { name: "Delete registry" }).click();
+  await openDeleteDialog(page, registry.id);
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Delete this registry?" })).toBeVisible();
   // It says what goes before anything does.
@@ -39,8 +47,7 @@ test("a registry with nothing on it is deleted without typing", async ({ page })
   if (error) throw error;
 
   await signIn(page, owner);
-  await page.goto(`/dashboard/registry/${registry.id}/settings`);
-  await page.getByRole("button", { name: "Delete registry" }).click();
+  await openDeleteDialog(page, registry.id);
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("The registry's link stops working.")).toBeVisible();
   await expect(dialog.getByRole("textbox")).toHaveCount(0);

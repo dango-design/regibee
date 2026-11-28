@@ -19,6 +19,7 @@ import {
 import { signupRowsForGuest, withAddressFor } from "@/lib/signups";
 import { changeNotice, type InvitationUpdate } from "@/lib/event-updates";
 import { formatEventDate, formatEventTime } from "@/lib/events";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // The public event page (src/app/e/[slug]/page.tsx) without its header and
 // footer. The page reads the event on the server, which Storybook can't render.
@@ -249,6 +250,7 @@ export const WithHostColor: Story = {
  */
 export const WithRegistriesPhone: Story = {
   ...WithRegistriesAndGiftNote,
+  parameters: { ...WithRegistriesAndGiftNote.parameters, chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvasElement }) => {
     const gifts = within(canvasElement).getByRole("region", { name: "Gifts" });

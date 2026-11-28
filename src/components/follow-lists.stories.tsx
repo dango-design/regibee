@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, screen, waitFor, within } from "storybook/test";
 import { FollowLists } from "./follow-lists";
+import { PHONE_MODES } from "@/stories/viewports";
 
 const mockAction = async () => {
   await new Promise((r) => setTimeout(r, 400));
@@ -55,6 +56,7 @@ export const AfterApproving: Story = {
     followers: [],
     following: [],
   },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   play: async ({ canvas }) => {
     fireEvent.click(canvas.getByRole("button", { name: "Approve" }));

@@ -81,6 +81,14 @@ Vercel holds these env vars for production, preview and development: `NEXT_PUBLI
 - Only a public list can show to everyone. Otherwise the profile would hand a link-only list's link to people it was never sent to. `profileAudience` reads a saved "everyone" on a link-only list as followers.
 - Any new place that shows someone's listed lists to other people must pass each list through `profileAudience` and `seesOnProfile`, not only filter on `listed_on_profile`.
 
+## List order
+
+- The My registries tab and the phone app's home screen show one "Your lists" section: the lists someone owns and the ones they help manage, together. A list with other managers shows their faces on its card (`managers` on each card, from `loadDashboard`).
+- Each person orders their lists twice, with the Reorder button: once for themselves, on the My registries tab, and once for their profile, on the Account page. Both are lists of registry ids on their profile, `profiles.list_order` and `profiles.profile_list_order` (`20261128085244_list_order.sql`). Each co-manager keeps their own `list_order`.
+- The rules and their tests are in `src/lib/list-order.ts`, which the phone app shares. A list missing from an order, like a new one, goes first. A profile with no saved order shows the soonest date first, as before.
+- `setListOrder` and `setProfileListOrder` (`src/lib/actions/list-order.ts`) save them with the service-role client, since signed-in sessions can't write those columns.
+- `DashboardData.lists` holds the ordered lists. `owned` and `shared` stay for older app builds.
+
 ## List headers
 
 - The band at the top of a list's page has a color and a pattern the owner picks with the Header button on their list's page. The choice is saved in `registries.settings.header` as `{ color, pattern }`. A list with nothing saved keeps the light teal with dots.
@@ -250,8 +258,11 @@ Keep text on screens short. People learn the app by using it, not by reading it.
 
 - `.github/workflows/chromatic.yml` runs Chromatic on every push. It snapshots only the stories the commit affects: Chromatic follows imports from each changed file up to the stories that use it (`onlyChanged` in `chromatic.config.json`).
 - Chromatic's accessibility tests are turned off on the project's Manage page, since 2026-11-24. They cost a second snapshot for every story. `@storybook/addon-a11y` is still installed, so the Accessibility panel works in local Storybook.
-- Chromatic snapshots 244 of the 379 stories. The rest have `parameters: { chromatic: { disableSnapshot: true } }`: they still show in Storybook, but Chromatic takes no picture of them and doesn't run their `play` function. They are states close to one that is snapshotted, such as a second phone view or another occasion's wording.
+- Chromatic snapshots 310 of the 484 stories, one snapshot each. The rest have `parameters: { chromatic: { disableSnapshot: true } }`: they still show in Storybook, but Chromatic takes no picture of them and doesn't run their `play` function. They are states close to one that is snapshotted, such as a second phone view or another occasion's wording.
 - When you add stories, leave snapshots on for the ones that show a different layout or a state people often reach: the default, empty, an error, an open dialog, one phone view. Turn them off for the others. Every story file keeps at least one snapshot.
+- A phone story picks its width twice: `globals: { viewport: { value: "mobile1" } }` for Storybook and the story screenshots, and `parameters: { chromatic: { modes: PHONE_MODES } }` (`src/stories/viewports.ts`) for Chromatic. Without a mode, Chromatic lists the story at 1200px. A story with one mode gets one snapshot, at that mode's width, in place of the 1200px one. `DESKTOP_MODES` goes with the `desktop` viewport (1280px). A snapshotted story whose viewport and mode don't match fails the **Story screenshots** check.
+- Chromatic's docs say it reads a story's viewport global. On this project it doesn't: with `parameters.viewport.options` set in `.storybook/preview.ts`, builds still listed every phone story at 1200px. A story given a mode showed at the mode's width, even on a build taken while Chromatic was paused (checked 2026-11-28).
+- Give a story more than one mode only on purpose. Each mode is its own snapshot.
 - `untraced` in `chromatic.config.json` lists files Chromatic leaves out of that check. A change to one of them re-captures nothing, and Chromatic doesn't follow imports through it. The list holds:
   - Code that only runs on the server: `src/lib/actions/**`, `src/lib/*-server.ts`, `src/lib/*-email.ts` and the server helpers named there. Components import server actions, and the actions import most of `src/lib`, so before this a change to one server file re-captured about half of all stories. A story can't run server code, so nothing is lost. Name a new server-only file `<name>-server.ts` so the list covers it.
   - `mobile/**`. A change to the phone app's `package.json` used to re-capture every story.

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { DashboardTabs } from "./dashboard-tabs";
 import { DashboardSkeleton, EventsSkeleton, FollowingSkeleton, SavedSkeleton } from "./page-skeletons";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // The tabs above each tab's loading skeleton, as they appear while a tab
 // loads. The pages themselves load data on the server, which Storybook can't
@@ -64,6 +65,7 @@ export const Guest: Story = {
 
 /** On phones the four tabs share the width and stay on one line each. */
 export const Phone: Story = {
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
   render: MyRegistries.render,
 };

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, within } from "storybook/test";
 import { DashboardHome, type DashboardHomeProps, type HomeList } from "./dashboard-home";
 
 // A fixed "today", so the countdowns don't change from day to day in Chromatic.
@@ -30,11 +31,17 @@ const grandmaList: HomeList = {
   fulfilledItems: 6,
   giftsThisWeek: 0,
   reservationsHidden: false,
+  // Grandma's list is shared with the account by its owner and another co-manager.
+  managers: [
+    { name: "Rose Alvarez", photoUrl: null },
+    { name: "Tomas Alvarez", photoUrl: null },
+  ],
 };
 
 const base: DashboardHomeProps = {
-  owned: [babyList],
-  shared: [grandmaList],
+  lists: [babyList, grandmaList],
+  // Stories save nothing.
+  saveOrder: async () => ({}),
   giftsThisWeek: 3,
   followRequestCount: 0,
   showProfilePrompt: true,
@@ -51,14 +58,23 @@ export default meta;
 type Story = StoryObj<typeof DashboardHome>;
 
 // No events coming up, so the lists take the whole width. One list is shared
-// with the account, and none is on their profile yet.
+// with the account, so its card shows the other managers' faces, and none is
+// on their profile yet.
 export const SharedWithYou: Story = {};
+
+// Reorder swaps the cards for a list to drag or move with arrows.
+export const Reordering: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Reorder" }));
+    await expect(canvas.getByRole("grid", { name: "Order of your lists" })).toBeInTheDocument();
+  },
+};
 
 // No lists yet, with an event coming up.
 export const NoListsYet: Story = {
   args: {
-    owned: [],
-    shared: [],
+    lists: [],
     giftsThisWeek: 0,
     showProfilePrompt: false,
     followRequestCount: 1,

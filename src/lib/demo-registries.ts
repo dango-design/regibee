@@ -59,6 +59,11 @@ export interface DemoPurchase {
   quantity: number;
   amount: number | null;
   status: "reserved" | "cancelled";
+  /**
+   * When a reservation ends. Like the real table, a gift with none counts as
+   * given, and one with a date is only reserved so far.
+   */
+  reserved_until?: string | null;
   message: string | null;
   created_at: string;
   item_title: string;

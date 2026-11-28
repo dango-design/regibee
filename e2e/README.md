@@ -70,6 +70,15 @@ colima stop
 - When a test fails, the run keeps its trace as `e2e-test-results` on the run's page for a week. Download it and open the trace with `npx playwright show-trace <file>.zip` to step through what the browser saw.
 - It isn't a required check yet, so a pull request can merge while it runs or fails. Once it has proven reliable, make it required in the repository's branch protection for `main`.
 
+## Writing tests that don't fail at random
+
+These are the causes of the flaky failures seen on GitHub so far.
+
+- **Wait for React before the first click on a page.** After `page.goto` or `page.reload`, the page's buttons do nothing until React has taken over the page, and text typed into a field is cleared. On GitHub's runner that can take a few seconds after the page has loaded. Call `waitForReact(<the element>)` from `fixtures.ts` before the first click, fill or `chooseOption` on a page you just loaded. `chooseOption`, `reserveGift`, `joinExchange` and `signIn` already do it. Links work before React, so a click on a link needs no wait. A click in a dialog or menu that React opened needs none either.
+- **Sign in with `signIn`.** It returns only once the dashboard has finished loading. Navigating while the login page's redirect is still running can cancel the navigation (`net::ERR_ABORTED`).
+- **Make names exact when a longer name contains them.** `getByRole("heading", { name: "Your wishlist" })` also matches "Now add your wishlist", so the check passes before the change it waits for. Use `exact: true`, or wait for something only the new state shows.
+- **Don't count what one call to a daily job did.** Every test shares one database, and other tests call the same jobs, so another test's call can do the work first. Check the result instead: the saved row, or the email.
+
 ## What keeps tests away from production
 
 - `local-supabase.ts` refuses any Supabase or Mailpit address that isn't on this computer.

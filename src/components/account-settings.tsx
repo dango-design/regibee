@@ -27,6 +27,8 @@ import { profileAudienceHint } from "@/components/profile-listing-field";
 import { SelectField } from "@/components/base/select/select-field";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { saveProfile, setProfilePhoto, setRegistryProfileAudience } from "@/lib/actions/profile";
+import { setProfileListOrder } from "@/lib/actions/list-order";
+import { ListOrderEditor, type SaveListOrder } from "@/components/list-order-editor";
 import { saveGiftProfile } from "@/lib/actions/gift-profile";
 import { MAX_PUBLIC_NOTE_LENGTH, type GiftProfile } from "@/lib/gift-profile";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -62,11 +64,14 @@ export interface AccountRegistry {
 function RegistryListingRow({
   registry,
   action,
+  audience,
+  setAudience,
 }: {
   registry: AccountRegistry;
   action: typeof setRegistryProfileAudience;
+  audience: ProfileAudience;
+  setAudience: (audience: ProfileAudience) => void;
 }) {
-  const [audience, setAudience] = useState<ProfileAudience>(profileAudience(registry));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const hint = profileAudienceHint(audience, registry.has_shipping_address);
@@ -121,6 +126,88 @@ function RegistryListingRow({
   );
 }
 
+/** Puts `shown`, in its new order, back into the places the shown lists had in `all`. */
+function mergeShownOrder(all: string[], shown: string[]): string[] {
+  const shownSet = new Set(shown);
+  let next = 0;
+  return all.map((id) => (shownSet.has(id) ? shown[next++] : id));
+}
+
+/**
+ * Who sees each list on the profile, and the order they show in. Reorder
+ * lists only the ones the profile shows. Each change saves straight away.
+ */
+function ProfileRegistries({
+  registries,
+  listAction,
+  orderAction,
+}: {
+  registries: AccountRegistry[];
+  listAction: typeof setRegistryProfileAudience;
+  orderAction: SaveListOrder;
+}) {
+  const [audiences, setAudiences] = useState<Record<string, ProfileAudience>>(() =>
+    Object.fromEntries(registries.map((registry) => [registry.id, profileAudience(registry)])),
+  );
+  const [order, setOrder] = useState(() => registries.map((registry) => registry.id));
+  const [reordering, setReordering] = useState(false);
+  const byId = new Map(registries.map((registry) => [registry.id, registry]));
+  const ordered = order.map((id) => byId.get(id)).filter((registry): registry is AccountRegistry => Boolean(registry));
+  const onProfile = ordered.filter(
+    (registry) => listVisibility(registry) !== "private" && audiences[registry.id] !== "hidden",
+  );
+
+  return (
+    <Card id="profile-registries" className={SECTION_SCROLL_MARGIN}>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <SectionTitle sectionId="profile-registries">Registries on your profile</SectionTitle>
+          {(onProfile.length > 1 || reordering) && (
+            <Button
+              variant={reordering ? "default" : "outline"}
+              size="sm"
+              onClick={() => setReordering((value) => !value)}
+            >
+              {reordering ? "Done" : "Reorder"}
+            </Button>
+          )}
+        </div>
+        <CardDescription>
+          {reordering
+            ? "The order people see on your profile."
+            : "Choose who sees each one on your profile. Friends are people you follow who follow you back."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {registries.length === 0 ? (
+          <p className="text-sm text-tertiary">You don&apos;t own any registries yet.</p>
+        ) : reordering ? (
+          <ListOrderEditor
+            lists={onProfile}
+            order={onProfile.map((registry) => registry.id)}
+            onOrderChange={(shown) => setOrder((all) => mergeShownOrder(all, shown))}
+            // The whole order, so lists that aren't shown keep their places.
+            save={(shown) => orderAction(mergeShownOrder(order, shown))}
+            label="Order of your registries on your profile"
+          />
+        ) : (
+          <div className="space-y-4">
+            {ordered.map((registry) => (
+              <RegistryListingRow
+                key={registry.id}
+                registry={registry}
+                action={listAction}
+                audience={audiences[registry.id]}
+                setAudience={(audience) => setAudiences((old) => ({ ...old, [registry.id]: audience }))}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Old section ids that links still use. Follow request emails already sent link to #follows. */
 const RENAMED_SECTIONS: Record<string, string> = { follows: "follow-requests" };
 
@@ -129,6 +216,7 @@ export function AccountSettings({
   registries,
   saveAction = saveProfile,
   listAction = setRegistryProfileAudience,
+  profileOrderAction = setProfileListOrder,
   uploadPhoto,
   photoAction = setProfilePhoto,
   follows,
@@ -162,6 +250,8 @@ export function AccountSettings({
   };
   saveAction?: typeof saveProfile;
   listAction?: typeof setRegistryProfileAudience;
+  /** Saves the order of the lists on the profile. Stories and the demo pass a stand-in. */
+  profileOrderAction?: SaveListOrder;
   /** Uploads a profile photo. The site uploads to the account's folder; the demo makes a local URL. */
   uploadPhoto?: (file: File) => Promise<PhotoUploadResult>;
   /** Saves or removes the profile photo. */
@@ -435,25 +525,7 @@ export function AccountSettings({
             </Card>
           )}
 
-          <Card id="profile-registries" className={SECTION_SCROLL_MARGIN}>
-            <CardHeader>
-              <SectionTitle sectionId="profile-registries">Registries on your profile</SectionTitle>
-              <CardDescription>
-                Choose who sees each one on your profile. Friends are people you follow who follow you back.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {registries.length === 0 ? (
-                <p className="text-sm text-tertiary">You don&apos;t own any registries yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {registries.map((registry) => (
-                    <RegistryListingRow key={registry.id} registry={registry} action={listAction} />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProfileRegistries registries={registries} listAction={listAction} orderAction={profileOrderAction} />
 
           <DeleteAccountCard {...deleteAccountActions} />
         </div>

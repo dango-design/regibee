@@ -32,7 +32,10 @@ test("deleting an account removes its own lists and guests' gifts, and hands a s
 
   await signIn(page, owner);
   await page.goto("/dashboard/account");
-  await page.getByRole("button", { name: "Delete account" }).click();
+  // A click before React takes over the page does nothing.
+  const deleteAccount = page.getByRole("button", { name: "Delete account" });
+  await waitForReact(deleteAccount);
+  await deleteAccount.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Delete your account?" })).toBeVisible();
   // It says what will happen before anything does.

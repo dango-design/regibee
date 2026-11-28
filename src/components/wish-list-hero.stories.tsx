@@ -7,6 +7,7 @@ import { OwnerChip } from "./owner-chip";
 import { PublicRegistryGrid } from "./public-registry-grid";
 import { SuggestItemDialog } from "./suggest-item-dialog";
 import { WishListHero } from "./wish-list-hero";
+import { PHONE_MODES } from "@/stories/viewports";
 
 // The stories never follow anyone or send a suggestion.
 const mockFollow = async () => ({ success: true });
@@ -123,6 +124,7 @@ export const NotFollowing: Story = {
 // A signed-out guest on a phone. Progress and sizes share a row.
 export const OnPhone: Story = {
   args: { ...Following.args, ownerChip: chip("signed-out"), showBirthday: false },
+  parameters: { chromatic: { modes: PHONE_MODES } },
   globals: { viewport: { value: "mobile1" } },
 };
 
